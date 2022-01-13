@@ -19,8 +19,7 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
-    - name: Test
+    - name: Explicit MSTest
       run: |
-        cd tests/UnitTestEx.MSTest.Test
-        ls -R
-        dotnet test --no-build --verbosity normal
+        cd tests/UnitTestEx.MSTest.Test/bin/debug/netcoreapp3.1
+        dotnet test UnitTestEx.MSTest.Test.dll --no-build --verbosity normal
