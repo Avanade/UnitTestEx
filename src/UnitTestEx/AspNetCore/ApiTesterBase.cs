@@ -28,7 +28,7 @@ namespace UnitTestEx.AspNetCore
         protected ApiTesterBase(TestFrameworkImplementor implementor)
         {
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
-            _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => whb.UseSolutionRelativeContentRoot(""));
+            _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => whb.UseSolutionRelativeContentRoot(Environment.CurrentDirectory));
         }
 
         /// <summary>
