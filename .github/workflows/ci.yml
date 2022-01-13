@@ -22,5 +22,5 @@ jobs:
     - name: Test MSTest
       run: |
         ls
-        cd /UnitTestEx/UnitTestEx/tests/UnitTestEx.MSTest.Test
+        cd tests/UnitTestEx.MSTest.Test
         dotnet test --no-build --verbosity normal
