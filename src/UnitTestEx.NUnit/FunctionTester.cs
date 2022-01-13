@@ -8,7 +8,7 @@ using UnitTestEx.NUnit.Internal;
 namespace UnitTestEx.NUnit
 {
     /// <summary>
-    /// Provides the <b>NUnit</b> API testing capability.
+    /// Provides the <b>NUnit</b> Function testing capability.
     /// </summary>
     public static class FunctionTester
     {
@@ -17,9 +17,11 @@ namespace UnitTestEx.NUnit
         /// </summary>
         /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
+        /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
         /// <returns>The <see cref="ApiTester{TEntryPoint}"/>.</returns>
-        public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool includeUnitTestConfiguration, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null) where TEntryPoint : FunctionsStartup, new() 
-            => new(includeUnitTestConfiguration, additionalConfiguration);
+        public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null)
+            where TEntryPoint : FunctionsStartup, new() 
+            => new(includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
     }
 }

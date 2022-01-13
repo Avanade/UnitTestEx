@@ -49,6 +49,23 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
+        /// Creates the <see cref="MockHttpClient"/> with the specified logical <paramref name="name"/>.
+        /// </summary>
+        /// <param name="name">The logical name of the client.</param>
+        /// <param name="baseAddress">The base address of Uniform Resource Identifier (URI) of the Internet resource used when sending requests.</param>
+        /// <returns>The <see cref="MockHttpClient"/>.</returns>
+        /// <remarks>Only a single client can be created per logical name.</remarks>
+        public MockHttpClient CreateClient(string name, string? baseAddress = null)
+        {
+            if (_mockClients.ContainsKey(name ?? throw new ArgumentNullException(nameof(name))))
+                throw new ArgumentException("This named client has already been defined.", nameof(name));
+
+            var mc = new MockHttpClient(this, name, baseAddress == null ? null : new Uri(baseAddress));
+            _mockClients.Add(name, mc);
+            return mc;
+        }
+
+        /// <summary>
         /// Replaces (or adds) the singleton <see cref="IHttpClientFactory"/> within the <see cref="IServiceCollection"/>.
         /// </summary>
         /// <param name="sc">The <see cref="IServiceCollection"/>.</param>

@@ -6,7 +6,6 @@ using Moq.Protected;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
@@ -94,7 +93,8 @@ namespace UnitTestEx.Mocking
 
                     Rule.Response.ResponseAction?.Invoke(resp);
                     return resp;
-                }).Verifiable($"{_method} '{_requestUri}' request with {BodyToString()} body");
+                })
+                .Verifiable($"{_method} '{_requestUri}' request with {BodyToString()} body");
         }
 
         /// <summary>
@@ -173,7 +173,7 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Enables <i>any</i> request with <i>a</i> body (functionally equivalent to <see cref="ItExpr.IsAny{TValue}"/>.
+        /// Enables <i>any</i> request with <i>a</i> body (functionally equivalent to <see cref="ItExpr.IsAny{TValue}"/>).
         /// </summary>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithAnyBody()

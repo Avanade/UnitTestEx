@@ -1,14 +1,14 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 using System.Net.Http;
 using UnitTestEx.Function;
-using UnitTestEx.MSUnit;
+using UnitTestEx.NUnit;
 
-namespace UnitTestEx.MSTest.Test
+namespace UnitTestEx.NUnit.Test
 {
-    [TestClass]
+    [TestFixture]
     public class PersonFunctionTest
     {
-        [TestMethod]
+        [Test]
         public void NoData()
         {
             using var test = FunctionTester.Create<Startup>();
@@ -17,7 +17,7 @@ namespace UnitTestEx.MSTest.Test
                 .AssertOK("This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response.");
         }
 
-        [TestMethod]
+        [Test]
         public void QueryString()
         {
             using var test = FunctionTester.Create<Startup>();
@@ -26,7 +26,7 @@ namespace UnitTestEx.MSTest.Test
                 .AssertOK("Hello, Trevor. This HTTP triggered function executed successfully.");
         }
 
-        [TestMethod]
+        [Test]
         public void WithBody()
         {
             using var test = FunctionTester.Create<Startup>();
@@ -35,7 +35,7 @@ namespace UnitTestEx.MSTest.Test
                 .AssertOK("Hello, Jane. This HTTP triggered function executed successfully.");
         }
 
-        [TestMethod]
+        [Test]
         public void BadRequest1()
         {
             using var test = FunctionTester.Create<Startup>();
@@ -44,7 +44,7 @@ namespace UnitTestEx.MSTest.Test
                 .AssertBadRequest("Name cannot be Brian.");
         }
 
-        [TestMethod]
+        [Test]
         public void BadRequest2()
         {
             using var test = FunctionTester.Create<Startup>();
@@ -53,7 +53,7 @@ namespace UnitTestEx.MSTest.Test
                 .AssertBadRequest(new ApiError("name", "Name cannot be Brian."));
         }
 
-        [TestMethod]
+        [Test]
         public void ValidJson()
         {
             using var test = FunctionTester.Create<Startup>();
@@ -62,7 +62,7 @@ namespace UnitTestEx.MSTest.Test
                 .AssertOK(new { FirstName = "Rachel", LastName = "Smith" });
         }
 
-        [TestMethod]
+        [Test]
         public void ValidJsonResource()
         {
             using var test = FunctionTester.Create<Startup>();
@@ -71,7 +71,7 @@ namespace UnitTestEx.MSTest.Test
                 .AssertOKFromJsonResource("FunctionTest-ValidJsonResource.json");
         }
 
-        [TestMethod]
+        [Test]
         public void ValueVsHttpRequestObject()
         {
             using var test = FunctionTester.Create<Startup>();

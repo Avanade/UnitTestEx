@@ -16,7 +16,8 @@ namespace UnitTestEx.NUnit.Internal
         /// Initializes a new instance of the <see cref="ApiTester{TEntryPoint}"/> class.
         /// </summary>
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
+        /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        internal FunctionTester(bool includeUnitTestConfiguration, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) : base(new NUnitTestImplementor(), includeUnitTestConfiguration, additionalConfiguration) { }
+        internal FunctionTester(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) : base(new NUnitTestImplementor(), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) { }
     }
 }

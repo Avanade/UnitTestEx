@@ -1,5 +1,3 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.VisualStudio.TestTools.UnitTesting.Logging;
 using Moq;
 using System;
 using System.Net;
@@ -7,15 +5,16 @@ using System.Net.Http;
 using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
-using UnitTestEx.MSTest.Test.Model;
-using UnitTestEx.MSUnit;
+using UnitTestEx.NUnit.Test.Model;
+using UnitTestEx.NUnit;
+using NUnit.Framework;
 
-namespace UnitTestEx.MSTest.Test
+namespace UnitTestEx.NUnit.Test
 {
-    [TestClass]
+    [TestFixture]
     public class MockHttpClientTest
     {
-        [TestMethod]
+        [Test]
         public async Task UriOnly_Single()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -29,7 +28,7 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
         }
 
-        [TestMethod]
+        [Test]
         public async Task UriOnly_Multi()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -45,7 +44,7 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual(HttpStatusCode.NoContent, res.StatusCode);
         }
 
-        [TestMethod]
+        [Test]
         public async Task UriAndBody_String_Single()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -56,7 +55,7 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
         }
 
-        [TestMethod]
+        [Test]
         public async Task UriAndBody_String_Multi()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -72,29 +71,29 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual(HttpStatusCode.NoContent, res.StatusCode);
         }
 
-        [TestMethod]
-        [ExpectedException(typeof(MockHttpClientException))]
-        public async Task UriAndBody_Invalid()
+        [Test]
+        public void UriAndBody_Invalid()
         {
             var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Post, "products/xyz").WithBody("Bananas").Respond.With(HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            await hc.PostAsync("products/xyz", new StringContent("Apples")).ConfigureAwait(false);
+
+            Assert.ThrowsAsync<MockHttpClientException>(() => hc.PostAsync("products/xyz", new StringContent("Apples")));
         }
 
-        [TestMethod]
+        [Test]
         public async Task UriAndBody_Json_Single()
         {
             var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" }).Respond.With(HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob"}).ConfigureAwait(false);
+            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
             Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
         }
 
-        [TestMethod]
+        [Test]
         public async Task UriAndBody_Json_Multi()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -110,7 +109,7 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual(HttpStatusCode.OK, res.StatusCode);
         }
 
-        [TestMethod]
+        [Test]
         public async Task UriAndBody_WithJsonResponse()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -124,7 +123,7 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
         }
 
-        [TestMethod]
+        [Test]
         public async Task UriAndBody_WithJsonResponse2()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -138,7 +137,7 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
         }
 
-        [TestMethod]
+        [Test]
         public async Task UriAndBody_WithJsonResponse3()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -152,7 +151,7 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
         }
 
-        [TestMethod]
+        [Test]
         public void VerifyMock_NotExecuted()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -167,11 +166,11 @@ namespace UnitTestEx.MSTest.Test
             }
             catch (MockException mex)
             {
-                Logger.LogMessage("{0}", mex.Message);
+                TestContext.Out.WriteLine(mex.Message);
             }
         }
 
-        [TestMethod]
+        [Test]
         public async Task VerifyMock_Executed()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -185,7 +184,7 @@ namespace UnitTestEx.MSTest.Test
             mcf.VerifyAll();
         }
 
-        [TestMethod]
+        [Test]
         public async Task UriAndAnyBody()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -198,7 +197,7 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
             Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
 
-            await Assert.ThrowsExceptionAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
+            Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
         }
     }
 }

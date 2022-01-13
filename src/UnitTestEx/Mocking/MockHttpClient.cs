@@ -20,7 +20,7 @@ namespace UnitTestEx.Mocking
         internal MockHttpClient(MockHttpClientFactory factory, string name, Uri? baseAddress)
         {
             Factory = factory;
-            HttpClient = new HttpClient(MessageHandler.Object) { BaseAddress = baseAddress ?? new Uri("https://unittest") };
+            HttpClient = new HttpClient(new MockHttpClientHandler(factory.Implementor, MessageHandler.Object)) { BaseAddress = baseAddress ?? new Uri("https://unittest") };
             Factory.HttpClientFactory.Setup(x => x.CreateClient(It.Is<string>(x => x == name))).Returns(() => HttpClient);
         }
 

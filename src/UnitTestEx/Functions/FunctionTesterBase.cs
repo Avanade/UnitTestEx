@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Net.Mime;
+using System.Reflection;
 using System.Text;
 using UnitTestEx.Abstractions;
 
@@ -49,8 +50,9 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
+        /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        protected FunctionTesterBase(TestFrameworkImplementor implementor, bool includeUnitTestConfiguration, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration)
+        protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration)
         {
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
             Logger = Implementor.CreateLogger(GetType().Name);
@@ -67,12 +69,15 @@ namespace UnitTestEx.Functions
                             .AddInMemoryCollection(new KeyValuePair<string, string>[] { new KeyValuePair<string, string>("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost") })
                             .AddJsonFile(GetLocalSettingsJson(), optional: true)
                             .AddJsonFile("appsettings.json", optional: true)
-                            .AddJsonFile("appsettings.development.json", optional: true)
-                            .AddUserSecrets<TEntryPoint>()
-                            .AddEnvironmentVariables();
+                            .AddJsonFile("appsettings.development.json", optional: true);
 
-                        if (includeUnitTestConfiguration)
-                            cb.AddJsonFile("appsettings.unittest.json");
+                        if ((!includeUserSecrets.HasValue && FunctionTesterDefaults.IncludeUserSecrets) || (includeUserSecrets.HasValue && includeUserSecrets.Value))
+                            cb.AddUserSecrets<TEntryPoint>();
+
+                        cb.AddEnvironmentVariables();
+
+                        if ((!includeUnitTestConfiguration.HasValue && FunctionTesterDefaults.IncludeUnitTestConfiguration) || (includeUnitTestConfiguration.HasValue && includeUnitTestConfiguration.Value))
+                            cb.AddJsonFile("appsettings.unittest.json", optional: true);
 
                         if (additionalConfiguration != null)
                             cb.AddInMemoryCollection(additionalConfiguration);
@@ -144,6 +149,17 @@ namespace UnitTestEx.Functions
         public ILogger Logger { get; }
 
         /// <summary>
+        /// Gets the <see cref="IConfiguration"/> from the underlying host.
+        /// </summary>
+        /// <returns></returns>
+        public IConfiguration GetConfig() => GetHost().Services.GetService<IConfiguration>();
+
+        /// <summary>
+        /// Gets the <see cref="IHost"/>.
+        /// </summary>
+        private IHost GetHost() => _host ??= _hostBuilder.Build();
+
+        /// <summary>
         /// Provides an opportunity to further configure the services. This can be called multiple times. 
         /// </summary>
         /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
@@ -172,13 +188,15 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="HttpTriggerTester{TFunction}"/>.</returns>
-        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class
-        {
-            if (_host == null)
-                _host = _hostBuilder.Build();
+        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor);
 
-            return new HttpTriggerTester<TFunction>(_host.Services.CreateScope(), Implementor);
-        }
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with no body.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null) => CreateHttpRequest(httpMethod, requestUri, null);
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with <i>optional</i> <paramref name="body"/> as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Text.Plain"/>.
@@ -217,16 +235,46 @@ namespace UnitTestEx.Functions
         /// Creates a new <see cref="HttpRequest"/> with the <paramref name="value"/> JSON serialized as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Application.Json"/>.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="value">The value.</param>
         /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="value">The value to JSON serialize.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, object value, string? requestUri = null)
+        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, string? requestUri, object value)
         {
             if (httpMethod == HttpMethod.Get)
                 Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
             var hr = CreateHttpRequest(httpMethod, requestUri);
             hr.Body = new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value)));
+            hr.ContentType = MediaTypeNames.Application.Json;
+            return hr;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <typeparam name="TAssembly">The <see cref="Type"/> to infer <see cref="Type.Assembly"/> for the embedded resources.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+        public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, string? requestUri, string resourceName)
+            => CreateJsonHttpRequestFromResource(httpMethod, requestUri, resourceName, typeof(TAssembly).Assembly);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly? assembly = null)
+        {
+            if (httpMethod == HttpMethod.Get)
+                Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
+
+            var hr = CreateHttpRequest(httpMethod, requestUri);
+            hr.Body = new MemoryStream(Encoding.UTF8.GetBytes(Resource.GetString(resourceName, assembly ?? Assembly.GetCallingAssembly())));
             hr.ContentType = MediaTypeNames.Application.Json;
             return hr;
         }

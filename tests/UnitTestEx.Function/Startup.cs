@@ -13,7 +13,7 @@ namespace UnitTestEx.Function
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
-            builder.Services.AddHttpClient("XXX", hc => hc.BaseAddress = new System.Uri("https://unittest"));
+            builder.Services.AddHttpClient("XXX", hc => hc.BaseAddress = new System.Uri("https://somesys"));
         }
     }
 }

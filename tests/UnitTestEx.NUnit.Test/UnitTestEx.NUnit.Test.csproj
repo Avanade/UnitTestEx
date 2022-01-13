@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\FunctionTest-ValidJsonResource.json" />
+    <None Remove="Resources\MockHttpClientTest-UriAndBody_WithJsonResponse3.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\FunctionTest-ValidJsonResource.json" />
+    <EmbeddedResource Include="Resources\MockHttpClientTest-UriAndBody_WithJsonResponse3.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.0.0" />
+    <PackageReference Include="NUnit" Version="3.13.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.2.0" />
+    <PackageReference Include="coverlet.collector" Version="3.1.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\UnitTestEx.NUnit\UnitTestEx.NUnit.csproj" />
+    <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" />
+    <ProjectReference Include="..\UnitTestEx.Function\UnitTestEx.Function.csproj" />
+  </ItemGroup>
+
+</Project>

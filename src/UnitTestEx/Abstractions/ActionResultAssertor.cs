@@ -117,7 +117,7 @@ namespace UnitTestEx.Abstractions
         /// Asserts that the <see cref="Result"/> is an <see cref="OkResult"/>.
         /// </summary>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public ActionResultAssertor AssertOk() => Assert(HttpStatusCode.OK);
+        public ActionResultAssertor AssertOK() => Assert(HttpStatusCode.OK);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> is an <see cref="IStatusCodeActionResult"/> with a <see cref="IStatusCodeActionResult.StatusCode"/> of <see cref="HttpStatusCode.NotModified"/>.
@@ -247,6 +247,8 @@ namespace UnitTestEx.Abstractions
                 eval = jr.Value;
 
             var val = new Dictionary<string, string[]>();
+            if (eval is string str)
+                val.Add(string.Empty, new string[] { str });
             if (eval is Dictionary<string, string[]> dis)
                 val = dis;
             else if (eval is Dictionary<string, object> dio)

@@ -48,7 +48,10 @@ param(
     [switch]$DeleteFromlocalCache,
     [string]$NugetCacheFolder = "$($env:USERPROFILE)\.nuget\packages",
     [String[]]$ProjectsToPublish = @(
-        "src\OnRamp")
+        "src\UnitTestEx",
+        "src\UnitTestEx.MSTest",
+        "src\UnitTestEx.NUnit",
+        "src\UnitTestEx.XUnit")
     )
 
 $ShouldPublishRemote = (![string]::IsNullOrEmpty($apiKey) -and ![string]::IsNullOrEmpty($NugetServer))
