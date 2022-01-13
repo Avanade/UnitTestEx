@@ -50,8 +50,8 @@ param(
     [String[]]$ProjectsToPublish = @(
         "src\UnitTestEx",
         "src\UnitTestEx.MSTest",
-        "src\UnitTestEx.NUnit",
-        "src\UnitTestEx.XUnit")
+        "src\UnitTestEx.Xunit",
+        "src\UnitTestEx.NUnit")
     )
 
 $ShouldPublishRemote = (![string]::IsNullOrEmpty($apiKey) -and ![string]::IsNullOrEmpty($NugetServer))
