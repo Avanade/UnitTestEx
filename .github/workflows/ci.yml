@@ -19,8 +19,18 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
-    - name: Explicit MSTest
+    - name: Explicit MSTest test
       run: |
         cp tests/UnitTestEx.Api/bin/Debug/netcoreapp3.1/UnitTestEx.Api.deps.json tests/UnitTestEx.MSTest.Test/bin/Debug/netcoreapp3.1
         cd tests/UnitTestEx.MSTest.Test/bin/Debug/netcoreapp3.1
         dotnet test UnitTestEx.MSTest.Test.dll --no-build --verbosity normal
+    - name: Explicit NUnit test
+      run: |
+        cp tests/UnitTestEx.Api/bin/Debug/netcoreapp3.1/UnitTestEx.Api.deps.json tests/UnitTestEx.NUnit.Test/bin/Debug/netcoreapp3.1
+        cd tests/UnitTestEx.NUnit.Test/bin/Debug/netcoreapp3.1
+        dotnet test UnitTestEx.NUnit.Test.dll --no-build --verbosity normal
+    - name: Explicit Xunit test
+      run: |
+        cp tests/UnitTestEx.Api/bin/Debug/netcoreapp3.1/UnitTestEx.Api.deps.json tests/UnitTestEx.Xunit.Test/bin/Debug/netcoreapp3.1
+        cd tests/UnitTestEx.Xunit.Test/bin/Debug/netcoreapp3.1
+        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal

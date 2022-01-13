@@ -6,7 +6,7 @@
 
 ## Introduction
 
-_UnitTestEx_ provides [.NET testing](https://docs.microsoft.com/en-us/dotnet/core/testing/) extensions to the most popular testing frameworks, [MSTest](https://github.com/Microsoft/testfx-docs), [NUnit](https://nunit.org/) and [Xunit](https://xunit.net/)).
+_UnitTestEx_ provides [.NET testing](https://docs.microsoft.com/en-us/dotnet/core/testing/) extensions to the most popular testing frameworks: [MSTest](https://github.com/Microsoft/testfx-docs), [NUnit](https://nunit.org/) and [Xunit](https://xunit.net/).
 
 The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style testing of the following. The capabilities look to adhere to the AAA pattern of unit testing; Arrange, Act and Assert.
 
@@ -17,7 +17,19 @@ This framework looks to address the following testing scenarios:
 
 <br/>
 
-### API Controller
+## Status
+
+The build and packaging status is as follows.
+
+CI | `UnitTestEx` | `UnitTestEx.MSTest` | `UnitTestEx.NUnit` | `UnitTestEx.Xunit`
+-|-|-|-|-
+[![CI](https://github.com/Avanade/UnitTestEx/workflows/CI/badge.svg)](https://github.com/Avanade/UnitTestEx/actions?query=workflow%3ACI) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.svg)](https://badge.fury.io/nu/UnitTestEx) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.MSTest.svg)](https://badge.fury.io/nu/UnitTestEx.MSTest) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.NUnit.svg)](https://badge.fury.io/nu/UnitTestEx.NUnit) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Xunit.svg)](https://badge.fury.io/nu/UnitTestEx.Xunit)
+
+The included [change log](CHANGELOG.md) details all key changes per published version.
+
+<br/>
+
+## API Controller
 
 This leverages the [`WebApplicationFactory`](https://docs.microsoft.com/en-us/aspnet/core/test/integration-tests) (WAF) as a means to host a test server in process to invoke APIs directly using HTTP requests. This has the benefit of validating the HTTP pipeline and all Dependency Injection (DI) configuration within. External system interactions can be mocked accordingly.
 
@@ -33,7 +45,7 @@ test.ConfigureServices(sc => mcf.Replace(sc))
 
 <br/>
 
-### HTTP-triggered Azure Function
+## HTTP-triggered Azure Function
 
 Unfortunately, at time of writing, there is no `WebApplicationFactory` equivalent for Azure functions. _UnitTestEx_ looks to simulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the underlying method.
 
@@ -49,7 +61,7 @@ test.ConfigureServices(sc => mcf.Replace(sc))
 
 <br/>
 
-### HTTP Client mocking
+## HTTP Client mocking
 
 Where invoking a down-stream system using an [`HttpClient`](https://docs.microsoft.com/en-us/dotnet/api/system.net.http.httpclient) within a unit test context this should generally be mocked. To enable _UnitTestEx_ provides a [`MockHttpClientFactory`](./src/UnitTestEx/Mocking/MockHttpClientFactory.cs) to manage each `HttpClient`, and mock a response based on the configured request. This leverages the [Moq](https://github.com/moq/moq4) framework internally to enable.
 
