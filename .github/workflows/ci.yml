@@ -19,5 +19,8 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+    - name: Test MSTest
+      run: |
+        ls
+        cd /UnitTestEx/UnitTestEx/tests/UnitTestEx.MSTest.Test
+        dotnet test --no-build --verbosity normal
