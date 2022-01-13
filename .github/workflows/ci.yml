@@ -22,4 +22,5 @@ jobs:
     - name: Test
       run: |
         cd tests/UnitTestEx.MSTest.Test
+        ls -R
         dotnet test --no-build --verbosity normal
