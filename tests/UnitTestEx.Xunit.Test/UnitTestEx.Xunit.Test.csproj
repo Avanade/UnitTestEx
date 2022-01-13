@@ -4,7 +4,6 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
 
     <IsPackable>false</IsPackable>
-    <PreserveCompilationContext>true</PreserveCompilationContext>
   </PropertyGroup>
 
   <ItemGroup>
@@ -36,5 +35,12 @@
     <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" />
     <ProjectReference Include="..\UnitTestEx.Function\UnitTestEx.Function.csproj" />
   </ItemGroup>
+
+  <Target Name="CopyDepsJsonFiles" AfterTargets="Publish">
+    <ItemGroup>
+      <DepsJsonFiles Include="$(TargetDir)*.deps.json"/>
+    </ItemGroup>
+    <Copy SourceFiles="@(DepsJsonFiles)" DestinationFolder="$(PublishDir)" />
+  </Target>
 
 </Project>
