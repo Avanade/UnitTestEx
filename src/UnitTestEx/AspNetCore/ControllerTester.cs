@@ -18,7 +18,6 @@ using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 
 namespace UnitTestEx.AspNetCore
@@ -42,15 +41,6 @@ namespace UnitTestEx.AspNetCore
             _testServer = testServer;
             _implementor = implementor;
         }
-
-        /// <summary>
-        /// Runs the asynchronous <paramref name="func"/> (passes the instantiated <typeparamref name="TController"/> to be used).
-        /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
-        /// <param name="func">The asynchronous function to run.</param>
-        /// <returns>The <see cref="ActionResultAssertor"/>.</returns>
-        public ActionResultAssertor RunController<TResult>(Func<TController, Task<TResult>> func) where TResult : IActionResult
-            => new((func ?? throw new ArgumentNullException(nameof(func)))(CreateController()).GetAwaiter().GetResult(), _implementor);
 
         /// <summary>
         /// Create the controller. Note: cannot instantiate directly as DI not setup for controllers so we have rolled our own.

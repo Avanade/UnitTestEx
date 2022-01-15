@@ -1,7 +1,6 @@
 using NUnit.Framework;
 using System.Net.Http;
 using UnitTestEx.Function;
-using UnitTestEx.NUnit;
 
 namespace UnitTestEx.NUnit.Test
 {
@@ -76,7 +75,7 @@ namespace UnitTestEx.NUnit.Test
         {
             using var test = FunctionTester.Create<Startup>();
             test.HttpTrigger<PersonFunction>()
-                .Run(f => f.RunWithValue(new PersonFunction.Person { FirstName = "Rachel", LastName = "Smith" }, test.Logger))
+                .Run(f => f.RunWithValue(new Person { FirstName = "Rachel", LastName = "Smith" }, test.Logger))
                 .AssertOK(new { first = "Rachel", last = "Smith" });
         }
     }

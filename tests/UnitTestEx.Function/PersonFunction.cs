@@ -50,17 +50,18 @@ namespace UnitTestEx.Function
         }
 
         [FunctionName("PersonFunctionObj")]
-        public IActionResult RunWithValue([HttpTrigger(AuthorizationLevel.Function, "post", Route = "people/{name}")] Person person, ILogger log)
+        public async Task<IActionResult> RunWithValue([HttpTrigger(AuthorizationLevel.Function, "post", Route = "people/{name}")] Person person, ILogger log)
         {
+            await Task.CompletedTask.ConfigureAwait(false);
             log.LogInformation("C# HTTP trigger function processed a request.");
             return new OkObjectResult(new { first = person.FirstName, last = person.LastName });
         }
+    }
 
-        public class Person
-        {
-            public string FirstName { get; set; }
+    public class Person
+    {
+        public string FirstName { get; set; }
 
-            public string LastName { get; set; }
-        }
+        public string LastName { get; set; }
     }
 }

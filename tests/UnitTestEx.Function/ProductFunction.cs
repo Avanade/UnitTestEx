@@ -4,6 +4,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -26,6 +27,9 @@ namespace UnitTestEx.Function
         private async Task<IActionResult> Logic(string id, ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
+
+            if (id == "exception")
+                throw new InvalidOperationException("An unexpected exception occured.");
 
             var result = await _httpClient.GetAsync($"products/{id}").ConfigureAwait(false);
             if (result.StatusCode == HttpStatusCode.NotFound)

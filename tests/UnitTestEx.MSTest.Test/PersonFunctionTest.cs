@@ -76,7 +76,7 @@ namespace UnitTestEx.MSTest.Test
         {
             using var test = FunctionTester.Create<Startup>();
             test.HttpTrigger<PersonFunction>()
-                .Run(f => f.RunWithValue(new PersonFunction.Person { FirstName = "Rachel", LastName = "Smith" }, test.Logger))
+                .Run(f => f.RunWithValue(new Person { FirstName = "Rachel", LastName = "Smith" }, test.Logger))
                 .AssertOK(new { first = "Rachel", last = "Smith" });
         }
     }
