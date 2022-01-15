@@ -27,6 +27,9 @@ namespace UnitTestEx.Functions
     /// <typeparam name="TSelf">The <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class FunctionTesterBase<TEntryPoint, TSelf> : IDisposable where TEntryPoint : FunctionsStartup, new() where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
+        private static readonly object _lock = new();
+        private static bool _localSettingsDone = false;
+
         private readonly IHostBuilder _hostBuilder;
         private IHost? _host;
         private bool _disposed;
@@ -112,29 +115,38 @@ namespace UnitTestEx.Functions
         /// </summary>
         private static string GetLocalSettingsJson()
         {
-            // Manage a temporary local.settings.json for the values.
-            var tfi = new FileInfo(Path.Combine(Environment.CurrentDirectory, "temporary.local.settings.json"));
-            if (tfi.Exists)
-                tfi.Delete();
-
-            // Simulate the loading of the local.settings.json values.
-            var fi = new FileInfo(Path.Combine(Environment.CurrentDirectory, "local.settings.json"));
-            if (!fi.Exists)
-                return "{ }";
-
-            using var tr = new StreamReader(fi.OpenRead());
-            using var jr = new JsonTextReader(tr);
-            var jt = JToken.ReadFrom(jr);
-            var jtv = jt["Values"];
-            if (jtv != null)
+            lock (_lock)
             {
-                using var fs = tfi.OpenWrite();
-                using var tw = new StreamWriter(fs);
-                using var jw = new JsonTextWriter(tw);
-                jtv.WriteTo(jw);
-            }
+                // Manage a temporary local.settings.json for the values.
+                var tfi = new FileInfo(Path.Combine(Environment.CurrentDirectory, "temporary.local.settings.json"));
+                if (tfi.Exists)
+                {
+                    if (_localSettingsDone)
+                        return tfi.Name;
 
-            return tfi.Name;
+                    tfi.Delete();
+                }
+
+                // Simulate the loading of the local.settings.json values.
+                var fi = new FileInfo(Path.Combine(Environment.CurrentDirectory, "local.settings.json"));
+                if (!fi.Exists)
+                    return "{ }";
+
+                using var tr = new StreamReader(fi.OpenRead());
+                using var jr = new JsonTextReader(tr);
+                var jt = JToken.ReadFrom(jr);
+                var jtv = jt["Values"];
+                if (jtv != null)
+                {
+                    using var fs = tfi.OpenWrite();
+                    using var tw = new StreamWriter(fs);
+                    using var jw = new JsonTextWriter(tw);
+                    jtv.WriteTo(jw);
+                }
+
+                _localSettingsDone = true;
+                return tfi.Name;
+            }
         }
 
         /// <summary>
@@ -189,6 +201,13 @@ namespace UnitTestEx.Functions
         /// <typeparam name="TFunction">The Function <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="HttpTriggerTester{TFunction}"/>.</returns>
         public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor);
+
+        /// <summary>
+        /// Specify the Function that has any generic trigger to test.
+        /// </summary>
+        /// <typeparam name="TFunction">The Function <see cref="Type"/>.</typeparam>
+        /// <returns>The <see cref="GenericTriggerTester{TFunction}"/>.</returns>
+        public GenericTriggerTester<TFunction> GenericTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor);
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with no body.

@@ -30,11 +30,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		SECURITY.md = SECURITY.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestEx.Xunit", "src\UnitTestEx.XUnit\UnitTestEx.Xunit.csproj", "{F0146507-A0C4-4E7A-9CD4-DDFB56591C39}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestEx.Xunit", "src\UnitTestEx.XUnit\UnitTestEx.Xunit.csproj", "{F0146507-A0C4-4E7A-9CD4-DDFB56591C39}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestEx.NUnit.Test", "tests\UnitTestEx.NUnit.Test\UnitTestEx.NUnit.Test.csproj", "{63F25714-C654-4FB7-B6A1-05E7197F416D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestEx.NUnit.Test", "tests\UnitTestEx.NUnit.Test\UnitTestEx.NUnit.Test.csproj", "{63F25714-C654-4FB7-B6A1-05E7197F416D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestEx.Xunit.Test", "tests\UnitTestEx.Xunit.Test\UnitTestEx.Xunit.Test.csproj", "{5A9A5401-0868-4D31-8B9C-E98FF70F0AA5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestEx.Xunit.Test", "tests\UnitTestEx.Xunit.Test\UnitTestEx.Xunit.Test.csproj", "{5A9A5401-0868-4D31-8B9C-E98FF70F0AA5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

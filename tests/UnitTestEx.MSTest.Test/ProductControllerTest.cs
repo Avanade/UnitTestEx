@@ -1,9 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.MSUnit;

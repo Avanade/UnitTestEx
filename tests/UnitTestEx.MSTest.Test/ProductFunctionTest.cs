@@ -37,5 +37,17 @@ namespace UnitTestEx.MSTest.Test
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
                 .AssertOK(new { id = "Abc", description = "A blue carrot" });
         }
+
+        [TestMethod]
+        public void Exception()
+        {
+            var mcf = MockHttpClientFactory.Create();
+
+            using var test = FunctionTester.Create<Startup>();
+            test.ConfigureServices(sc => mcf.Replace(sc))
+                .HttpTrigger<ProductFunction>()
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/exception", null), "exception", test.Logger))
+                .AssertException<InvalidOperationException>("An unexpected exception occured.");
+        }
     }
 }

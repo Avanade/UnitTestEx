@@ -33,4 +33,9 @@ jobs:
       run: |
         cp tests/UnitTestEx.Api/bin/Debug/netcoreapp3.1/UnitTestEx.Api.deps.json tests/UnitTestEx.Xunit.Test/bin/Debug/netcoreapp3.1
         cd tests/UnitTestEx.Xunit.Test/bin/Debug/netcoreapp3.1
-        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal
+        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests MockHttpClientTest
+        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests PersonFunctionTest
+        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests ProductFunctionTest
+        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests ServiceBusFunctionTest
+        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests PersonControllerTest
+        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests ProductControllerTest

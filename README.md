@@ -13,6 +13,7 @@ The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style te
 This framework looks to address the following testing scenarios:
 - [API Controller](#API-Controller)
 - [HTTP-triggered Azure Function](#HTTP-triggered-Azure-Function)
+- [Generic Azure Function](#Generic-Azure-Function)
 - [HTTP Client mocking](#HTTP-Client-mocking)
 
 <br/>
@@ -57,6 +58,28 @@ test.ConfigureServices(sc => mcf.Replace(sc))
     .HttpTrigger<ProductFunction>()
     .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
     .AssertOK(new { id = "Abc", description = "A blue carrot" });
+```
+
+<br/>
+
+## Generic-triggered Azure Function
+
+To support other non [HTTP-triggered Azure Functions](#HTTP-triggered-Azure-Function), _UnitTestEx_ supports the execution of any generic-triggered Azure Function; i.e. any trigger.
+
+The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs).
+
+``` csharp
+var mcf = MockHttpClientFactory.Create();
+mcf.CreateClient("XXX", new Uri("https://somesys"))
+    .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
+
+using var test = FunctionTester.Create<Startup>();
+test.ConfigureServices(sc => mcf.Replace(sc))
+    .GenericTrigger<ServiceBusFunction>()
+    .Run(f => f.Run(new Person { FirstName = "Bob", LastName = "Smith" }, test.Logger))
+    .AssertSuccess();
+
+mcf.VerifyAll();
 ```
 
 <br/>

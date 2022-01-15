@@ -14,28 +14,20 @@ namespace UnitTestEx.Abstractions
     /// <summary>
     /// Represents the <see cref="IActionResult"/> test assert helper.
     /// </summary>
-    public class ActionResultAssertor
+    public class ActionResultAssertor : AssertorBase<ActionResultAssertor>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ActionResultAssertor"/> class.
         /// </summary>
         /// <param name="result">The <see cref="IActionResult"/>.</param>
+        /// <param name="exception">The <see cref="Exception"/> (if any).</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal ActionResultAssertor(IActionResult result, TestFrameworkImplementor implementor)
-        {
-            Result = result;
-            Implementor = implementor;
-        }
+        internal ActionResultAssertor(IActionResult result, Exception? exception, TestFrameworkImplementor implementor) : base(exception, implementor) => Result = result;
 
         /// <summary>
         /// Gets the <see cref="IActionResult"/>.
         /// </summary>
         public IActionResult Result { get; }
-
-        /// <summary>
-        /// Gets the <see cref="TestFrameworkImplementor"/>.
-        /// </summary>
-        public TestFrameworkImplementor Implementor { get; }
 
         /// <summary>
         /// Assert the <see cref="Result"/> <see cref="Type"/>.
@@ -44,6 +36,7 @@ namespace UnitTestEx.Abstractions
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
         public ActionResultAssertor AssertResultType<T>() where T : IActionResult
         {
+            AssertSuccess();
             Implementor.AssertIsType<IStatusCodeActionResult>(Result, $"Result Type '{Result.GetType().Name}' is not expected '{typeof(T).Name}'.");
             return this;
         }
@@ -240,6 +233,8 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         private void AssertBadRequestErrors(IEnumerable<ApiError> expected, bool includeField)
         {
+            AssertSuccess();
+
             object? eval = null;
             if (Result is ObjectResult or)
                 eval = or.Value;
