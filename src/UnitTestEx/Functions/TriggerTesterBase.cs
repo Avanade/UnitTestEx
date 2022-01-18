@@ -40,29 +40,7 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Create (instantiate) the <typeparamref name="TFunction"/> using the <see cref="ServiceScope"/> to provide the constructor based dependency injection (DI) values.
         /// </summary>
-        private TFunction CreateFunction()
-        {
-            // Try instantiating using service provider and use if successful.
-            var val = ServiceScope.ServiceProvider.GetService<TFunction>();
-            if (val != null)
-                return val;
-
-            // Simulate the creation of a request scope.
-            var type = typeof(TFunction);
-            var ctor = type.GetConstructors().FirstOrDefault();
-            if (ctor == null)
-                return (TFunction)(Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Unable to instantiate Function Type '{type.Name}'"));
-
-            // Simulate dependency injection for each parameter.
-            var pis = ctor.GetParameters();
-            var args = new object[pis.Length];
-            for (int i = 0; i < pis.Length; i++)
-            {
-                args[i] = ServiceScope.ServiceProvider.GetRequiredService(pis[i].ParameterType);
-            }
-
-            return (TFunction)(Activator.CreateInstance(type, args) ?? throw new InvalidOperationException($"Unable to instantiate Function Type '{type.Name}'"));
-        }
+        private TFunction CreateFunction() => ServiceScope.ServiceProvider.CreateInstance<TFunction>();
 
         /// <summary>
         /// Orchestrates the execution of the function method as described by the <paramref name="expression"/> returning no result.

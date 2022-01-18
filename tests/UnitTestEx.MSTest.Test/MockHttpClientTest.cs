@@ -8,7 +8,7 @@ using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using UnitTestEx.MSTest.Test.Model;
-using UnitTestEx.MSUnit;
+using UnitTestEx.MSTest;
 
 namespace UnitTestEx.MSTest.Test
 {

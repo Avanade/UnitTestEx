@@ -2,7 +2,6 @@
 
 using Microsoft.Extensions.Logging;
 using System;
-using System.Diagnostics;
 using UnitTestEx.Logging;
 using Xunit.Abstractions;
 
@@ -12,9 +11,9 @@ namespace UnitTestEx.Xunit
     /// Represents the <see cref="XunitLogger"/> provider.
     /// </summary>
     [ProviderAlias("")]
-    [DebuggerStepThrough]
-    public sealed class XunitLoggerProvider : ILoggerProvider
+    public sealed class XunitLoggerProvider : ILoggerProvider, ISupportExternalScope
     {
+        private IExternalScopeProvider? _scopeProvider;
         private readonly ITestOutputHelper _output;
 
         /// <summary>
@@ -28,18 +27,20 @@ namespace UnitTestEx.Xunit
         /// </summary>
         /// <param name="name">The name of the logger.</param>
         /// <returns>The <see cref="XunitLogger"/>.</returns>
-        public ILogger CreateLogger(string name) => new XunitLogger(_output, name);
+        public ILogger CreateLogger(string name) => new XunitLogger(_output, name, _scopeProvider);
 
         /// <summary>
         /// Closes and disposes the <see cref="XunitLoggerProvider"/>.
         /// </summary>
         public void Dispose() { }
+
+        /// <inheritdoc/>
+        public void SetScopeProvider(IExternalScopeProvider scopeProvider) => _scopeProvider = scopeProvider;
     }
 
     /// <summary>
     /// Represents an <b>Xunit</b> <see cref="ILogger"/> that uses <see cref="ITestOutputHelper.WriteLine(string)"/>.
     /// </summary>
-    [DebuggerStepThrough]
     public sealed class XunitLogger : LoggerBase
     {
         private readonly ITestOutputHelper _output;
@@ -49,7 +50,8 @@ namespace UnitTestEx.Xunit
         /// </summary>
         /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
         /// <param name="name">The name of the logger.</param>
-        public XunitLogger(ITestOutputHelper output, string name) : base(name) => _output = output ?? throw new ArgumentNullException(nameof(output));
+        /// <param name="scopeProvider">The <see cref="IExternalScopeProvider"/>.</param>
+        public XunitLogger(ITestOutputHelper output, string name, IExternalScopeProvider? scopeProvider = null) : base(name, scopeProvider) => _output = output ?? throw new ArgumentNullException(nameof(output));
 
         /// <inheritdoc />
         protected override void WriteMessage(string message) => _output.WriteLine(message);

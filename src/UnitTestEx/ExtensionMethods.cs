@@ -33,13 +33,25 @@ namespace UnitTestEx
         /// <param name="services">The <see cref="IServiceCollection"/>.</param>
         /// <param name="instance">The instance value.</param>
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
-        public static IServiceCollection ReplaceSingleton<TService>(this IServiceCollection services, TService instance) where TService : class
+        public static IServiceCollection ReplaceSingleton<TService>(this IServiceCollection services, TService instance) where TService : class => ReplaceSingleton(services, _ => instance);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a singleton service using an <paramref name="implementationFactory"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+        /// <param name="implementationFactory">The implementation factory.</param>
+        /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
+        public static IServiceCollection ReplaceSingleton<TService>(this IServiceCollection services, Func<IServiceProvider, TService> implementationFactory) where TService : class
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
+            if (implementationFactory == null)
+                throw new ArgumentNullException(nameof(implementationFactory));
+
             services.Remove<TService>();
-            return services.AddSingleton<TService>(instance);
+            return services.AddSingleton(implementationFactory);
         }
 
         /// <summary>
@@ -49,13 +61,25 @@ namespace UnitTestEx
         /// <param name="services">The <see cref="IServiceCollection"/>.</param>
         /// <param name="instance">The instance value.</param>
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
-        public static IServiceCollection ReplaceScoped<TService>(this IServiceCollection services, TService instance) where TService : class
+        public static IServiceCollection ReplaceScoped<TService>(this IServiceCollection services, TService instance) where TService : class => ReplaceScoped(services, _ => instance);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a scoped service using an <paramref name="implementationFactory"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+        /// <param name="implementationFactory">The implementation factory.</param>
+        /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
+        public static IServiceCollection ReplaceScoped<TService>(this IServiceCollection services, Func<IServiceProvider, TService> implementationFactory) where TService : class
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
+            if (implementationFactory == null)
+                throw new ArgumentNullException(nameof(implementationFactory));
+
             services.Remove<TService>();
-            return services.AddScoped(_ => instance);
+            return services.AddScoped(implementationFactory);
         }
 
         /// <summary>
@@ -65,23 +89,41 @@ namespace UnitTestEx
         /// <param name="services">The <see cref="IServiceCollection"/>.</param>
         /// <param name="instance">The instance value.</param>
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
-        public static IServiceCollection ReplaceTransient<TService>(this IServiceCollection services, TService instance) where TService : class
+        public static IServiceCollection ReplaceTransient<TService>(this IServiceCollection services, TService instance) where TService : class => ReplaceTransient(services, _ => instance);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a transient service using an <paramref name="implementationFactory"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+        /// <param name="implementationFactory">The implementation factory.</param>
+        /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
+        public static IServiceCollection ReplaceTransient<TService>(this IServiceCollection services, Func<IServiceProvider, TService> implementationFactory) where TService : class
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
+            if (implementationFactory == null)
+                throw new ArgumentNullException(nameof(implementationFactory));
+
             services.Remove<TService>();
-            return services.AddTransient(_ => instance);
+            return services.AddTransient(implementationFactory);
         }
 
         /// <summary>
-        /// Create an instance of <see cref="Type"/> <typeparamref name="T"/> using Dependency Injection (DI).
+        /// Create (or get) an instance of <see cref="Type"/> <typeparamref name="T"/> using Dependency Injection (DI) using the <paramref name="serviceProvider"/>.
         /// </summary>
         /// <typeparam name="T">The <see cref="Type"/> to instantiate.</typeparam>
         /// <param name="serviceProvider">The <see cref="IServiceProvider"/>.</param>
         /// <returns>A reference to the newly created object.</returns>
+        /// <remarks>Where <see cref="Type"/> <typeparamref name="T"/> not specifically configured within the <paramref name="serviceProvider"/> DI simulatution will occur by performing constructor-based injection for all required parameters.</remarks>
         public static T CreateInstance<T>(this IServiceProvider serviceProvider) where T : class
         {
+            // Try instantiating using service provider and use if successful.
+            var val = serviceProvider.GetService<T>();
+            if (val != null)
+                return val;
+
             var type = typeof(T);
             var ctor = type.GetConstructors().FirstOrDefault();
             if (ctor == null)

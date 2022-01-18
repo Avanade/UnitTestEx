@@ -38,7 +38,7 @@
 
   <Target Name="CopyDepsJsonFiles" AfterTargets="Publish">
     <ItemGroup>
-      <DepsJsonFiles Include="$(TargetDir)*.deps.json"/>
+      <DepsJsonFiles Include="$(TargetDir)*.deps.json" />
     </ItemGroup>
     <Copy SourceFiles="@(DepsJsonFiles)" DestinationFolder="$(PublishDir)" />
   </Target>

@@ -2,6 +2,7 @@
 
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
+using NFI = NUnit.Framework.Internal;
 
 namespace UnitTestEx.NUnit.Internal
 {
@@ -10,6 +11,14 @@ namespace UnitTestEx.NUnit.Internal
     /// </summary>
     internal sealed class NUnitTestImplementor : Abstractions.TestFrameworkImplementor
     {
+        private readonly NFI.TestExecutionContext _context;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NUnitLoggerProvider"/> class.
+        /// </summary>
+        /// <param name="context">The <see cref="NFI.TestExecutionContext"/>.</param>
+        public NUnitTestImplementor(NFI.TestExecutionContext context) => _context = context;
+
         /// <inheritdoc/>
         public override void AssertFail(string? message) => Assert.Fail(message);
 
@@ -23,9 +32,9 @@ namespace UnitTestEx.NUnit.Internal
         public override void WriteLine(string? message) => TestContext.Out.WriteLine(message);
 
         /// <inheritdoc/>
-        public override ILoggerProvider CreateLoggerProvider() => new NUnitLoggerProvider();
+        public override ILoggerProvider CreateLoggerProvider() => new NUnitLoggerProvider(_context);
 
         /// <inheritdoc/>
-        public override ILogger CreateLogger(string name) => new NUnitLogger(name);
+        public override ILogger CreateLogger(string name) => new NUnitLogger(_context, name);
     }
 }

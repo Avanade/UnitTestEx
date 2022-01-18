@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
+using UnitTestEx.Assertors;
 
 namespace UnitTestEx.Functions
 {
@@ -27,6 +28,7 @@ namespace UnitTestEx.Functions
         /// Runs the asynchronous function method with no result.
         /// </summary>
         /// <param name="expression">The function execution expression.</param>
+        /// <returns>A <see cref="VoidAssertor"/>.</returns>
         public VoidAssertor Run(Expression<Func<TFunction, Task>> expression)
         {
             (Exception? ex, long ms) = RunFunction(expression, null, null);
@@ -39,7 +41,7 @@ namespace UnitTestEx.Functions
         /// Runs the asynchronous function method with a result.
         /// </summary>
         /// <param name="expression">The function execution expression.</param>
-        /// <returns>The resulting value.</returns>
+        /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
         public ResultAssertor<TResult> Run<TResult>(Expression<Func<TFunction, Task<TResult>>> expression)
         {
             (TResult result, Exception? ex, long ms) = RunFunction(expression, null, null);

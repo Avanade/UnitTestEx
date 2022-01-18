@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using UnitTestEx.NUnit.Internal;
+using NFI = NUnit.Framework.Internal;
 
 namespace UnitTestEx.NUnit
 {
@@ -13,6 +14,6 @@ namespace UnitTestEx.NUnit
         /// Creates the <see cref="Mocking.MockHttpClientFactory"/>.
         /// </summary>
         /// <returns>The <see cref="Mocking.MockHttpClientFactory"/>.</returns>
-        public static Mocking.MockHttpClientFactory Create() => new(new NUnitTestImplementor());
+        public static Mocking.MockHttpClientFactory Create() => new(new NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext));
     }
 }

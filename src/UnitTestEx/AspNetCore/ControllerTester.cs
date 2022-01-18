@@ -19,6 +19,7 @@ using System.Net.Mime;
 using System.Reflection;
 using System.Text;
 using UnitTestEx.Abstractions;
+using UnitTestEx.Assertors;
 
 namespace UnitTestEx.AspNetCore
 {
@@ -43,36 +44,12 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <summary>
-        /// Create the controller. Note: cannot instantiate directly as DI not setup for controllers so we have rolled our own.
-        /// </summary>
-        private TController CreateController()
-        {
-            // Simulate the creation of a request scope.
-            using var scope = _testServer.Services.CreateScope(); 
-
-            var type = typeof(TController);
-            var ctor = type.GetConstructors().FirstOrDefault();
-            if (ctor == null)
-                return (TController)(Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Unable to instantiate Controller Type '{type.Name}'"));
-
-            // Simulate dependency injection for each parameter.
-            var pis = ctor.GetParameters();
-            var args = new object[pis.Length];
-            for (int i = 0; i < pis.Length; i++)
-            {
-                args[i] = scope.ServiceProvider.GetService(pis[i].ParameterType);
-            }
-
-            return (TController)(Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Unable to instantiate Controller Type '{type.Name}'"));
-        }
-
-        /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/>.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <param name="value">The optional request body value.</param>
-        /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
+        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
         public HttpResponseMessageAssertor Run(HttpMethod httpMethod, string? requestUri, object? value = null)
         {
             var req = new HttpRequestMessage(httpMethod, requestUri);

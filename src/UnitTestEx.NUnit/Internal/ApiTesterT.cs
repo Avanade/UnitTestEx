@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using UnitTestEx.AspNetCore;
+using NFI = NUnit.Framework.Internal;
 
 namespace UnitTestEx.NUnit.Internal
 {
@@ -13,6 +14,6 @@ namespace UnitTestEx.NUnit.Internal
         /// <summary>
         /// Initializes a new instance of the <see cref="ApiTester{TEntryPoint}"/> class.
         /// </summary>
-        internal ApiTester() : base(new Internal.NUnitTestImplementor()) { }
+        internal ApiTester() : base(new Internal.NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext)) { }
     }
 }

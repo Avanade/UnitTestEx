@@ -4,10 +4,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.VisualStudio.TestTools.UnitTesting.Logging;
 
-namespace UnitTestEx.MSUnit.Internal
+namespace UnitTestEx.MSTest.Internal
 {
     /// <summary>
-    /// Provides the <b>MSUnit</b> <see cref="Abstractions.TestFrameworkImplementor"/> implementation.
+    /// Provides the <b>MSTest</b> <see cref="Abstractions.TestFrameworkImplementor"/> implementation.
     /// </summary>
     internal sealed class MSTestImplementor : Abstractions.TestFrameworkImplementor
     {

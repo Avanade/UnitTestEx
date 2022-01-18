@@ -1,8 +1,9 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
+using UnitTestEx.Abstractions;
 
-namespace UnitTestEx.Abstractions
+namespace UnitTestEx.Assertors
 {
     /// <summary>
     /// Represents the base test assert helper that distinguises between <see cref="AssertException"/> and <see cref="AssertSuccess"/>.

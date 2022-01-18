@@ -16,11 +16,11 @@ namespace UnitTestEx.Mocking
         /// </summary>
         /// <param name="factory">The <see cref="MockHttpClientFactory"/>.</param>
         /// <param name="name">The logical name of the client.</param>
-        /// <param name="baseAddress">The base Uniform Resource Identifier (URI) of the Internet resource used when sending requests.</param>
+        /// <param name="baseAddress">The base Uniform Resource Identifier (URI) of the Internet resource used when sending requests; defaults to '<c>https://unittest</c>' where not specified.</param>
         internal MockHttpClient(MockHttpClientFactory factory, string name, Uri? baseAddress)
         {
             Factory = factory;
-            HttpClient = new HttpClient(new MockHttpClientHandler(factory.Implementor, MessageHandler.Object)) { BaseAddress = baseAddress ?? new Uri("https://unittest") };
+            HttpClient = new HttpClient(new MockHttpClientHandler(factory, MessageHandler.Object)) { BaseAddress = baseAddress ?? new Uri("https://unittest") };
             Factory.HttpClientFactory.Setup(x => x.CreateClient(It.Is<string>(x => x == name))).Returns(() => HttpClient);
         }
 

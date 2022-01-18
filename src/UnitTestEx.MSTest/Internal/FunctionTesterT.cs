@@ -4,7 +4,7 @@ using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using System.Collections.Generic;
 using UnitTestEx.Functions;
 
-namespace UnitTestEx.MSUnit.Internal
+namespace UnitTestEx.MSTest.Internal
 {
     /// <summary>
     /// Provides the <b>MSTest</b> <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> implementation.

@@ -3,8 +3,9 @@
 using Newtonsoft.Json;
 using System;
 using System.Reflection;
+using UnitTestEx.Abstractions;
 
-namespace UnitTestEx.Abstractions
+namespace UnitTestEx.Assertors
 {
     /// <summary>
     /// Represents the test result assert helper.

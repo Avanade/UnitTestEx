@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using System;
 using UnitTestEx.Abstractions;
@@ -28,7 +29,7 @@ namespace UnitTestEx.AspNetCore
         protected ApiTesterBase(TestFrameworkImplementor implementor)
         {
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
-            _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => whb.UseSolutionRelativeContentRoot(""));
+            _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => whb.UseSolutionRelativeContentRoot("").ConfigureServices(sc => sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(implementor.CreateLoggerProvider()); })));
         }
 
         /// <summary>

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -27,6 +28,11 @@ namespace UnitTestEx.Mocking
         internal TestFrameworkImplementor Implementor { get; }
 
         /// <summary>
+        /// Gets or sets the <see cref="ILogger"/>.
+        /// </summary>
+        internal ILogger? Logger { get; set; }
+
+        /// <summary>
         /// Gets the <see cref="Mock"/> <see cref="IHttpClientFactory"/>.
         /// </summary>
         public Mock<IHttpClientFactory> HttpClientFactory { get; } = new Mock<IHttpClientFactory>();
@@ -38,7 +44,7 @@ namespace UnitTestEx.Mocking
         /// <param name="baseAddress">The base address of Uniform Resource Identifier (URI) of the Internet resource used when sending requests.</param>
         /// <returns>The <see cref="MockHttpClient"/>.</returns>
         /// <remarks>Only a single client can be created per logical name.</remarks>
-        public MockHttpClient CreateClient(string name, Uri? baseAddress = null)
+        public MockHttpClient CreateClient(string name, Uri baseAddress)
         {
             if (_mockClients.ContainsKey(name ?? throw new ArgumentNullException(nameof(name))))
                 throw new ArgumentException("This named client has already been defined.", nameof(name));
@@ -52,7 +58,7 @@ namespace UnitTestEx.Mocking
         /// Creates the <see cref="MockHttpClient"/> with the specified logical <paramref name="name"/>.
         /// </summary>
         /// <param name="name">The logical name of the client.</param>
-        /// <param name="baseAddress">The base address of Uniform Resource Identifier (URI) of the Internet resource used when sending requests.</param>
+        /// <param name="baseAddress">The base address of Uniform Resource Identifier (URI) of the Internet resource used when sending requests; defaults to '<c>https://unittest</c>' where not specified.</param>
         /// <returns>The <see cref="MockHttpClient"/>.</returns>
         /// <remarks>Only a single client can be created per logical name.</remarks>
         public MockHttpClient CreateClient(string name, string? baseAddress = null)
@@ -70,11 +76,12 @@ namespace UnitTestEx.Mocking
         /// </summary>
         /// <param name="sc">The <see cref="IServiceCollection"/>.</param>
         /// <returns>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</returns>
-        public IServiceCollection Replace(IServiceCollection sc)
+        public IServiceCollection Replace(IServiceCollection sc) => sc.ReplaceSingleton(sp =>
         {
-            sc.ReplaceSingleton(HttpClientFactory.Object);
-            return sc;
-        }
+            Logger = sp.GetService<ILogger<MockHttpClientFactory>>();
+            Logger.LogInformation($"Replacing '{nameof(HttpClientFactory)}' service provider (DI) instance with '{nameof(MockHttpClientFactory)}'.");
+            return HttpClientFactory.Object;
+        });
 
         /// <summary>
         /// Gets the logically named mocked <see cref="HttpClient"/>.

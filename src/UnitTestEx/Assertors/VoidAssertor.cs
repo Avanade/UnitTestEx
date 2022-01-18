@@ -1,8 +1,9 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
+using UnitTestEx.Abstractions;
 
-namespace UnitTestEx.Abstractions
+namespace UnitTestEx.Assertors
 {
     /// <summary>
     /// Represents the test assert helper where there is no return value; i.e. <see cref="void"/>.
