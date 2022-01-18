@@ -8,8 +8,9 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
+using UnitTestEx.Abstractions;
 
-namespace UnitTestEx.Abstractions
+namespace UnitTestEx.Assertors
 {
     /// <summary>
     /// Represents the <see cref="HttpResponseMessage"/> test assert helper.

@@ -2,10 +2,10 @@
 
 using UnitTestEx.AspNetCore;
 
-namespace UnitTestEx.MSUnit.Internal
+namespace UnitTestEx.MSTest.Internal
 {
     /// <summary>
-    /// Provides the <b>MSUnit</b> <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> implementation.
+    /// Provides the <b>MSTest</b> <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> implementation.
     /// </summary>
     /// <typeparam name="TEntryPoint"></typeparam>
     public class ApiTester<TEntryPoint> : ApiTesterBase<TEntryPoint, ApiTester<TEntryPoint>> where TEntryPoint : class

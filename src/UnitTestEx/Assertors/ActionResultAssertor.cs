@@ -8,8 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Reflection;
+using UnitTestEx.Abstractions;
 
-namespace UnitTestEx.Abstractions
+namespace UnitTestEx.Assertors
 {
     /// <summary>
     /// Represents the <see cref="IActionResult"/> test assert helper.

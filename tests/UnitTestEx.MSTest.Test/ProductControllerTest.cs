@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Http;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
-using UnitTestEx.MSUnit;
 
 namespace UnitTestEx.MSTest.Test
 {

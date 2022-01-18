@@ -3,7 +3,6 @@ using System;
 using System.Net;
 using System.Net.Http;
 using UnitTestEx.Function;
-using UnitTestEx.MSUnit;
 
 namespace UnitTestEx.MSTest.Test
 {

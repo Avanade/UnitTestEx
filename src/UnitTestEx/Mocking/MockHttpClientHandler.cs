@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using UnitTestEx.Abstractions;
 
 namespace UnitTestEx.Mocking
 {
@@ -13,25 +12,26 @@ namespace UnitTestEx.Mocking
     /// </summary>
     public class MockHttpClientHandler : DelegatingHandler
     {
-        private readonly TestFrameworkImplementor _implementor;
+        private readonly MockHttpClientFactory _factory;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MockHttpClientHandler"/> class.
         /// </summary>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
+        /// <param name="factory">The <see cref="MockHttpClientFactory"/>.</param>
         /// <param name="inner">The <see cref="HttpMessageHandler"/>.</param>
-        internal MockHttpClientHandler(TestFrameworkImplementor implementor, HttpMessageHandler inner) : base(inner) => _implementor = implementor;
+        internal MockHttpClientHandler(MockHttpClientFactory factory, HttpMessageHandler inner) : base(inner) => _factory = factory;
 
         /// <inheritdoc/>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            _implementor.CreateLogger("MockHttpClientHandler").LogInformation($"Sending HTTP request {request.Method} {request.RequestUri} {LogContent(request.Content)}");
+            var logger = _factory.Logger ?? _factory.Implementor.CreateLogger(nameof(MockHttpClientFactory));
+            logger.LogInformation($"Sending HTTP request {request.Method} {request.RequestUri} {LogContent(request.Content)}");
 
             var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (response == null)
                 throw new MockHttpClientException($"No corresponding MockHttpClient response found for HTTP request {request.Method} {request.RequestUri} {LogContent(request.Content)}");
 
-            _implementor.CreateLogger("MockHttpClient").LogInformation($"Received HTTP response {response.StatusCode} ({(int)response.StatusCode}) {LogContent(response.Content)}");
+            logger.LogInformation($"Received HTTP response {response.StatusCode} ({(int)response.StatusCode}) {LogContent(response.Content)}");
             return response;
         }
 

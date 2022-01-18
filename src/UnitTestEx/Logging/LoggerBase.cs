@@ -2,7 +2,11 @@
 
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace UnitTestEx.Logging
 {
@@ -11,11 +15,18 @@ namespace UnitTestEx.Logging
     /// </summary>
     public abstract class LoggerBase : ILogger
     {
+        private readonly IExternalScopeProvider _scopeProvider;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="LoggerBase"/> class.
         /// </summary>
         /// <param name="name">The name of the logger.</param>
-        public LoggerBase(string name) => Name = name ?? throw new ArgumentNullException(nameof(name));
+        /// <param name="scopeProvider">The <see cref="IExternalScopeProvider"/>.</param>
+        public LoggerBase(string name, IExternalScopeProvider? scopeProvider = null)
+        {
+            Name = name ?? throw new ArgumentNullException(nameof(name));
+            _scopeProvider = scopeProvider ?? new LoggerExternalScopeProvider();
+        }
 
         /// <summary>
         /// Gets the name of the logger.
@@ -23,7 +34,7 @@ namespace UnitTestEx.Logging
         public string Name { get; }
 
         /// <inheritdoc />
-        public IDisposable BeginScope<TState>(TState state) => NullScope.Default;
+        public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
 
         /// <inheritdoc />
         public bool IsEnabled(LogLevel logLevel) => true;
@@ -37,14 +48,72 @@ namespace UnitTestEx.Logging
             if (formatter == null)
                 throw new ArgumentNullException(nameof(formatter));
 
-            var message = $"{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fffff", DateTimeFormatInfo.InvariantInfo)} {GetLogLevel(logLevel)}: {formatter(state, exception)} [{Name}]";
-            if (exception != null)
-                message += Environment.NewLine + exception;
+            var sb = new StringBuilder();
+            sb.Append($"{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fffff", DateTimeFormatInfo.InvariantInfo)} {GetLogLevel(logLevel)}: {formatter(state, exception)} [{Name}]");
 
-            if (string.IsNullOrEmpty(message))
+            _scopeProvider?.ForEachScope<object>((scope, _) => ScopeWriter(sb, scope), null!);
+
+            if (exception != null)
+            {
+                sb.AppendLine();
+                sb.Append(exception);
+            }
+
+            WriteMessage(ReformatMessage(sb.ToString()));
+        }
+
+        /// <summary>
+        /// Write out the scope content.
+        /// </summary>
+        private void ScopeWriter(StringBuilder sb, object? scope)
+        {
+            if (scope == null)
                 return;
 
-            WriteMessage(message);
+            if (scope is IEnumerable<KeyValuePair<string, object>> dict && dict.Any())
+            {
+                if (dict.Count() == 1 && dict.First().Key == "{OriginalFormat}")
+                    return;
+
+                bool first = true;
+                sb.Append(" >");
+                foreach (var kv in dict)
+                {
+                    if (kv.Key != "{OriginalFormat}")
+                    {
+                        if (first)
+                            first = false;
+                        else
+                            sb.Append(",");
+
+                        sb.Append($" {kv.Key ?? "<null>"}=\"{kv.Value ?? "<null>"}\"");
+                    }
+                }
+            }
+            else
+                sb.Append($" > {scope}");
+        }
+
+        /// <summary>
+        /// Reformats the message (pretty-printer).
+        /// </summary>
+        private string ReformatMessage(string message)
+        {
+            var sb = new StringBuilder();
+            var sr = new StringReader(message);
+            string? line;
+            while ((line = sr.ReadLine()) != null)
+            {
+                if (sb.Length == 0)
+                    sb.Append($"{line}");
+                else
+                {
+                    sb.AppendLine();
+                    sb.Append($"{new string(' ', 32)}{line}");
+                }
+            }
+
+            return sb.ToString();
         }
 
         /// <summary>
@@ -58,12 +127,12 @@ namespace UnitTestEx.Logging
         /// </summary>
         public static string GetLogLevel(LogLevel level) => level switch
         {
-            LogLevel.Critical => "cri",
-            LogLevel.Error => "err ",
-            LogLevel.Warning => "wrn",
-            LogLevel.Information => "inf",
-            LogLevel.Debug => "dbg",
-            LogLevel.Trace => "trc",
+            LogLevel.Critical => "crit",
+            LogLevel.Error => "fail",
+            LogLevel.Warning => "warn",
+            LogLevel.Information => "info",
+            LogLevel.Debug => "dbug",
+            LogLevel.Trace => "trce",
             _ => "???"
         };
     }

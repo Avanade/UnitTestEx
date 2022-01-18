@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Api.Models;
-using UnitTestEx.MSUnit;
+using UnitTestEx.MSTest;
 
 namespace UnitTestEx.MSTest.Test
 {

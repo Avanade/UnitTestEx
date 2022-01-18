@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Net.Http;
 using UnitTestEx.Function;
-using UnitTestEx.MSUnit;
 
 namespace UnitTestEx.MSTest.Test
 {

@@ -3,9 +3,9 @@
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
-using UnitTestEx.MSUnit.Internal;
+using UnitTestEx.MSTest.Internal;
 
-namespace UnitTestEx.MSUnit
+namespace UnitTestEx.MSTest
 {
     /// <summary>
     /// Provides the <b>MSTest</b> Function testing capability.

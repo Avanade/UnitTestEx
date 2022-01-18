@@ -18,6 +18,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
+using UnitTestEx.Assertors;
 
 namespace UnitTestEx.Functions
 {
@@ -38,7 +39,7 @@ namespace UnitTestEx.Functions
         /// Runs the HTTP Triggered (see <see cref="HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
         /// </summary>
         /// <param name="expression">The function operation invocation expression.</param>
-        /// <returns>A <see cref="ActionResultAssertor"/>.</returns>
+        /// <returns>An <see cref="ActionResultAssertor"/>.</returns>
         public ActionResultAssertor Run(Expression<Func<TFunction, Task<IActionResult>>> expression)
         {
             object? requestVal = null;
