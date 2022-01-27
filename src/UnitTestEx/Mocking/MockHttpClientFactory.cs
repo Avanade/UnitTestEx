@@ -93,7 +93,8 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Verifies that all verifiable <see cref="Mock"/> expectations have been met for all <see cref="MockHttpClient"/> instances; being all requests have been invoked.
         /// </summary>
-        /// <remarks>This invokes <see cref="MockHttpClient.Verify"/> for each <see cref="MockHttpClient"/> instance.</remarks>
+        /// <remarks>This invokes <see cref="MockHttpClient.Verify"/> for each <see cref="MockHttpClient"/> instance. <para>Note: no verify will occur where using sequences; this appears to be a
+        /// limitation of MOQ.</para></remarks>
         public void VerifyAll()
         {
             foreach (var mc in _mockClients)

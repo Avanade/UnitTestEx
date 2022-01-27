@@ -9,6 +9,10 @@ namespace UnitTestEx.Mocking
     {
         private readonly MockHttpClientRequestRule _rule;
 
+        /// <summary>
+        /// Initializes a new <see cref="MockHttpClientRequestBody"/>.
+        /// </summary>
+        /// <param name="rule">The <see cref="MockHttpClientRequestRule"/>.</param>
         internal MockHttpClientRequestBody(MockHttpClientRequestRule rule) => _rule = rule;
 
         /// <summary>

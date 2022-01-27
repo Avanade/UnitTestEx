@@ -172,6 +172,55 @@ namespace UnitTestEx.MSTest.Test
         }
 
         [TestMethod]
+        public async Task VerifyMock_NotExecuted_Multi()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+            mc.Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
+                .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
+
+            mc.Request(HttpMethod.Post, "products/abc").WithJsonBody(new Person { FirstName = "David", LastName = "Jane" })
+                .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
+
+            try
+            {
+                var hc = mcf.GetHttpClient("XXX");
+                var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+
+                mcf.VerifyAll();
+                Assert.Fail();
+            }
+            catch (MockException mex)
+            {
+                Logger.LogMessage("{0}", mex.Message);
+            }
+        }
+
+        [TestMethod]
+        public async Task VerifyMock_NotExecuted_Times()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+            mc.Request(HttpMethod.Post, "products/xyz").Times(Times.Exactly(2)).WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
+                .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
+
+            try
+            {
+                var hc = mcf.GetHttpClient("XXX");
+                var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+
+                mcf.VerifyAll();
+                Assert.Fail();
+            }
+            catch (MockException mex)
+            {
+                Logger.LogMessage("{0}", mex.Message);
+            }
+        }
+
+        [TestMethod]
         public async Task VerifyMock_Executed()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -199,6 +248,65 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
 
             await Assert.ThrowsExceptionAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
+        }
+
+        [TestMethod]
+        public void MockNotComplete()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+            var mcr = mc.Request(HttpMethod.Post, "products/xyz");
+
+            Assert.IsFalse(mcr.IsMockComplete);
+           
+            try
+            {
+                mcr.Verify();
+                Assert.Fail();
+            }
+            catch (MockHttpClientException mex)
+            {
+                Logger.LogMessage("{0}", mex.Message);
+            }
+        }
+
+        [TestMethod]
+        public async Task MockSequence_Body()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+            mc.Request(HttpMethod.Post, "products/xyz").WithAnyBody().Respond.WithSequence(s =>
+            {
+                s.Respond().With(HttpStatusCode.Accepted);
+                s.Respond().With(HttpStatusCode.OK);
+            });
+
+            var hc = mcf.GetHttpClient("XXX");
+            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+
+            res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            Assert.AreEqual(HttpStatusCode.OK, res.StatusCode);
+        }
+
+
+        [TestMethod]
+        public async Task MockSequence()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+            mc.Request(HttpMethod.Get, "products/xyz").Respond.WithSequence(s =>
+            {
+                s.Respond().With(HttpStatusCode.NotModified);
+                s.Respond().With(HttpStatusCode.NotFound);
+            });
+
+            var hc = mcf.GetHttpClient("XXX");
+            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            Assert.AreEqual(HttpStatusCode.NotModified, res.StatusCode);
+
+            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
         }
     }
 }

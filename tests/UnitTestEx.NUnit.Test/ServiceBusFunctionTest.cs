@@ -10,7 +10,7 @@ namespace UnitTestEx.NUnit.Test
     public class ServiceBusFunctionTest
     {
         [Test]
-        public void Success()
+        public void Object_Success()
         {
             var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://somesys"))
@@ -26,7 +26,7 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
-        public void HttpClientError()
+        public void Object_HttpClientError()
         {
             var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://somesys"))
@@ -42,7 +42,7 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
-        public void ThrowsException()
+        public void Object_ThrowsException()
         {
             var mcf = MockHttpClientFactory.Create();
 
@@ -50,6 +50,52 @@ namespace UnitTestEx.NUnit.Test
             test.ConfigureServices(sc => mcf.Replace(sc))
                 .GenericTrigger<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = null, LastName = "Smith" }, test.Logger))
+                .AssertException<InvalidOperationException>("First name is required.");
+
+            mcf.VerifyAll();
+        }
+
+        [Test]
+        public void ServiceBusMessage_Success()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://somesys"))
+                .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
+
+            using var test = FunctionTester.Create<Startup>();
+            test.ConfigureServices(sc => mcf.Replace(sc))
+                .GenericTrigger<ServiceBusFunction>()
+                .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
+                .AssertSuccess();
+
+            mcf.VerifyAll();
+        }
+
+        [Test]
+        public void ServiceBusMessage_HttpClientError()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://somesys"))
+                .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = (string)null }).Respond.With(HttpStatusCode.InternalServerError);
+
+            using var test = FunctionTester.Create<Startup>();
+            var r = test.ConfigureServices(sc => mcf.Replace(sc))
+                .GenericTrigger<ServiceBusFunction>()
+                .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
+                .AssertException<HttpRequestException>("Response status code does not indicate success: 500 (Internal Server Error).");
+
+            mcf.VerifyAll();
+        }
+
+        [Test]
+        public void ServiceBusMessage_ThrowsException()
+        {
+            var mcf = MockHttpClientFactory.Create();
+
+            using var test = FunctionTester.Create<Startup>();
+            test.ConfigureServices(sc => mcf.Replace(sc))
+                .GenericTrigger<ServiceBusFunction>()
+                .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = null, LastName = "Smith" }), test.Logger))
                 .AssertException<InvalidOperationException>("First name is required.");
 
             mcf.VerifyAll();

@@ -6,6 +6,7 @@ using Moq.Protected;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
@@ -46,22 +47,6 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="MockHttpClientRequest"/> class with body configuration.
-        /// </summary>
-        /// <param name="client">The <see cref="MockHttpClient"/>.</param>
-        /// <param name="method">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
-        /// <param name="content">The body content/value.</param>
-        /// <param name="mediaType">The media type.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        internal MockHttpClientRequest(MockHttpClient client, HttpMethod method, string requestUri, object? content, string mediaType, string[] membersToIgnore) : this(client, method, requestUri)
-        {
-            _content = content;
-            _mediaType = mediaType;
-            _membersToIgnore = membersToIgnore;
-        }
-
-        /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
         internal TestFrameworkImplementor Implementor { get; }
@@ -72,29 +57,61 @@ namespace UnitTestEx.Mocking
         internal MockHttpClientRequestRule Rule { get; }
 
         /// <summary>
+        /// Indicates that the <see cref="MockHttpClientRequest"/> mock has been completed; in that a corresponding response has been provided.
+        /// </summary>
+        /// <remarks>It is possible to create a <see cref="MockHttpClientRequest"/> without specifying a response which is considered a non-complete state; a corresponding <see cref="MockHttpClientException"/> will be thrown by 
+        /// <see cref="Verify"/> if in this state.</remarks>
+        public bool IsMockComplete { get; private set; }
+
+        /// <summary>
         /// Mocks the response for rule.
         /// </summary>
-        /// <param name="rule">The <see cref="MockHttpClientRequestRule"/>.</param>
-        internal void MockResponse(MockHttpClientRequestRule rule)
+        internal void MockResponse()
         {
-            // Do not perform mock logic below unless it is for the single rule only. 
-            if (rule != Rule)
-                return;
+            // Either Setup or SetupSequence based on rule configuration.
+            if (Rule.Responses == null)
+            {
+                var m = _client.MessageHandler.Protected()
+                    .Setup<Task<HttpResponseMessage>>("SendAsync",
+                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(() =>
+                    {
+                        var response = Rule.Response!;
+                        var httpResponse = new HttpResponseMessage(response.StatusCode);
+                        if (response.Content != null)
+                            httpResponse.Content = response.Content;
 
-            _client.MessageHandler.Protected()
-                .Setup<Task<HttpResponseMessage>>("SendAsync",
-                    ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
-                    ItExpr.IsAny<CancellationToken>())
-                .ReturnsAsync(() =>
+                        response.ResponseAction?.Invoke(httpResponse);
+                        return httpResponse;
+                    });
+
+                if (Rule.Times == null)
+                    m.Verifiable($"{_method} '{_requestUri}' request with {BodyToString()} body");
+            }
+            else
+            {
+                var mseq = _client.MessageHandler.Protected()
+                    .SetupSequence<Task<HttpResponseMessage>>("SendAsync",
+                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.IsAny<CancellationToken>());
+
+                foreach (var response in Rule.Responses)
                 {
-                    var resp = new HttpResponseMessage(Rule.Response!.StatusCode);
-                    if (Rule.Response.Content != null)
-                        resp.Content = Rule.Response.Content;
+                    mseq.ReturnsAsync(() =>
+                    {
+                        var httpResponse = new HttpResponseMessage(response.StatusCode);
+                        if (response.Content != null)
+                            httpResponse.Content = response.Content;
 
-                    Rule.Response.ResponseAction?.Invoke(resp);
-                    return resp;
-                })
-                .Verifiable($"{_method} '{_requestUri}' request with {BodyToString()} body");
+                        response.ResponseAction?.Invoke(httpResponse);
+                        return httpResponse;
+                    });
+                }
+            }
+
+            // Mark as mock complete.
+            IsMockComplete = true;
         }
 
         /// <summary>
@@ -241,6 +258,37 @@ namespace UnitTestEx.Mocking
             _content = Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly());
             _mediaType = MediaTypeNames.Application.Json;
             return new MockHttpClientRequestBody(Rule);
+        }
+
+        /// <summary>
+        /// Sets the number of <paramref name="times"/> that the request can be invoked (see ).
+        /// </summary>
+        /// <param name="times"></param>
+        /// <returns>The <see cref="MockHttpClientRequest"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Where not set it will automatically verify that it is called at least once (see <see cref="Moq.Language.IVerifies.Verifiable()"/>).
+        /// <para>Each time this is invoked it will override the previously set value.</para></remarks>
+        public MockHttpClientRequest Times(Times times)
+        {
+            Rule.Times = times;
+            return this;
+        }
+
+        /// <summary>
+        /// Verifies the request is <see cref="IsMockComplete">complete</see> and was invoked the specified number of <see cref="Times"/> (where specified).
+        /// </summary>
+        /// <exception cref="MockHttpClientException">Thrown when <see cref="IsMockComplete"/> is <c>false</c>; i.e the configuration is not complete.</exception>
+        public void Verify()
+        {
+            if (!IsMockComplete)
+                throw new MockHttpClientException($"The request mock is not completed; the {nameof(MockHttpClientRequest)}.{nameof(IsMockComplete)} must be true for mocking to be verified.");
+
+            if (Rule?.Times != null)
+            {
+                _client.MessageHandler.Protected()
+                    .Verify<Task<HttpResponseMessage>>("SendAsync", Rule.Times.Value,
+                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.IsAny<CancellationToken>());
+            }
         }
 
         /// <summary>

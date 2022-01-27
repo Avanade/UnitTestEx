@@ -8,9 +8,8 @@
 
 _UnitTestEx_ provides [.NET testing](https://docs.microsoft.com/en-us/dotnet/core/testing/) extensions to the most popular testing frameworks: [MSTest](https://github.com/Microsoft/testfx-docs), [NUnit](https://nunit.org/) and [Xunit](https://xunit.net/).
 
-The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style testing of the following. The capabilities look to adhere to the AAA pattern of unit testing; Arrange, Act and Assert.
+The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style testing of the following whereby the capabilities look to adhere to the AAA pattern of unit testing; Arrange, Act and Assert.
 
-This framework looks to address the following testing scenarios:
 - [API Controller](#API-Controller)
 - [HTTP-triggered Azure Function](#HTTP-triggered-Azure-Function)
 - [Generic Azure Function](#Generic-Azure-Function)
@@ -69,24 +68,18 @@ To support other non [HTTP-triggered Azure Functions](#HTTP-triggered-Azure-Func
 The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs).
 
 ``` csharp
-var mcf = MockHttpClientFactory.Create();
-mcf.CreateClient("XXX", new Uri("https://somesys"))
-    .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
-
 using var test = FunctionTester.Create<Startup>();
 test.ConfigureServices(sc => mcf.Replace(sc))
     .GenericTrigger<ServiceBusFunction>()
-    .Run(f => f.Run(new Person { FirstName = "Bob", LastName = "Smith" }, test.Logger))
+    .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
     .AssertSuccess();
-
-mcf.VerifyAll();
 ```
 
 <br/>
 
 ## HTTP Client mocking
 
-Where invoking a down-stream system using an [`HttpClient`](https://docs.microsoft.com/en-us/dotnet/api/system.net.http.httpclient) within a unit test context this should generally be mocked. To enable _UnitTestEx_ provides a [`MockHttpClientFactory`](./src/UnitTestEx/Mocking/MockHttpClientFactory.cs) to manage each `HttpClient`, and mock a response based on the configured request. This leverages the [Moq](https://github.com/moq/moq4) framework internally to enable.
+Where invoking a down-stream system using an [`HttpClient`](https://docs.microsoft.com/en-us/dotnet/api/system.net.http.httpclient) within a unit test context this should generally be mocked. To enable _UnitTestEx_ provides a [`MockHttpClientFactory`](./src/UnitTestEx/Mocking/MockHttpClientFactory.cs) to manage each `HttpClient` (one or more), and mock a response based on the configured request. This leverages the [Moq](https://github.com/moq/moq4) framework internally to enable. One or more requests can also be configured per `HttpClient`.
 
 The following is an [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs).
 
@@ -102,7 +95,36 @@ test.ConfigureServices(sc => mcf.Replace(sc))
     .AssertOK(new { id = "Abc", description = "A blue carrot" });
 ```
 
+</br>
+
+### Times
+
+To verify the number of times that a request/response is performed _UnitTestEx_ support MOQ [`Times`](https://github.com/moq/moq4/blob/main/src/Moq/Times.cs), as follows:
+
+``` csharp
+var mcf = MockHttpClientFactory.Create();
+var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+mc.Request(HttpMethod.Post, "products/xyz").Times(Times.Exactly(2)).WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
+    .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
+```
+
 <br/>
+
+### Sequeuce
+
+To support different responses per execution MOQ supports [sequences](https://github.com/moq/moq4/blob/main/src/Moq/SequenceSetup.cs). This capability has been extended for _UnitTestEx_.
+
+``` csharp
+var mcf = MockHttpClientFactory.Create();
+var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+mc.Request(HttpMethod.Get, "products/xyz").Respond.WithSequence(s =>
+{
+    s.Respond().With(HttpStatusCode.NotModified);
+    s.Respond().With(HttpStatusCode.NotFound);
+});
+``` 
+
+<br>
 
 ## Examples
 

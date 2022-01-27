@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Azure.Core.Amqp;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -296,6 +298,71 @@ namespace UnitTestEx.Functions
             hr.Body = new MemoryStream(Encoding.UTF8.GetBytes(Resource.GetString(resourceName, assembly ?? Assembly.GetCallingAssembly())));
             hr.ContentType = MediaTypeNames.Application.Json;
             return hr;
+        }
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the <paramref name="value"/> as serialized JSON.
+        /// </summary>
+        /// <typeparam name="T">The <paramref name="value"/> <see cref="Type"/>.</typeparam>
+        /// <param name="value">The value.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value)
+            => CreateServiceBusMessageFromJson(JsonConvert.SerializeObject(value));
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the <paramref name="value"/> as serialized JSON.
+        /// </summary>
+        /// <typeparam name="T">The <paramref name="value"/> <see cref="Type"/>.</typeparam>
+        /// <param name="value">The value.</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value, Action<AmqpAnnotatedMessage> messageModify)
+            => CreateServiceBusMessageFromJson(JsonConvert.SerializeObject(value), messageModify);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <typeparam name="TAssembly">The <see cref="Type"/> to infer <see cref="Type.Assembly"/> for the embedded resources.</typeparam>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessageFromResource<TAssembly>(string resourceName, Action<AmqpAnnotatedMessage>? messageModify = null)
+            => CreateServiceBusMessageFromResource(resourceName, messageModify, typeof(TAssembly).Assembly);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessageFromResource(string resourceName, Action<AmqpAnnotatedMessage>? messageModify = null, Assembly? assembly = null)
+            => CreateServiceBusMessageFromJson(Resource.GetString(resourceName, assembly ?? Assembly.GetCallingAssembly()), messageModify);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the serialized <paramref name="json"/>.
+        /// </summary>
+        /// <param name="json">The JSON body.</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessageFromJson(string json, Action<AmqpAnnotatedMessage>? messageModify = null)
+        {
+            var message = new AmqpAnnotatedMessage(AmqpMessageBody.FromData(new ReadOnlyMemory<byte>[] { Encoding.UTF8.GetBytes(json ?? throw new ArgumentNullException(nameof(json))) }));
+            message.Header.DeliveryCount = 1;
+            message.Header.Durable = true;
+            message.Header.Priority = 1;
+            message.Header.TimeToLive = TimeSpan.FromSeconds(60);
+            message.Properties.ContentType = MediaTypeNames.Application.Json;
+            message.Properties.MessageId = new AmqpMessageId("messageId");
+
+            messageModify?.Invoke(message);
+
+            var t = typeof(ServiceBusReceivedMessage);
+            var c = t.GetConstructor(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance, null, new Type[] { typeof(AmqpAnnotatedMessage) }, null);
+            if (c == null)
+                throw new InvalidOperationException($"{typeof(ServiceBusReceivedMessage).Name} constructor that accepts Type {typeof(AmqpAnnotatedMessage).Name} parameter was not found.");
+
+            return (ServiceBusReceivedMessage)c.Invoke(new object?[] { message });
         }
 
         /// <summary>
