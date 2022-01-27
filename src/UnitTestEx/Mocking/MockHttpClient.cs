@@ -2,6 +2,7 @@
 
 using Moq;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 
 namespace UnitTestEx.Mocking
@@ -11,6 +12,8 @@ namespace UnitTestEx.Mocking
     /// </summary>
     public class MockHttpClient
     {
+        private readonly List<MockHttpClientRequest> _requests = new List<MockHttpClientRequest>();
+
         /// <summary>
         /// Initializes a new instance of the <see cref="MockHttpClient"/> class.
         /// </summary>
@@ -37,8 +40,18 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Verifies that all verifiable <see cref="Mock"/> expectations have been met; being all requests have been invoked.
         /// </summary>
-        /// <remarks>This is a wrapper for '<c>MessageHandler.Verify()</c>' which can be invoked directly to leverage additional capabilities (overloads).</remarks>
-        public void Verify() => MessageHandler.Verify();
+        /// <remarks>This is a wrapper for '<c>MessageHandler.Verify()</c>' which can be invoked directly to leverage additional capabilities (overloads). Additionally, the <see cref="MockHttpClientRequest.Verify"/> is invoked for each 
+        /// underlying <see cref="Request(HttpMethod, string)"/> to perform the corresponding <see cref="MockHttpClientRequest.Times(Times)"/> verification.<para>Note: no verify will occur where using sequences; this appears to be a
+        /// limitation of MOQ.</para></remarks>
+        public void Verify()
+        {
+            MessageHandler.Verify();
+
+            foreach (var r in _requests)
+            {
+                r.Verify();
+            }
+        }
 
         /// <summary>
         /// Gets the mocked <see cref="HttpClient"/>.
@@ -46,11 +59,16 @@ namespace UnitTestEx.Mocking
         internal HttpClient HttpClient { get; set; }
 
         /// <summary>
-        /// Creates a new <see cref="MockHttpClientRequest"/> for the <see cref="HttpClient"/> with no body content.
+        /// Creates a new <see cref="MockHttpClientRequest"/> for the <see cref="HttpClient"/>.
         /// </summary>
         /// <param name="method">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <returns>The <see cref="MockHttpClientRequest"/>.</returns>
-        public MockHttpClientRequest Request(HttpMethod method, string requestUri) => new(this, method, requestUri);
+        public MockHttpClientRequest Request(HttpMethod method, string requestUri)
+        {
+            var r = new MockHttpClientRequest(this, method, requestUri);
+            _requests.Add(r);
+            return r;
+        }
     }
 }
