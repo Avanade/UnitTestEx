@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.5
+- *[Issue 7](https://github.com/Avanade/UnitTestEx/issues/7)*: Added delay (sleep) option so response is not always immediate.
+- *Enhancement:* **Breaking change.** `Functions.GenericTriggerTester` replaced with `Hosting.TypeTester` as agnostic to any function trigger. `Functions.TriggerTesterBase` replaced with `Hosting.HostTesterBase` for same agnostic reasoning. `FunctionTestBase.GenericTrigger` method renamed to `FunctionTestBase.Type` so as to not imply a _trigger_ requirement (i.e. can be any _Type+Method_ that needs testing).
+
 ## v1.0.4
 - *[Issue 3](https://github.com/Avanade/UnitTestEx/issues/3)*: Added support for MOQ `Times` struct to verify the number of times a request is made.
 - *[Issue 4](https://github.com/Avanade/UnitTestEx/issues/4)*: Added support for MOQ sequences; i.e. multiple different responses.

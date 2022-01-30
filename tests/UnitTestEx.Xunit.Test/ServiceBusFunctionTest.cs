@@ -21,7 +21,7 @@ namespace UnitTestEx.Xunit.Test
 
             using var test = CreateFunctionTester<Startup>();
             test.ConfigureServices(sc => mcf.Replace(sc))
-                .GenericTrigger<ServiceBusFunction>()
+                .Type<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = "Bob", LastName = "Smith" }, test.Logger))
                 .AssertSuccess();
 
@@ -37,7 +37,7 @@ namespace UnitTestEx.Xunit.Test
 
             using var test = CreateFunctionTester<Startup>();
             var r = test.ConfigureServices(sc => mcf.Replace(sc))
-                .GenericTrigger<ServiceBusFunction>()
+                .Type<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = "Bob", LastName = "Smith" }, test.Logger))
                 .AssertException<HttpRequestException>("Response status code does not indicate success: 500 (Internal Server Error).");
 
@@ -51,7 +51,7 @@ namespace UnitTestEx.Xunit.Test
 
             using var test = CreateFunctionTester<Startup>();
             test.ConfigureServices(sc => mcf.Replace(sc))
-                .GenericTrigger<ServiceBusFunction>()
+                .Type<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = null, LastName = "Smith" }, test.Logger))
                 .AssertException<InvalidOperationException>("First name is required.");
 
@@ -67,7 +67,7 @@ namespace UnitTestEx.Xunit.Test
 
             using var test = CreateFunctionTester<Startup>();
             test.ConfigureServices(sc => mcf.Replace(sc))
-                .GenericTrigger<ServiceBusFunction>()
+                .Type<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
                 .AssertSuccess();
 
@@ -83,7 +83,7 @@ namespace UnitTestEx.Xunit.Test
 
             using var test = CreateFunctionTester<Startup>();
             var r = test.ConfigureServices(sc => mcf.Replace(sc))
-                .GenericTrigger<ServiceBusFunction>()
+                .Type<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
                 .AssertException<HttpRequestException>("Response status code does not indicate success: 500 (Internal Server Error).");
 
@@ -97,7 +97,7 @@ namespace UnitTestEx.Xunit.Test
 
             using var test = CreateFunctionTester<Startup>();
             test.ConfigureServices(sc => mcf.Replace(sc))
-                .GenericTrigger<ServiceBusFunction>()
+                .Type<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = null, LastName = "Smith" }), test.Logger))
                 .AssertException<InvalidOperationException>("First name is required.");
 

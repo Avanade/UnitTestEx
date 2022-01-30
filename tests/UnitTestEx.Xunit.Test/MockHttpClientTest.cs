@@ -1,5 +1,6 @@
 using Moq;
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
@@ -288,6 +289,48 @@ namespace UnitTestEx.Xunit.Test
 
             res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+        }
+
+        [Fact]
+        public async Task MockDelay()
+        {
+            var mcf = CreateMockHttpClientFactory();
+            mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Get, "products/xyz").Respond.Delay(500).With(HttpStatusCode.NotFound);
+
+            var hc = mcf.GetHttpClient("XXX");
+
+            var sw = Stopwatch.StartNew();
+            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            sw.Stop();
+
+            Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.True(sw.ElapsedMilliseconds >= 500);
+        }
+
+        [Fact]
+        public async Task MockSequenceDelay()
+        {
+            var mcf = CreateMockHttpClientFactory();
+            var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+            mc.Request(HttpMethod.Get, "products/xyz").Respond.WithSequence(s =>
+            {
+                s.Respond().Delay(250).With(HttpStatusCode.NotModified);
+                s.Respond().Delay(100, 150).With(HttpStatusCode.NotFound);
+            });
+
+            var hc = mcf.GetHttpClient("XXX");
+
+            var sw = Stopwatch.StartNew();
+            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            sw.Stop();
+            Assert.Equal(HttpStatusCode.NotModified, res.StatusCode);
+            Assert.True(sw.ElapsedMilliseconds >= 250);
+
+            sw.Restart();
+            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            sw.Stop();
+            Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.True(sw.ElapsedMilliseconds >= 100);
         }
     }
 }

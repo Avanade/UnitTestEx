@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Reflection;
+using System.Threading;
 
 namespace UnitTestEx.Mocking
 {
@@ -18,6 +19,7 @@ namespace UnitTestEx.Mocking
     {
         private readonly MockHttpClientRequest _clientRequest;
         private readonly MockHttpClientRequestRule? _rule;
+        private Func<TimeSpan>? _delay;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MockHttpClientResponse"/> class.
@@ -44,6 +46,67 @@ namespace UnitTestEx.Mocking
         /// Gets or sets the optional action to enable additional configuration of the <see cref="HttpResponseMessage"/>.
         /// </summary>
         internal Action<HttpResponseMessage>? ResponseAction { get; set; }
+
+        /// <summary>
+        /// Executes the <see cref="Delay(Func{TimeSpan})"/>; i.e. goes to sleep.
+        /// </summary>
+        internal void ExecuteDelay()
+        {
+            if (_delay != null)
+                Thread.Sleep(_delay());
+        }
+
+        /// <summary>
+        /// Sets the simulated delay (sleep) for the response.
+        /// </summary>
+        /// <param name="timeSpan">The delay (sleep) function.</param>
+        /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Each time a <c>Delay</c> is invoked it will override the previously set value.</remarks>
+        public MockHttpClientResponse Delay(Func<TimeSpan> timeSpan)
+        {
+            _delay = timeSpan;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the simulated delay (sleep) for the response.
+        /// </summary>
+        /// <param name="timeSpan">The delay (sleep) <see cref="TimeSpan"/>.</param>
+        /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Each time a <c>Delay</c> is invoked it will override the previously set value.</remarks>
+        public MockHttpClientResponse Delay(TimeSpan timeSpan) => Delay(() => timeSpan);
+
+        /// <summary>
+        /// Sets the simulated delay (sleep) as a random between the <paramref name="from"/> and <paramref name="to"/> values for the response.
+        /// </summary>
+        /// <param name="from">The from <see cref="TimeSpan"/>.</param>
+        /// <param name="to">The to <see cref="TimeSpan"/>.</param>
+        /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Each time a <c>Delay</c> is invoked it will override the previously set value.</remarks>
+        public MockHttpClientResponse Delay(TimeSpan from, TimeSpan to)
+        {
+            if (to < from)
+                throw new ArgumentException("From must be less than or equal to the To value.", nameof(from));
+
+            return Delay(() => TimeSpan.FromMilliseconds(MockHttpClientRequest.Random.Next((int)from.TotalMilliseconds, (int)to.TotalMilliseconds)));
+        }
+
+        /// <summary>
+        /// Sets the simulated delay (sleep) for the response.
+        /// </summary>
+        /// <param name="millseconds">The delay (sleep) milliseconds.</param>
+        /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Each time a <c>Delay</c> is invoked it will override the previously set value.</remarks>
+        public MockHttpClientResponse Delay(int millseconds) => Delay(TimeSpan.FromMilliseconds(millseconds));
+
+        /// <summary>
+        /// Sets the simulated delay (sleep) as a random between the <paramref name="from"/> and <paramref name="to"/> values for the response.
+        /// </summary>
+        /// <param name="from">The from milliseconds.</param>
+        /// <param name="to">The to millseconds.</param>
+        /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Each time a <c>Delay</c> is invoked it will override the previously set value.</remarks>
+        public MockHttpClientResponse Delay(int from, int to) => Delay(TimeSpan.FromMilliseconds(from), TimeSpan.FromMilliseconds(to));
 
         /// <summary>
         /// Provides the mocked response.
