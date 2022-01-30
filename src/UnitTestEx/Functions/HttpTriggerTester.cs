@@ -19,6 +19,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
+using UnitTestEx.Hosting;
 
 namespace UnitTestEx.Functions
 {
@@ -26,7 +27,7 @@ namespace UnitTestEx.Functions
     /// Provides the Azure Function <see cref="HttpTriggerTester{TFunction}"/> unit-testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
-    public class HttpTriggerTester<TFunction> : TriggerTesterBase<TFunction> where TFunction : class
+    public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction> where TFunction : class
     {
         /// <summary>
         /// Initializes a new <see cref="HttpTriggerTester{TFunction}"/> class.
@@ -44,7 +45,7 @@ namespace UnitTestEx.Functions
         {
             object? requestVal = null;
             HttpRequest? httpRequest = null;
-            (IActionResult result, Exception? ex, long ms) = RunFunction(expression, typeof(HttpTriggerAttribute), (p, a, v) =>
+            (IActionResult result, Exception? ex, long ms) = Run(expression, typeof(HttpTriggerAttribute), (p, a, v) =>
             {
                 if (a == null)
                     throw new InvalidOperationException($"The function method must have a parameter using the {nameof(HttpTriggerAttribute)}.");
@@ -96,23 +97,28 @@ namespace UnitTestEx.Functions
                 JToken? json = null;
                 if (req.Body != null)
                 {
-                    req.Body.Position = 0;
-                    using var sr = new StreamReader(req.Body);
-                    var body = sr.ReadToEnd();
-
-                    // Parse out the content.
-                    if (body.Length > 0)
+                    if (req.Body.CanRead)
                     {
-                        try
-                        {
-                            json = JToken.Parse(body);
-                        }
-                        catch (Exception) { /* This is being swallowed by design. */ }
-                    }
+                        req.Body.Position = 0;
+                        using var sr = new StreamReader(req.Body);
+                        var body = sr.ReadToEnd();
 
-                    Implementor.WriteLine($"Content: [{req.ContentType ?? "None"}]");
-                    if (json != null || !string.IsNullOrEmpty(body))
-                        Implementor.WriteLine(json == null ? body : json.ToString());
+                        // Parse out the content.
+                        if (body.Length > 0)
+                        {
+                            try
+                            {
+                                json = JToken.Parse(body);
+                            }
+                            catch (Exception) { /* This is being swallowed by design. */ }
+                        }
+
+                        Implementor.WriteLine($"Content: [{req.ContentType ?? "None"}]");
+                        if (json != null || !string.IsNullOrEmpty(body))
+                            Implementor.WriteLine(json == null ? body : json.ToString());
+                    }
+                    else
+                        Implementor.WriteLine($"Content: [{req.ContentType ?? "None"}] => Response.Body is not in a read state.");
                 }
             }
 

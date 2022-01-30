@@ -12,7 +12,7 @@ The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style te
 
 - [API Controller](#API-Controller)
 - [HTTP-triggered Azure Function](#HTTP-triggered-Azure-Function)
-- [Generic Azure Function](#Generic-Azure-Function)
+- [Generic Azure Function Type](#Generic-Azure-Function-Type)
 - [HTTP Client mocking](#HTTP-Client-mocking)
 
 <br/>
@@ -47,7 +47,7 @@ test.ConfigureServices(sc => mcf.Replace(sc))
 
 ## HTTP-triggered Azure Function
 
-Unfortunately, at time of writing, there is no `WebApplicationFactory` equivalent for Azure functions. _UnitTestEx_ looks to simulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the underlying method.
+Unfortunately, at time of writing, there is no `WebApplicationFactory` equivalent for Azure functions. _UnitTestEx_ looks to simulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method. _UnitTestEx_ when invoking verifies usage of `HttpTriggerAttribute`(https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-http-webhook-trigger?tabs=csharp) and ensures a `Task<IActionResult>` result.
 
 The following is an [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs).
 
@@ -61,16 +61,16 @@ test.ConfigureServices(sc => mcf.Replace(sc))
 
 <br/>
 
-## Generic-triggered Azure Function
+## Generic Azure Function Type
 
-To support other non [HTTP-triggered Azure Functions](#HTTP-triggered-Azure-Function), _UnitTestEx_ supports the execution of any generic-triggered Azure Function; i.e. any trigger.
+To support testing of any generic `Type` within an Azure Fuction, _UnitTestEx_ looks to simulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method.
 
 The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs).
 
 ``` csharp
 using var test = FunctionTester.Create<Startup>();
 test.ConfigureServices(sc => mcf.Replace(sc))
-    .GenericTrigger<ServiceBusFunction>()
+    .Type<ServiceBusFunction>()
     .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
     .AssertSuccess();
 ```
@@ -123,6 +123,23 @@ mc.Request(HttpMethod.Get, "products/xyz").Respond.WithSequence(s =>
     s.Respond().With(HttpStatusCode.NotFound);
 });
 ``` 
+
+<br>
+
+### Delay
+
+A delay (sleep) can be simulated so a response is not always immediated. This can be specified as a fixed value, or randomly generated using a from and to.
+
+``` csharp
+var mcf = MockHttpClientFactory.Create();
+var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+mc.Request(HttpMethod.Get, "products/xyz").Respond.Delay(500).With(HttpStatusCode.NotFound);
+mc.Request(HttpMethod.Get, "products/kjl").Respond.WithSequence(s =>
+{
+    s.Respond().Delay(250).With(HttpStatusCode.NotModified);
+    s.Respond().Delay(100, 200).With(HttpStatusCode.NotFound);
+});
+```
 
 <br>
 

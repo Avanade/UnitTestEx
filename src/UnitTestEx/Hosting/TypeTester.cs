@@ -9,42 +9,42 @@ using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
 
-namespace UnitTestEx.Functions
+namespace UnitTestEx.Hosting
 {
     /// <summary>
-    /// Provides the Azure Function <see cref="HttpTriggerTester{TFunction}"/> unit-testing capabilities.
+    /// Provides the generic <see cref="Type"/> unit-testing capabilities.
     /// </summary>
-    /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
-    public class GenericTriggerTester<TFunction> : TriggerTesterBase<TFunction> where TFunction : class
+    /// <typeparam name="T">The <see cref="Type"/> (must be a <c>class</c>).</typeparam>
+    public class TypeTester<T> : HostTesterBase<T> where T : class
     {
         /// <summary>
-        /// Initializes a new <see cref="GenericTriggerTester{TFunction}"/> class.
+        /// Initializes a new <see cref="TypeTester{TFunction}"/> class.
         /// </summary>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal GenericTriggerTester(IServiceScope serviceScope, TestFrameworkImplementor implementor) : base(serviceScope, implementor) { }
+        internal TypeTester(IServiceScope serviceScope, TestFrameworkImplementor implementor) : base(serviceScope, implementor) { }
 
         /// <summary>
-        /// Runs the asynchronous function method with no result.
+        /// Runs the asynchronous method with no result.
         /// </summary>
         /// <param name="expression">The function execution expression.</param>
         /// <returns>A <see cref="VoidAssertor"/>.</returns>
-        public VoidAssertor Run(Expression<Func<TFunction, Task>> expression)
+        public VoidAssertor Run(Expression<Func<T, Task>> expression)
         {
-            (Exception? ex, long ms) = RunFunction(expression, null, null);
+            (Exception? ex, long ms) = Run(expression, null, null);
             LogElapsed(ex, ms);
             LogTrailer();
             return new VoidAssertor(ex, Implementor);
         }
 
         /// <summary>
-        /// Runs the asynchronous function method with a result.
+        /// Runs the asynchronous method with a result.
         /// </summary>
         /// <param name="expression">The function execution expression.</param>
         /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
-        public ResultAssertor<TResult> Run<TResult>(Expression<Func<TFunction, Task<TResult>>> expression)
+        public ResultAssertor<TResult> Run<TResult>(Expression<Func<T, Task<TResult>>> expression)
         {
-            (TResult result, Exception? ex, long ms) = RunFunction(expression, null, null);
+            (TResult result, Exception? ex, long ms) = Run(expression, null, null);
             LogElapsed(ex, ms);
 
             if (ex == null)
@@ -71,7 +71,7 @@ namespace UnitTestEx.Functions
         private void LogElapsed(Exception? ex, long ms)
         {
             Implementor.WriteLine("");
-            Implementor.WriteLine("FUNCTION GENERIC-TRIGGER TESTER...");
+            Implementor.WriteLine("GENERIC TYPE TESTER...");
             Implementor.WriteLine($"Elapsed (ms): {ms}");
             if (ex != null)
             {

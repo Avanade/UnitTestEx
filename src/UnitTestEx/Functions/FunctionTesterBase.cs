@@ -19,6 +19,7 @@ using System.Net.Mime;
 using System.Reflection;
 using System.Text;
 using UnitTestEx.Abstractions;
+using UnitTestEx.Hosting;
 
 namespace UnitTestEx.Functions
 {
@@ -198,18 +199,18 @@ namespace UnitTestEx.Functions
         public TSelf MockScopedService<T>(Mock<T> mock) where T : class => ConfigureServices(sc => sc.ReplaceScoped(mock.Object));
 
         /// <summary>
-        /// Specify the Function that has an <see cref="HttpTrigger"/> to test.
+        /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> that is to be tested.
         /// </summary>
-        /// <typeparam name="TFunction">The Function <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="HttpTriggerTester{TFunction}"/>.</returns>
         public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor);
 
         /// <summary>
-        /// Specify the Function that has any generic trigger to test.
+        /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
         /// </summary>
-        /// <typeparam name="TFunction">The Function <see cref="Type"/>.</typeparam>
-        /// <returns>The <see cref="GenericTriggerTester{TFunction}"/>.</returns>
-        public GenericTriggerTester<TFunction> GenericTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor);
+        /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
+        /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
+        public TypeTester<T> Type<T>() where T : class => new(GetHost().Services.CreateScope(), Implementor);
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with no body.

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -8,20 +9,20 @@ using System.Linq.Expressions;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 
-namespace UnitTestEx.Functions
+namespace UnitTestEx.Hosting
 {
     /// <summary>
-    /// Provides the base Azure Function unit-testing capabilities.
+    /// Provides the base <see cref="IHost"/> unit-testing capabilities.
     /// </summary>
-    /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
-    public class TriggerTesterBase<TFunction> where TFunction : class
+    /// <typeparam name="THost">The host <see cref="Type"/>.</typeparam>
+    public class HostTesterBase<THost> where THost : class
     {
         /// <summary>
-        /// Initializes a new <see cref="GenericTriggerTester{TFunction}"/> class.
+        /// Initializes a new <see cref="HostTesterBase{TFunction}"/> class.
         /// </summary>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        protected TriggerTesterBase(IServiceScope serviceScope, TestFrameworkImplementor implementor)
+        protected HostTesterBase(IServiceScope serviceScope, TestFrameworkImplementor implementor)
         {
             ServiceScope = serviceScope ?? throw new ArgumentNullException(nameof(serviceScope));
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
@@ -38,18 +39,18 @@ namespace UnitTestEx.Functions
         protected TestFrameworkImplementor Implementor { get; }
 
         /// <summary>
-        /// Create (instantiate) the <typeparamref name="TFunction"/> using the <see cref="ServiceScope"/> to provide the constructor based dependency injection (DI) values.
+        /// Create (instantiate) the <typeparamref name="THost"/> using the <see cref="ServiceScope"/> to provide the constructor based dependency injection (DI) values.
         /// </summary>
-        private TFunction CreateFunction() => ServiceScope.ServiceProvider.CreateInstance<TFunction>();
+        private THost CreateFunction() => ServiceScope.ServiceProvider.CreateInstance<THost>();
 
         /// <summary>
-        /// Orchestrates the execution of the function method as described by the <paramref name="expression"/> returning no result.
+        /// Orchestrates the execution of a method as described by the <paramref name="expression"/> returning no result.
         /// </summary>
-        /// <param name="expression">The funtion execution expression.</param>
+        /// <param name="expression">The method execution expression.</param>
         /// <param name="paramAttributeType">The optional parameter <see cref="Attribute"/> <see cref="Type"/> to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting exception if any and elapsed milliseconds.</returns>
-        protected (Exception? Exception, long ElapsedMilliseconds) RunFunction(Expression<Func<TFunction, Task>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected (Exception? Exception, long ElapsedMilliseconds) Run(Expression<Func<THost, Task>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
             if (expression == null)
                 throw new ArgumentNullException(nameof(expression));
@@ -85,7 +86,7 @@ namespace UnitTestEx.Functions
             var mr = mce.Method.Invoke(f, @params)!;
 
             if (!(mr is Task tr))
-                throw new InvalidOperationException($"The function method must return a result of Type {nameof(Task)}.");
+                throw new InvalidOperationException($"The method must return a result of Type {nameof(Task)}.");
 
             try
             {
@@ -101,13 +102,13 @@ namespace UnitTestEx.Functions
         }
 
         /// <summary>
-        /// Orchestrates the execution of the function method as described by the <paramref name="expression"/> returning a result of <see cref="Type"/> <typeparamref name="TResult"/>.
+        /// Orchestrates the execution of a method as described by the <paramref name="expression"/> returning a result of <see cref="Type"/> <typeparamref name="TResult"/>.
         /// </summary>
-        /// <param name="expression">The funtion execution expression.</param>
+        /// <param name="expression">The method execution expression.</param>
         /// <param name="paramAttributeType">The optional parameter <see cref="Attribute"/> <see cref="Type"/> to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
-        protected (TResult Result, Exception? Exception, long ElapsedMilliseconds) RunFunction<TResult>(Expression<Func<TFunction, Task<TResult>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected (TResult Result, Exception? Exception, long ElapsedMilliseconds) Run<TResult>(Expression<Func<THost, Task<TResult>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
             if (expression == null)
                 throw new ArgumentNullException(nameof(expression));
@@ -143,7 +144,7 @@ namespace UnitTestEx.Functions
             var mr = mce.Method.Invoke(f, @params)!;
 
             if (!(mr is Task<TResult> tr))
-                throw new InvalidOperationException($"The function method must return a result of Type {nameof(Task<TResult>)}.");
+                throw new InvalidOperationException($"The method must return a result of Type {nameof(Task<TResult>)}.");
 
             try
             {

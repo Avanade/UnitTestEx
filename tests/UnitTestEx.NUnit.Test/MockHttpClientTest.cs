@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using UnitTestEx.NUnit.Test.Model;
 using UnitTestEx.NUnit;
 using NUnit.Framework;
+using System.Diagnostics;
 
 namespace UnitTestEx.NUnit.Test
 {
@@ -285,6 +286,48 @@ namespace UnitTestEx.NUnit.Test
 
             res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+        }
+
+        [Test]
+        public async Task MockDelay()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Get, "products/xyz").Respond.Delay(500).With(HttpStatusCode.NotFound);
+
+            var hc = mcf.GetHttpClient("XXX");
+
+            var sw = Stopwatch.StartNew();
+            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            sw.Stop();
+
+            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.IsTrue(sw.ElapsedMilliseconds >= 500);
+        }
+
+        [Test]
+        public async Task MockSequenceDelay()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+            mc.Request(HttpMethod.Get, "products/xyz").Respond.WithSequence(s =>
+            {
+                s.Respond().Delay(250).With(HttpStatusCode.NotModified);
+                s.Respond().Delay(100, 150).With(HttpStatusCode.NotFound);
+            });
+
+            var hc = mcf.GetHttpClient("XXX");
+
+            var sw = Stopwatch.StartNew();
+            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            sw.Stop();
+            Assert.AreEqual(HttpStatusCode.NotModified, res.StatusCode);
+            Assert.IsTrue(sw.ElapsedMilliseconds >= 250);
+
+            sw.Restart();
+            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            sw.Stop();
+            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.IsTrue(sw.ElapsedMilliseconds >= 100);
         }
     }
 }

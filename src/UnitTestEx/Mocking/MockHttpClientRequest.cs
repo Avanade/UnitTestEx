@@ -6,7 +6,6 @@ using Moq.Protected;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
@@ -28,6 +27,11 @@ namespace UnitTestEx.Mocking
         private object? _content;
         private string? _mediaType;
         private string[] _membersToIgnore = Array.Empty<string>();
+
+        /// <summary>
+        /// Gets the static <see cref="System.Random"/> instance.
+        /// </summary>
+        internal static Random Random { get; } = new Random();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MockHttpClientRequest"/> class.
@@ -78,6 +82,7 @@ namespace UnitTestEx.Mocking
                     .ReturnsAsync(() =>
                     {
                         var response = Rule.Response!;
+                        response.ExecuteDelay();
                         var httpResponse = new HttpResponseMessage(response.StatusCode);
                         if (response.Content != null)
                             httpResponse.Content = response.Content;
@@ -101,6 +106,7 @@ namespace UnitTestEx.Mocking
                     mseq.ReturnsAsync(() =>
                     {
                         var httpResponse = new HttpResponseMessage(response.StatusCode);
+                        response.ExecuteDelay();
                         if (response.Content != null)
                             httpResponse.Content = response.Content;
 
@@ -261,7 +267,7 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Sets the number of <paramref name="times"/> that the request can be invoked (see ).
+        /// Sets the number of <paramref name="times"/> that the request can be invoked.
         /// </summary>
         /// <param name="times"></param>
         /// <returns>The <see cref="MockHttpClientRequest"/> to support fluent-style method-chaining.</returns>
