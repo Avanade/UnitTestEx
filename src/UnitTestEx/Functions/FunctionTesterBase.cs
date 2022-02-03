@@ -158,21 +158,27 @@ namespace UnitTestEx.Functions
         public TestFrameworkImplementor Implementor { get; }
 
         /// <summary>
-        /// Gets the function runtime <see cref="ILogger"/>.
+        /// Gets the runtime <see cref="ILogger"/>.
         /// </summary>
         /// <returns>The <see cref="ILogger"/>.</returns>
         public ILogger Logger { get; }
 
         /// <summary>
-        /// Gets the <see cref="IConfiguration"/> from the underlying host.
-        /// </summary>
-        /// <returns></returns>
-        public IConfiguration GetConfig() => GetHost().Services.GetService<IConfiguration>();
-
-        /// <summary>
         /// Gets the <see cref="IHost"/>.
         /// </summary>
         private IHost GetHost() => _host ??= _hostBuilder.Build();
+
+        /// <summary>
+        /// Gets the <see cref="IServiceProvider"/> from the underlying host.
+        /// </summary>
+        /// <returns>The <see cref="IServiceProvider"/>.</returns>
+        public IServiceProvider Services => GetHost().Services;
+
+        /// <summary>
+        /// Gets the <see cref="IConfiguration"/> from the underlying host.
+        /// </summary>
+        /// <returns>The <see cref="IConfiguration"/>.</returns>
+        public IConfiguration Configuration => Services.GetService<IConfiguration>();
 
         /// <summary>
         /// Provides an opportunity to further configure the services. This can be called multiple times. 

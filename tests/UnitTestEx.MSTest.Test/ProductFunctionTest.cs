@@ -34,7 +34,8 @@ namespace UnitTestEx.MSTest.Test
             test.ConfigureServices(sc => mcf.Replace(sc))
                 .HttpTrigger<ProductFunction>()
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
-                .AssertOK(new { id = "Abc", description = "A blue carrot" });
+                .AssertOK()
+                .Assert(new { id = "Abc", description = "A blue carrot" });
         }
 
         [TestMethod]

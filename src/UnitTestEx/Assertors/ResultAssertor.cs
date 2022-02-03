@@ -60,6 +60,17 @@ namespace UnitTestEx.Assertors
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ResultAssertor{TResult}"/> to support fluent-style method-chaining.</returns>
-        public ResultAssertor<TResult> AssertFromJsonResource(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly()), membersToIgnore);
+        public ResultAssertor<TResult> AssertFromJsonResource(string resourceName, params string[] membersToIgnore)
+            => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly()), membersToIgnore);
+
+        /// <summary>
+        /// Asserts that the <see cref="Result"/> matches the JSON serialized value from the named embedded resource.
+        /// </summary>
+        /// <typeparam name="TAssembly">The <see cref="Type"/> to infer the <see cref="Assembly"/> that contains the embedded resource.</typeparam>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
+        /// <returns>The <see cref="ResultAssertor{TResult}"/> to support fluent-style method-chaining.</returns>
+        public ResultAssertor<TResult> AssertFromJsonResource<TAssembly>(string resourceName, params string[] membersToIgnore)
+            => Assert(Resource.GetJsonValue<TResult>(resourceName, typeof(TAssembly).Assembly), membersToIgnore);
     }
 }

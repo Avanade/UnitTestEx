@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -20,7 +21,7 @@ namespace UnitTestEx.AspNetCore
     public abstract class ApiTesterBase<TEntryPoint, TSelf> : IDisposable where TEntryPoint : class where TSelf : ApiTesterBase<TEntryPoint, TSelf> 
     {
         private bool _disposed;
-        private WebApplicationFactory<TEntryPoint>? _waf;
+        private WebApplicationFactory<TEntryPoint> _waf;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> class.
@@ -54,6 +55,18 @@ namespace UnitTestEx.AspNetCore
 
             return (TSelf)this;
         }
+
+        /// <summary>
+        /// Gets the <see cref="IServiceProvider"/> from the underlying host.
+        /// </summary>
+        /// <returns>The <see cref="IServiceProvider"/>.</returns>
+        public IServiceProvider Services => _waf.Services;
+
+        /// <summary>
+        /// Gets the <see cref="IConfiguration"/> from the underlying host.
+        /// </summary>
+        /// <returns>The <see cref="IConfiguration"/>.</returns>
+        public IConfiguration Configuration => Services.GetService<IConfiguration>();
 
         /// <summary>
         /// Replace scoped service with a mock object.
@@ -94,12 +107,7 @@ namespace UnitTestEx.AspNetCore
             if (_disposed)
                 return;
 
-            if (_waf != null)
-            {
-                _waf.Dispose();
-                _waf = null;
-            }
-
+            _waf.Dispose();
             _disposed = true;
         }
     }

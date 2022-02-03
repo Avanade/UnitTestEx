@@ -73,45 +73,25 @@ namespace UnitTestEx.Assertors
         }
 
         /// <summary>
-        /// Asserts that the <see cref="Response"/> has the specified <paramref name="statusCode"/> and <paramref name="expectedValue"/>.
+        /// Asserts that the <see cref="Response"/> content type is <see cref="MediaTypeNames.Application.Json"/>.
         /// </summary>
-        /// <param name="expectedValue">The expected value.</param>
-        /// <param name="statusCode">The <see cref="HttpStatusCode"/>.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        private HttpResponseMessageAssertor Assert(object? expectedValue, HttpStatusCode statusCode, params string[] membersToIgnore)
+        public HttpResponseMessageAssertor AssertContentTypeJson() => AssertContentType(MediaTypeNames.Application.Json);
+
+        /// <summary>
+        /// Asserts that the <see cref="Response"/> content type is <see cref="MediaTypeNames.Text.Plain"/>.
+        /// </summary>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertContentTypePlainText() => AssertContentType(MediaTypeNames.Text.Plain);
+
+        /// <summary>
+        /// Asserts that the <see cref="Response"/> content type matches the <paramref name="expectedContentType"/>.
+        /// </summary>
+        /// <param name="expectedContentType">The expected content type.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertContentType(string expectedContentType)
         {
-            Assert(statusCode);
-            AssertSuccessStatusCode();
-
-            if (Response.Content.Headers.ContentType.MediaType == MediaTypeNames.Application.Json)
-            {
-                var json = Response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                if (expectedValue == null)
-                {
-                    if (!string.IsNullOrEmpty(json))
-                        _implementor.AssertFail($"Expected null and actual has content: {json}");
-
-                    return this;
-                }
-
-                if (expectedValue is JToken jte)
-                {
-                    var jta = JToken.Parse(json);
-                    if (!JToken.DeepEquals(jte, jta))
-                        _implementor.AssertFail($"Expected and Actual JSON are not equal: {Environment.NewLine}Expected =>{Environment.NewLine}{jte?.ToString(Formatting.Indented)}{Environment.NewLine}Actual =>{Environment.NewLine}{jta?.ToString(Formatting.Indented)}");
-
-                    return this;
-                }
-
-                var val = JsonConvert.DeserializeObject(json, expectedValue.GetType());
-                var cr = ObjectComparer.Compare(expectedValue, val, membersToIgnore);
-                if (!cr.AreEqual)
-                    _implementor.AssertFail($"Expected and Actual values are not equal: {cr.DifferencesString}");
-            }
-            else
-                _implementor.AssertAreEqual(expectedValue?.ToString(), Response.Content.ReadAsStringAsync().GetAwaiter().GetResult());
-
+            _implementor.AssertAreEqual(expectedContentType, Response?.Content?.Headers.ContentType.MediaType);
             return this;
         }
 
@@ -140,29 +120,76 @@ namespace UnitTestEx.Assertors
         public HttpResponseMessageAssertor AssertNotModified() => Assert(HttpStatusCode.NotModified);
 
         /// <summary>
-        /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.OK"/> and matches the <paramref name="expectedValue"/>.
+        /// Asserts that the <see cref="Response"/> matches the <paramref name="expectedValue"/>.
         /// </summary>
         /// <param name="expectedValue">The expected value.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertOK(object? expectedValue, params string[] membersToIgnore) => Assert(expectedValue, HttpStatusCode.OK, membersToIgnore);
+        public HttpResponseMessageAssertor Assert(object? expectedValue, params string[] membersToIgnore)
+        {
+            if (Response.Content == null)
+            {
+                _implementor.AssertAreEqual(expectedValue?.ToString(), null, "Expected and Actual (no content) values are not equal");
+                return this;
+            }
+
+            if (Response.Content.Headers.ContentType.MediaType == MediaTypeNames.Application.Json)
+            {
+                var json = Response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                if (expectedValue == null)
+                {
+                    if (!string.IsNullOrEmpty(json))
+                        _implementor.AssertFail($"Expected null and actual has content: {json}");
+
+                    return this;
+                }
+
+                if (expectedValue is JToken jte)
+                {
+                    var jta = JToken.Parse(json);
+                    if (!JToken.DeepEquals(jte, jta))
+                        _implementor.AssertFail($"Expected and Actual JSON are not equal: {Environment.NewLine}Expected =>{Environment.NewLine}{jte?.ToString(Formatting.Indented)}{Environment.NewLine}Actual =>{Environment.NewLine}{jta?.ToString(Formatting.Indented)}");
+
+                    return this;
+                }
+
+                var val = JsonConvert.DeserializeObject(json, expectedValue.GetType());
+                var cr = ObjectComparer.Compare(expectedValue, val, membersToIgnore);
+                if (!cr.AreEqual)
+                    _implementor.AssertFail($"Expected and Actual values are not equal: {cr.DifferencesString}");
+            }
+            else
+                _implementor.AssertAreEqual(expectedValue?.ToString(), Response.Content.ReadAsStringAsync().GetAwaiter().GetResult(), "Expected and Actual values are not equal.");
+
+            return this;
+        }
 
         /// <summary>
-        /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.OK"/> and matches the JSON serialized value.
+        /// Asserts that the <see cref="Response"/> matches the JSON serialized value.
         /// </summary>
         /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertOKFromJsonResource<TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly()), HttpStatusCode.OK, membersToIgnore);
+        public HttpResponseMessageAssertor AssertFromJsonResource<TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly()), membersToIgnore);
 
         /// <summary>
-        /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.OK"/> and matches the JSON serialized value.
+        /// Asserts that the <see cref="Response"/> matches the JSON serialized value.
+        /// </summary>
+        /// <typeparam name="TAssembly">The <see cref="Type"/> to infer the <see cref="Assembly"/> that contains the embedded resource.</typeparam>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertFromJsonResource<TAssembly, TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, typeof(TAssembly).Assembly), membersToIgnore);
+
+        /// <summary>
+        /// Asserts that the <see cref="Response"/> matches the JSON serialized value.
         /// </summary>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertOKFromJsonResource(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), HttpStatusCode.OK, membersToIgnore);
+        public HttpResponseMessageAssertor AssertFromJsonResource(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), membersToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.Created"/>.
@@ -171,60 +198,10 @@ namespace UnitTestEx.Assertors
         public HttpResponseMessageAssertor AssertCreated() => Assert(HttpStatusCode.Created);
 
         /// <summary>
-        /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.Created"/> and matches the <paramref name="expectedValue"/>.
-        /// </summary>
-        /// <param name="expectedValue">The expected value.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertCreated(object? expectedValue, params string[] membersToIgnore) => Assert(expectedValue, HttpStatusCode.Created, membersToIgnore);
-
-        /// <summary>
-        /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.Created"/> and matches the JSON serialized value.
-        /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertCreatedFromJsonResource<TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly()), HttpStatusCode.Created, membersToIgnore);
-
-        /// <summary>
-        /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.Created"/> and matches the JSON serialized value.
-        /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertCreatedFromJsonResource(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), HttpStatusCode.Created, membersToIgnore);
-
-        /// <summary>
         /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.Accepted"/>.
         /// </summary>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
         public HttpResponseMessageAssertor AssertAccepted() => Assert(HttpStatusCode.Accepted);
-
-        /// <summary>
-        /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.Accepted"/> and matches the <paramref name="expectedValue"/>.
-        /// </summary>
-        /// <param name="expectedValue">The expected value.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertAccepted(object? expectedValue, params string[] membersToIgnore) => Assert(expectedValue, HttpStatusCode.Accepted, membersToIgnore);
-
-        /// <summary>
-        /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.Accepted"/> and matches the JSON serialized value.
-        /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertAcceptedFromJsonResource<TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly()), HttpStatusCode.Accepted, membersToIgnore);
-
-        /// <summary>
-        /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.Accepted"/> and matches the JSON serialized value.
-        /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertAcceptedFromJsonResource(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), HttpStatusCode.Accepted, membersToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Response"/> is a <see cref="HttpStatusCode.BadRequest"/>.
@@ -233,12 +210,12 @@ namespace UnitTestEx.Assertors
         public HttpResponseMessageAssertor AssertBadRequest() => Assert(HttpStatusCode.BadRequest);
 
         /// <summary>
-        /// Asserts that the <see cref="Response"/> is a <see cref="HttpStatusCode.BadRequest"/> and contains the expected error <paramref name="messages"/>.
+        /// Asserts that the <see cref="Response"/> contains the expected error <paramref name="messages"/>.
         /// </summary>
         /// <param name="messages">The expected error messages.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
         /// <remarks>The field (key) is not validated; only the error message texts.</remarks>
-        public HttpResponseMessageAssertor AssertBadRequest(params string[] messages)
+        public HttpResponseMessageAssertor AssertErrors(params string[] messages)
         {
             var expected = new List<ApiError>();
             foreach (var m in messages)
@@ -251,11 +228,11 @@ namespace UnitTestEx.Assertors
         }
 
         /// <summary>
-        /// Asserts that the <see cref="Response"/> is a <see cref="HttpStatusCode.BadRequest"/> and contains the <paramref name="expected"/> errors.
+        /// Asserts that the <see cref="Response"/> contains the <paramref name="expected"/> errors.
         /// </summary>
         /// <param name="expected">The expected errors.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertBadRequest(params ApiError[] expected)
+        public HttpResponseMessageAssertor AssertErrors(params ApiError[] expected)
         {
             AssertBadRequestErrors(expected, true);
             return this;

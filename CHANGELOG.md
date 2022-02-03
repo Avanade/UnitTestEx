@@ -2,6 +2,12 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.6
+- *[Issue 10](https://github.com/Avanade/UnitTestEx/issues/10)*: **Breaking change.** Changed the `ActionResultAssertor.AssertAccepted` and `ActionResultAssertor.AssertCreated` to assert status only; the existing value check should be performed using the `ActionResultAssertor.Assert`. Pattern now is to check status and value separately (no longer all inclusive).
+- *[Issue 10](https://github.com/Avanade/UnitTestEx/issues/10)*:  **Breaking change.** Changed the `HttpResponseMessageAssertor.AssertAccepted` and `HttpResponseMessageAssertor.AssertCreated` to assert status only; the existing value check should be performed using the `ActionResultAssertor.Assert`. Pattern now is to check status and value separately (no longer all inclusive).
+- *[Issue 10](https://github.com/Avanade/UnitTestEx/issues/10)*:  **Breaking change.** Changed `ActionResultAssertor.AssertBadRequest` and `HttpResponseMessageAssertor.AssertBadRequest` to assert status only; added new `AssertErrors` to each for error message asserting.
+- *[Issue 9](https://github.com/Avanade/UnitTestEx/issues/9)*:  Add `Services` property (`IServicesCollection`) to both `ApiTesterBase` and `FunctionTesterBase`. This allows direct access to the underlying `Services` outside of the more typical `Run`.
+
 ## v1.0.5
 - *[Issue 7](https://github.com/Avanade/UnitTestEx/issues/7)*: Added delay (sleep) option so response is not always immediate.
 - *Enhancement:* **Breaking change.** `Functions.GenericTriggerTester` replaced with `Hosting.TypeTester` as agnostic to any function trigger. `Functions.TriggerTesterBase` replaced with `Hosting.HostTesterBase` for same agnostic reasoning. `FunctionTestBase.GenericTrigger` method renamed to `FunctionTestBase.Type` so as to not imply a _trigger_ requirement (i.e. can be any _Type+Method_ that needs testing).
