@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using Microsoft.Extensions.DependencyInjection;
+using NUnit.Framework;
 using System;
 using System.Net;
 using System.Net.Http;
@@ -99,6 +100,21 @@ namespace UnitTestEx.NUnit.Test
                 .AssertException<InvalidOperationException>("First name is required.");
 
             mcf.VerifyAll();
+        }
+
+        [Test]
+        public void ServiceProvider()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://somesys")).Request(HttpMethod.Get, "test").Respond.With("test output");
+
+            using var test = FunctionTester.Create<Startup>();
+            var hc = test.ConfigureServices(sc => mcf.Replace(sc))
+                .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
+
+            var r = hc.GetAsync("test").Result;
+            Assert.IsNotNull(r);
+            Assert.AreEqual("test output", r.Content.ReadAsStringAsync().Result);
         }
     }
 }

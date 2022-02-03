@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Net;
 using System.Net.Http;
@@ -35,7 +36,23 @@ namespace UnitTestEx.MSTest.Test
             test.ConfigureServices(sc => mcf.Replace(sc))
                 .Controller<ProductController>()
                 .Run(c => c.Get("abc"))
-                .AssertOK(new { id = "Abc", description = "A blue carrot" });
+                .AssertOK()
+                .Assert(new { id = "Abc", description = "A blue carrot" });
+        }
+
+        [TestMethod]
+        public void ServiceProvider()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://somesys")).Request(HttpMethod.Get, "test").Respond.With("test output");
+
+            using var test = ApiTester.Create<Startup>();
+            var hc = test.ConfigureServices(sc => mcf.Replace(sc))
+                .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
+
+            var r = hc.GetAsync("test").Result;
+            Assert.IsNotNull(r);
+            Assert.AreEqual("test output", r.Content.ReadAsStringAsync().Result);
         }
     }
 }

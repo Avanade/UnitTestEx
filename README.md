@@ -40,7 +40,8 @@ using var test = ApiTester.Create<Startup>();
 test.ConfigureServices(sc => mcf.Replace(sc))
     .Controller<ProductController>()
     .Run(c => c.Get("abc"))
-    .AssertOK(new { id = "Abc", description = "A blue carrot" });
+    .AssertOK()
+    .Assert(new { id = "Abc", description = "A blue carrot" });
 ```
 
 <br/>
@@ -56,7 +57,8 @@ using var test = FunctionTester.Create<Startup>();
 test.ConfigureServices(sc => mcf.Replace(sc))
     .HttpTrigger<ProductFunction>()
     .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
-    .AssertOK(new { id = "Abc", description = "A blue carrot" });
+    .AssertOK()
+    .Assert(new { id = "Abc", description = "A blue carrot" });
 ```
 
 <br/>
@@ -92,7 +94,8 @@ using var test = ApiTester.Create<Startup>();
 test.ConfigureServices(sc => mcf.Replace(sc))
     .Controller<ProductController>()
     .Run(c => c.Get("abc"))
-    .AssertOK(new { id = "Abc", description = "A blue carrot" });
+    .AssertOK()
+    .Assert(new { id = "Abc", description = "A blue carrot" });
 ```
 
 </br>

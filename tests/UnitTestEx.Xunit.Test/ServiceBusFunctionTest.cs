@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Net;
 using System.Net.Http;
 using UnitTestEx.Function;
@@ -102,6 +103,21 @@ namespace UnitTestEx.Xunit.Test
                 .AssertException<InvalidOperationException>("First name is required.");
 
             mcf.VerifyAll();
+        }
+
+        [Fact]
+        public void ServiceProvider()
+        {
+            var mcf = CreateMockHttpClientFactory();
+            mcf.CreateClient("XXX", new Uri("https://somesys")).Request(HttpMethod.Get, "test").Respond.With("test output");
+
+            using var test = CreateFunctionTester<Startup>();
+            var hc = test.ConfigureServices(sc => mcf.Replace(sc))
+                .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
+
+            var r = hc.GetAsync("test").Result;
+            Assert.NotNull(r);
+            Assert.Equal("test output", r.Content.ReadAsStringAsync().Result);
         }
     }
 }

@@ -18,7 +18,8 @@ namespace UnitTestEx.Xunit.Test
             using var test = CreateApiTester<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Get(1))
-                .AssertOK(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
         }
 
         [Fact]
@@ -28,7 +29,8 @@ namespace UnitTestEx.Xunit.Test
             using var test = CreateApiTester<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Get(id))
-                .AssertOK(new Person { Id = id, FirstName = "Jane", LastName = "Jones" });
+                .AssertOK()
+                .Assert(new Person { Id = id, FirstName = "Jane", LastName = "Jones" });
         }
 
         [Fact]
@@ -37,7 +39,7 @@ namespace UnitTestEx.Xunit.Test
             var p = new Person { Id = 3, FirstName = "Brad", LastName = "Davies" };
 
             using var test = CreateApiTester<Startup>();
-            test.Controller<PersonController>().Run(c => c.Get(p.Id)).AssertOK(p);
+            test.Controller<PersonController>().Run(c => c.Get(p.Id)).AssertOK().Assert(p);
         }
 
         [Fact]
@@ -55,7 +57,8 @@ namespace UnitTestEx.Xunit.Test
             using var test = CreateApiTester<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.GetByArgs("Mary", "Brown", new List<int> { 88, 99 }))
-                .AssertOK("Mary-Brown-88,99");
+                .AssertOK()
+                .Assert("Mary-Brown-88,99");
         }
 
         [Fact]
@@ -64,7 +67,8 @@ namespace UnitTestEx.Xunit.Test
             using var test = CreateApiTester<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.GetByArgs(null, null, null))
-                .AssertOK("--");
+                .AssertOK()
+                .Assert("--");
         }
 
         [Fact]
@@ -73,7 +77,8 @@ namespace UnitTestEx.Xunit.Test
             using var test = CreateApiTester<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Update(1, new Person { FirstName = "Bob", LastName = "Smith" }))
-                .AssertOK(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
         }
 
         [Fact]
@@ -82,7 +87,8 @@ namespace UnitTestEx.Xunit.Test
             using var test = CreateApiTester<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }))
-                .AssertBadRequest(
+                .AssertBadRequest()
+                .AssertErrors(
                     "First name is required.",
                     "Last name is required.");
         }
@@ -93,7 +99,8 @@ namespace UnitTestEx.Xunit.Test
             using var test = CreateApiTester<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }))
-                .AssertBadRequest(
+                .AssertBadRequest()
+                .AssertErrors(
                     new ApiError("firstName", "First name is required."),
                     new ApiError("lastName", "Last name is required."));
         }
