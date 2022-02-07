@@ -2,7 +2,7 @@
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Api.Models;
-using UnitTestEx.XUnit;
+using UnitTestEx.Xunit;
 using Xunit;
 using Xunit.Abstractions;
 

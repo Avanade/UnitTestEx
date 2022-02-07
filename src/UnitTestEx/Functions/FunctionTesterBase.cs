@@ -360,7 +360,7 @@ namespace UnitTestEx.Functions
             message.Header.Priority = 1;
             message.Header.TimeToLive = TimeSpan.FromSeconds(60);
             message.Properties.ContentType = MediaTypeNames.Application.Json;
-            message.Properties.MessageId = new AmqpMessageId("messageId");
+            message.Properties.MessageId = new AmqpMessageId(Guid.NewGuid().ToString());
 
             messageModify?.Invoke(message);
 
