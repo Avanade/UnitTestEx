@@ -77,13 +77,13 @@ namespace UnitTestEx.Functions
                             .AddJsonFile("appsettings.json", optional: true)
                             .AddJsonFile("appsettings.development.json", optional: true);
 
-                        if ((!includeUserSecrets.HasValue && FunctionTesterDefaults.IncludeUserSecrets) || (includeUserSecrets.HasValue && includeUserSecrets.Value))
-                            cb.AddUserSecrets<TEntryPoint>();
+                        if ((!includeUnitTestConfiguration.HasValue && FunctionTesterDefaults.IncludeUnitTestConfiguration) || (includeUnitTestConfiguration.HasValue && includeUnitTestConfiguration.Value))
+                            cb.AddJsonFile("appsettings.unittest.json", optional: true);
 
                         cb.AddEnvironmentVariables();
 
-                        if ((!includeUnitTestConfiguration.HasValue && FunctionTesterDefaults.IncludeUnitTestConfiguration) || (includeUnitTestConfiguration.HasValue && includeUnitTestConfiguration.Value))
-                            cb.AddJsonFile("appsettings.unittest.json", optional: true);
+                        if ((!includeUserSecrets.HasValue && FunctionTesterDefaults.IncludeUserSecrets) || (includeUserSecrets.HasValue && includeUserSecrets.Value))
+                            cb.AddUserSecrets<TEntryPoint>();
 
                         if (additionalConfiguration != null)
                             cb.AddInMemoryCollection(additionalConfiguration);
@@ -217,6 +217,13 @@ namespace UnitTestEx.Functions
         /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
         /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
         public TypeTester<T> Type<T>() where T : class => new(GetHost().Services.CreateScope(), Implementor);
+
+        /// <summary>
+        /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> that is to be tested.
+        /// </summary>
+        /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> to be tested.</typeparam>
+        /// <returns>The <see cref="ServiceBusTriggerTester{TFunction}"/>.</returns>
+        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor);
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with no body.
@@ -367,7 +374,7 @@ namespace UnitTestEx.Functions
             var t = typeof(ServiceBusReceivedMessage);
             var c = t.GetConstructor(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance, null, new Type[] { typeof(AmqpAnnotatedMessage) }, null);
             if (c == null)
-                throw new InvalidOperationException($"{typeof(ServiceBusReceivedMessage).Name} constructor that accepts Type {typeof(AmqpAnnotatedMessage).Name} parameter was not found.");
+                throw new InvalidOperationException($"'{typeof(ServiceBusReceivedMessage).Name}' constructor that accepts Type '{typeof(AmqpAnnotatedMessage).Name}' parameter was not found.");
 
             return (ServiceBusReceivedMessage)c.Invoke(new object?[] { message });
         }

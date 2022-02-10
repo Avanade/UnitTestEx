@@ -24,7 +24,7 @@ using UnitTestEx.Hosting;
 namespace UnitTestEx.Functions
 {
     /// <summary>
-    /// Provides the Azure Function <see cref="HttpTriggerTester{TFunction}"/> unit-testing capabilities.
+    /// Provides Azure Function <see cref="HttpTriggerAttribute"/> unit-testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
     public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction> where TFunction : class

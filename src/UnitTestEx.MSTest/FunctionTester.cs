@@ -20,7 +20,7 @@ namespace UnitTestEx.MSTest
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
         /// <returns>The <see cref="ApiTester{TEntryPoint}"/>.</returns>
-        public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null)
+        public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, params KeyValuePair<string, string>[] additionalConfiguration)
             where TEntryPoint : FunctionsStartup, new() 
             => new(includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
     }
