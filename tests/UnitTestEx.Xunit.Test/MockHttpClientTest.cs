@@ -332,5 +332,33 @@ namespace UnitTestEx.Xunit.Test
             Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
             Assert.True(sw.ElapsedMilliseconds >= 100);
         }
+
+        [Fact]
+        public async Task UriAndBody_WithXmlRequest()
+        {
+            var mcf = CreateMockHttpClientFactory();
+            mcf.CreateClient("XXX", new Uri("https://d365test"))
+                .Request(HttpMethod.Post, "products/xyz").WithBody("<Person xmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns=\"http://schemas.datacontract.org/2004/07/UnitTestEx.Xunit.Test.Model\"><FirstName>Bob</FirstName><LastName>Jane</LastName></Person>", MediaTypeNames.Application.Xml)
+                .Respond.With(new StringContent("<person><first>Bob</first><last>Jane</last></person>", Encoding.UTF8, MediaTypeNames.Application.Xml), HttpStatusCode.Accepted);
+
+            var hc = mcf.GetHttpClient("XXX");
+            var res = await hc.PostAsXmlAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
+            Assert.Equal("<person><first>Bob</first><last>Jane</last></person>", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+        }
+
+        [Fact]
+        public async Task UriAndBody_WithAnyTypeRequest()
+        {
+            var mcf = CreateMockHttpClientFactory();
+            mcf.CreateClient("XXX", new Uri("https://d365test"))
+                .Request(HttpMethod.Post, "testing").WithBody("--my--custom--format--", "application/custom-format")
+                .Respond.With(new StringContent("--ok--", Encoding.UTF8, "application/custom-format"), HttpStatusCode.Accepted);
+
+            var hc = mcf.GetHttpClient("XXX");
+            var res = await hc.PostAsync("testing", new StringContent("--my--custom--format--", Encoding.UTF8, "application/custom-format")).ConfigureAwait(false);
+            Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
+            Assert.Equal("--ok--", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+        }
     }
 }
