@@ -2,7 +2,7 @@
 using System.Net;
 using System.Net.Http;
 using UnitTestEx.Function;
-using UnitTestEx.XUnit;
+using UnitTestEx.Xunit;
 using Xunit;
 using Xunit.Abstractions;
 

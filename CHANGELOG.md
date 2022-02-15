@@ -2,6 +2,13 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.7
+- *[Issue 12](https://github.com/Avanade/UnitTestEx/issues/12)*: `ObjectComparer.Assert` added for each test framework that compares two objects and will fail, and report, where there is not a match.
+- *[Issue 14](https://github.com/Avanade/UnitTestEx/issues/14)*: Re-introduced [`ServiceBusTriggerTester`](./src/UnitTestEx/Functions/ServiceBusTriggerTester.cs) which manages execution and automatically logs the value associated with the trigger.
+- *[Issue 14](https://github.com/Avanade/UnitTestEx/issues/14)*: The `ServiceBusTriggerTester.Emulate` ([`ServiceBusEmulatorTester`](./src/UnitTestEx/Functions/ServiceBusEmulatorTester.cs)) manages the execution of the `ServiceBusTriggerAttribue` function method by orchestrating Azure Service Bus integration in a similar manner as if the Azure function run-time proper had invoked.
+- *[PR 16](https://github.com/Avanade/UnitTestEx/pull/16)*: Support all media types in `MockHttpClientRequest`.
+- *Enhancement:* All `Run` methods now support a `RunAsync` where appropriate.
+
 ## v1.0.6
 - *[Issue 10](https://github.com/Avanade/UnitTestEx/issues/10)*: **Breaking change.** Changed the `ActionResultAssertor.AssertAccepted` and `ActionResultAssertor.AssertCreated` to assert status only; the existing value check should be performed using the `ActionResultAssertor.Assert`. Pattern now is to check status and value separately (no longer all inclusive).
 - *[Issue 10](https://github.com/Avanade/UnitTestEx/issues/10)*:  **Breaking change.** Changed the `HttpResponseMessageAssertor.AssertAccepted` and `HttpResponseMessageAssertor.AssertCreated` to assert status only; the existing value check should be performed using the `ActionResultAssertor.Assert`. Pattern now is to check status and value separately (no longer all inclusive).

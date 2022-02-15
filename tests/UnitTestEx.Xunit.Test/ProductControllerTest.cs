@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Http;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
-using UnitTestEx.XUnit;
+using UnitTestEx.Xunit;
 using Xunit;
 using Xunit.Abstractions;
 

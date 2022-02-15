@@ -5,7 +5,7 @@ using UnitTestEx.Xunit;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace UnitTestEx.XUnit.Test.Other
+namespace UnitTestEx.Xunit.Test.Other
 {
     public class LoggerTest : UnitTestBase
     {

@@ -1,37 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-    <RootNamespace>UnitTestEx</RootNamespace>
-    <Version>1.0.6</Version>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Authors>UnitTestEx Developers</Authors>
-    <Company>Avanade</Company>
-    <Description>Unit Test Extensions.</Description>
-    <LangVersion>preview</LangVersion>
-    <Copyright>Avanade (c)</Copyright>
-    <PackageProjectUrl>https://github.com/Avanade/UnitTestEx</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Avanade/UnitTestEx</RepositoryUrl>
-    <Product>UnitTestEx</Product>
-    <SignAssembly>true</SignAssembly>
-    <DelaySign>false</DelaySign>
-    <AssemblyOriginatorKeyFile>strong-name-key.snk</AssemblyOriginatorKeyFile>
-    <PackageIconUrl>https://github.com/Avanade/UnitTestEx/raw/main/images/Logo256x256.png</PackageIconUrl>
-    <PackageIcon>Logo256x256.png</PackageIcon>
-    <RepositoryType>git</RepositoryType>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Title>UnitTestEx Code Generator.</Title>
-    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <PackageTags>unittestex unit test unittest mstest nunit xunit</PackageTags>
-    <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
-    <Nullable>enable</Nullable>
-    <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <IncludeSymbols>true</IncludeSymbols>
-    <EmbedAllSources>true</EmbedAllSources>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+	<TargetFramework>netcoreapp3.1</TargetFramework>
+	<RootNamespace>UnitTestEx</RootNamespace>
+	<Product>UnitTestEx</Product>
+	<Title>UnitTestEx Test Extensions.</Title>
+	<Description>UnitTestEx Test Extensions.</Description>
+	<PackageTags>unittestex api function unit test unittest</PackageTags>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -40,20 +15,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\images\Logo256x256.png" Link="Logo256x256.png">
-      <PackagePath>\</PackagePath>
-      <Pack>true</Pack>
-    </None>
-  </ItemGroup>
-  
-  <ItemGroup>
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.5.1" />
     <PackageReference Include="CompareNETObjects" Version="4.74.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="3.1.22" />
     <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.12" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.2.0" />
     <PackageReference Include="Moq" Version="4.16.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
+
+  <Import Project="..\..\Common.targets"/>
 
 </Project>

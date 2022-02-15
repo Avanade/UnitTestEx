@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  
   <PropertyGroup>
 	  <TargetFramework>netcoreapp3.1</TargetFramework>
-	  <RootNamespace>UnitTestEx.NUnit</RootNamespace>
-	  <Product>UnitTestEx NUnit</Product>
-	  <Title>UnitTestEx NUnit Test Extensions.</Title>
-	  <Description>UnitTestEx NUnit Test Extensions.</Description>
-	  <PackageTags>unittestex api function unit test unittest nunit</PackageTags>
+	  <RootNamespace>UnitTestEx.Xunit</RootNamespace>
+	  <Product>UnitTestEx Xunit</Product>
+	  <Title>UnitTestEx Xunit Test Extensions.</Title>
+	  <Description>UnitTestEx Xunit Test Extensions.</Description>
+	  <PackageTags>unittestex api function unit test unittest xunit</PackageTags>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NUnit" Version="3.13.2" />
+    <PackageReference Include="xunit" Version="2.4.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,5 +23,5 @@
   </ItemGroup>
 
   <Import Project="..\..\Common.targets"/>
-
+	
 </Project>

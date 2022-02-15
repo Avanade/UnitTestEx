@@ -1,11 +1,13 @@
-﻿using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+
+using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using UnitTestEx.Mocking;
 using UnitTestEx.Xunit.Internal;
 using Xunit.Abstractions;
 
-namespace UnitTestEx.XUnit
+namespace UnitTestEx.Xunit
 {
     /// <summary>
     /// Provides the base test capabilities.
@@ -15,7 +17,7 @@ namespace UnitTestEx.XUnit
         /// <summary>
         /// Initializes a new instance of the <see cref="UnitTestBase"/> class.
         /// </summary>
-        /// <param name="output"></param>
+        /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
         protected UnitTestBase(ITestOutputHelper output) => Output = output ?? throw new ArgumentNullException(nameof(output));
 
         /// <summary>
@@ -44,8 +46,13 @@ namespace UnitTestEx.XUnit
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        protected FunctionTester<TEntryPoint> CreateFunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null)
+        protected FunctionTester<TEntryPoint> CreateFunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, params KeyValuePair<string, string>[] additionalConfiguration)
             where TEntryPoint : FunctionsStartup, new()
             => new(Output, includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
+
+        /// <summary>
+        /// Gets the <see cref="Internal.ObjectComparer"/>.
+        /// </summary>
+        protected ObjectComparer ObjectComparer => new(new XunitTestImplementor(Output));
     }
 }

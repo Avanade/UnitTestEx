@@ -24,7 +24,7 @@ using UnitTestEx.Hosting;
 namespace UnitTestEx.Functions
 {
     /// <summary>
-    /// Provides the Azure Function <see cref="HttpTriggerTester{TFunction}"/> unit-testing capabilities.
+    /// Provides Azure Function <see cref="HttpTriggerAttribute"/> unit-testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
     public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction> where TFunction : class
@@ -41,11 +41,18 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <param name="expression">The function operation invocation expression.</param>
         /// <returns>An <see cref="ActionResultAssertor"/>.</returns>
-        public ActionResultAssertor Run(Expression<Func<TFunction, Task<IActionResult>>> expression)
+        public ActionResultAssertor Run(Expression<Func<TFunction, Task<IActionResult>>> expression) => RunAsync(expression).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the HTTP Triggered (see <see cref="HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
+        /// </summary>
+        /// <param name="expression">The function operation invocation expression.</param>
+        /// <returns>An <see cref="ActionResultAssertor"/>.</returns>
+        public async Task<ActionResultAssertor> RunAsync(Expression<Func<TFunction, Task<IActionResult>>> expression)
         {
             object? requestVal = null;
             HttpRequest? httpRequest = null;
-            (IActionResult result, Exception? ex, long ms) = Run(expression, typeof(HttpTriggerAttribute), (p, a, v) =>
+            (IActionResult result, Exception? ex, long ms) = await RunAsync(expression, typeof(HttpTriggerAttribute), (p, a, v) =>
             {
                 if (a == null)
                     throw new InvalidOperationException($"The function method must have a parameter using the {nameof(HttpTriggerAttribute)}.");
@@ -55,7 +62,7 @@ namespace UnitTestEx.Functions
                 var httpTriggerAttribute = (HttpTriggerAttribute)a;
                 if (httpRequest != null && !httpTriggerAttribute.Methods.Contains(httpRequest.Method, StringComparer.OrdinalIgnoreCase))
                     throw new InvalidOperationException($"The function {nameof(HttpTriggerAttribute)} supports {nameof(HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid.");
-            });
+            }).ConfigureAwait(false);
 
             LogOutput(httpRequest, requestVal, result, ex, ms);
             return new ActionResultAssertor(result, ex, Implementor);

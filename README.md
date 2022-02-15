@@ -12,6 +12,7 @@ The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style te
 
 - [API Controller](#API-Controller)
 - [HTTP-triggered Azure Function](#HTTP-triggered-Azure-Function)
+- [Service Bus-trigger Azure Function](#Service-Bus-trigger-Azure-Function)
 - [Generic Azure Function Type](#Generic-Azure-Function-Type)
 - [HTTP Client mocking](#HTTP-Client-mocking)
 
@@ -48,7 +49,7 @@ test.ConfigureServices(sc => mcf.Replace(sc))
 
 ## HTTP-triggered Azure Function
 
-Unfortunately, at time of writing, there is no `WebApplicationFactory` equivalent for Azure functions. _UnitTestEx_ looks to simulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method. _UnitTestEx_ when invoking verifies usage of `HttpTriggerAttribute`(https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-http-webhook-trigger?tabs=csharp) and ensures a `Task<IActionResult>` result.
+Unfortunately, at time of writing, there is no `WebApplicationFactory` equivalent for Azure functions. _UnitTestEx_ looks to emulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method. _UnitTestEx_ when invoking verifies usage of [`HttpTriggerAttribute`](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-http-webhook-trigger?tabs=csharp) and ensures a `Task<IActionResult>` result.
 
 The following is an [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs).
 
@@ -59,6 +60,42 @@ test.ConfigureServices(sc => mcf.Replace(sc))
     .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
     .AssertOK()
     .Assert(new { id = "Abc", description = "A blue carrot" });
+```
+
+<br/>
+
+## Service Bus-trigger Azure Function
+
+As above, there is currently no easy means to integration (in-process) test Azure functions that rely on the [Azure Service Bus](https://azure.microsoft.com/en-us/services/service-bus/). _UnitTestEx_ looks to emulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method and verifies usage of the [`ServiceBusTriggerAttribute`](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-service-bus-trigger?tabs=csharp).
+
+The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs) of invoking the function method directly passing in a `ServiceBusReceivedMessage` created using `test.CreateServiceBusMessage` (this creates a message as if coming from Service Bus).
+
+``` csharp
+using var test = FunctionTester.Create<Startup>();
+test.ConfigureServices(sc => mcf.Replace(sc))
+    .ServiceBusTrigger<ServiceBusFunction>()
+    .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
+    .AssertSuccess();
+```
+
+<br/>
+
+### Service Bus Emulation
+
+To enable in-process integration testing interacting with Azure Service Bus the [`ServiceBusTriggerTester.Emulate`](./src/UnitTestEx/Functions/ServiceBusTriggerTester.cs) method exposes the [`ServiceBusEmulatorTester`](./src/UnitTestEx/Functions/ServiceBusEmulatorTester.cs) type. This integrates directly with [Azure Service Bus](https://azure.microsoft.com/en-us/services/service-bus/) using the underlying functions configuration to determine connection string, etc. The `ServiceBus` _Queue_ or _Topic_ can be cleared (`Clear`), have test messages sent (`Send`), and then executed (`Run`).
+
+The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusSimulationTest.cs).
+
+``` csharp
+using var test = FunctionTester.Create<Startup>(includeUserSecrets: true);
+var r = test
+    .ServiceBusTrigger<ServiceBusFunction>()
+    .Simulate(nameof(ServiceBusFunction.Run2))
+    .Clear()
+    .SendValue(new Person { FirstName = "Bob", LastName = "Smith" })
+    .Run()
+    .AssertSuccess()
+    .AssertMessageCompleted();
 ```
 
 <br/>

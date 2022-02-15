@@ -219,6 +219,13 @@ namespace UnitTestEx.Functions
         public TypeTester<T> Type<T>() where T : class => new(GetHost().Services.CreateScope(), Implementor);
 
         /// <summary>
+        /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> that is to be tested.
+        /// </summary>
+        /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> to be tested.</typeparam>
+        /// <returns>The <see cref="ServiceBusTriggerTester{TFunction}"/>.</returns>
+        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor);
+
+        /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with no body.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
@@ -360,14 +367,14 @@ namespace UnitTestEx.Functions
             message.Header.Priority = 1;
             message.Header.TimeToLive = TimeSpan.FromSeconds(60);
             message.Properties.ContentType = MediaTypeNames.Application.Json;
-            message.Properties.MessageId = new AmqpMessageId("messageId");
+            message.Properties.MessageId = new AmqpMessageId(Guid.NewGuid().ToString());
 
             messageModify?.Invoke(message);
 
             var t = typeof(ServiceBusReceivedMessage);
             var c = t.GetConstructor(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance, null, new Type[] { typeof(AmqpAnnotatedMessage) }, null);
             if (c == null)
-                throw new InvalidOperationException($"{typeof(ServiceBusReceivedMessage).Name} constructor that accepts Type {typeof(AmqpAnnotatedMessage).Name} parameter was not found.");
+                throw new InvalidOperationException($"'{typeof(ServiceBusReceivedMessage).Name}' constructor that accepts Type '{typeof(AmqpAnnotatedMessage).Name}' parameter was not found.");
 
             return (ServiceBusReceivedMessage)c.Invoke(new object?[] { message });
         }

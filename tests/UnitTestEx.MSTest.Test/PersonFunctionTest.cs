@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Net.Http;
+using System.Threading.Tasks;
 using UnitTestEx.Function;
 
 namespace UnitTestEx.MSTest.Test
@@ -8,11 +9,11 @@ namespace UnitTestEx.MSTest.Test
     public class PersonFunctionTest
     {
         [TestMethod]
-        public void NoData()
+        public async Task NoData()
         {
             using var test = FunctionTester.Create<Startup>();
-            test.HttpTrigger<PersonFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person", null), test.Logger))
+            (await test.HttpTrigger<PersonFunction>()
+                .RunAsync(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person", null), test.Logger)))
                 .AssertOK()
                 .Assert("This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response.");
         }

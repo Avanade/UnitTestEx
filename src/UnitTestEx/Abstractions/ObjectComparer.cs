@@ -3,7 +3,7 @@
 using KellermanSoftware.CompareNetObjects;
 using System;
 
-namespace UnitTestEx
+namespace UnitTestEx.Abstractions
 {
     /// <summary>
     /// Represents the object comparer using <see cref="CompareLogic"/> to perform.

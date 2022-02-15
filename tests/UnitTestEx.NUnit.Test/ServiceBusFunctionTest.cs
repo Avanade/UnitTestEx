@@ -19,7 +19,7 @@ namespace UnitTestEx.NUnit.Test
 
             using var test = FunctionTester.Create<Startup>();
             test.ConfigureServices(sc => mcf.Replace(sc))
-                .Type<ServiceBusFunction>()
+                .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = "Bob", LastName = "Smith" }, test.Logger))
                 .AssertSuccess();
 
@@ -34,7 +34,7 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = (string)null }).Respond.With(HttpStatusCode.InternalServerError);
 
             using var test = FunctionTester.Create<Startup>();
-            var r = test.ConfigureServices(sc => mcf.Replace(sc))
+            test.ConfigureServices(sc => mcf.Replace(sc))
                 .Type<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = "Bob", LastName = "Smith" }, test.Logger))
                 .AssertException<HttpRequestException>("Response status code does not indicate success: 500 (Internal Server Error).");
@@ -49,7 +49,7 @@ namespace UnitTestEx.NUnit.Test
 
             using var test = FunctionTester.Create<Startup>();
             test.ConfigureServices(sc => mcf.Replace(sc))
-                .Type<ServiceBusFunction>()
+                .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = null, LastName = "Smith" }, test.Logger))
                 .AssertException<InvalidOperationException>("First name is required.");
 
@@ -65,7 +65,7 @@ namespace UnitTestEx.NUnit.Test
 
             using var test = FunctionTester.Create<Startup>();
             test.ConfigureServices(sc => mcf.Replace(sc))
-                .Type<ServiceBusFunction>()
+                .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
                 .AssertSuccess();
 
@@ -81,7 +81,7 @@ namespace UnitTestEx.NUnit.Test
 
             using var test = FunctionTester.Create<Startup>();
             var r = test.ConfigureServices(sc => mcf.Replace(sc))
-                .Type<ServiceBusFunction>()
+                .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
                 .AssertException<HttpRequestException>("Response status code does not indicate success: 500 (Internal Server Error).");
 
@@ -95,7 +95,7 @@ namespace UnitTestEx.NUnit.Test
 
             using var test = FunctionTester.Create<Startup>();
             test.ConfigureServices(sc => mcf.Replace(sc))
-                .Type<ServiceBusFunction>()
+                .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = null, LastName = "Smith" }), test.Logger))
                 .AssertException<InvalidOperationException>("First name is required.");
 

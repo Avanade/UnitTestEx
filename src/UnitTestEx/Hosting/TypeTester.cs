@@ -29,9 +29,16 @@ namespace UnitTestEx.Hosting
         /// </summary>
         /// <param name="expression">The function execution expression.</param>
         /// <returns>A <see cref="VoidAssertor"/>.</returns>
-        public VoidAssertor Run(Expression<Func<T, Task>> expression)
+        public VoidAssertor Run(Expression<Func<T, Task>> expression) => RunAsync(expression).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the asynchronous method with no result.
+        /// </summary>
+        /// <param name="expression">The function execution expression.</param>
+        /// <returns>A <see cref="VoidAssertor"/>.</returns>
+        public async Task<VoidAssertor> RunAsync(Expression<Func<T, Task>> expression)
         {
-            (Exception? ex, long ms) = Run(expression, null, null);
+            (Exception? ex, long ms) = await RunAsync(expression, null, null);
             LogElapsed(ex, ms);
             LogTrailer();
             return new VoidAssertor(ex, Implementor);
@@ -42,9 +49,16 @@ namespace UnitTestEx.Hosting
         /// </summary>
         /// <param name="expression">The function execution expression.</param>
         /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
-        public ResultAssertor<TResult> Run<TResult>(Expression<Func<T, Task<TResult>>> expression)
+        public ResultAssertor<TResult> Run<TResult>(Expression<Func<T, Task<TResult>>> expression) => RunAsync(expression).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the asynchronous method with a result.
+        /// </summary>
+        /// <param name="expression">The function execution expression.</param>
+        /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
+        public async Task<ResultAssertor<TResult>> RunAsync<TResult>(Expression<Func<T, Task<TResult>>> expression)
         {
-            (TResult result, Exception? ex, long ms) = Run(expression, null, null);
+            (TResult result, Exception? ex, long ms) = await RunAsync(expression, null, null).ConfigureAwait(false);
             LogElapsed(ex, ms);
 
             if (ex == null)

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
@@ -27,10 +27,11 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\UnitTestEx.XUnit\UnitTestEx.Xunit.csproj" />
+    <ProjectReference Include="..\..\src\UnitTestEx.Xunit\UnitTestEx.Xunit.csproj" />
     <ProjectReference Include="..\..\src\UnitTestEx\UnitTestEx.csproj" />
     <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" />
     <ProjectReference Include="..\UnitTestEx.Function\UnitTestEx.Function.csproj" />

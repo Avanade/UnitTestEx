@@ -7,7 +7,7 @@ using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using UnitTestEx.Xunit.Test.Model;
-using UnitTestEx.XUnit;
+using UnitTestEx.Xunit;
 using Xunit;
 using Xunit.Abstractions;
 
