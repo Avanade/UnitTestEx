@@ -170,15 +170,21 @@ namespace UnitTestEx.MSTest.Test
             if (sbcs == null)
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");
 
-            // Run the test by emulating the trigger initiation from Azure Service Bus.
-            await test.ServiceBusTrigger<ServiceBusFunction>()
-                .EmulateAsync(nameof(ServiceBusFunction.Run5), async em =>
-                {
-                    await em.ClearAsync().ConfigureAwait(false);
-                    await em.SendValueAsync(new Person { FirstName = "Bob", LastName = "Smith" }, m => { m.Subject = "with.session"; m.SessionId = "S-001"; }).ConfigureAwait(false);
-                    //var r = await em.RunAsync().ConfigureAwait(false);
-                    //r.AssertSuccess().AssertMessageCompleted();
-                });
+            try
+            {
+                // Run the test by emulating the trigger initiation from Azure Service Bus.
+                await test.ServiceBusTrigger<ServiceBusFunction>()
+                    .EmulateAsync(nameof(ServiceBusFunction.Run5), async em =>
+                    {
+                        await em.ClearAsync().ConfigureAwait(false);
+                        await em.SendValueAsync(new Person { FirstName = "Bob", LastName = "Smith" }, m => { m.Subject = "with.session"; m.SessionId = "S-001"; }).ConfigureAwait(false);
+                        //var r = await em.RunAsync().ConfigureAwait(false);
+                        //r.AssertSuccess().AssertMessageCompleted();
+                    });
+
+                Assert.Fail("Not supported.");
+            }
+            catch (NotSupportedException) { }
         }
     }
 }
