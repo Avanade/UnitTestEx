@@ -51,8 +51,8 @@ namespace UnitTestEx.Xunit
             => new(Output, includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
 
         /// <summary>
-        /// Gets the <see cref="UnitTestEx.Xunit.ObjectComparer"/>.
+        /// Gets the <see cref="Internal.ObjectComparer"/>.
         /// </summary>
-        protected UnitTestEx.Xunit.ObjectComparer ObjectComparer => new UnitTestEx.Xunit.ObjectComparer(new XunitTestImplementor(Output));
+        protected ObjectComparer ObjectComparer => new(new XunitTestImplementor(Output));
     }
 }

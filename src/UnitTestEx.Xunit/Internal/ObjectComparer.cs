@@ -2,9 +2,8 @@
 
 using KellermanSoftware.CompareNetObjects;
 using System;
-using UnitTestEx.Xunit.Internal;
 
-namespace UnitTestEx.Xunit
+namespace UnitTestEx.Xunit.Internal
 {
     /// <summary>
     /// Deep object comparer.
