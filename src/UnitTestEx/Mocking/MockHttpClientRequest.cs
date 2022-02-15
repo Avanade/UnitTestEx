@@ -130,9 +130,6 @@ namespace UnitTestEx.Mocking
 
             switch (_mediaType.ToLowerInvariant())
             {
-                case MediaTypeNames.Text.Plain:
-                    return $"'{_content}' [{_mediaType}]";
-
                 case MediaTypeNames.Application.Json:
                     if (_content is JToken jt)
                         return $"'{jt.ToString(Formatting.None)}' [{_mediaType}]";
@@ -140,7 +137,7 @@ namespace UnitTestEx.Mocking
                         return $"'{JsonConvert.SerializeObject(_content, Formatting.None)}' [{_mediaType}]";
 
                 default:
-                    return "???";
+                    return $"'{_content}' [{_mediaType}]";
             }
         }
 
@@ -165,8 +162,6 @@ namespace UnitTestEx.Mocking
 
             switch (_mediaType.ToLowerInvariant())
             {
-                case MediaTypeNames.Text.Plain:
-                    return body == _content?.ToString();
 
                 case MediaTypeNames.Application.Json:
                     try
@@ -190,8 +185,14 @@ namespace UnitTestEx.Mocking
                         return false;
                     }
 
+                // For any other content type, just compare the body.
+                case MediaTypeNames.Text.Plain:
+                case MediaTypeNames.Text.Xml:
+                case MediaTypeNames.Text.Html:
+                case MediaTypeNames.Application.Soap:
+                case MediaTypeNames.Application.Xml:
                 default:
-                    return false;
+                    return body == _content?.ToString();
             }
         }
 
@@ -215,6 +216,19 @@ namespace UnitTestEx.Mocking
         {
             _content = text;
             _mediaType = MediaTypeNames.Text.Plain; 
+            return new MockHttpClientRequestBody(Rule);
+        }
+
+        /// <summary>
+        /// Provides the expected request body as <paramref name="body"/> <see cref="StringContent"/> with custom <paramref name="mediaType"/>.
+        /// </summary>
+        /// <param name="body">The text that represents the <see cref="StringContent"/>.</param>
+        /// <param name="mediaType">The media type of the request.</param>
+        /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
+        public MockHttpClientRequestBody WithBody(string body, string mediaType)
+        {
+            _content = body;
+            _mediaType = mediaType;
             return new MockHttpClientRequestBody(Rule);
         }
 
