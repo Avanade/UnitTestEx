@@ -33,7 +33,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		strong-name-key.snk = strong-name-key.snk
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestEx.Xunit", "src\UnitTestEx.XUnit\UnitTestEx.Xunit.csproj", "{F0146507-A0C4-4E7A-9CD4-DDFB56591C39}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestEx.Xunit", "src\UnitTestEx.Xunit\UnitTestEx.Xunit.csproj", "{F0146507-A0C4-4E7A-9CD4-DDFB56591C39}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestEx.NUnit.Test", "tests\UnitTestEx.NUnit.Test\UnitTestEx.NUnit.Test.csproj", "{63F25714-C654-4FB7-B6A1-05E7197F416D}"
 EndProject
