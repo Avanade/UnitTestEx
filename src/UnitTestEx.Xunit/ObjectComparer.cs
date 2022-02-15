@@ -7,7 +7,7 @@ using UnitTestEx.Xunit.Internal;
 namespace UnitTestEx.Xunit
 {
     /// <summary>
-    /// Enables extension methods.
+    /// Deep object comparer.
     /// </summary>
     public class ObjectComparer
     {

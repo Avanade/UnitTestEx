@@ -53,6 +53,6 @@ namespace UnitTestEx.Xunit
         /// <summary>
         /// Gets the <see cref="UnitTestEx.Xunit.ObjectComparer"/>.
         /// </summary>
-        protected UnitTestEx.Xunit.ObjectComparer ObjectComparer => new(new XunitTestImplementor(Output));
+        protected UnitTestEx.Xunit.ObjectComparer ObjectComparer => new UnitTestEx.Xunit.ObjectComparer(new XunitTestImplementor(Output));
     }
 }

@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   
   <PropertyGroup>
-	<TargetFramework>netcoreapp3.1</TargetFramework>
-	<RootNamespace>UnitTestEx.Xunit</RootNamespace>
-	<Product>UnitTestEx Xunit</Product>
-	<Title>UnitTestEx Xunit Test Extensions.</Title>
-	<Description>UnitTestEx Xunit Test Extensions.</Description>
-	<PackageTags>unittestex api function unit test unittest xunit</PackageTags>
+	  <TargetFramework>netcoreapp3.1</TargetFramework>
+	  <RootNamespace>UnitTestEx.Xunit</RootNamespace>
+	  <Product>UnitTestEx Xunit</Product>
+	  <Title>UnitTestEx Xunit Test Extensions.</Title>
+	  <Description>UnitTestEx Xunit Test Extensions.</Description>
+	  <PackageTags>unittestex api function unit test unittest xunit</PackageTags>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

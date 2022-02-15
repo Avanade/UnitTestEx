@@ -7,7 +7,7 @@ using UnitTestEx.MSTest.Internal;
 namespace UnitTestEx.MSTest
 {
     /// <summary>
-    /// Enables extension methods.
+    /// Deep object comparer.
     /// </summary>
     public static class ObjectComparer
     {
