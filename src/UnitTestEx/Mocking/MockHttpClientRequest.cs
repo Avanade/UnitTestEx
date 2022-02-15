@@ -130,9 +130,6 @@ namespace UnitTestEx.Mocking
 
             switch (_mediaType.ToLowerInvariant())
             {
-                case MediaTypeNames.Text.Plain:
-                    return $"'{_content}' [{_mediaType}]";
-
                 case MediaTypeNames.Application.Json:
                     if (_content is JToken jt)
                         return $"'{jt.ToString(Formatting.None)}' [{_mediaType}]";
@@ -140,7 +137,7 @@ namespace UnitTestEx.Mocking
                         return $"'{JsonConvert.SerializeObject(_content, Formatting.None)}' [{_mediaType}]";
 
                 default:
-                    return "???";
+                    return $"'{_content}' [{_mediaType}]";
             }
         }
 
@@ -188,7 +185,7 @@ namespace UnitTestEx.Mocking
                         return false;
                     }
 
-                // for any other content type, just compare the body
+                // For any other content type, just compare the body.
                 case MediaTypeNames.Text.Plain:
                 case MediaTypeNames.Text.Xml:
                 case MediaTypeNames.Text.Html:
