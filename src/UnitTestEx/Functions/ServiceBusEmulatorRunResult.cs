@@ -7,7 +7,7 @@ using System.Collections.Generic;
 namespace UnitTestEx.Functions
 {
     /// <summary>
-    /// Represents the result of a <see cref="ServiceBusEmulatorTester{TFunction}.Run(TimeSpan?, bool?)"/>.
+    /// Represents the result of a <see cref="ServiceBusEmulatorTester{TFunction}.RunAsync(TimeSpan?, bool?)"/>.
     /// </summary>
     public class ServiceBusEmulatorRunResult
     {

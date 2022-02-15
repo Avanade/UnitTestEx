@@ -3,7 +3,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -18,6 +17,7 @@ using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
 
@@ -50,7 +50,16 @@ namespace UnitTestEx.AspNetCore
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <param name="value">The optional request body value.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor Run(HttpMethod httpMethod, string? requestUri, object? value = null)
+        public HttpResponseMessageAssertor Run(HttpMethod httpMethod, string? requestUri, object? value = null) => RunAsync(httpMethod, requestUri, value).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/>.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
+        /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
+        /// <param name="value">The optional request body value.</param>
+        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public async Task<HttpResponseMessageAssertor> RunAsync(HttpMethod httpMethod, string? requestUri, object? value = null)
         {
             var req = new HttpRequestMessage(httpMethod, requestUri);
             if (value != null)
@@ -59,7 +68,7 @@ namespace UnitTestEx.AspNetCore
             var hc = _testServer.CreateClient();
 
             var sw = Stopwatch.StartNew();
-            var res = hc.SendAsync(req).GetAwaiter().GetResult();
+            var res = await hc.SendAsync(req).ConfigureAwait(false);
 
             sw.Stop();
             LogOutput(res, sw);
@@ -165,7 +174,15 @@ namespace UnitTestEx.AspNetCore
         /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression)
+        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression) => RunAsync(expression).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
+        /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <param name="expression">The controller operation invocation expression.</param>
+        /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public async Task<HttpResponseMessageAssertor> RunAsync<TResult>(Expression<Func<TController, TResult>> expression)
         {
             if (expression.Body.NodeType != ExpressionType.Call)
                 throw new ArgumentException("Expression must be a method invocation.", nameof(expression));
@@ -199,7 +216,7 @@ namespace UnitTestEx.AspNetCore
                 throw new InvalidOperationException($"Operation {mce.Method.Name} does not have an {nameof(HttpMethodAttribute)} specified.");
 
             var uri = GetRequestUri(new HttpMethod(att.HttpMethods.First()), att.Template, @params);
-            return Run(new HttpMethod(att.HttpMethods.First()), uri, body);
+            return await RunAsync(new HttpMethod(att.HttpMethods.First()), uri, body).ConfigureAwait(false);
         }
 
         /// <summary>

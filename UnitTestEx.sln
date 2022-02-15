@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31702.278
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestEx", "src\UnitTestEx\UnitTestEx.csproj", "{741ABD90-509F-41DD-89A0-97368047B9B8}"
 EndProject
@@ -21,13 +21,16 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestEx.Api", "tests\Uni
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{50CEF01C-FEC0-4AAD-96B8-45387EA360D5}"
 	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
 		CHANGELOG.md = CHANGELOG.md
 		CODE_OF_CONDUCT.md = CODE_OF_CONDUCT.md
+		Common.targets = Common.targets
 		CONTRIBUTING.md = CONTRIBUTING.md
 		LICENSE = LICENSE
 		nuget-publish.ps1 = nuget-publish.ps1
 		README.md = README.md
 		SECURITY.md = SECURITY.md
+		strong-name-key.snk = strong-name-key.snk
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestEx.Xunit", "src\UnitTestEx.XUnit\UnitTestEx.Xunit.csproj", "{F0146507-A0C4-4E7A-9CD4-DDFB56591C39}"

@@ -50,7 +50,7 @@ namespace UnitTestEx.Hosting
         /// <param name="paramAttributeType">The optional parameter <see cref="Attribute"/> <see cref="Type"/> to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting exception if any and elapsed milliseconds.</returns>
-        protected (Exception? Exception, long ElapsedMilliseconds) Run(Expression<Func<THost, Task>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected async Task<(Exception? Exception, long ElapsedMilliseconds)> RunAsync(Expression<Func<THost, Task>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
             if (expression == null)
                 throw new ArgumentNullException(nameof(expression));
@@ -83,14 +83,10 @@ namespace UnitTestEx.Hosting
 
             var f = CreateFunction();
             var sw = Stopwatch.StartNew();
-            var mr = mce.Method.Invoke(f, @params)!;
-
-            if (!(mr is Task tr))
-                throw new InvalidOperationException($"The method must return a result of Type {nameof(Task)}.");
 
             try
             {
-                tr.GetAwaiter().GetResult();
+                await ((Task)mce.Method.Invoke(f, @params)!).ConfigureAwait(false);
                 sw.Stop();
                 return (null, sw.ElapsedMilliseconds);
             }
@@ -108,7 +104,7 @@ namespace UnitTestEx.Hosting
         /// <param name="paramAttributeType">The optional parameter <see cref="Attribute"/> <see cref="Type"/> to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
-        protected (TResult Result, Exception? Exception, long ElapsedMilliseconds) Run<TResult>(Expression<Func<THost, Task<TResult>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected async Task<(TResult Result, Exception? Exception, long ElapsedMilliseconds)> RunAsync<TResult>(Expression<Func<THost, Task<TResult>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
             if (expression == null)
                 throw new ArgumentNullException(nameof(expression));
@@ -141,16 +137,12 @@ namespace UnitTestEx.Hosting
 
             var f = CreateFunction();
             var sw = Stopwatch.StartNew();
-            var mr = mce.Method.Invoke(f, @params)!;
-
-            if (!(mr is Task<TResult> tr))
-                throw new InvalidOperationException($"The method must return a result of Type {nameof(Task<TResult>)}.");
 
             try
             {
-                var r = tr.GetAwaiter().GetResult();
+                var mr = await ((Task<TResult>)mce.Method.Invoke(f, @params)!).ConfigureAwait(false);
                 sw.Stop();
-                return (r, null, sw.ElapsedMilliseconds);
+                return (mr, null, sw.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {

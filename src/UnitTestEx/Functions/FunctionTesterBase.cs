@@ -77,13 +77,13 @@ namespace UnitTestEx.Functions
                             .AddJsonFile("appsettings.json", optional: true)
                             .AddJsonFile("appsettings.development.json", optional: true);
 
-                        if ((!includeUnitTestConfiguration.HasValue && FunctionTesterDefaults.IncludeUnitTestConfiguration) || (includeUnitTestConfiguration.HasValue && includeUnitTestConfiguration.Value))
-                            cb.AddJsonFile("appsettings.unittest.json", optional: true);
+                        if ((!includeUserSecrets.HasValue && FunctionTesterDefaults.IncludeUserSecrets) || (includeUserSecrets.HasValue && includeUserSecrets.Value))
+                            cb.AddUserSecrets<TEntryPoint>();
 
                         cb.AddEnvironmentVariables();
 
-                        if ((!includeUserSecrets.HasValue && FunctionTesterDefaults.IncludeUserSecrets) || (includeUserSecrets.HasValue && includeUserSecrets.Value))
-                            cb.AddUserSecrets<TEntryPoint>();
+                        if ((!includeUnitTestConfiguration.HasValue && FunctionTesterDefaults.IncludeUnitTestConfiguration) || (includeUnitTestConfiguration.HasValue && includeUnitTestConfiguration.Value))
+                            cb.AddJsonFile("appsettings.unittest.json", optional: true);
 
                         if (additionalConfiguration != null)
                             cb.AddInMemoryCollection(additionalConfiguration);

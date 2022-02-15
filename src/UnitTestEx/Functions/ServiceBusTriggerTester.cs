@@ -2,7 +2,6 @@
 
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
@@ -10,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Linq.Expressions;
 using System.Net.Mime;
+using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
@@ -23,7 +23,7 @@ namespace UnitTestEx.Functions
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
     public class ServiceBusTriggerTester<TFunction> : HostTesterBase<TFunction> where TFunction : class
     {
-        private static readonly object _lock = new();
+        private static readonly Semaphore _semaphore = new(1, 1);
 
         /// <summary>
         /// Initializes a new <see cref="ServiceBusTriggerTester{TFunction}"/> class.
@@ -38,10 +38,18 @@ namespace UnitTestEx.Functions
         /// <param name="expression">The function operation invocation expression.</param>
         /// <param name="validateTriggerProperties">Indicates whether to validate the <see cref="ServiceBusTriggerAttribute"/> properties to ensure correct configuration.</param>
         /// <returns>A <see cref="VoidAssertor"/>.</returns>
-        public VoidAssertor Run(Expression<Func<TFunction, Task>> expression, bool validateTriggerProperties = false)
+        public VoidAssertor Run(Expression<Func<TFunction, Task>> expression, bool validateTriggerProperties = false) => RunAsync(expression, validateTriggerProperties).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the Service Bus Triggered (see <see cref="ServiceBusTriggerAttribute"/>) function expected as a parameter within the <paramref name="expression"/>.
+        /// </summary>
+        /// <param name="expression">The function operation invocation expression.</param>
+        /// <param name="validateTriggerProperties">Indicates whether to validate the <see cref="ServiceBusTriggerAttribute"/> properties to ensure correct configuration.</param>
+        /// <returns>A <see cref="VoidAssertor"/>.</returns>
+        public async Task<VoidAssertor> RunAsync(Expression<Func<TFunction, Task>> expression, bool validateTriggerProperties = false)
         {
             object? sbv = null;
-            (Exception? ex, long ms) = Run(expression, typeof(ServiceBusTriggerAttribute), (p, a, v) =>
+            (Exception? ex, long ms) = await RunAsync(expression, typeof(ServiceBusTriggerAttribute), (p, a, v) =>
             {
                 if (a == null)
                     throw new InvalidOperationException($"The function method must have a parameter using the {nameof(ServiceBusTriggerAttribute)}.");
@@ -52,7 +60,7 @@ namespace UnitTestEx.Functions
                     var config = ServiceScope.ServiceProvider.GetService<IConfiguration>();
                     VerifyServiceBusTriggerProperties(config, (ServiceBusTriggerAttribute)a);
                 }
-            });
+            }).ConfigureAwait(false);
 
             LogOutput(ex, ms, sbv);
             return new VoidAssertor(ex, Implementor);
@@ -178,19 +186,35 @@ namespace UnitTestEx.Functions
         /// Executes an <i>Azure Function</i> run-time emulation by performing a <see cref="ServiceBusReceiver.ReceiveMessageAsync(TimeSpan?, System.Threading.CancellationToken)"/> as specified by the underlying <see cref="ServiceBusTriggerAttribute"/>.
         /// </summary>
         /// <param name="methodName">The function method name. One method parameter must use the <see cref="ServiceBusTriggerAttribute"/>.</param>
-        /// <param name="emulator">The <see cref="ServiceBusEmulatorTester{TFunction}"/> action that will orchestrate the emulation.</param>
-        /// <remarks>The <paramref name="emulator"/> execution happens within the context of a thread lock to ensure no concurrency of processing (within the host process) will occur for the duration of the simulation test to minimize cross 
-        /// thread service bus message contamination. The <see cref="ServiceBusTriggerAttribute.Connection"/> and <see cref="ServiceBusTriggerAttribute.QueueName"/> (etc.) are loaded from <see cref="IConfiguration"/> as is expected.</remarks>
-        public void Emulate(string methodName, Action<ServiceBusEmulatorTester<TFunction>> emulator)
+        /// <param name="emulator">The <see cref="ServiceBusEmulatorTester{TFunction}"/> function that will orchestrate the emulation.</param>
+        /// <param name="delay">Adds the specified delay before any underlying Service Bus receive operation. This may be required where tests appear to have concurreny issues; i.e. unexpected message challenges.</param>
+        /// <remarks>The <paramref name="emulator"/> execution happens within a synchronized context to ensure there is no concurrency of processing (within the host process) for the duration of the simulation test to minimize cross 
+        /// thread service bus message contamination. <para>The <see cref="ServiceBusTriggerAttribute.Connection"/> and <see cref="ServiceBusTriggerAttribute.QueueName"/> (etc.) are loaded from <see cref="IConfiguration"/> as is expected.</para></remarks>
+        public void Emulate(string methodName, Func<ServiceBusEmulatorTester<TFunction>, Task> emulator, TimeSpan? delay = null) => EmulateAsync(methodName, emulator, delay).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Executes an <i>Azure Function</i> run-time emulation by performing a <see cref="ServiceBusReceiver.ReceiveMessageAsync(TimeSpan?, System.Threading.CancellationToken)"/> as specified by the underlying <see cref="ServiceBusTriggerAttribute"/>.
+        /// </summary>
+        /// <param name="methodName">The function method name. One method parameter must use the <see cref="ServiceBusTriggerAttribute"/>.</param>
+        /// <param name="emulator">The <see cref="ServiceBusEmulatorTester{TFunction}"/> function that will orchestrate the emulation.</param>
+        /// <param name="delay">Adds the specified delay before any underlying Service Bus receive operation. This may be required where tests appear to have concurreny issues; i.e. unexpected message challenges.</param>
+        /// <remarks>The <paramref name="emulator"/> execution happens within a synchronized context to ensure there is no concurrency of processing (within the host process) for the duration of the simulation test to minimize cross 
+        /// thread service bus message contamination. <para>The <see cref="ServiceBusTriggerAttribute.Connection"/> and <see cref="ServiceBusTriggerAttribute.QueueName"/> (etc.) are loaded from <see cref="IConfiguration"/> as is expected.</para></remarks>
+        public async Task EmulateAsync(string methodName, Func<ServiceBusEmulatorTester<TFunction>, Task> emulator, TimeSpan? delay = null)
         {
             if (emulator == null)
                 throw new ArgumentNullException(nameof(emulator));
 
-            var sim = new ServiceBusEmulatorTester<TFunction>(ServiceScope, Implementor, methodName);
+            await using var sim = new ServiceBusEmulatorTester<TFunction>(ServiceScope, Implementor, methodName, delay);
 
-            lock (_lock)
+            try
             {
-                emulator(sim);
+                _semaphore.WaitOne();
+                await emulator(sim).ConfigureAwait(false);
+            }
+            finally
+            {
+                _semaphore.Release();
             }
         }
     }

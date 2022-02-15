@@ -1,9 +1,9 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Api.Models;
-using UnitTestEx.MSTest;
 
 namespace UnitTestEx.MSTest.Test
 {
@@ -11,11 +11,11 @@ namespace UnitTestEx.MSTest.Test
     public class PersonControllerTest
     {
         [TestMethod]
-        public void Get_Test1()
+        public async Task Get_Test1()
         {
             using var test = ApiTester.Create<Startup>();
-            test.Controller<PersonController>()
-                .Run(c => c.Get(1))
+            (await test.Controller<PersonController>()
+                .RunAsync(c => c.Get(1)))
                 .AssertOK()
                 .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
         }

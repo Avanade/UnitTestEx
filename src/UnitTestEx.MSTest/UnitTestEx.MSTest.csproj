@@ -1,37 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-    <RootNamespace>UnitTestEx.MSTest</RootNamespace>
-    <Version>1.0.6</Version>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Authors>UnitTestEx Developers</Authors>
-    <Company>Avanade</Company>
-    <Description>Unit Test Extensions.</Description>
-    <LangVersion>preview</LangVersion>
-    <Copyright>Avanade (c)</Copyright>
-    <PackageProjectUrl>https://github.com/Avanade/UnitTestEx</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Avanade/UnitTestEx</RepositoryUrl>
-    <Product>UnitTestEx.MSTest</Product>
-    <SignAssembly>true</SignAssembly>
-    <DelaySign>false</DelaySign>
-    <AssemblyOriginatorKeyFile>strong-name-key.snk</AssemblyOriginatorKeyFile>
-    <PackageIconUrl>https://github.com/Avanade/UnitTestEx/raw/main/images/Logo256x256.png</PackageIconUrl>
-    <PackageIcon>Logo256x256.png</PackageIcon>
-    <RepositoryType>git</RepositoryType>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Title>UnitTestEx Code Generator.</Title>
-    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <PackageTags>unittestex unit test unittest mstest nunit xunit</PackageTags>
-    <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
-    <Nullable>enable</Nullable>
-    <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <IncludeSymbols>true</IncludeSymbols>
-    <EmbedAllSources>true</EmbedAllSources>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+	<TargetFramework>netcoreapp3.1</TargetFramework>
+	<RootNamespace>UnitTestEx.MSTest</RootNamespace>
+	<Product>UnitTestEx MSTest</Product>
+	<Title>UnitTestEx MSTest Test Extensions.</Title>
+	<Description>UnitTestEx MSTest Test Extensions.</Description>
+	<PackageTags>unittestex api function unit test unittest mstest</PackageTags>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -40,18 +15,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\images\Logo256x256.png" Link="Logo256x256.png">
-      <PackagePath>\</PackagePath>
-      <Pack>true</Pack>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="MSTest.TestFramework" Version="2.2.8" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\UnitTestEx\UnitTestEx.csproj" />
   </ItemGroup>
+
+  <Import Project="..\..\Common.targets"/>
 
 </Project>

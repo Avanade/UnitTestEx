@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using UnitTestEx.Function;
 
 namespace UnitTestEx.NUnit.Test
@@ -14,7 +15,7 @@ namespace UnitTestEx.NUnit.Test
     public class ServiceBusEmulationTest
     {
         [Test]
-        public void MessagePeek()
+        public async Task MessagePeek()
         {
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
             using var test = FunctionTester.Create<Startup>(includeUserSecrets: true);
@@ -22,25 +23,25 @@ namespace UnitTestEx.NUnit.Test
             if (sbcs == null)
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");
 
-            test.ServiceBusTrigger<ServiceBusFunction>()
-                .Emulate(nameof(ServiceBusFunction.Run2), em =>
+            await test.ServiceBusTrigger<ServiceBusFunction>()
+                .EmulateAsync(nameof(ServiceBusFunction.Run2), async em =>
                 {
-                    var m = em.Clear()
-                        .SendValue(new Person { FirstName = "Peter", LastName = "Peek" }, m => m.Subject = "Peek-a-boo")
-                        .Peek();
+                    await em.ClearAsync().ConfigureAwait(false);
+                    await em.SendValueAsync(new Person { FirstName = "Bob", LastName = "Smith" }, m => m.Subject = "Peek-a-boo").ConfigureAwait(false);
 
+                    var m = await em.PeekAsync().ConfigureAwait(false);
                     Assert.IsNotNull(m);
                     Assert.AreEqual("Peek-a-boo", m.Subject);
                 });
         }
 
         [Test]
-        public void ServiceBusReceiver2_Success()
+        public async Task ServiceBusReceiver2_Success()
         {
             // Mock the downstream http client.
             var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://somesys"))
-                .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith2" }).Respond.With(HttpStatusCode.OK);
+                .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
 
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
             using var test = FunctionTester.Create<Startup>(includeUserSecrets: true).ConfigureServices(sc => mcf.Replace(sc));
@@ -49,14 +50,13 @@ namespace UnitTestEx.NUnit.Test
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");
 
             // Run the test by emulating the trigger initiation from Azure Service Bus.
-            test.ServiceBusTrigger<ServiceBusFunction>()
-                .Emulate(nameof(ServiceBusFunction.Run2), em =>
+            await test.ServiceBusTrigger<ServiceBusFunction>()
+                .EmulateAsync(nameof(ServiceBusFunction.Run2), async em =>
                 {
-                    em.Clear()
-                        .SendValue(new Person { FirstName = "Bob", LastName = "Smith2" })
-                        .Run()
-                        .AssertSuccess()
-                        .AssertMessageCompleted();
+                    await em.ClearAsync().ConfigureAwait(false);
+                    await em.SendValueAsync(new Person { FirstName = "Bob", LastName = "Smith" }).ConfigureAwait(false);
+                    var r = await em.RunAsync().ConfigureAwait(false);
+                    r.AssertSuccess().AssertMessageCompleted();
                 });
         }
 
@@ -70,23 +70,22 @@ namespace UnitTestEx.NUnit.Test
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");
 
             test.ServiceBusTrigger<ServiceBusFunction>()
-                .Emulate(nameof(ServiceBusFunction.Run2), em =>
+                .Emulate(nameof(ServiceBusFunction.Run2), async em =>
                 {
-                    em.Clear()
-                        .SendValue(new Person { LastName = "Smith3" })
-                        .Run()
-                        .AssertException<InvalidOperationException>("First name is required.")
-                        .AssertMessageAbandoned();
+                    await em.ClearAsync().ConfigureAwait(false);
+                    await em.SendValueAsync(new Person { LastName = "Smith" }).ConfigureAwait(false);
+                    var r = await em.RunAsync().ConfigureAwait(false);
+                    r.AssertException<InvalidOperationException>("First name is required.").AssertMessageAbandoned();
                 });
         }
 
         [Test]
-        public void ServiceBusReceiver3_Success()
+        public async Task ServiceBusReceiver3_Success()
         {
             // Mock the downstream http client.
             var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://somesys"))
-                .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith4" }).Respond.With(HttpStatusCode.OK);
+                .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
 
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
             using var test = FunctionTester.Create<Startup>(includeUserSecrets: true).ConfigureServices(sc => mcf.Replace(sc));
@@ -95,19 +94,18 @@ namespace UnitTestEx.NUnit.Test
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");
 
             // Run the test by emulating the trigger initiation from Azure Service Bus.
-            test.ServiceBusTrigger<ServiceBusFunction>()
-                .Emulate(nameof(ServiceBusFunction.Run3), em =>
+            await test.ServiceBusTrigger<ServiceBusFunction>()
+                .EmulateAsync(nameof(ServiceBusFunction.Run3), async em =>
                 {
-                    em.Clear()
-                        .SendValue(new Person { FirstName = "Bob", LastName = "Smith4" })
-                        .Run()
-                        .AssertSuccess()
-                        .AssertMessageCompleted();
+                    await em.ClearAsync().ConfigureAwait(false);
+                    await em.SendValueAsync(new Person { FirstName = "Bob", LastName = "Smith" }).ConfigureAwait(false);
+                    var r = await em.RunAsync().ConfigureAwait(false);
+                    r.AssertSuccess().AssertMessageCompleted();
                 });
         }
 
         [Test]
-        public void ServiceBusReceiver3_ValidationError()
+        public async Task ServiceBusReceiver3_ValidationError()
         {
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
             using var test = FunctionTester.Create<Startup>(includeUserSecrets: true);
@@ -115,19 +113,18 @@ namespace UnitTestEx.NUnit.Test
             if (sbcs == null)
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");
 
-            test.ServiceBusTrigger<ServiceBusFunction>()
-                .Emulate(nameof(ServiceBusFunction.Run3), em =>
+            await test.ServiceBusTrigger<ServiceBusFunction>()
+                .EmulateAsync(nameof(ServiceBusFunction.Run3), async em =>
                 {
-                    em.Clear()
-                        .SendValue(new Person { LastName = "Smith5" })
-                        .Run()
-                        .AssertSuccess()
-                        .AssertMessageDeadlettered("Validation error.");
+                    await em.ClearAsync().ConfigureAwait(false);
+                    await em.SendValueAsync(new Person { LastName = "Smith" }).ConfigureAwait(false);
+                    var r = await em.RunAsync().ConfigureAwait(false);
+                    r.AssertSuccess().AssertMessageDeadlettered("Validation error.");
                 });
         }
 
         [Test]
-        public void ServiceBusReceiver3_UnhandledException()
+        public async Task ServiceBusReceiver3_UnhandledException()
         {
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
             using var test = FunctionTester.Create<Startup>(includeUserSecrets: true);
@@ -135,19 +132,18 @@ namespace UnitTestEx.NUnit.Test
             if (sbcs == null)
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");
 
-            test.ServiceBusTrigger<ServiceBusFunction>()
-                .Emulate(nameof(ServiceBusFunction.Run3), em =>
+            await test.ServiceBusTrigger<ServiceBusFunction>()
+                .EmulateAsync(nameof(ServiceBusFunction.Run3), async em =>
                 {
-                    em.Clear()
-                        .SendValue(new Person { FirstName = "zerodivision", LastName = "Smith6" })
-                        .Run()
-                        .AssertException<DivideByZeroException>("Divide by zero is not a thing.")
-                        .AssertMessageAbandoned();
+                    await em.ClearAsync().ConfigureAwait(false);
+                    await em.SendValueAsync(new Person { FirstName = "zerodivision", LastName = "Smith" }).ConfigureAwait(false);
+                    var r = await em.RunAsync().ConfigureAwait(false);
+                    r.AssertException<DivideByZeroException>("Divide by zero is not a thing.").AssertMessageAbandoned();
                 });
         }
 
         [Test]
-        public void ServiceBusReceiver4_Success()
+        public async Task ServiceBusReceiver4_Success()
         {
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
             using var test = FunctionTester.Create<Startup>(includeUserSecrets: true, additionalConfiguration: new KeyValuePair<string, string>("Run4QueueName", "unittestex"));
@@ -156,14 +152,13 @@ namespace UnitTestEx.NUnit.Test
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");
 
             // Run the test by emulating the trigger initiation from Azure Service Bus.
-            test.ServiceBusTrigger<ServiceBusFunction>()
-                .Emulate(nameof(ServiceBusFunction.Run4), em =>
+            await test.ServiceBusTrigger<ServiceBusFunction>()
+                .EmulateAsync(nameof(ServiceBusFunction.Run4), async em =>
                 {
-                    em.Clear()
-                        .SendValue(new Person { FirstName = "Bob", LastName = "Smith7" }, m => m.Subject = "RUN-FOUR")
-                        .Run()
-                        .AssertSuccess()
-                        .AssertMessageCompleted();
+                    await em.ClearAsync().ConfigureAwait(false);
+                    await em.SendValueAsync(new Person { FirstName = "Bob", LastName = "Smith" }, m => m.Subject = "RUN-FOUR").ConfigureAwait(false);
+                    var r = await em.RunAsync().ConfigureAwait(false);
+                    r.AssertSuccess().AssertMessageCompleted();
                 });
         }
     }

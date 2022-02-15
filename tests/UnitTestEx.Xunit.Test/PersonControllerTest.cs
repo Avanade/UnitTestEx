@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Api.Models;
@@ -13,11 +14,11 @@ namespace UnitTestEx.Xunit.Test
         public PersonControllerTest(ITestOutputHelper output) : base(output) { }
 
         [Fact]
-        public void Get_Test1()
+        public async Task Get_Test1()
         {
             using var test = CreateApiTester<Startup>();
-            test.Controller<PersonController>()
-                .Run(c => c.Get(1))
+            (await test.Controller<PersonController>()
+                .RunAsync(c => c.Get(1)))
                 .AssertOK()
                 .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
         }

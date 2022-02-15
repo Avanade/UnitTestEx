@@ -22,15 +22,19 @@ using UnitTestEx.Assertors;
 namespace UnitTestEx.Functions
 {
     /// <summary>
-    /// Provides Azure Function <see cref="ServiceBusTriggerAttribute"/> emulator for integration testing: <see cref="Clear"/>, <see cref="Send(ServiceBusMessage[])"/> and <see cref="Run(TimeSpan?, bool?)"/> capabilities.
+    /// Provides Azure Function <see cref="ServiceBusTriggerAttribute"/> emulator for integration testing: <see cref="ClearAsync"/>, <see cref="SendAsync(ServiceBusMessage[])"/> and <see cref="RunAsync(TimeSpan?, bool?)"/> capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
-    public class ServiceBusEmulatorTester<TFunction> where TFunction : class
+    public sealed class ServiceBusEmulatorTester<TFunction> : IAsyncDisposable where TFunction : class
     {
         private readonly string? _connectionString = null;
         private readonly string? _queueName = null;
         private readonly string? _topicName = null;
         private readonly string? _subscriptionName = null;
+        private readonly ServiceBusClient? _client;
+        private ServiceBusSender? _sender;
+        private readonly TimeSpan _delay;
+        private const int _waitSeconds = 3;
 
         /// <summary>
         /// Initializes a new <see cref="ServiceBusEmulatorTester{TFunction}"/> class.
@@ -38,10 +42,12 @@ namespace UnitTestEx.Functions
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         /// <param name="methodName">An optional method name. Where not specified will attempt to automatically find a single method that has a parameter with <see cref="ServiceBusTriggerAttribute"/>.</param>
-        internal ServiceBusEmulatorTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, string methodName)
+        /// <param name="delay">Adds the specified delay before any underlying Service Bus receive operation.</param>
+        internal ServiceBusEmulatorTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, string methodName, TimeSpan? delay)
         {
             ServiceScope = serviceScope ?? throw new ArgumentNullException(nameof(serviceScope));
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+            _delay = delay ?? TimeSpan.Zero;
 
             var x = FindReceiveMethod(methodName);
             Method = x.Method!;
@@ -54,6 +60,8 @@ namespace UnitTestEx.Functions
             _queueName = QueueName;
             _topicName = TopicName;
             _subscriptionName = SubscriptionName;
+
+            _client = new ServiceBusClient(_connectionString);
         }
 
         /// <summary>
@@ -129,39 +137,53 @@ namespace UnitTestEx.Functions
         }
 
         /// <summary>
+        /// Creates a <see cref="ServiceBusReceiver"/>.
+        /// </summary>
+        private ServiceBusReceiver GetReceiver()
+        {
+            if (Trigger.IsSessionsEnabled)
+                throw new NotSupportedException($"UnitTestEx does not support any Receive operations for Sessions; i.e. {nameof(ServiceBusTriggerAttribute)}.{nameof(ServiceBusTriggerAttribute.IsSessionsEnabled)} = true.");
+
+            return _queueName == null ?
+                _client!.CreateReceiver(_topicName!, _subscriptionName, new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.PeekLock }) :
+                _client!.CreateReceiver(_queueName, new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.PeekLock });
+        }
+
+        /// <summary>
+        /// Gets the <see cref="ServiceBusSender"/>.
+        /// </summary>
+        private ServiceBusSender GetSender() => _sender ??= _client!.CreateSender(_queueName ?? _topicName!);
+
+        /// <summary>
         /// Clear (removes) all existing messages from the queue.
         /// </summary>
-        /// <returns>The current instance to support fluent-style method-chaining.</returns>
-        public ServiceBusEmulatorTester<TFunction> Clear()
+        public async Task ClearAsync()
         {
+            await Task.Delay(_delay);
             Implementor.WriteLine("FUNCTION SERVICE BUS TRIGGER TESTER...");
             Implementor.WriteLine("CLEAR >");
 
-            var task = Task.Run(async () =>
+            while (true)
             {
-                var sbro = new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete, PrefetchCount = 100 };
-                await using var client = new ServiceBusClient(_connectionString);
-                await using var receiver = _queueName == null ? client.CreateReceiver(_topicName!, _subscriptionName, sbro) : client.CreateReceiver(_queueName, sbro);
-                while (true)
+                await using var receiver = GetReceiver();
+                var list = await receiver.ReceiveMessagesAsync(100, TimeSpan.FromSeconds(_waitSeconds)).ConfigureAwait(false);
+                if (list.Count == 0)
                 {
-                    var list = await receiver.ReceiveMessagesAsync(100, new TimeSpan(0, 0, 1)).ConfigureAwait(false);
-                    if (list.Count == 0)
-                    {
-                        Implementor.WriteLine("No messages found.");
-                        break;
-                    }
-
-                    Implementor.WriteLine($"{list.Count} message(s) automatically completed.");
+                    Implementor.WriteLine("No messages found.");
+                    break;
                 }
-            });
 
-            task.Wait();
+                foreach (var message in list)
+                {
+                    await receiver.CompleteMessageAsync(message).ConfigureAwait(false);
+                }
+
+                Implementor.WriteLine($"{list.Count} message(s) automatically completed.");
+            }
 
             Implementor.WriteLine("");
             Implementor.WriteLine(new string('=', 80));
             Implementor.WriteLine("");
-
-            return this;
         }
 
         /// <summary>
@@ -169,22 +191,16 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <param name="maxWaitTime">An optional <see cref="TimeSpan"/> specifying the maximum time to wait for a message before returning null if no messages are available.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/> where found; otherwise, <c>null</c>.</returns>
-        public ServiceBusReceivedMessage? Peek(TimeSpan? maxWaitTime = null)
+        public async Task<ServiceBusReceivedMessage?> PeekAsync(TimeSpan? maxWaitTime = null)
         {
-            var task = Task.Run(async () =>
-            {
-                var sbro = new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.PeekLock, PrefetchCount = 1 };
-                await using var client = new ServiceBusClient(_connectionString);
-                await using var receiver = _queueName == null ? client.CreateReceiver(_topicName!, _subscriptionName, sbro) : client.CreateReceiver(_queueName, sbro);
-                var msg = await receiver.ReceiveMessageAsync(maxWaitTime).ConfigureAwait(false);
+            await Task.Delay(_delay);
+            await using var receiver = GetReceiver();
+            var msg = await receiver.ReceiveMessageAsync(maxWaitTime ?? TimeSpan.FromSeconds(_waitSeconds)).ConfigureAwait(false);
+            if (msg != null)
                 await receiver.AbandonMessageAsync(msg).ConfigureAwait(false);
-                System.Threading.Thread.Sleep(1000);
-                LogMessage(msg);
-                return msg;
-            });
 
-            task.Wait();
-            return task.Result;
+            LogMessage(msg);
+            return msg;
         }
 
         /// <summary>
@@ -193,9 +209,8 @@ namespace UnitTestEx.Functions
         /// <typeparam name="T">The <paramref name="value"/> <see cref="Type"/>.</typeparam>
         /// <param name="value">The value.</param>
         /// <param name="messageModify">Optional <see cref="ServiceBusMessage"/> modifier than enables the message to be further configured.</param>
-        /// <returns>The current instance to support fluent-style method-chaining.</returns>
-        public ServiceBusEmulatorTester<TFunction> SendValue<T>(T value, Action<ServiceBusMessage>? messageModify = null)
-            => SendFromJson(JsonConvert.SerializeObject(value), messageModify);
+        public Task SendValueAsync<T>(T value, Action<ServiceBusMessage>? messageModify = null)
+            => SendFromJsonAsync(JsonConvert.SerializeObject(value), messageModify);
 
         /// <summary>
         /// Sends a message where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
@@ -203,9 +218,8 @@ namespace UnitTestEx.Functions
         /// <typeparam name="TAssembly">The <see cref="Type"/> to infer <see cref="Type.Assembly"/> for the embedded resources.</typeparam>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <param name="messageModify">Optional <see cref="ServiceBusMessage"/> modifier than enables the message to be further configured.</param>
-        /// <returns>The current instance to support fluent-style method-chaining.</returns>
-        public ServiceBusEmulatorTester<TFunction> SendFromResource<TAssembly>(string resourceName, Action<ServiceBusMessage>? messageModify = null)
-            => SendFromResource(resourceName, messageModify, typeof(TAssembly).Assembly);
+        public Task SendFromResourceAsync<TAssembly>(string resourceName, Action<ServiceBusMessage>? messageModify = null)
+            => SendFromResourceAsync(resourceName, messageModify, typeof(TAssembly).Assembly);
 
         /// <summary>
         /// Sends a message where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
@@ -213,17 +227,15 @@ namespace UnitTestEx.Functions
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <param name="messageModify">Optional <see cref="ServiceBusMessage"/> modifier than enables the message to be further configured.</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
-        /// <returns>The current instance to support fluent-style method-chaining.</returns>
-        public ServiceBusEmulatorTester<TFunction> SendFromResource(string resourceName, Action<ServiceBusMessage>? messageModify = null, Assembly? assembly = null)
-            => SendFromJson(Resource.GetString(resourceName, assembly ?? Assembly.GetCallingAssembly()), messageModify);
+        public Task SendFromResourceAsync(string resourceName, Action<ServiceBusMessage>? messageModify = null, Assembly? assembly = null)
+            => SendFromJsonAsync(Resource.GetString(resourceName, assembly ?? Assembly.GetCallingAssembly()), messageModify);
 
         /// <summary>
         /// Sends a message where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the serialized <paramref name="json"/>.
         /// </summary>
         /// <param name="json">The JSON body.</param>
         /// <param name="messageModify">Optional <see cref="ServiceBusMessage"/> modifier than enables the message to be further configured.</param>
-        /// <returns>The current instance to support fluent-style method-chaining.</returns>
-        public ServiceBusEmulatorTester<TFunction> SendFromJson(string json, Action<ServiceBusMessage>? messageModify = null)
+        public async Task SendFromJsonAsync(string json, Action<ServiceBusMessage>? messageModify = null)
         {
             var message = new ServiceBusMessage(Encoding.UTF8.GetBytes(json ?? throw new ArgumentNullException(nameof(json))))
             {
@@ -232,19 +244,17 @@ namespace UnitTestEx.Functions
             };
 
             messageModify?.Invoke(message);
-            Send(message);
-            return this;
+            await SendAsync(message).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Sends the <paramref name="messages"/>.
         /// </summary>
         /// <param name="messages">One or more <see cref="ServiceBusMessage"/> messages.</param>
-        /// <returns>The current instance to support fluent-style method-chaining.</returns>
-        public ServiceBusEmulatorTester<TFunction> Send(params ServiceBusMessage[] messages)
+        public async Task SendAsync(params ServiceBusMessage[] messages)
         {
             if (messages == null)
-                return this;
+                return;
 
             Implementor.WriteLine("FUNCTION SERVICE BUS TRIGGER TESTER...");
             Implementor.WriteLine($"Send {messages.Length} message(s).");
@@ -253,20 +263,11 @@ namespace UnitTestEx.Functions
                 LogMessage(message);
             }
 
-            var task = Task.Run(async () =>
-            {
-                await using var client = new ServiceBusClient(_connectionString);
-                await using var sender = client.CreateSender(_queueName ?? _topicName);
-                await sender.SendMessagesAsync(messages).ConfigureAwait(false);
-            });
-
-            task.Wait();
+            await GetSender().SendMessagesAsync(messages).ConfigureAwait(false);
 
             Implementor.WriteLine("");
             Implementor.WriteLine(new string('=', 80));
             Implementor.WriteLine("");
-
-            return this;
         }
 
         /// <summary>
@@ -277,80 +278,71 @@ namespace UnitTestEx.Functions
         /// <returns>The <see cref="ServiceBusEmulatorRunAssertor"/>.</returns>
         /// <remarks>Only supports a <see cref="ServiceBusTriggerAttribute"/> where the corresponding value is a <see cref="ServiceBusReceivedMessage"/>. The only other Service Bus related parameter that is supported is a
         /// <see cref="ServiceBusMessageActions"/>. The <see cref="ServiceBusTriggerAttribute.Connection"/> and <see cref="ServiceBusTriggerAttribute.QueueName"/> (etc.) are loaded from <see cref="IConfiguration"/> using convention as expected.</remarks>
-        public ServiceBusEmulatorRunAssertor Run(TimeSpan? maxWaitTime = null, bool? autoCompleteOverride = null)
+        public async Task<ServiceBusEmulatorRunAssertor> RunAsync(TimeSpan? maxWaitTime = null, bool? autoCompleteOverride = null)
         {
-            var task = Task.Run(async () =>
+            await Task.Delay(_delay);
+            var sbsrr = new ServiceBusEmulatorRunResult();
+
+            // Create an instance of the function class.
+            var instance = ServiceScope.ServiceProvider.CreateInstance<TFunction>();
+
+            // Receive the next message from ServiceBus.
+            var sw = Stopwatch.StartNew();
+            await using var receiver = GetReceiver();
+            sbsrr.Message = await receiver.ReceiveMessageAsync(maxWaitTime ?? TimeSpan.FromSeconds(_waitSeconds)).ConfigureAwait(false);
+            if (sbsrr.Message == null)
             {
-                var sbsrr = new ServiceBusEmulatorRunResult();
+                sw.Stop();
+                LogOutput(null, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, "Queue/Topic empty; i.e. there are currently no messages.");
+                return new ServiceBusEmulatorRunAssertor(sbsrr, null, Implementor);
+            }
 
-                // Create the client and receiver.
-                var sbro = new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.PeekLock, PrefetchCount = 1 };
-                await using var client = new ServiceBusClient(_connectionString);
-                await using var receiver = _queueName == null ? client.CreateReceiver(_topicName!, _subscriptionName, sbro) : client.CreateReceiver(_queueName, sbro);
+            var logger = ServiceScope.ServiceProvider.GetService<ILogger<ServiceBusTriggerTester<TFunction>>>();
+            var sbma = new ServiceBusMessageActionsWrapper(receiver, logger);
 
-                // Create an instance of the function class.
-                var instance = ServiceScope.ServiceProvider.CreateInstance<TFunction>();
+            // Invoke the function method best as we can.
+            var args = new List<object?>();
+            foreach (var p in Method.GetParameters())
+            {
+                if (p == Parameter)
+                    args.Add(GetMessageValue(sbsrr.Message));
+                else if (p.ParameterType == typeof(ServiceBusMessageActions))
+                    args.Add(sbma);
+                else if (p.ParameterType == typeof(ILogger))
+                    args.Add(logger);
+                else
+                    args.Add(ServiceBusEmulatorTester<TFunction>.GetNamedMessageValue(sbsrr.Message, p.Name!));
+            }
 
-                // Receive the next message from ServiceBus.
-                var sw = Stopwatch.StartNew();
-                sbsrr.Message = await receiver.ReceiveMessageAsync(maxWaitTime).ConfigureAwait(false);
-                if (sbsrr.Message == null)
-                {
-                    sw.Stop();
-                    LogOutput(null, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, "Queue/Topic empty; i.e. there are currently no messages.");
-                    return new ServiceBusEmulatorRunAssertor(sbsrr, null, Implementor);
-                }
+            var autoComplete = autoCompleteOverride ?? Trigger.AutoCompleteMessages;
 
-                var logger = ServiceScope.ServiceProvider.GetService<ILogger<ServiceBusTriggerTester<TFunction>>>();
-                var sbma = new ServiceBusMessageActionsWrapper(receiver, logger);
+            // Execute the function.
+            try
+            {
+                await ((Task)Method.Invoke(instance, args.ToArray())!).ConfigureAwait(false);
 
-                // Invoke the function method best as we can.
-                var args = new List<object?>();
-                foreach (var p in Method.GetParameters())
-                {
-                    if (p == Parameter)
-                        args.Add(GetMessageValue(sbsrr.Message));
-                    else if (p.ParameterType == typeof(ServiceBusMessageActions))
-                        args.Add(sbma);
-                    else if (p.ParameterType == typeof(ILogger))
-                        args.Add(logger);
-                    else
-                        args.Add(ServiceBusEmulatorTester<TFunction>.GetNamedMessageValue(sbsrr.Message, p.Name!));
-                }
+                // Where auto-completing then do so.
+                if (autoComplete)
+                    await sbma.CompleteMessageAsync(sbsrr.Message).ConfigureAwait(false);
 
-                var autoComplete = autoCompleteOverride ?? Trigger.AutoCompleteMessages;
+                sw.Stop();
+                sbsrr.SetUsingActionsWrapper(sbma);
+                LogOutput(null, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, null);
+                return new ServiceBusEmulatorRunAssertor(sbsrr, null, Implementor);
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
 
-                // Execute the function.
-                try
-                {
-                    await ((Task)Method.Invoke(instance, args.ToArray())!).ConfigureAwait(false);
+                logger.LogWarning($"Exception bubbled out of the Function execution; this may be the desired the behavior: {ex.Message}");
 
-                    // Where auto-completing then do so.
-                    if (autoComplete)
-                        await sbma.CompleteMessageAsync(sbsrr.Message).ConfigureAwait(false);
+                // Where unhandled then automatically abandon.
+                await sbma.AbandonMessageAsync(sbsrr.Message).ConfigureAwait(false);
 
-                    sw.Stop();
-                    sbsrr.SetUsingActionsWrapper(sbma);
-                    LogOutput(null, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, null);
-                    return new ServiceBusEmulatorRunAssertor(sbsrr, null, Implementor);
-                }
-                catch (Exception ex)
-                {
-                    sw.Stop();
-
-                    logger.LogWarning($"Exception bubbled out of the Function execution; this may be the desired the behavior: {ex.Message}");
-
-                    // Where unhandled then automatically abandon.
-                    await sbma.AbandonMessageAsync(sbsrr.Message).ConfigureAwait(false);
-
-                    sbsrr.SetUsingActionsWrapper(sbma);
-                    LogOutput(ex, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, null);
-                    return new ServiceBusEmulatorRunAssertor(sbsrr, ex, Implementor);
-                }
-            });
-
-            task.Wait();
-            return task.Result;
+                sbsrr.SetUsingActionsWrapper(sbma);
+                LogOutput(ex, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, null);
+                return new ServiceBusEmulatorRunAssertor(sbsrr, ex, Implementor);
+            }
         }
 
         /// <summary>
@@ -429,10 +421,7 @@ namespace UnitTestEx.Functions
                 }
             }
 
-            if (sbsrr.Message == null)
-                Implementor.WriteLine("Message: <none>");
-            else
-                LogMessage(sbsrr.Message);
+            LogMessage(sbsrr.Message);
 
             if (ex != null)
             {
@@ -455,8 +444,14 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Log the <see cref="ServiceBusReceivedMessage"/>.
         /// </summary>
-        private void LogMessage(ServiceBusReceivedMessage msg)
+        private void LogMessage(ServiceBusReceivedMessage? msg)
         {
+            if (msg == null)
+            {
+                Implementor.WriteLine("Message: <none>");
+                return;
+            }
+
             Implementor.WriteLine("");
             Implementor.WriteLine("MESSAGE >");
             Implementor.WriteLine($"MessageId: {msg.MessageId ?? "<null>"}");
@@ -514,6 +509,18 @@ namespace UnitTestEx.Functions
                     Implementor.WriteLine($"Body: {msg.Body}");
                 }
             }
+        }
+
+        /// <summary>
+        /// Disposes of all resources.
+        /// </summary>
+        public async ValueTask DisposeAsync()
+        {
+            if (_sender != null)
+                await _sender.DisposeAsync();
+
+            if (_client != null)
+                await _client.DisposeAsync().ConfigureAwait(false);
         }
     }
 }
