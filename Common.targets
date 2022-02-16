@@ -20,9 +20,11 @@
 		<RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
 		<Nullable>enable</Nullable>
 		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<IncludeSymbols>true</IncludeSymbols>
 		<EmbedAllSources>true</EmbedAllSources>
+    <IsPackable>true</IsPackable>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
 	</PropertyGroup>
