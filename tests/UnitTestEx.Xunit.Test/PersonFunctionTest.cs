@@ -90,5 +90,15 @@ namespace UnitTestEx.Xunit.Test
                 .AssertOK()
                 .Assert(new { first = "Rachel", last = "Smith" });
         }
+
+        [Fact]
+        public void ValueVsHttpRequestContent()
+        {
+            using var test = CreateFunctionTester<Startup>();
+            test.HttpTrigger<PersonFunction>()
+                .Run(f => f.RunWithContent(new Person { FirstName = "Rachel", LastName = "Smith" }, test.Logger))
+                .AssertOK()
+                .Assert(new { first = "Rachel", last = "Smith" });
+        }
     }
 }

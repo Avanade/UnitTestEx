@@ -87,5 +87,15 @@ namespace UnitTestEx.MSTest.Test
                 .AssertOK()
                 .Assert(new { first = "Rachel", last = "Smith" });
         }
+
+        [TestMethod]
+        public void ValueVsHttpRequestContent()
+        {
+            using var test = FunctionTester.Create<Startup>();
+            test.HttpTrigger<PersonFunction>()
+                .Run(f => f.RunWithContent(new Person { FirstName = "Rachel", LastName = "Smith" }, test.Logger))
+                .AssertOK()
+                .Assert(new { first = "Rachel", last = "Smith" });
+        }
     }
 }
