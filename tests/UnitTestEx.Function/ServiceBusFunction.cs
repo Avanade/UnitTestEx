@@ -80,7 +80,7 @@ namespace UnitTestEx.Function
         }
 
         [FunctionName("ServiceBusSessionFunction5")]
-        public Task Run5([ServiceBusTrigger("unittestexsess", Connection = "ServiceBusConnectionString2", IsSessionsEnabled = true)] ServiceBusReceivedMessage message, ServiceBusMessageActions messageActions, ILogger log)
+        public Task Run5([ServiceBusTrigger("unittestexsess", Connection = "ServiceBusConnectionString", IsSessionsEnabled = true)] ServiceBusReceivedMessage message, ServiceBusMessageActions messageActions, ILogger log)
         {
             return Task.CompletedTask;
         }

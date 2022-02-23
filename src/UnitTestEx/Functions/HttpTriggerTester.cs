@@ -176,6 +176,18 @@ namespace UnitTestEx.Functions
                     if (jr.Value != null)
                         Implementor.WriteLine(JsonConvert.SerializeObject(jr.Value, Formatting.Indented));
                 }
+                else if (res is ContentResult cr)
+                {
+                    Implementor.WriteLine($"Content: [{cr.ContentType ?? "None"}]");
+                    try
+                    {
+                        Implementor.WriteLine(Newtonsoft.Json.Linq.JToken.Parse(cr.Content).ToString(Formatting.Indented));
+                    }
+                    catch
+                    {
+                        Implementor.WriteLine(cr.Content ?? "<null>");
+                    }
+                }
             }
 
             Implementor.WriteLine("");

@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.8
+- *[Issue 18](https://github.com/Avanade/UnitTestEx/issues/18)*: `ActionResultAssertor.Assert` with object value was not performing correct comparison when result is `ContentResult` and the underlying `ContentType` was `Json`.
+- *Enhancement:* Write the `Contents` to the test output where the result is `ContentResult`.
+
 ## v1.0.7
 - *[Issue 12](https://github.com/Avanade/UnitTestEx/issues/12)*: `ObjectComparer.Assert` added for each test framework that compares two objects and will fail, and report, where there is not a match.
 - *[Issue 14](https://github.com/Avanade/UnitTestEx/issues/14)*: Re-introduced [`ServiceBusTriggerTester`](./src/UnitTestEx/Functions/ServiceBusTriggerTester.cs) which manages execution and automatically logs the value associated with the trigger.

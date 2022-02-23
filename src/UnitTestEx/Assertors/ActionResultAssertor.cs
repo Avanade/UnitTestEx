@@ -87,7 +87,7 @@ namespace UnitTestEx.Assertors
             else if (Result is JsonResult)
                 return AssertJsonResult(expectedValue, membersToIgnore);
             else if (Result is ContentResult)
-                return AssertContentResult(expectedValue?.ToString());
+                return AssertContentResult(expectedValue, membersToIgnore);
 
             Implementor.AssertFail($"Result IActionResult Type '{Result.GetType().Name}' must be either '{nameof(JsonResult)}', '{nameof(ObjectResult)}' or {nameof(ContentResult)} to assert its value.");
             return this;
@@ -320,25 +320,38 @@ namespace UnitTestEx.Assertors
         /// Asserts that the <see cref="Result"/> is a <see cref="ContentResult"/> that matches the <paramref name="expectedValue"/>.
         /// </summary>
         /// <param name="expectedValue">The expected value.</param>
+        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        internal ActionResultAssertor AssertContentResult(string? expectedValue)
+        internal ActionResultAssertor AssertContentResult(object? expectedValue, params string[] membersToIgnore)
         {
             AssertResultType<ContentResult>();
 
             var cr = (ContentResult)Result;
-            return AssertValue(expectedValue, cr.Content, Array.Empty<string>());
+            if (expectedValue != null && cr.Content != null && cr.ContentType == MediaTypeNames.Application.Json)
+                return AssertValue(expectedValue, JsonConvert.DeserializeObject(cr.Content)!, membersToIgnore);
+            else
+                return AssertValue(expectedValue, cr.Content!, membersToIgnore);
         }
 
         /// <summary>
         /// Assert the value.
         /// </summary>
-        private ActionResultAssertor AssertValue(object? expectedValue, object actualValue, string[] membersToIgnore)
+        private ActionResultAssertor AssertValue(object? expectedValue, object? actualValue, string[] membersToIgnore)
         {
-            if (expectedValue is JToken jte)
+            if (expectedValue == null && actualValue == null)
+                return this;
+
+            if (expectedValue is JToken jte && actualValue != null)
             {
                 var jta = JToken.FromObject(actualValue);
                 if (!JToken.DeepEquals(jte, jta))
                     Implementor.AssertFail($"Expected and Actual JSON are not equal: {Environment.NewLine}Expected =>{Environment.NewLine}{jte?.ToString(Formatting.Indented)}{Environment.NewLine}Actual =>{Environment.NewLine}{jta?.ToString(Formatting.Indented)}");
+            }
+            else if (actualValue is JToken jta2 && expectedValue != null)
+            {
+                var jte2 = JToken.FromObject(expectedValue);
+                if (!JToken.DeepEquals(jte2, jta2))
+                    Implementor.AssertFail($"Expected and Actual JSON are not equal: {Environment.NewLine}Expected =>{Environment.NewLine}{jte2?.ToString(Formatting.Indented)}{Environment.NewLine}Actual =>{Environment.NewLine}{jta2?.ToString(Formatting.Indented)}");
             }
             else if (expectedValue is IComparable)
                 Implementor.AssertAreEqual(expectedValue, actualValue);

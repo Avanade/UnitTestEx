@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using System.Net.Mime;
 
 namespace UnitTestEx.Function
 {
@@ -55,6 +56,14 @@ namespace UnitTestEx.Function
             await Task.CompletedTask.ConfigureAwait(false);
             log.LogInformation("C# HTTP trigger function processed a request.");
             return new OkObjectResult(new { first = person.FirstName, last = person.LastName });
+        }
+
+        [FunctionName("PersonFunctionContent")]
+        public async Task<IActionResult> RunWithContent([HttpTrigger(AuthorizationLevel.Function, "post", Route = "people/content/{name}")] Person person, ILogger log)
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+            log.LogInformation("C# HTTP trigger function processed a request.");
+            return new ContentResult { Content = JsonConvert.SerializeObject(new { first = person.FirstName, last = person.LastName }), ContentType = MediaTypeNames.Application.Json, StatusCode = 200 };
         }
     }
 
