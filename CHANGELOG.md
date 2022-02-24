@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.9
+- *[Issue 20](https://github.com/Avanade/UnitTestEx/issues/20)*: Enabled casting of a `ResultAssertor` to an `ActionResultAssertor` where the result `Type` is `IActionResult` via the `ResultAssertor.ToActionResultAssertor` method.
+- *Enhancement:* Enabled casting of a `ResultAssertor` to an `HttpResponseMessageAssertor` where the result `Type` is `HttpResponseMessage` via the `ResultAssertor.HttpResponseMessageAssertor` method.
+
 ## v1.0.8
 - *[Issue 18](https://github.com/Avanade/UnitTestEx/issues/18)*: `ActionResultAssertor.Assert` with object value was not performing correct comparison when result is `ContentResult` and the underlying `ContentType` was `Json`.
 - *Enhancement:* Write the `Contents` to the test output where the result is `ContentResult`.

@@ -39,6 +39,22 @@ namespace UnitTestEx.MSTest.Test
         }
 
         [TestMethod]
+        public void Success2()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://d365test"))
+                .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
+
+            using var test = FunctionTester.Create<Startup>();
+            test.ConfigureServices(sc => mcf.Replace(sc))
+                .Type<ProductFunction>()
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
+                .ToActionResultAssertor()
+                    .AssertOK()
+                    .Assert(new { id = "Abc", description = "A blue carrot" });
+        }
+
+        [TestMethod]
         public void Exception()
         {
             var mcf = MockHttpClientFactory.Create();
