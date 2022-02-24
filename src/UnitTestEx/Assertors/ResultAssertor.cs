@@ -1,7 +1,9 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using System;
+using System.Net.Http;
 using System.Reflection;
 using UnitTestEx.Abstractions;
 
@@ -72,5 +74,31 @@ namespace UnitTestEx.Assertors
         /// <returns>The <see cref="ResultAssertor{TResult}"/> to support fluent-style method-chaining.</returns>
         public ResultAssertor<TResult> AssertFromJsonResource<TAssembly>(string resourceName, params string[] membersToIgnore)
             => Assert(Resource.GetJsonValue<TResult>(resourceName, typeof(TAssembly).Assembly), membersToIgnore);
+
+        /// <summary>
+        /// Converts the <see cref="ResultAssertor{TResult}"/> to an <see cref="ActionResultAssertor"/>.
+        /// </summary>
+        /// <returns>The corresponding <see cref="ActionResultAssertor"/>.</returns>
+        /// <exception cref="InvalidOperationException">Thrown where the <see cref="Result"/> <see cref="Type"/> is not assignable from <see cref="IActionResult"/>.</exception>
+        public ActionResultAssertor ToActionResultAssertor()
+        {
+            if (typeof(IActionResult).IsAssignableFrom(typeof(TResult)))
+                return new ActionResultAssertor((IActionResult)Result!, Exception, Implementor);
+
+            throw new InvalidOperationException($"Result Type '{typeof(TResult).Name}' must be assignable from '{nameof(IActionResult)}'");
+        }
+
+        /// <summary>
+        /// Converts the <see cref="ResultAssertor{TResult}"/> to an <see cref="HttpResponseMessageAssertor"/>.
+        /// </summary>
+        /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
+        /// <exception cref="InvalidOperationException">Thrown where the <see cref="Result"/> <see cref="Type"/> is not <see cref="HttpResponseMessage"/>.</exception>
+        public HttpResponseMessageAssertor ToHttpResponseMessageAssertor()
+        {
+            if (Result != null && Result is HttpResponseMessage hrm)
+                return new HttpResponseMessageAssertor(hrm, Implementor);
+
+            throw new InvalidOperationException($"Result Type '{typeof(TResult).Name}' must be '{nameof(HttpResponseMessage)}' and the value must not be null.");
+        }
     }
 }
