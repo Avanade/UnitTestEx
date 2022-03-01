@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.10
+- *[Issue 22](https://github.com/Avanade/UnitTestEx/issues/22)*: `TypeTester.Run` and `RunAsync` methods updated to support `Func` versus `Expression<Func>` to simplify runtime usage.
+
 ## v1.0.9
 - *[Issue 20](https://github.com/Avanade/UnitTestEx/issues/20)*: Enabled casting of a `ResultAssertor` to an `ActionResultAssertor` where the result `Type` is `IActionResult` via the `ResultAssertor.ToActionResultAssertor` method.
 - *Enhancement:* Enabled casting of a `ResultAssertor` to an `HttpResponseMessageAssertor` where the result `Type` is `HttpResponseMessage` via the `ResultAssertor.HttpResponseMessageAssertor` method.

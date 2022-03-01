@@ -3,8 +3,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using System;
+using System.Diagnostics;
 using System.Globalization;
-using System.Linq.Expressions;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
@@ -27,19 +27,34 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Runs the asynchronous method with no result.
         /// </summary>
-        /// <param name="expression">The function execution expression.</param>
+        /// <param name="function">The function execution.</param>
         /// <returns>A <see cref="VoidAssertor"/>.</returns>
-        public VoidAssertor Run(Expression<Func<T, Task>> expression) => RunAsync(expression).GetAwaiter().GetResult();
+        public VoidAssertor Run(Func<T, Task> function) => RunAsync(function).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the asynchronous method with no result.
         /// </summary>
-        /// <param name="expression">The function execution expression.</param>
+        /// <param name="function">The function execution.</param>
         /// <returns>A <see cref="VoidAssertor"/>.</returns>
-        public async Task<VoidAssertor> RunAsync(Expression<Func<T, Task>> expression)
+        public async Task<VoidAssertor> RunAsync(Func<T, Task> function)
         {
-            (Exception? ex, long ms) = await RunAsync(expression, null, null);
-            LogElapsed(ex, ms);
+            Exception? ex = null;
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                var f = ServiceScope.ServiceProvider.CreateInstance<T>();
+                await (function ?? throw new ArgumentNullException(nameof(function)))(f).ConfigureAwait(false);
+            }
+            catch (Exception uex)
+            {
+                ex = uex;
+            }
+            finally
+            {
+                sw.Stop();
+            }
+
+            LogElapsed(ex, sw.ElapsedMilliseconds);
             LogTrailer();
             return new VoidAssertor(ex, Implementor);
         }
@@ -47,19 +62,35 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Runs the asynchronous method with a result.
         /// </summary>
-        /// <param name="expression">The function execution expression.</param>
+        /// <param name="function">The function execution.</param>
         /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
-        public ResultAssertor<TResult> Run<TResult>(Expression<Func<T, Task<TResult>>> expression) => RunAsync(expression).GetAwaiter().GetResult();
+        public ResultAssertor<TResult> Run<TResult>(Func<T, Task<TResult>> function) => RunAsync(function).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the asynchronous method with a result.
         /// </summary>
-        /// <param name="expression">The function execution expression.</param>
+        /// <param name="function">The function execution.</param>
         /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
-        public async Task<ResultAssertor<TResult>> RunAsync<TResult>(Expression<Func<T, Task<TResult>>> expression)
+        public async Task<ResultAssertor<TResult>> RunAsync<TResult>(Func<T, Task<TResult>> function)
         {
-            (TResult result, Exception? ex, long ms) = await RunAsync(expression, null, null).ConfigureAwait(false);
-            LogElapsed(ex, ms);
+            TResult result = default!;
+            Exception? ex = null;
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                var f = ServiceScope.ServiceProvider.CreateInstance<T>();
+                result = await (function ?? throw new ArgumentNullException(nameof(function)))(f).ConfigureAwait(false);
+            }
+            catch (Exception uex)
+            {
+                ex = uex;
+            }
+            finally
+            {
+                sw.Stop();
+            }
+
+            LogElapsed(ex, sw.ElapsedMilliseconds);
 
             if (ex == null)
             {

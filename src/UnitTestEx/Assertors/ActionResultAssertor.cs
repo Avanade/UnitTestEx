@@ -89,7 +89,7 @@ namespace UnitTestEx.Assertors
             else if (Result is ContentResult)
                 return AssertContentResult(expectedValue, membersToIgnore);
 
-            Implementor.AssertFail($"Result IActionResult Type '{Result.GetType().Name}' must be either '{nameof(JsonResult)}', '{nameof(ObjectResult)}' or {nameof(ContentResult)} to assert its value.");
+            Implementor.AssertFail($"Result IActionResult Type '{Result.GetType().Name}' must be either '{nameof(JsonResult)}', '{nameof(ObjectResult)}' or '{nameof(ContentResult)}' to assert its value.");
             return this;
         }
 
