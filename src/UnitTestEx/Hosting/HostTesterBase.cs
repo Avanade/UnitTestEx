@@ -41,7 +41,7 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Create (instantiate) the <typeparamref name="THost"/> using the <see cref="ServiceScope"/> to provide the constructor based dependency injection (DI) values.
         /// </summary>
-        private THost CreateFunction() => ServiceScope.ServiceProvider.CreateInstance<THost>();
+        private THost CreateHost() => ServiceScope.ServiceProvider.CreateInstance<THost>();
 
         /// <summary>
         /// Orchestrates the execution of a method as described by the <paramref name="expression"/> returning no result.
@@ -81,12 +81,12 @@ namespace UnitTestEx.Hosting
 
             onBeforeRun?.Invoke(@params, paramAttribute, paramValue);
 
-            var f = CreateFunction();
+            var h = CreateHost();
             var sw = Stopwatch.StartNew();
 
             try
             {
-                await ((Task)mce.Method.Invoke(f, @params)!).ConfigureAwait(false);
+                await ((Task)mce.Method.Invoke(h, @params)!).ConfigureAwait(false);
                 sw.Stop();
                 return (null, sw.ElapsedMilliseconds);
             }
@@ -135,12 +135,12 @@ namespace UnitTestEx.Hosting
 
             onBeforeRun?.Invoke(@params, paramAttribute, paramValue);
 
-            var f = CreateFunction();
+            var h = CreateHost();
             var sw = Stopwatch.StartNew();
 
             try
             {
-                var mr = await ((Task<TResult>)mce.Method.Invoke(f, @params)!).ConfigureAwait(false);
+                var mr = await ((Task<TResult>)mce.Method.Invoke(h, @params)!).ConfigureAwait(false);
                 sw.Stop();
                 return (mr, null, sw.ElapsedMilliseconds);
             }

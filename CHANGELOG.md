@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.11
+- *[Issue 24](https://github.com/Avanade/UnitTestEx/issues/24)*: Added additional `IServiceCollection.Replace` extension methods to support `ReplaceXxx<T>()` and `ReplaceXxx<T, T>()` to match the standard `AddXxx` methods.
+
 ## v1.0.10
 - *[Issue 22](https://github.com/Avanade/UnitTestEx/issues/22)*: `TypeTester.Run` and `RunAsync` methods updated to support `Func` versus `Expression<Func>` to simplify runtime usage.
 

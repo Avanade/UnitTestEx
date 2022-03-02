@@ -197,12 +197,28 @@ namespace UnitTestEx.Functions
         }
 
         /// <summary>
-        /// Replace scoped service with a mock object.
+        /// Replace singleton service with a mock object.
         /// </summary>
-        /// <typeparam name="T">The underlying <see cref="Type"/> being mocked.</typeparam>
+        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
         /// <param name="mock">The <see cref="Mock{T}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf MockScopedService<T>(Mock<T> mock) where T : class => ConfigureServices(sc => sc.ReplaceScoped(mock.Object));
+        public TSelf MockSingletonService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceSingleton(_ => mock.Object));
+
+        /// <summary>
+        /// Replace scoped service with a mock object.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
+        /// <param name="mock">The <see cref="Mock{T}"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf MockScopedService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceScoped(_ => mock.Object));
+
+        /// <summary>
+        /// Replace transient service with a mock object.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
+        /// <param name="mock">The <see cref="Mock{T}"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf MockTransientService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceTransient(_ => mock.Object));
 
         /// <summary>
         /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> that is to be tested.
