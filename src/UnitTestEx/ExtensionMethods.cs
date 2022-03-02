@@ -55,13 +55,29 @@ namespace UnitTestEx
         }
 
         /// <summary>
-        /// Replaces (where existing), or adds, a scoped service <paramref name="instance"/>. 
+        /// Replaces (where existing), or adds, a singleton service. 
         /// </summary>
         /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
         /// <param name="services">The <see cref="IServiceCollection"/>.</param>
-        /// <param name="instance">The instance value.</param>
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
-        public static IServiceCollection ReplaceScoped<TService>(this IServiceCollection services, TService instance) where TService : class => ReplaceScoped(services, _ => instance);
+        public static IServiceCollection ReplaceSingleton<TService>(this IServiceCollection services) where TService : class
+            => ReplaceSingleton<TService, TService>(services);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a singleton service. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+        /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
+        public static IServiceCollection ReplaceSingleton<TService, TImplementation>(this IServiceCollection services) where TService : class where TImplementation : class, TService
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            services.Remove<TService>();
+            return services.AddSingleton<TService, TImplementation>();
+        }
 
         /// <summary>
         /// Replaces (where existing), or adds, a scoped service using an <paramref name="implementationFactory"/>.
@@ -83,13 +99,29 @@ namespace UnitTestEx
         }
 
         /// <summary>
-        /// Replaces (where existing), or adds, a transient service <paramref name="instance"/>. 
+        /// Replaces (where existing), or adds, a scoped service. 
         /// </summary>
         /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
         /// <param name="services">The <see cref="IServiceCollection"/>.</param>
-        /// <param name="instance">The instance value.</param>
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
-        public static IServiceCollection ReplaceTransient<TService>(this IServiceCollection services, TService instance) where TService : class => ReplaceTransient(services, _ => instance);
+        public static IServiceCollection ReplaceScoped<TService>(this IServiceCollection services) where TService : class
+            => ReplaceScoped<TService, TService>(services);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a scoped service. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+        /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
+        public static IServiceCollection ReplaceScoped<TService, TImplementation>(this IServiceCollection services) where TService : class where TImplementation : class, TService
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            services.Remove<TService>();
+            return services.AddScoped<TService, TImplementation>();
+        }
 
         /// <summary>
         /// Replaces (where existing), or adds, a transient service using an <paramref name="implementationFactory"/>.
@@ -108,6 +140,31 @@ namespace UnitTestEx
 
             services.Remove<TService>();
             return services.AddTransient(implementationFactory);
+        }
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a transient service. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+        /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
+        public static IServiceCollection ReplaceTransient<TService>(this IServiceCollection services) where TService : class
+            => ReplaceTransient<TService, TService>(services);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a transient service. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
+        /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
+        public static IServiceCollection ReplaceTransient<TService, TImplementation>(this IServiceCollection services) where TService : class where TImplementation : class, TService
+        {
+            if (services == null)
+                throw new ArgumentNullException(nameof(services));
+
+            services.Remove<TService>();
+            return services.AddTransient<TService, TImplementation>();
         }
 
         /// <summary>
