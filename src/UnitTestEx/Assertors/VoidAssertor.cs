@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Json;
 using System;
 using UnitTestEx.Abstractions;
 
@@ -15,6 +16,7 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <param name="exception">The <see cref="Exception"/> (if any).</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal VoidAssertor(Exception? exception, TestFrameworkImplementor implementor) : base(exception, implementor) { }
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        internal VoidAssertor(Exception? exception, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(exception, implementor, jsonSerializer) { }
     }
 }

@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -22,10 +23,12 @@ namespace UnitTestEx.Hosting
         /// </summary>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        protected HostTesterBase(IServiceScope serviceScope, TestFrameworkImplementor implementor)
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        protected HostTesterBase(IServiceScope serviceScope, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer)
         {
             ServiceScope = serviceScope ?? throw new ArgumentNullException(nameof(serviceScope));
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+            JsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
         }
 
         /// <summary>
@@ -37,6 +40,11 @@ namespace UnitTestEx.Hosting
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
         protected TestFrameworkImplementor Implementor { get; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="IJsonSerializer"/>.
+        /// </summary>
+        protected IJsonSerializer JsonSerializer { get; set; }
 
         /// <summary>
         /// Create (instantiate) the <typeparamref name="THost"/> using the <see cref="ServiceScope"/> to provide the constructor based dependency injection (DI) values.

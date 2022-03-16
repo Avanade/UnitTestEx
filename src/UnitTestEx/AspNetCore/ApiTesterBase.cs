@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -30,6 +31,7 @@ namespace UnitTestEx.AspNetCore
         protected ApiTesterBase(TestFrameworkImplementor implementor)
         {
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+            JsonSerializer = CoreEx.Json.JsonSerializer.Default;
             _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => whb.UseSolutionRelativeContentRoot("").ConfigureServices(sc => sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(implementor.CreateLoggerProvider()); })));
         }
 
@@ -42,6 +44,23 @@ namespace UnitTestEx.AspNetCore
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
         internal TestFrameworkImplementor Implementor { get; }
+
+        /// <summary>
+        /// Gets the <see cref="IJsonSerializer"/>.
+        /// </summary>
+        /// <remarks>Defaults to <see cref="CoreEx.Json.JsonSerializer.Default"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="UseJsonSerializer(IJsonSerializer)"/> method.</remarks>
+        public IJsonSerializer JsonSerializer { get; private set; }
+
+        /// <summary>
+        /// Updates the <see cref="JsonSerializer"/> used by the <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> itself, not the underlying executing host which should be configured separately.
+        /// </summary>
+        /// <param name="jsonSerializer">The <see cref="JsonSerializer"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf UseJsonSerializer(IJsonSerializer jsonSerializer)
+        {
+            JsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
+            return (TSelf)this;
+        }
 
         /// <summary>
         /// Provides an opportunity to further configure the services. This can be called multiple times. 
@@ -66,7 +85,7 @@ namespace UnitTestEx.AspNetCore
         /// Gets the <see cref="IConfiguration"/> from the underlying host.
         /// </summary>
         /// <returns>The <see cref="IConfiguration"/>.</returns>
-        public IConfiguration Configuration => Services.GetService<IConfiguration>();
+        public IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
 
         /// <summary>
         /// Replace singleton service with a mock object.
@@ -103,7 +122,7 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <typeparam name="TController">The API Controller <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="ControllerTester{TController}"/>.</returns>
-        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(WebApplicationFactory.Server, Implementor);
+        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(WebApplicationFactory.Server, Implementor, JsonSerializer);
 
         /// <summary>
         /// Releases all resources.

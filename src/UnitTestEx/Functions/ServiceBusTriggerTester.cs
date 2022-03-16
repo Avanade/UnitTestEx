@@ -1,11 +1,10 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Azure.Messaging.ServiceBus;
+using CoreEx.Json;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Linq.Expressions;
 using System.Net.Mime;
@@ -30,7 +29,8 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal ServiceBusTriggerTester(IServiceScope serviceScope, TestFrameworkImplementor implementor) : base(serviceScope, implementor) { }
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        internal ServiceBusTriggerTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(serviceScope, implementor, jsonSerializer) { }
 
         /// <summary>
         /// Runs the Service Bus Triggered (see <see cref="ServiceBusTriggerAttribute"/>) function expected as a parameter within the <paramref name="expression"/>.
@@ -57,13 +57,13 @@ namespace UnitTestEx.Functions
                 sbv = v;
                 if (validateTriggerProperties)
                 {
-                    var config = ServiceScope.ServiceProvider.GetService<IConfiguration>();
+                    var config = ServiceScope.ServiceProvider.GetRequiredService<IConfiguration>();
                     VerifyServiceBusTriggerProperties(config, (ServiceBusTriggerAttribute)a);
                 }
             }).ConfigureAwait(false);
 
             LogOutput(ex, ms, sbv);
-            return new VoidAssertor(ex, Implementor);
+            return new VoidAssertor(ex, Implementor, JsonSerializer);
         }
 
         /// <summary>
@@ -153,8 +153,9 @@ namespace UnitTestEx.Functions
                     Implementor.WriteLine("Body:");
                     try
                     {
-                        var jt = JToken.Parse(sbrm.Body.ToString());
-                        Implementor.WriteLine(jt.ToString());
+                        var jt = JsonSerializer.Deserialize(sbrm.Body);
+                        var json = JsonSerializer.Serialize(jt, JsonWriteFormat.Indented);
+                        Implementor.WriteLine(json);
                     }
                     catch
                     {
@@ -167,7 +168,7 @@ namespace UnitTestEx.Functions
             else
             {
                 Implementor.WriteLine("Message Value:");
-                Implementor.WriteLine(JsonConvert.SerializeObject(value, Formatting.Indented));
+                Implementor.WriteLine(JsonSerializer.Serialize(value, JsonWriteFormat.Indented));
             }
 
             if (ex != null)
@@ -205,7 +206,7 @@ namespace UnitTestEx.Functions
             if (emulator == null)
                 throw new ArgumentNullException(nameof(emulator));
 
-            await using var sim = new ServiceBusEmulatorTester<TFunction>(ServiceScope, Implementor, methodName, delay);
+            await using var sim = new ServiceBusEmulatorTester<TFunction>(ServiceScope, Implementor, JsonSerializer, methodName, delay);
 
             try
             {

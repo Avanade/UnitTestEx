@@ -78,7 +78,7 @@ namespace UnitTestEx.Mocking
         /// <returns>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</returns>
         public IServiceCollection Replace(IServiceCollection sc) => sc.ReplaceSingleton(sp =>
         {
-            Logger = sp.GetService<ILogger<MockHttpClientFactory>>();
+            Logger = sp.GetRequiredService<ILogger<MockHttpClientFactory>>();
             Logger.LogInformation($"Replacing '{nameof(HttpClientFactory)}' service provider (DI) instance with '{nameof(MockHttpClientFactory)}'.");
             return HttpClientFactory.Object;
         });

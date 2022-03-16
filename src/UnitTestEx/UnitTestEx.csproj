@@ -17,14 +17,14 @@
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.5.1" />
     <PackageReference Include="CompareNETObjects" Version="4.74.0" />
+    <PackageReference Include="CoreEx" Version="1.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="3.1.22" />
     <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.12" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.2.0" />
     <PackageReference Include="Moq" Version="4.16.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
-  <Import Project="..\..\Common.targets"/>
+  <Import Project="..\..\Common.targets" />
 
 </Project>

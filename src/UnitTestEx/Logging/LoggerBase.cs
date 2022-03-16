@@ -40,7 +40,7 @@ namespace UnitTestEx.Logging
         public bool IsEnabled(LogLevel logLevel) => true;
 
         /// <inheritdoc />
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
             if (!IsEnabled(logLevel))
                 return;
@@ -65,7 +65,7 @@ namespace UnitTestEx.Logging
         /// <summary>
         /// Write out the scope content.
         /// </summary>
-        private void ScopeWriter(StringBuilder sb, object? scope)
+        private static void ScopeWriter(StringBuilder sb, object? scope)
         {
             if (scope == null)
                 return;
@@ -84,7 +84,7 @@ namespace UnitTestEx.Logging
                         if (first)
                             first = false;
                         else
-                            sb.Append(",");
+                            sb.Append(',');
 
                         sb.Append($" {kv.Key ?? "<null>"}=\"{kv.Value ?? "<null>"}\"");
                     }
@@ -97,7 +97,7 @@ namespace UnitTestEx.Logging
         /// <summary>
         /// Reformats the message (pretty-printer).
         /// </summary>
-        private string ReformatMessage(string message)
+        private static string ReformatMessage(string message)
         {
             var sb = new StringBuilder();
             var sr = new StringReader(message);

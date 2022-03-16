@@ -71,7 +71,7 @@ namespace UnitTestEx.MSTest.Test
         [TestMethod]
         public void ValidJsonResource()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<Startup>().UseJsonSerializer(new CoreEx.Text.Json.JsonSerializer());
             test.HttpTrigger<PersonFunction>()
                 .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Get, "person", new { name = "Rachel" }), test.Logger))
                 .AssertOK()

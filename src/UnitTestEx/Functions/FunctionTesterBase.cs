@@ -2,6 +2,7 @@
 
 using Azure.Core.Amqp;
 using Azure.Messaging.ServiceBus;
+using CoreEx.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -9,8 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,6 +17,8 @@ using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Hosting;
 
@@ -61,6 +62,7 @@ namespace UnitTestEx.Functions
         protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration)
         {
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+            JsonSerializer = CoreEx.Json.JsonSerializer.Default;
             Logger = Implementor.CreateLogger(GetType().Name);
 
             var ep2 = new TEntryPoint();
@@ -133,18 +135,20 @@ namespace UnitTestEx.Functions
                 // Simulate the loading of the local.settings.json values.
                 var fi = new FileInfo(Path.Combine(Environment.CurrentDirectory, "local.settings.json"));
                 if (!fi.Exists)
-                    return "{ }";
+                    return tfi.Name;
 
-                using var tr = new StreamReader(fi.OpenRead());
-                using var jr = new JsonTextReader(tr);
-                var jt = JToken.ReadFrom(jr);
-                var jtv = jt["Values"];
-                if (jtv != null)
+                var json = File.ReadAllText(fi.FullName);
+                var jn = JsonNode.Parse(json);
+                if (jn != null)
                 {
-                    using var fs = tfi.OpenWrite();
-                    using var tw = new StreamWriter(fs);
-                    using var jw = new JsonTextWriter(tw);
-                    jtv.WriteTo(jw);
+                    var jp = jn["Values"];
+                    if (jp != null)
+                    {
+                        using var fs = tfi.OpenWrite();
+                        using var uw = new Utf8JsonWriter(fs);
+                        jp.WriteTo(uw);
+                        uw.Flush();
+                    }
                 }
 
                 _localSettingsDone = true;
@@ -164,6 +168,23 @@ namespace UnitTestEx.Functions
         public ILogger Logger { get; }
 
         /// <summary>
+        /// Gets the <see cref="IJsonSerializer"/>.
+        /// </summary>
+        /// <remarks>Defaults to <see cref="CoreEx.Json.JsonSerializer.Default"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="UseJsonSerializer(IJsonSerializer)"/> method.</remarks>
+        public IJsonSerializer JsonSerializer { get; private set; }
+
+        /// <summary>
+        /// Updates the <see cref="JsonSerializer"/> used by the <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> itself, not the underlying executing host which should be configured separately.
+        /// </summary>
+        /// <param name="jsonSerializer">The <see cref="JsonSerializer"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf UseJsonSerializer(IJsonSerializer jsonSerializer)
+        {
+            JsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
+            return (TSelf)this;
+        }
+
+        /// <summary>
         /// Gets the <see cref="IHost"/>.
         /// </summary>
         private IHost GetHost() => _host ??= _hostBuilder.Build();
@@ -178,7 +199,7 @@ namespace UnitTestEx.Functions
         /// Gets the <see cref="IConfiguration"/> from the underlying host.
         /// </summary>
         /// <returns>The <see cref="IConfiguration"/>.</returns>
-        public IConfiguration Configuration => Services.GetService<IConfiguration>();
+        public IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
 
         /// <summary>
         /// Provides an opportunity to further configure the services. This can be called multiple times. 
@@ -225,21 +246,21 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="HttpTriggerTester{TFunction}"/>.</returns>
-        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor);
+        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor, JsonSerializer);
 
         /// <summary>
         /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
         /// </summary>
         /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
         /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
-        public TypeTester<T> Type<T>() where T : class => new(GetHost().Services.CreateScope(), Implementor);
+        public TypeTester<T> Type<T>() where T : class => new(GetHost().Services.CreateScope(), Implementor, JsonSerializer);
 
         /// <summary>
         /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> that is to be tested.
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="ServiceBusTriggerTester{TFunction}"/>.</returns>
-        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor);
+        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor, JsonSerializer);
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with no body.
@@ -295,7 +316,7 @@ namespace UnitTestEx.Functions
                 Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
             var hr = CreateHttpRequest(httpMethod, requestUri);
-            hr.Body = new MemoryStream(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value)));
+            hr.Body = new MemoryStream(JsonSerializer.SerializeToBinaryData(value).ToArray());
             hr.ContentType = MediaTypeNames.Application.Json;
             return hr;
         }
@@ -325,7 +346,7 @@ namespace UnitTestEx.Functions
                 Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
             var hr = CreateHttpRequest(httpMethod, requestUri);
-            hr.Body = new MemoryStream(Encoding.UTF8.GetBytes(Resource.GetString(resourceName, assembly ?? Assembly.GetCallingAssembly())));
+            hr.Body = new MemoryStream(Encoding.UTF8.GetBytes(Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly())));
             hr.ContentType = MediaTypeNames.Application.Json;
             return hr;
         }
@@ -337,7 +358,7 @@ namespace UnitTestEx.Functions
         /// <param name="value">The value.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
         public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value)
-            => CreateServiceBusMessageFromJson(JsonConvert.SerializeObject(value));
+            => CreateServiceBusMessageFromJson(JsonSerializer.Serialize(value));
 
         /// <summary>
         /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the <paramref name="value"/> as serialized JSON.
@@ -347,7 +368,7 @@ namespace UnitTestEx.Functions
         /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
         public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value, Action<AmqpAnnotatedMessage> messageModify)
-            => CreateServiceBusMessageFromJson(JsonConvert.SerializeObject(value), messageModify);
+            => CreateServiceBusMessageFromJson(JsonSerializer.Serialize(value), messageModify);
 
         /// <summary>
         /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
@@ -367,7 +388,7 @@ namespace UnitTestEx.Functions
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
         public ServiceBusReceivedMessage CreateServiceBusMessageFromResource(string resourceName, Action<AmqpAnnotatedMessage>? messageModify = null, Assembly? assembly = null)
-            => CreateServiceBusMessageFromJson(Resource.GetString(resourceName, assembly ?? Assembly.GetCallingAssembly()), messageModify);
+            => CreateServiceBusMessageFromJson(Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly()), messageModify);
 
         /// <summary>
         /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the serialized <paramref name="json"/>.

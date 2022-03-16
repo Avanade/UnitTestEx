@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Json;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using System;
 using System.Net.Http;
 using System.Reflection;
@@ -20,7 +20,8 @@ namespace UnitTestEx.Assertors
         /// <param name="result">The result value.</param>
         /// <param name="exception">The <see cref="Exception"/> (if any).</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal ResultAssertor(TResult result, Exception? exception, TestFrameworkImplementor implementor) : base(exception, implementor) => Result = result;
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        internal ResultAssertor(TResult result, Exception? exception, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(exception, implementor, jsonSerializer) => Result = result;
 
         /// <summary>
         /// Gets the result.
@@ -54,7 +55,7 @@ namespace UnitTestEx.Assertors
         /// <param name="json">The JSON <see cref="string"/>.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ResultAssertor{TResult}"/> to support fluent-style method-chaining.</returns>
-        public ResultAssertor<TResult> AssertFromJson(string json, params string[] membersToIgnore) => Assert(JsonConvert.DeserializeObject<TResult>(json)!, membersToIgnore);
+        public ResultAssertor<TResult> AssertFromJson(string json, params string[] membersToIgnore) => Assert(JsonSerializer.Deserialize<TResult>(json)!, membersToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> matches the JSON serialized value from the named embedded resource.
@@ -63,7 +64,7 @@ namespace UnitTestEx.Assertors
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ResultAssertor{TResult}"/> to support fluent-style method-chaining.</returns>
         public ResultAssertor<TResult> AssertFromJsonResource(string resourceName, params string[] membersToIgnore)
-            => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly()), membersToIgnore);
+            => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly(), JsonSerializer), membersToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> matches the JSON serialized value from the named embedded resource.
@@ -73,7 +74,7 @@ namespace UnitTestEx.Assertors
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ResultAssertor{TResult}"/> to support fluent-style method-chaining.</returns>
         public ResultAssertor<TResult> AssertFromJsonResource<TAssembly>(string resourceName, params string[] membersToIgnore)
-            => Assert(Resource.GetJsonValue<TResult>(resourceName, typeof(TAssembly).Assembly), membersToIgnore);
+            => Assert(Resource.GetJsonValue<TResult>(resourceName, typeof(TAssembly).Assembly, JsonSerializer), membersToIgnore);
 
         /// <summary>
         /// Converts the <see cref="ResultAssertor{TResult}"/> to an <see cref="ActionResultAssertor"/>.
@@ -83,7 +84,7 @@ namespace UnitTestEx.Assertors
         public ActionResultAssertor ToActionResultAssertor()
         {
             if (typeof(IActionResult).IsAssignableFrom(typeof(TResult)))
-                return new ActionResultAssertor((IActionResult)Result!, Exception, Implementor);
+                return new ActionResultAssertor((IActionResult)Result!, Exception, Implementor, JsonSerializer);
 
             throw new InvalidOperationException($"Result Type '{typeof(TResult).Name}' must be assignable from '{nameof(IActionResult)}'");
         }
@@ -96,7 +97,7 @@ namespace UnitTestEx.Assertors
         public HttpResponseMessageAssertor ToHttpResponseMessageAssertor()
         {
             if (Result != null && Result is HttpResponseMessage hrm)
-                return new HttpResponseMessageAssertor(hrm, Implementor);
+                return new HttpResponseMessageAssertor(hrm, Implementor, JsonSerializer);
 
             throw new InvalidOperationException($"Result Type '{typeof(TResult).Name}' must be '{nameof(HttpResponseMessage)}' and the value must not be null.");
         }

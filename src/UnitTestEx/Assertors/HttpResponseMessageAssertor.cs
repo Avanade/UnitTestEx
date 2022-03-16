@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using CoreEx.Json;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -18,16 +17,19 @@ namespace UnitTestEx.Assertors
     public class HttpResponseMessageAssertor
     {
         private readonly TestFrameworkImplementor _implementor;
+        private readonly IJsonSerializer _jsonSerializer;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HttpResponseMessageAssertor"/> class.
         /// </summary>
         /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal HttpResponseMessageAssertor(HttpResponseMessage response, TestFrameworkImplementor implementor)
+        /// <param name="jsonSerializer">The <see cref="JsonSerializer"/>.</param>
+        internal HttpResponseMessageAssertor(HttpResponseMessage response, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer)
         {
             Response = response;
             _implementor = implementor;
+            _jsonSerializer = jsonSerializer;
         }
 
         /// <summary>
@@ -122,10 +124,11 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Asserts that the <see cref="Response"/> matches the <paramref name="expectedValue"/>.
         /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <param name="expectedValue">The expected value.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor Assert(object? expectedValue, params string[] membersToIgnore)
+        public HttpResponseMessageAssertor Assert<TResult>(TResult expectedValue, params string[] membersToIgnore)
         {
             if (Response.Content == null)
             {
@@ -144,16 +147,7 @@ namespace UnitTestEx.Assertors
                     return this;
                 }
 
-                if (expectedValue is JToken jte)
-                {
-                    var jta = JToken.Parse(json);
-                    if (!JToken.DeepEquals(jte, jta))
-                        _implementor.AssertFail($"Expected and Actual JSON are not equal: {Environment.NewLine}Expected =>{Environment.NewLine}{jte?.ToString(Formatting.Indented)}{Environment.NewLine}Actual =>{Environment.NewLine}{jta?.ToString(Formatting.Indented)}");
-
-                    return this;
-                }
-
-                var val = JsonConvert.DeserializeObject(json, expectedValue.GetType());
+                var val = _jsonSerializer.Deserialize<TResult>(json);
                 var cr = ObjectComparer.Compare(expectedValue, val, membersToIgnore);
                 if (!cr.AreEqual)
                     _implementor.AssertFail($"Expected and Actual values are not equal: {cr.DifferencesString}");
@@ -171,7 +165,7 @@ namespace UnitTestEx.Assertors
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertFromJsonResource<TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly()), membersToIgnore);
+        public HttpResponseMessageAssertor AssertFromJsonResource<TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly(), _jsonSerializer), membersToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Response"/> matches the JSON serialized value.
@@ -181,15 +175,7 @@ namespace UnitTestEx.Assertors
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertFromJsonResource<TAssembly, TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, typeof(TAssembly).Assembly), membersToIgnore);
-
-        /// <summary>
-        /// Asserts that the <see cref="Response"/> matches the JSON serialized value.
-        /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertFromJsonResource(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), membersToIgnore);
+        public HttpResponseMessageAssertor AssertFromJsonResource<TAssembly, TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, typeof(TAssembly).Assembly, _jsonSerializer), membersToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.Created"/>.
@@ -268,20 +254,19 @@ namespace UnitTestEx.Assertors
             if (Response.Content == null)
                 return default!;
 
-            return JsonConvert.DeserializeObject<TResult>(Response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
+            return _jsonSerializer.Deserialize<TResult>(Response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
         }
 
         /// <summary>
-        /// Gets the response content as the deserialized JSON value.
+        /// Gets the response content as a <see cref="string"/>.
         /// </summary>
-        /// <returns>The result value.</returns>
-        public object? GetValue()
+        /// <returns>The result content <see cref="string"/>.</returns>
+        public string? GetContent()
         {
-            _implementor.AssertAreEqual(MediaTypeNames.Application.Json, Response.Content?.Headers?.ContentType?.MediaType);
             if (Response.Content == null)
-                return default!;
+                return null;
 
-            return JsonConvert.DeserializeObject(Response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
+            return Response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
         }
     }
 }
