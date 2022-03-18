@@ -24,7 +24,7 @@ namespace UnitTestEx.MSTest.Test
         public void Get_Test2()
         {
             int id = 2;
-            using var test = ApiTester.Create<Startup>();
+            using var test = ApiTester.Create<Startup>().UseJsonSerializer(new CoreEx.Newtonsoft.Json.JsonSerializer());
             test.Controller<PersonController>()
                 .Run(c => c.Get(id))
                 .AssertOK()

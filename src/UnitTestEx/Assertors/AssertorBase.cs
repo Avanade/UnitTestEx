@@ -1,12 +1,13 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Json;
 using System;
 using UnitTestEx.Abstractions;
 
 namespace UnitTestEx.Assertors
 {
     /// <summary>
-    /// Represents the base test assert helper that distinguises between <see cref="AssertException"/> and <see cref="AssertSuccess"/>.
+    /// Represents the base test assert helper that distinguishes between <see cref="AssertException"/> and <see cref="AssertSuccess"/>.
     /// </summary>
     public abstract class AssertorBase<TSelf> where TSelf : AssertorBase<TSelf>
     {
@@ -15,10 +16,12 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <param name="exception">The <see cref="Exception"/> (if any).</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal AssertorBase(Exception? exception, TestFrameworkImplementor implementor)
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        internal AssertorBase(Exception? exception, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer)
         {
             Exception = exception;
             Implementor = implementor;
+            JsonSerializer = jsonSerializer;
         }
 
         /// <summary>
@@ -30,6 +33,11 @@ namespace UnitTestEx.Assertors
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
         protected TestFrameworkImplementor Implementor { get; }
+
+        /// <summary>
+        /// Gets the <see cref="IJsonSerializer"/>.
+        /// </summary>
+        protected IJsonSerializer JsonSerializer { get; }
 
         /// <summary>
         /// Asserts that an <see cref="Exception"/> was thrown during execution.

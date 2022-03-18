@@ -1,13 +1,12 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Globalization;
 using System.IO;
@@ -34,7 +33,8 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal HttpTriggerTester(IServiceScope serviceScope, TestFrameworkImplementor implementor) : base(serviceScope, implementor) { }
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        internal HttpTriggerTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(serviceScope, implementor, jsonSerializer) { }
 
         /// <summary>
         /// Runs the HTTP Triggered (see <see cref="HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
@@ -65,7 +65,7 @@ namespace UnitTestEx.Functions
             }).ConfigureAwait(false);
 
             LogOutput(httpRequest, requestVal, result, ex, ms);
-            return new ActionResultAssertor(result, ex, Implementor);
+            return new ActionResultAssertor(result, ex, Implementor, JsonSerializer);
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace UnitTestEx.Functions
                     Implementor.WriteLine("");
                 }
 
-                JToken? json = null;
+                object? jo = null;
                 if (req.Body != null)
                 {
                     if (req.Body.CanRead)
@@ -115,14 +115,14 @@ namespace UnitTestEx.Functions
                         {
                             try
                             {
-                                json = JToken.Parse(body);
+                                jo = JsonSerializer.Deserialize(body);
                             }
                             catch (Exception) { /* This is being swallowed by design. */ }
                         }
 
                         Implementor.WriteLine($"Content: [{req.ContentType ?? "None"}]");
-                        if (json != null || !string.IsNullOrEmpty(body))
-                            Implementor.WriteLine(json == null ? body : json.ToString());
+                        if (jo != null || !string.IsNullOrEmpty(body))
+                            Implementor.WriteLine(jo == null ? body : JsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
                     }
                     else
                         Implementor.WriteLine($"Content: [{req.ContentType ?? "None"}] => Response.Body is not in a read state.");
@@ -139,7 +139,7 @@ namespace UnitTestEx.Functions
                 else if (reqVal is IFormattable ifm)
                     Implementor.WriteLine($"Content: {ifm.ToString(null, CultureInfo.CurrentCulture)}");
                 else
-                    Implementor.WriteLine(JsonConvert.SerializeObject(reqVal, Formatting.Indented));
+                    Implementor.WriteLine(JsonSerializer.Serialize(reqVal, JsonWriteFormat.Indented));
             }
 
             Implementor.WriteLine("");
@@ -167,25 +167,31 @@ namespace UnitTestEx.Functions
                     else
                     {
                         Implementor.WriteLine($"Content: [{ct}] {(or.Value == null ? "<none>" : $"Type: {or.Value.GetType()}")}");
-                        Implementor.WriteLine(JsonConvert.SerializeObject(or.Value, Formatting.Indented));
+                        Implementor.WriteLine(JsonSerializer.Serialize(or.Value, JsonWriteFormat.Indented));
                     }
                 }
                 else if (res is JsonResult jr)
                 {
                     Implementor.WriteLine($"Content: [{jr.ContentType ?? "None"}]");
                     if (jr.Value != null)
-                        Implementor.WriteLine(JsonConvert.SerializeObject(jr.Value, Formatting.Indented));
+                        Implementor.WriteLine(JsonSerializer.Serialize(jr.Value, JsonWriteFormat.Indented));
                 }
                 else if (res is ContentResult cr)
                 {
                     Implementor.WriteLine($"Content: [{cr.ContentType ?? "None"}]");
-                    try
+                    if (cr.Content == null)
+                        Implementor.WriteLine("<null>");
+                    else
                     {
-                        Implementor.WriteLine(Newtonsoft.Json.Linq.JToken.Parse(cr.Content).ToString(Formatting.Indented));
-                    }
-                    catch
-                    {
-                        Implementor.WriteLine(cr.Content ?? "<null>");
+                        try
+                        {
+                            var jo = JsonSerializer.Deserialize(cr.Content);
+                            Implementor.WriteLine(JsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
+                        }
+                        catch
+                        {
+                            Implementor.WriteLine(cr.Content);
+                        }
                     }
                 }
             }

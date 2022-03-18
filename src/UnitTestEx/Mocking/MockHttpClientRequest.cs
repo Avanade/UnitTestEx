@@ -1,14 +1,14 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Json;
 using KellermanSoftware.CompareNetObjects;
 using Moq;
 using Moq.Protected;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
@@ -61,6 +61,11 @@ namespace UnitTestEx.Mocking
         internal MockHttpClientRequestRule Rule { get; }
 
         /// <summary>
+        /// Gets the <see cref="IJsonSerializer"/>.
+        /// </summary>
+        internal IJsonSerializer JsonSerializer => _client.Factory.JsonSerializer;
+
+        /// <summary>
         /// Indicates that the <see cref="MockHttpClientRequest"/> mock has been completed; in that a corresponding response has been provided.
         /// </summary>
         /// <remarks>It is possible to create a <see cref="MockHttpClientRequest"/> without specifying a response which is considered a non-complete state; a corresponding <see cref="MockHttpClientException"/> will be thrown by 
@@ -77,7 +82,7 @@ namespace UnitTestEx.Mocking
             {
                 var m = _client.MessageHandler.Protected()
                     .Setup<Task<HttpResponseMessage>>("SendAsync",
-                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri!.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
                         ItExpr.IsAny<CancellationToken>())
                     .ReturnsAsync(() =>
                     {
@@ -98,7 +103,7 @@ namespace UnitTestEx.Mocking
             {
                 var mseq = _client.MessageHandler.Protected()
                     .SetupSequence<Task<HttpResponseMessage>>("SendAsync",
-                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri!.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
                         ItExpr.IsAny<CancellationToken>());
 
                 foreach (var response in Rule.Responses)
@@ -128,17 +133,11 @@ namespace UnitTestEx.Mocking
             if (_mediaType == null || _content == null)
                 return "no";
 
-            switch (_mediaType.ToLowerInvariant())
+            return _mediaType.ToLowerInvariant() switch
             {
-                case MediaTypeNames.Application.Json:
-                    if (_content is JToken jt)
-                        return $"'{jt.ToString(Formatting.None)}' [{_mediaType}]";
-                    else
-                        return $"'{JsonConvert.SerializeObject(_content, Formatting.None)}' [{_mediaType}]";
-
-                default:
-                    return $"'{_content}' [{_mediaType}]";
-            }
+                MediaTypeNames.Application.Json => $"'{JsonSerializer.Serialize(_content, JsonWriteFormat.None)}' [{_mediaType}]",
+                _ => $"'{_content}' [{_mediaType}]",
+            };
         }
 
         /// <summary>
@@ -149,34 +148,37 @@ namespace UnitTestEx.Mocking
             if (_mediaType == null)
                 return request.Content == null;
 
-            if (request.Content == null)
+            if (request?.Content == null)
                 return false;
 
             if (_anyContent)
                 return true;
 
-            if (string.Compare(_mediaType, request.Content.Headers.ContentType.MediaType, StringComparison.InvariantCultureIgnoreCase) != 0)
+            if (string.Compare(_mediaType, request.Content?.Headers?.ContentType?.MediaType, StringComparison.InvariantCultureIgnoreCase) != 0)
                 return false;
 
-            var body = request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            var body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
 
             switch (_mediaType.ToLowerInvariant())
             {
-
+                // Deserialize the JSON and compare.
                 case MediaTypeNames.Application.Json:
                     try
                     {
-                        if (_content is JToken jte)
+                        if (_content is string cstr)
                         {
-                            var jta = JToken.Parse(body);
-                            return JToken.DeepEquals(jte, jta);
+                            var cur = new Utf8JsonReader(new BinaryData(cstr));
+                            var bur = new Utf8JsonReader(new BinaryData(body));
+
+                            if (JsonElement.TryParseValue(ref cur, out JsonElement? cje) && JsonElement.TryParseValue(ref bur, out JsonElement? bje))
+                                return new JsonElementComparer().Equals((JsonElement)cje, (JsonElement)bje);
                         }
 
                         var cc = ObjectComparer.CreateDefaultConfig();
                         cc.MembersToIgnore.AddRange(_membersToIgnore!);
 
                         var cl = new CompareLogic(cc);
-                        var cv = JsonConvert.DeserializeObject(body, _content!.GetType());
+                        var cv = JsonSerializer.Deserialize(body, _content!.GetType());
                         var cr = cl.Compare(_content, cv);
                         return cr.AreEqual;
                     }
@@ -254,9 +256,18 @@ namespace UnitTestEx.Mocking
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithJsonBody(string json)
         {
-            _content = JToken.Parse(json);
-            _mediaType = MediaTypeNames.Application.Json;
-            return new MockHttpClientRequestBody(Rule);
+            try
+            {
+                _ = JsonSerializer.Deserialize(json);
+                _content = json;
+                _mediaType = MediaTypeNames.Application.Json;
+                return new MockHttpClientRequestBody(Rule);
+
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"JSON is not considered valid: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -306,7 +317,7 @@ namespace UnitTestEx.Mocking
             {
                 _client.MessageHandler.Protected()
                     .Verify<Task<HttpResponseMessage>>("SendAsync", Rule.Times.Value,
-                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri!.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
                         ItExpr.IsAny<CancellationToken>());
             }
         }

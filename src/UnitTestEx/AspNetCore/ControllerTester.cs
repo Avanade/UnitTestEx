@@ -1,10 +1,9 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.TestHost;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -30,6 +29,7 @@ namespace UnitTestEx.AspNetCore
     public class ControllerTester<TController> where TController : ControllerBase
     {
         private readonly TestServer _testServer;
+        private readonly IJsonSerializer _jsonSerializer;
         private readonly TestFrameworkImplementor _implementor;
 
         /// <summary>
@@ -37,10 +37,12 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <param name="testServer">The <see cref="TestServer"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal ControllerTester(TestServer testServer, TestFrameworkImplementor implementor)
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        internal ControllerTester(TestServer testServer, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer)
         {
             _testServer = testServer;
             _implementor = implementor;
+            _jsonSerializer = jsonSerializer;
         }
 
         /// <summary>
@@ -73,7 +75,7 @@ namespace UnitTestEx.AspNetCore
             sw.Stop();
             LogOutput(res, sw);
 
-            return new HttpResponseMessageAssertor(res, _implementor);
+            return new HttpResponseMessageAssertor(res, _implementor, _jsonSerializer);
         }
 
         /// <summary>
@@ -81,6 +83,9 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         private void LogOutput(HttpResponseMessage res, Stopwatch sw)
         {
+            if (res.RequestMessage == null)
+                return;
+
             _implementor.WriteLine("");
             _implementor.WriteLine("API TESTER...");
             _implementor.WriteLine("");
@@ -106,7 +111,7 @@ namespace UnitTestEx.AspNetCore
                 _implementor.WriteLine("");
             }
 
-            JToken? json = null;
+            object? jo = null;
             if (res.RequestMessage.Content != null)
             {
                 // HACK: The Request Content is a forward only stream that is already read; we need to reset this private variable back to the start.
@@ -120,12 +125,12 @@ namespace UnitTestEx.AspNetCore
                 // Parse out the content.
                 try
                 {
-                    json = JToken.Parse(res.RequestMessage.Content.ReadAsStringAsync().Result);
+                    jo = _jsonSerializer.Deserialize(res.RequestMessage.Content.ReadAsStringAsync().Result);
                 }
                 catch (Exception) { /* This is being swallowed by design. */ }
 
                 _implementor.WriteLine($"Content: [{res.RequestMessage.Content?.Headers?.ContentType?.MediaType ?? "None"}]");
-                _implementor.WriteLine(json == null ? res.RequestMessage.Content?.ToString() : json.ToString());
+                _implementor.WriteLine(jo == null ? res.RequestMessage.Content?.ToString() : _jsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
             }
 
             _implementor.WriteLine("");
@@ -143,22 +148,22 @@ namespace UnitTestEx.AspNetCore
                 }
             }
 
-            json = null;
+            jo = null;
             var content = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
             if (!string.IsNullOrEmpty(content) && res.Content?.Headers?.ContentType?.MediaType == MediaTypeNames.Application.Json)
             {
                 try
                 {
-                    json = JToken.Parse(content);
+                    jo = _jsonSerializer.Deserialize(content);
                 }
                 catch (Exception) { /* This is being swallowed by design. */ }
             }
 
             var txt = $"Content: [{res.Content?.Headers?.ContentType?.MediaType ?? "none"}]";
-            if (json != null)
+            if (jo != null)
             {
                 _implementor.WriteLine(txt);
-                _implementor.WriteLine(json.ToString());
+                _implementor.WriteLine(_jsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
             }
             else
                 _implementor.WriteLine($"{txt} {(string.IsNullOrEmpty(content) ? "none" : content)}");
@@ -215,14 +220,14 @@ namespace UnitTestEx.AspNetCore
             if (att == null)
                 throw new InvalidOperationException($"Operation {mce.Method.Name} does not have an {nameof(HttpMethodAttribute)} specified.");
 
-            var uri = GetRequestUri(new HttpMethod(att.HttpMethods.First()), att.Template, @params);
+            var uri = GetRequestUri(att.Template, @params);
             return await RunAsync(new HttpMethod(att.HttpMethods.First()), uri, body).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Gets (infers) the Request URI.
         /// </summary>
-        private static string GetRequestUri(HttpMethod httpMethod, string? template, List<(string Name, object? Value)> @params)
+        private static string GetRequestUri(string? template, List<(string Name, object? Value)> @params)
         {
             var type = typeof(TController);
             var atts = type.GetCustomAttributes(typeof(RouteAttribute), false);
@@ -301,61 +306,65 @@ namespace UnitTestEx.AspNetCore
             return val;
         }
 
-        /// <summary>
-        /// Gets (infers) the Request URI.
-        /// </summary>
-        private string GetRequestUri(HttpMethod httpMethod, string operationName, object? request = null)
-        {
-            var type = typeof(TController);
-            var atts = type.GetCustomAttributes(typeof(RouteAttribute), false);
-            if (atts == null || atts.Length != 1)
-                throw new InvalidOperationException($"Controller {type.Name} must have a single RouteAttribute specified.");
+        // TODO: Review need!
+        ///// <summary>
+        ///// Gets (infers) the Request URI.
+        ///// </summary>
+        //private string GetRequestUri(HttpMethod httpMethod, string operationName, object? request = null)
+        //{
+        //    var type = typeof(TController);
+        //    var atts = type.GetCustomAttributes(typeof(RouteAttribute), false);
+        //    if (atts == null || atts.Length != 1)
+        //        throw new InvalidOperationException($"Controller {type.Name} must have a single RouteAttribute specified.");
 
-            var name = type.Name.EndsWith("Controller", StringComparison.OrdinalIgnoreCase) ? type.Name[0..^"Controller".Length] : type.Name;
-            var route = (atts[0] as RouteAttribute)?.Template.Replace("[controller]", name) + "/" + operationName;
+        //    var name = type.Name.EndsWith("Controller", StringComparison.OrdinalIgnoreCase) ? type.Name[0..^"Controller".Length] : type.Name;
+        //    var route = (atts[0] as RouteAttribute)?.Template.Replace("[controller]", name) + "/" + operationName;
 
-            if (httpMethod != HttpMethod.Get || request == null)
-                return route;
+        //    if (httpMethod != HttpMethod.Get || request == null)
+        //        return route;
 
-            var dict = new Dictionary<string, string>();
-            GetPathsAndValues(dict, JToken.FromObject(request));
-            var query = new System.Net.Http.FormUrlEncodedContent(dict);
+        //    var dict = new Dictionary<string, string>();
+        //    var json = _jsonSerializer.Serialize(request);
+        //    var je = Stj.JsonDocument.Parse(json).RootElement;
+            
+        //    GetPathsAndValues(dict, JToken.FromObject(request));
+        //    var query = new System.Net.Http.FormUrlEncodedContent(dict);
 
-            return route + "?" + query.ReadAsStringAsync().GetAwaiter().GetResult();
-        }
+        //    return route + "?" + query.ReadAsStringAsync().GetAwaiter().GetResult();
+        //}
 
-        /// <summary>
-        /// Recursively get all the paths and values.
-        /// </summary>
-        private void GetPathsAndValues(IDictionary<string, string> dict, JToken json)
-        {
-            if (json.HasValues)
-            {
-                foreach (var ct in json.Children().ToList())
-                {
-                    GetPathsAndValues(dict, ct);
-                }
-            }
-            else
-            {
-                if (json is JValue jv)
-                {
-                    dict.Add(jv.Path, jv.Type == JTokenType.Date
-                        ? jv.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
-                        : jv.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                }
-            }
-        }
+        ///// <summary>
+        ///// Recursively get all the paths and values.
+        ///// </summary>
+        //private void GetPathsAndValues(IDictionary<string, string> dict, Stj.JsonElement json)
+        //{
+        //    if (json.HasValues)
+        //    {
+        //        foreach (var ct in json.Children().ToList())
+        //        {
+        //            GetPathsAndValues(dict, ct);
+        //        }
+        //    }
+        //    else
+        //    {
+        //        if (json is JValue jv)
+        //        {
+        //            dict.Add(jv.Path, jv.Type == JTokenType.Date
+        //                ? jv.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
+        //                : jv.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        //        }
+        //    }
+        //}
 
         /// <summary>
         /// Create the content by JSON serializing the request value.
         /// </summary>
-        private static StringContent? CreateJsonContentFromValue(object value)
+        private StringContent? CreateJsonContentFromValue(object value)
         {
             if (value == null)
                 return null;
 
-            var content = new StringContent(JsonConvert.SerializeObject(value));
+            var content = new StringContent(_jsonSerializer.Serialize(value));
             content.Headers.ContentType = MediaTypeHeaderValue.Parse(MediaTypeNames.Application.Json);
             return content;
         }

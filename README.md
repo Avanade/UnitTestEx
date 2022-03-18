@@ -38,7 +38,7 @@ _UnitTestEx_ encapsulates the `WebApplicationFactory` providing a simple means t
 
 ``` csharp
 using var test = ApiTester.Create<Startup>();
-test.ConfigureServices(sc => mcf.Replace(sc))
+test.ReplaceHttpClientFactory(mcf)
     .Controller<ProductController>()
     .Run(c => c.Get("abc"))
     .AssertOK()
@@ -55,7 +55,7 @@ The following is an [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTes
 
 ``` csharp
 using var test = FunctionTester.Create<Startup>();
-test.ConfigureServices(sc => mcf.Replace(sc))
+test.ReplaceHttpClientFactory(mcf)
     .HttpTrigger<ProductFunction>()
     .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
     .AssertOK()
@@ -72,7 +72,7 @@ The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTe
 
 ``` csharp
 using var test = FunctionTester.Create<Startup>();
-test.ConfigureServices(sc => mcf.Replace(sc))
+test.ReplaceHttpClientFactory(mcf)
     .ServiceBusTrigger<ServiceBusFunction>()
     .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
     .AssertSuccess();
@@ -108,7 +108,7 @@ The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTe
 
 ``` csharp
 using var test = FunctionTester.Create<Startup>();
-test.ConfigureServices(sc => mcf.Replace(sc))
+test.ReplaceHttpClientFactory(mcf)
     .Type<ServiceBusFunction>()
     .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
     .AssertSuccess();
@@ -128,7 +128,7 @@ mcf.CreateClient("XXX", new Uri("https://somesys"))
     .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
 using var test = ApiTester.Create<Startup>();
-test.ConfigureServices(sc => mcf.Replace(sc))
+test.ReplaceHttpClientFactory(mcf)
     .Controller<ProductController>()
     .Run(c => c.Get("abc"))
     .AssertOK()

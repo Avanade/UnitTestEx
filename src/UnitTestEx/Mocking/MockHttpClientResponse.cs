@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -146,7 +145,7 @@ namespace UnitTestEx.Mocking
         /// <param name="value">The value to convert to <see cref="MediaTypeNames.Application.Json"/> content.</param>
         /// <param name="statusCode">The optional <see cref="HttpStatusCode"/> (defaults to <see cref="HttpStatusCode.OK"/>).</param>
         /// <param name="response">The optional action to enable additional configuration of the <see cref="HttpResponseMessage"/>.</param>
-        public void WithJson<T>(T value, HttpStatusCode? statusCode = null, Action<HttpResponseMessage>? response = null) => WithJson(JsonConvert.SerializeObject(value), statusCode, response);
+        public void WithJson<T>(T value, HttpStatusCode? statusCode = null, Action<HttpResponseMessage>? response = null) => WithJson(_clientRequest.JsonSerializer.Serialize(value, CoreEx.Json.JsonWriteFormat.None), statusCode, response);
 
         /// <summary>
         /// Provides the mocked response using the <paramref name="json"/> formatted string as the content.

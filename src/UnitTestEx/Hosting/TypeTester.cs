@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -22,7 +22,8 @@ namespace UnitTestEx.Hosting
         /// </summary>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal TypeTester(IServiceScope serviceScope, TestFrameworkImplementor implementor) : base(serviceScope, implementor) { }
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        internal TypeTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(serviceScope, implementor, jsonSerializer) { }
 
         /// <summary>
         /// Runs the asynchronous method with no result.
@@ -56,7 +57,7 @@ namespace UnitTestEx.Hosting
 
             LogElapsed(ex, sw.ElapsedMilliseconds);
             LogTrailer();
-            return new VoidAssertor(ex, Implementor);
+            return new VoidAssertor(ex, Implementor, JsonSerializer);
         }
 
         /// <summary>
@@ -102,12 +103,12 @@ namespace UnitTestEx.Hosting
                 {
                     Implementor.WriteLine($"Result: {(result == null ? "<null>" : "")}");
                     if (result != null)
-                        Implementor.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
+                        Implementor.WriteLine(JsonSerializer.Serialize(result, JsonWriteFormat.Indented));
                 }
             }
 
             LogTrailer();
-            return new ResultAssertor<TResult>(result, ex, Implementor);
+            return new ResultAssertor<TResult>(result, ex, Implementor, JsonSerializer);
         }
 
         /// <summary>

@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Moq;
 using System;
 using UnitTestEx.Abstractions;
 
@@ -18,7 +17,7 @@ namespace UnitTestEx.AspNetCore
     /// </summary>
     /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
-    public abstract class ApiTesterBase<TEntryPoint, TSelf> : IDisposable where TEntryPoint : class where TSelf : ApiTesterBase<TEntryPoint, TSelf> 
+    public abstract class ApiTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : class where TSelf : ApiTesterBase<TEntryPoint, TSelf> 
     {
         private bool _disposed;
         private WebApplicationFactory<TEntryPoint> _waf;
@@ -27,11 +26,8 @@ namespace UnitTestEx.AspNetCore
         /// Initializes a new instance of the <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        protected ApiTesterBase(TestFrameworkImplementor implementor)
-        {
-            Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
-            _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => whb.UseSolutionRelativeContentRoot("").ConfigureServices(sc => sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(implementor.CreateLoggerProvider()); })));
-        }
+        protected ApiTesterBase(TestFrameworkImplementor implementor) : base(implementor)
+            => _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => whb.UseSolutionRelativeContentRoot("").ConfigureServices(sc => sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(implementor.CreateLoggerProvider()); })));
 
         /// <summary>
         /// Gets the <see cref="WebApplicationFactory{TEntryPoint}"/>.
@@ -39,16 +35,11 @@ namespace UnitTestEx.AspNetCore
         internal WebApplicationFactory<TEntryPoint> WebApplicationFactory => _waf!;
 
         /// <summary>
-        /// Gets the <see cref="TestFrameworkImplementor"/>.
-        /// </summary>
-        internal TestFrameworkImplementor Implementor { get; }
-
-        /// <summary>
         /// Provides an opportunity to further configure the services. This can be called multiple times. 
         /// </summary>
         /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf ConfigureServices(Action<IServiceCollection> configureServices)
+        public override TSelf ConfigureServices(Action<IServiceCollection> configureServices)
         {
             if (configureServices != null)
                 _waf = WebApplicationFactory.WithWebHostBuilder(whb => whb.ConfigureServices(configureServices));
@@ -60,37 +51,13 @@ namespace UnitTestEx.AspNetCore
         /// Gets the <see cref="IServiceProvider"/> from the underlying host.
         /// </summary>
         /// <returns>The <see cref="IServiceProvider"/>.</returns>
-        public IServiceProvider Services => _waf.Services;
+        public override IServiceProvider Services => _waf.Services;
 
         /// <summary>
         /// Gets the <see cref="IConfiguration"/> from the underlying host.
         /// </summary>
         /// <returns>The <see cref="IConfiguration"/>.</returns>
-        public IConfiguration Configuration => Services.GetService<IConfiguration>();
-
-        /// <summary>
-        /// Replace singleton service with a mock object.
-        /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
-        /// <param name="mock">The <see cref="Mock{T}"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf MockSingletonService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceSingleton(_ => mock.Object));
-
-        /// <summary>
-        /// Replace scoped service with a mock object.
-        /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
-        /// <param name="mock">The <see cref="Mock{T}"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf MockScopedService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceScoped(_ => mock.Object));
-
-        /// <summary>
-        /// Replace transient service with a mock object.
-        /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
-        /// <param name="mock">The <see cref="Mock{T}"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf MockTransientService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceTransient(_ => mock.Object));
+        public override IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
 
         /// <summary>
         /// Bypasses authorization by using the <see cref="BypassAuthorizationHandler"/> <see cref="IAuthorizationHandler"/>.
@@ -103,7 +70,7 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <typeparam name="TController">The API Controller <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="ControllerTester{TController}"/>.</returns>
-        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(WebApplicationFactory.Server, Implementor);
+        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(WebApplicationFactory.Server, Implementor, JsonSerializer);
 
         /// <summary>
         /// Releases all resources.

@@ -1,8 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Azure.Messaging.ServiceBus;
+using CoreEx.Json;
 using System;
-using System.Collections.Generic;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Functions;
 
@@ -19,7 +18,8 @@ namespace UnitTestEx.Assertors
         /// <param name="result">The result value.</param>
         /// <param name="exception">The <see cref="Exception"/> (if any).</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal ServiceBusEmulatorRunAssertor(ServiceBusEmulatorRunResult result, Exception? exception, TestFrameworkImplementor implementor) : base(exception, implementor) => Result = result;
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        internal ServiceBusEmulatorRunAssertor(ServiceBusEmulatorRunResult result, Exception? exception, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(exception, implementor, jsonSerializer) => Result = result;
 
         /// <summary>
         /// Gets the <see cref="ServiceBusEmulatorRunResult"/>.

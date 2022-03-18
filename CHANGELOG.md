@@ -2,6 +2,12 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.12
+- *Enhancement:* **Breaking change.** Integrate [`CoreEx`](https://github.com/Avanade/CoreEx/) package which primarily brings [`IJsonSerializer`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx/Json/IJsonSerializer.cs) functionality to enable configuration of either [`CoreEx.Text.Json.JsonSerializer`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx/Text/Json/JsonSerializer.cs) (default) or [`CoreEx.Newtonsoft.Json.JsonSerializer`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx.Newtonsoft/Json/JsonSerializer.cs). The `MockHttpClientFactory`, `ApiTester` and `FunctionTester` have new method `UseJsonSerializer` to individually update from the default. To change the default for all tests then set [`CoreEx.Json.JsonSerializer.Default`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx/Json/JsonSerializer.cs) to the desired serializer.
+- *Enhancement:* Improved the replacement of the `MockHttpClientFactory` with the `ApiTester` and `FunctionTester`. Existing code `test.ConfigureServices(sc => mcf.Replace(sc))` can be replaced with `test.ReplaceHttpClientFactory(mcf)`.
+- *Enhancement:* Added `ReplaceSingleton`, `ReplaceScoped` and `ReplaceTransient` methods directly to `ApiTester` and `FunctionTester`. For example, existing code `test.ConfigureServices(sc => sc.ReplaceTransient<XXX>())` can be replaced with `test.ReplaceTransient<XXX>()`.
+- *Enhancement:* Added addtional `CreateHttpRequest` overloads to support additional parameters `HttpRequestOptions? requestOptions = null, params IHttpArg[] args` as enabled by `CoreEx`. These enable additional capabilities for the `HttpRequest` query string and headers.
+
 ## v1.0.11
 - *[Issue 24](https://github.com/Avanade/UnitTestEx/issues/24)*: Added additional `IServiceCollection.Replace` extension methods to support `ReplaceXxx<T>()` and `ReplaceXxx<T, T>()` to match the standard `AddXxx` methods.
 

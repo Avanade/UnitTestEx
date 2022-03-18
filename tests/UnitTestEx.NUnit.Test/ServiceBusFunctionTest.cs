@@ -18,7 +18,7 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
 
             using var test = FunctionTester.Create<Startup>();
-            test.ConfigureServices(sc => mcf.Replace(sc))
+            test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = "Bob", LastName = "Smith" }, test.Logger))
                 .AssertSuccess();
@@ -34,7 +34,7 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = (string)null }).Respond.With(HttpStatusCode.InternalServerError);
 
             using var test = FunctionTester.Create<Startup>();
-            test.ConfigureServices(sc => mcf.Replace(sc))
+            test.ReplaceHttpClientFactory(mcf)
                 .Type<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = "Bob", LastName = "Smith" }, test.Logger))
                 .AssertException<HttpRequestException>("Response status code does not indicate success: 500 (Internal Server Error).");
@@ -48,7 +48,7 @@ namespace UnitTestEx.NUnit.Test
             var mcf = MockHttpClientFactory.Create();
 
             using var test = FunctionTester.Create<Startup>();
-            test.ConfigureServices(sc => mcf.Replace(sc))
+            test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = null, LastName = "Smith" }, test.Logger))
                 .AssertException<InvalidOperationException>("First name is required.");
@@ -64,7 +64,7 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
 
             using var test = FunctionTester.Create<Startup>();
-            test.ConfigureServices(sc => mcf.Replace(sc))
+            test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
                 .AssertSuccess();
@@ -80,7 +80,7 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = (string)null }).Respond.With(HttpStatusCode.InternalServerError);
 
             using var test = FunctionTester.Create<Startup>();
-            var r = test.ConfigureServices(sc => mcf.Replace(sc))
+            var r = test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
                 .AssertException<HttpRequestException>("Response status code does not indicate success: 500 (Internal Server Error).");
@@ -94,7 +94,7 @@ namespace UnitTestEx.NUnit.Test
             var mcf = MockHttpClientFactory.Create();
 
             using var test = FunctionTester.Create<Startup>();
-            test.ConfigureServices(sc => mcf.Replace(sc))
+            test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = null, LastName = "Smith" }), test.Logger))
                 .AssertException<InvalidOperationException>("First name is required.");
@@ -109,7 +109,7 @@ namespace UnitTestEx.NUnit.Test
             mcf.CreateClient("XXX", new Uri("https://somesys")).Request(HttpMethod.Get, "test").Respond.With("test output");
 
             using var test = FunctionTester.Create<Startup>();
-            var hc = test.ConfigureServices(sc => mcf.Replace(sc))
+            var hc = test.ReplaceHttpClientFactory(mcf)
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
             var r = hc.GetAsync("test").Result;

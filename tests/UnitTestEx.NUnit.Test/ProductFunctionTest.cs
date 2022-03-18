@@ -18,9 +18,9 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Get, "products/xyz").Respond.With(HttpStatusCode.NotFound);
 
             using var test = FunctionTester.Create<Startup>();
-            test.ConfigureServices(sc => mcf.Replace(sc))
+            test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/xyz", null), "xyz", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/xyz"), "xyz", test.Logger))
                 .AssertNotFound();
         }
 
@@ -32,9 +32,9 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
             using var test = FunctionTester.Create<Startup>();
-            test.ConfigureServices(sc => mcf.Replace(sc))
+            test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc", test.Logger))
                 .AssertOK()
                 .Assert(new { id = "Abc", description = "A blue carrot" });
         }
@@ -47,9 +47,9 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
             using var test = FunctionTester.Create<Startup>();
-            test.ConfigureServices(sc => mcf.Replace(sc))
+            test.ReplaceHttpClientFactory(mcf)
                 .Type<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc", test.Logger))
                 .ToActionResultAssertor()
                     .AssertOK()
                     .Assert(new { id = "Abc", description = "A blue carrot" });
@@ -61,9 +61,9 @@ namespace UnitTestEx.NUnit.Test
             var mcf = MockHttpClientFactory.Create();
 
             using var test = FunctionTester.Create<Startup>();
-            test.ConfigureServices(sc => mcf.Replace(sc))
+            test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/exception", null), "exception", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/exception"), "exception", test.Logger))
                 .AssertException<InvalidOperationException>("An unexpected exception occured.");
         }
     }

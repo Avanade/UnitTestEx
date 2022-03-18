@@ -1,13 +1,12 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Azure.Messaging.ServiceBus;
+using CoreEx.Json;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -41,12 +40,14 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
         /// <param name="methodName">An optional method name. Where not specified will attempt to automatically find a single method that has a parameter with <see cref="ServiceBusTriggerAttribute"/>.</param>
         /// <param name="delay">Adds the specified delay before any underlying Service Bus receive operation.</param>
-        internal ServiceBusEmulatorTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, string methodName, TimeSpan? delay)
+        internal ServiceBusEmulatorTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer, string methodName, TimeSpan? delay)
         {
             ServiceScope = serviceScope ?? throw new ArgumentNullException(nameof(serviceScope));
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+            JsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
             _delay = delay ?? TimeSpan.Zero;
 
             var x = FindReceiveMethod(methodName);
@@ -54,7 +55,7 @@ namespace UnitTestEx.Functions
             Trigger = x.Trigger!;
             Parameter = x.Parameter;
 
-            var config = ServiceScope.ServiceProvider.GetService<IConfiguration>();
+            var config = ServiceScope.ServiceProvider.GetRequiredService<IConfiguration>();
             var (ConnectionString, QueueName, TopicName, SubscriptionName) = ServiceBusTriggerTester<TFunction>.VerifyServiceBusTriggerProperties(config, Trigger);
             _connectionString = ConnectionString;
             _queueName = QueueName;
@@ -73,6 +74,11 @@ namespace UnitTestEx.Functions
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
         internal TestFrameworkImplementor Implementor { get; }
+
+        /// <summary>
+        /// Gets the <see cref="IJsonSerializer"/>.
+        /// </summary>
+        internal IJsonSerializer JsonSerializer { get; }
 
         /// <summary>
         /// Gets the <see cref="MemberInfo"/>.
@@ -210,7 +216,7 @@ namespace UnitTestEx.Functions
         /// <param name="value">The value.</param>
         /// <param name="messageModify">Optional <see cref="ServiceBusMessage"/> modifier than enables the message to be further configured.</param>
         public Task SendValueAsync<T>(T value, Action<ServiceBusMessage>? messageModify = null)
-            => SendFromJsonAsync(JsonConvert.SerializeObject(value), messageModify);
+            => SendFromJsonAsync(JsonSerializer.Serialize(value), messageModify);
 
         /// <summary>
         /// Sends a message where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
@@ -228,7 +234,7 @@ namespace UnitTestEx.Functions
         /// <param name="messageModify">Optional <see cref="ServiceBusMessage"/> modifier than enables the message to be further configured.</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
         public Task SendFromResourceAsync(string resourceName, Action<ServiceBusMessage>? messageModify = null, Assembly? assembly = null)
-            => SendFromJsonAsync(Resource.GetString(resourceName, assembly ?? Assembly.GetCallingAssembly()), messageModify);
+            => SendFromJsonAsync(Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly()), messageModify);
 
         /// <summary>
         /// Sends a message where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the serialized <paramref name="json"/>.
@@ -239,7 +245,7 @@ namespace UnitTestEx.Functions
         {
             var message = new ServiceBusMessage(Encoding.UTF8.GetBytes(json ?? throw new ArgumentNullException(nameof(json))))
             {
-                ContentType = "application/json",
+                ContentType = MediaTypeNames.Application.Json,
                 MessageId = Guid.NewGuid().ToString()
             };
 
@@ -294,10 +300,10 @@ namespace UnitTestEx.Functions
             {
                 sw.Stop();
                 LogOutput(null, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, "Queue/Topic empty; i.e. there are currently no messages.");
-                return new ServiceBusEmulatorRunAssertor(sbsrr, null, Implementor);
+                return new ServiceBusEmulatorRunAssertor(sbsrr, null, Implementor, JsonSerializer);
             }
 
-            var logger = ServiceScope.ServiceProvider.GetService<ILogger<ServiceBusTriggerTester<TFunction>>>();
+            var logger = ServiceScope.ServiceProvider.GetRequiredService<ILogger<ServiceBusTriggerTester<TFunction>>>();
             var sbma = new ServiceBusMessageActionsWrapper(receiver, logger);
 
             // Invoke the function method best as we can.
@@ -328,7 +334,7 @@ namespace UnitTestEx.Functions
                 sw.Stop();
                 sbsrr.SetUsingActionsWrapper(sbma);
                 LogOutput(null, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, null);
-                return new ServiceBusEmulatorRunAssertor(sbsrr, null, Implementor);
+                return new ServiceBusEmulatorRunAssertor(sbsrr, null, Implementor, JsonSerializer);
             }
             catch (Exception ex)
             {
@@ -341,7 +347,7 @@ namespace UnitTestEx.Functions
 
                 sbsrr.SetUsingActionsWrapper(sbma);
                 LogOutput(ex, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, null);
-                return new ServiceBusEmulatorRunAssertor(sbsrr, ex, Implementor);
+                return new ServiceBusEmulatorRunAssertor(sbsrr, ex, Implementor, JsonSerializer);
             }
         }
 
@@ -469,8 +475,9 @@ namespace UnitTestEx.Functions
                 Implementor.WriteLine("Body:");
                 try
                 {
-                    var jt = JToken.Parse(msg.Body.ToString());
-                    Implementor.WriteLine(jt.ToString());
+                    var jo = JsonSerializer.Deserialize(msg.Body);
+                    var json = JsonSerializer.Serialize(jo, JsonWriteFormat.Indented);
+                    Implementor.WriteLine(json);
                 }
                 catch
                 {
@@ -501,8 +508,9 @@ namespace UnitTestEx.Functions
                 Implementor.WriteLine("Body:");
                 try
                 {
-                    var jt = JToken.Parse(msg.Body.ToString());
-                    Implementor.WriteLine(jt.ToString());
+                    var jo = JsonSerializer.Deserialize(msg.Body);
+                    var json = JsonSerializer.Serialize(jo, JsonWriteFormat.Indented);
+                    Implementor.WriteLine(json);
                 }
                 catch
                 {

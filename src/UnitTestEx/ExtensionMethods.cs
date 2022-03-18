@@ -177,7 +177,7 @@ namespace UnitTestEx
         public static T CreateInstance<T>(this IServiceProvider serviceProvider) where T : class
         {
             // Try instantiating using service provider and use if successful.
-            var val = serviceProvider.GetService<T>();
+            var val = (serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider))).GetService<T>();
             if (val != null)
                 return val;
 
@@ -188,7 +188,7 @@ namespace UnitTestEx
 
             // Simulate dependency injection for each parameter.
             var pis = ctor.GetParameters();
-            var args = new object[pis.Length];
+            var args = new object?[pis.Length];
             for (int i = 0; i < pis.Length; i++)
             {
                 args[i] = serviceProvider.GetService(pis[i].ParameterType);
