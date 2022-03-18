@@ -44,7 +44,7 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
 
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
-            using var test = FunctionTester.Create<Startup>(includeUserSecrets: true).ConfigureServices(sc => mcf.Replace(sc));
+            using var test = FunctionTester.Create<Startup>(includeUserSecrets: true).ReplaceHttpClientFactory(mcf);
             var sbcs = test.Services.GetService<IConfiguration>().GetValue<string>("ServiceBusConnectionString");
             if (sbcs == null)
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");
@@ -88,7 +88,7 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
 
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
-            using var test = FunctionTester.Create<Startup>(includeUserSecrets: true).ConfigureServices(sc => mcf.Replace(sc));
+            using var test = FunctionTester.Create<Startup>(includeUserSecrets: true).ReplaceHttpClientFactory(mcf);
             var sbcs = test.Services.GetService<IConfiguration>().GetValue<string>("ServiceBusConnectionString");
             if (sbcs == null)
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");

@@ -2,7 +2,6 @@
 
 using CoreEx.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -13,7 +12,7 @@ using UnitTestEx.Abstractions;
 namespace UnitTestEx.Hosting
 {
     /// <summary>
-    /// Provides the base <see cref="IHost"/> unit-testing capabilities.
+    /// Provides the base host unit-testing capabilities.
     /// </summary>
     /// <typeparam name="THost">The host <see cref="Type"/>.</typeparam>
     public class HostTesterBase<THost> where THost : class

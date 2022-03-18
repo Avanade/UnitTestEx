@@ -100,14 +100,14 @@ namespace UnitTestEx.MSTest.Test
         {
             var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
-            mc.Request(HttpMethod.Post, "products/xyz").WithJsonBody("{ \"firstName\": \"Bob\", \"lastName\": \"Jane\" }").Respond.With(HttpStatusCode.Accepted);
+            mc.Request(HttpMethod.Post, "products/xyz").WithJsonBody("{\"firstName\":\"Bob\",\"lastName\":\"Jane\"}").Respond.With(HttpStatusCode.Accepted);
             mc.Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Jenny", LastName = "Browne" }).Respond.With(HttpStatusCode.OK);
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
             Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
 
-            res = await hc.PostAsync("products/xyz", new StringContent("{ \"firstName\": \"Jenny\", \"lastName\": \"Browne\" }", Encoding.UTF8, MediaTypeNames.Application.Json)).ConfigureAwait(false);
+            res = await hc.PostAsync("products/xyz", new StringContent("{\"firstName\":\"Jenny\",\"lastName\":\"Browne\"}", Encoding.UTF8, MediaTypeNames.Application.Json)).ConfigureAwait(false);
             Assert.AreEqual(HttpStatusCode.OK, res.StatusCode);
         }
 

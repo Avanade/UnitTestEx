@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -20,7 +21,11 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Initializes a new instance of the <see cref="MockHttpClientFactory"/> class.
         /// </summary>
-        public MockHttpClientFactory(TestFrameworkImplementor implementor) => Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+        public MockHttpClientFactory(TestFrameworkImplementor implementor)
+        {
+            Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+            JsonSerializer = CoreEx.Json.JsonSerializer.Default;
+        }
 
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
@@ -36,6 +41,23 @@ namespace UnitTestEx.Mocking
         /// Gets the <see cref="Mock"/> <see cref="IHttpClientFactory"/>.
         /// </summary>
         public Mock<IHttpClientFactory> HttpClientFactory { get; } = new Mock<IHttpClientFactory>();
+
+        /// <summary>
+        /// Gets the <see cref="IJsonSerializer"/>.
+        /// </summary>
+        /// <remarks>Defaults to <see cref="CoreEx.Json.JsonSerializer.Default"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="UseJsonSerializer(IJsonSerializer)"/> method.</remarks>
+        public IJsonSerializer JsonSerializer { get; private set; }
+
+        /// <summary>
+        /// Updates the <see cref="JsonSerializer"/> used by the <see cref="MockHttpClientFactory"/> internally.
+        /// </summary>
+        /// <param name="jsonSerializer">The <see cref="JsonSerializer"/>.</param>
+        /// <returns>The current instance to support fluent-style method-chaining.</returns>
+        public MockHttpClientFactory UseJsonSerializer(IJsonSerializer jsonSerializer)
+        {
+            JsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
+            return this;
+        }
 
         /// <summary>
         /// Creates the <see cref="MockHttpClient"/> with the specified logical <paramref name="name"/>.

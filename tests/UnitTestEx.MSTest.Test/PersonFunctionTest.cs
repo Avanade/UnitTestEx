@@ -13,7 +13,7 @@ namespace UnitTestEx.MSTest.Test
         {
             using var test = FunctionTester.Create<Startup>();
             (await test.HttpTrigger<PersonFunction>()
-                .RunAsync(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person", null), test.Logger)))
+                .RunAsync(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person"), test.Logger)))
                 .AssertOK()
                 .Assert("This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response.");
         }
@@ -23,7 +23,7 @@ namespace UnitTestEx.MSTest.Test
         {
             using var test = FunctionTester.Create<Startup>();
             test.HttpTrigger<PersonFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person?name=Trevor", null), test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person?name=Trevor"), test.Logger))
                 .AssertOK()
                 .Assert("Hello, Trevor. This HTTP triggered function executed successfully.");
         }

@@ -2,7 +2,7 @@
 
 using Azure.Core.Amqp;
 using Azure.Messaging.ServiceBus;
-using CoreEx.Json;
+using CoreEx.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -13,6 +13,7 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
@@ -29,7 +30,7 @@ namespace UnitTestEx.Functions
     /// </summary>
     /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
-    public abstract class FunctionTesterBase<TEntryPoint, TSelf> : IDisposable where TEntryPoint : FunctionsStartup, new() where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
+    public abstract class FunctionTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : FunctionsStartup, new() where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
         private static readonly object _lock = new();
         private static bool _localSettingsDone = false;
@@ -59,16 +60,14 @@ namespace UnitTestEx.Functions
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration)
+        protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) : base(implementor)
         {
-            Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
-            JsonSerializer = CoreEx.Json.JsonSerializer.Default;
-            Logger = Implementor.CreateLogger(GetType().Name);
+            Logger = implementor.CreateLogger(GetType().Name);
 
             var ep2 = new TEntryPoint();
             _hostBuilder = new HostBuilder()
                 .UseEnvironment("Development")
-                .ConfigureLogging((lb) => lb.AddProvider(Implementor.CreateLoggerProvider()))
+                .ConfigureLogging((lb) => lb.AddProvider(implementor.CreateLoggerProvider()))
                 .ConfigureWebHostDefaults(c =>
                 {
                     c.ConfigureAppConfiguration((cx, cb) =>
@@ -157,32 +156,10 @@ namespace UnitTestEx.Functions
         }
 
         /// <summary>
-        /// Gets the <see cref="TestFrameworkImplementor"/>.
-        /// </summary>
-        public TestFrameworkImplementor Implementor { get; }
-
-        /// <summary>
         /// Gets the runtime <see cref="ILogger"/>.
         /// </summary>
         /// <returns>The <see cref="ILogger"/>.</returns>
         public ILogger Logger { get; }
-
-        /// <summary>
-        /// Gets the <see cref="IJsonSerializer"/>.
-        /// </summary>
-        /// <remarks>Defaults to <see cref="CoreEx.Json.JsonSerializer.Default"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="UseJsonSerializer(IJsonSerializer)"/> method.</remarks>
-        public IJsonSerializer JsonSerializer { get; private set; }
-
-        /// <summary>
-        /// Updates the <see cref="JsonSerializer"/> used by the <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> itself, not the underlying executing host which should be configured separately.
-        /// </summary>
-        /// <param name="jsonSerializer">The <see cref="JsonSerializer"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf UseJsonSerializer(IJsonSerializer jsonSerializer)
-        {
-            JsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
-            return (TSelf)this;
-        }
 
         /// <summary>
         /// Gets the <see cref="IHost"/>.
@@ -193,20 +170,20 @@ namespace UnitTestEx.Functions
         /// Gets the <see cref="IServiceProvider"/> from the underlying host.
         /// </summary>
         /// <returns>The <see cref="IServiceProvider"/>.</returns>
-        public IServiceProvider Services => GetHost().Services;
+        public override IServiceProvider Services => GetHost().Services;
 
         /// <summary>
         /// Gets the <see cref="IConfiguration"/> from the underlying host.
         /// </summary>
         /// <returns>The <see cref="IConfiguration"/>.</returns>
-        public IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
+        public override IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
 
         /// <summary>
         /// Provides an opportunity to further configure the services. This can be called multiple times. 
         /// </summary>
         /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf ConfigureServices(Action<IServiceCollection> configureServices)
+        public override TSelf ConfigureServices(Action<IServiceCollection> configureServices)
         {
             if (_host != null)
                 throw new InvalidOperationException($"{nameof(ConfigureServices)} cannot be invoked after a test execution has occured.");
@@ -216,30 +193,6 @@ namespace UnitTestEx.Functions
 
             return (TSelf)this;
         }
-
-        /// <summary>
-        /// Replace singleton service with a mock object.
-        /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
-        /// <param name="mock">The <see cref="Mock{T}"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf MockSingletonService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceSingleton(_ => mock.Object));
-
-        /// <summary>
-        /// Replace scoped service with a mock object.
-        /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
-        /// <param name="mock">The <see cref="Mock{T}"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf MockScopedService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceScoped(_ => mock.Object));
-
-        /// <summary>
-        /// Replace transient service with a mock object.
-        /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
-        /// <param name="mock">The <see cref="Mock{T}"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf MockTransientService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceTransient(_ => mock.Object));
 
         /// <summary>
         /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> that is to be tested.
@@ -268,7 +221,19 @@ namespace UnitTestEx.Functions
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The requuest uri.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null) => CreateHttpRequest(httpMethod, requestUri, null);
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null) 
+            => CreateHttpRequest(httpMethod, requestUri, (string?)null, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with no body.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="requestOptions">The optional <see cref="HttpRequestOptions"/>.</param>
+        /// <param name="args">Zero or more <see cref="IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
+            => CreateHttpRequest(httpMethod, requestUri, null, requestOptions, args);
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with <i>optional</i> <paramref name="body"/> as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Text.Plain"/>.
@@ -278,6 +243,18 @@ namespace UnitTestEx.Functions
         /// <param name="body">The optional body content.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
         public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, string? body = null)
+            => CreateHttpRequest(httpMethod, requestUri, body, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with <i>optional</i> <paramref name="body"/> as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Text.Plain"/>.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="body">The optional body content.</param>
+        /// <param name="requestOptions">The optional <see cref="HttpRequestOptions"/>.</param>
+        /// <param name="args">Zero or more <see cref="IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, string? body = null, HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
         {
             if (httpMethod == HttpMethod.Get && body != null)
                 Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
@@ -292,7 +269,19 @@ namespace UnitTestEx.Functions
             context.Request.Scheme = uri.Scheme;
             context.Request.Host = new HostString(uri.Host);
             context.Request.Path = uri.LocalPath;
-            context.Request.QueryString = new QueryString(uri.Query);
+
+            // Extend the query string from the IHttpArgs.
+            var qs = new QueryString(uri.Query);
+            foreach (var arg in (args ??= Array.Empty<IHttpArg>()).Where(x => x != null))
+            {
+                qs = arg.AddToQueryString(qs, JsonSerializer);
+            }
+
+            // Extend the query string to include additional options.
+            if (requestOptions != null)
+                qs = requestOptions.AddToQueryString(qs);
+
+            context.Request.QueryString = qs;
 
             if (body != null)
             {
@@ -311,11 +300,23 @@ namespace UnitTestEx.Functions
         /// <param name="value">The value to JSON serialize.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
         public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, string? requestUri, object value)
+            => CreateJsonHttpRequest(httpMethod, requestUri, value, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with the <paramref name="value"/> JSON serialized as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Application.Json"/>.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="value">The value to JSON serialize.</param>
+        /// <param name="requestOptions">The optional <see cref="HttpRequestOptions"/>.</param>
+        /// <param name="args">Zero or more <see cref="IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, string? requestUri, object value, HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
         {
             if (httpMethod == HttpMethod.Get)
                 Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
-            var hr = CreateHttpRequest(httpMethod, requestUri);
+            var hr = CreateHttpRequest(httpMethod, requestUri, requestOptions, args);
             hr.Body = new MemoryStream(JsonSerializer.SerializeToBinaryData(value).ToArray());
             hr.ContentType = MediaTypeNames.Application.Json;
             return hr;
@@ -330,7 +331,20 @@ namespace UnitTestEx.Functions
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
         public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, string? requestUri, string resourceName)
-            => CreateJsonHttpRequestFromResource(httpMethod, requestUri, resourceName, typeof(TAssembly).Assembly);
+            => CreateJsonHttpRequestFromResource(httpMethod, requestUri, resourceName, typeof(TAssembly).Assembly, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <typeparam name="TAssembly">The <see cref="Type"/> to infer <see cref="Type.Assembly"/> for the embedded resources.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="requestOptions">The optional <see cref="HttpRequestOptions"/>.</param>
+        /// <param name="args">Zero or more <see cref="IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+        public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, string? requestUri, string resourceName, HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
+            => CreateJsonHttpRequestFromResource(httpMethod, requestUri, resourceName, typeof(TAssembly).Assembly, requestOptions, args);
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
@@ -340,12 +354,25 @@ namespace UnitTestEx.Functions
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly? assembly = null)
+        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly assembly)
+            => CreateJsonHttpRequestFromResource(httpMethod, requestUri, resourceName, assembly, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
+        /// <param name="requestOptions">The optional <see cref="HttpRequestOptions"/>.</param>
+        /// <param name="args">Zero or more <see cref="IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly assembly, HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
         {
             if (httpMethod == HttpMethod.Get)
                 Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
-            var hr = CreateHttpRequest(httpMethod, requestUri);
+            var hr = CreateHttpRequest(httpMethod, requestUri, requestOptions, args);
             hr.Body = new MemoryStream(Encoding.UTF8.GetBytes(Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly())));
             hr.ContentType = MediaTypeNames.Application.Json;
             return hr;
