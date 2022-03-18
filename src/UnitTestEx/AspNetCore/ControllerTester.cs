@@ -83,6 +83,9 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         private void LogOutput(HttpResponseMessage res, Stopwatch sw)
         {
+            if (res.RequestMessage == null)
+                return;
+
             _implementor.WriteLine("");
             _implementor.WriteLine("API TESTER...");
             _implementor.WriteLine("");

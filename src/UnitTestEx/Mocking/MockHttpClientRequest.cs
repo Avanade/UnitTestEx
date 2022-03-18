@@ -82,7 +82,7 @@ namespace UnitTestEx.Mocking
             {
                 var m = _client.MessageHandler.Protected()
                     .Setup<Task<HttpResponseMessage>>("SendAsync",
-                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri!.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
                         ItExpr.IsAny<CancellationToken>())
                     .ReturnsAsync(() =>
                     {
@@ -103,7 +103,7 @@ namespace UnitTestEx.Mocking
             {
                 var mseq = _client.MessageHandler.Protected()
                     .SetupSequence<Task<HttpResponseMessage>>("SendAsync",
-                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri!.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
                         ItExpr.IsAny<CancellationToken>());
 
                 foreach (var response in Rule.Responses)
@@ -148,16 +148,16 @@ namespace UnitTestEx.Mocking
             if (_mediaType == null)
                 return request.Content == null;
 
-            if (request.Content == null)
+            if (request?.Content == null)
                 return false;
 
             if (_anyContent)
                 return true;
 
-            if (string.Compare(_mediaType, request.Content.Headers.ContentType.MediaType, StringComparison.InvariantCultureIgnoreCase) != 0)
+            if (string.Compare(_mediaType, request.Content?.Headers?.ContentType?.MediaType, StringComparison.InvariantCultureIgnoreCase) != 0)
                 return false;
 
-            var body = request.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            var body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
 
             switch (_mediaType.ToLowerInvariant())
             {
@@ -317,7 +317,7 @@ namespace UnitTestEx.Mocking
             {
                 _client.MessageHandler.Protected()
                     .Verify<Task<HttpResponseMessage>>("SendAsync", Rule.Times.Value,
-                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri!.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
                         ItExpr.IsAny<CancellationToken>());
             }
         }

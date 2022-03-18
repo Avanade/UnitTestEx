@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	  <TargetFramework>netcoreapp3.1</TargetFramework>
-	  <RootNamespace>UnitTestEx.NUnit</RootNamespace>
+    <TargetFrameworks>netcoreapp3.1;net6.0</TargetFrameworks>
+    <RootNamespace>UnitTestEx.NUnit</RootNamespace>
 	  <Product>UnitTestEx NUnit</Product>
 	  <Title>UnitTestEx NUnit Test Extensions.</Title>
 	  <Description>UnitTestEx NUnit Test Extensions.</Description>
@@ -22,6 +22,6 @@
     <ProjectReference Include="..\UnitTestEx\UnitTestEx.csproj" />
   </ItemGroup>
 
-  <Import Project="..\..\Common.targets"/>
+  <Import Project="..\..\Common.targets" />
 
 </Project>

@@ -179,14 +179,19 @@ namespace UnitTestEx.Functions
                 else if (res is ContentResult cr)
                 {
                     Implementor.WriteLine($"Content: [{cr.ContentType ?? "None"}]");
-                    try
+                    if (cr.Content == null)
+                        Implementor.WriteLine("<null>");
+                    else
                     {
-                        var jo = JsonSerializer.Deserialize(cr.Content);
-                        Implementor.WriteLine(JsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
-                    }
-                    catch
-                    {
-                        Implementor.WriteLine(cr.Content ?? "<null>");
+                        try
+                        {
+                            var jo = JsonSerializer.Deserialize(cr.Content);
+                            Implementor.WriteLine(JsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
+                        }
+                        catch
+                        {
+                            Implementor.WriteLine(cr.Content);
+                        }
                     }
                 }
             }

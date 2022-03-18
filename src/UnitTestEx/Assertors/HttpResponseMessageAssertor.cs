@@ -93,7 +93,7 @@ namespace UnitTestEx.Assertors
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
         public HttpResponseMessageAssertor AssertContentType(string expectedContentType)
         {
-            _implementor.AssertAreEqual(expectedContentType, Response?.Content?.Headers.ContentType.MediaType);
+            _implementor.AssertAreEqual(expectedContentType, Response?.Content?.Headers?.ContentType?.MediaType);
             return this;
         }
 
@@ -136,7 +136,7 @@ namespace UnitTestEx.Assertors
                 return this;
             }
 
-            if (Response.Content.Headers.ContentType.MediaType == MediaTypeNames.Application.Json)
+            if (Response.Content.Headers?.ContentType?.MediaType == MediaTypeNames.Application.Json)
             {
                 var json = Response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 if (expectedValue == null)

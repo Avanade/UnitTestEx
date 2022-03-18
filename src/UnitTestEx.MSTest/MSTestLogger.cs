@@ -31,7 +31,7 @@ namespace UnitTestEx.MSTest
     }
 
     /// <summary>
-    /// Represents an <b>MSTest</b> <see cref="ILogger"/> that writes to <see cref="Microsoft.Extensions.Logging.Logger"/>.
+    /// Represents an <b>MSTest</b> <see cref="ILogger"/> that writes to <see cref="Microsoft.VisualStudio.TestTools.UnitTesting.Logging.Logger"/>.
     /// </summary>
     public sealed class MSTestLogger : LoggerBase
     {

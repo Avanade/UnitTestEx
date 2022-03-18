@@ -22,6 +22,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Hosting;
+using Ceh = CoreEx.Http;
 
 namespace UnitTestEx.Functions
 {
@@ -229,10 +230,10 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The requuest uri.</param>
-        /// <param name="requestOptions">The optional <see cref="HttpRequestOptions"/>.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
         /// <param name="args">Zero or more <see cref="IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, Ceh.HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
             => CreateHttpRequest(httpMethod, requestUri, null, requestOptions, args);
 
         /// <summary>
@@ -251,10 +252,10 @@ namespace UnitTestEx.Functions
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="body">The optional body content.</param>
-        /// <param name="requestOptions">The optional <see cref="HttpRequestOptions"/>.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
         /// <param name="args">Zero or more <see cref="IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, string? body = null, HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, string? body = null, Ceh.HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
         {
             if (httpMethod == HttpMethod.Get && body != null)
                 Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
@@ -308,10 +309,10 @@ namespace UnitTestEx.Functions
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="value">The value to JSON serialize.</param>
-        /// <param name="requestOptions">The optional <see cref="HttpRequestOptions"/>.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
         /// <param name="args">Zero or more <see cref="IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, string? requestUri, object value, HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
+        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, string? requestUri, object value, Ceh.HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
         {
             if (httpMethod == HttpMethod.Get)
                 Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
@@ -340,10 +341,10 @@ namespace UnitTestEx.Functions
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
-        /// <param name="requestOptions">The optional <see cref="HttpRequestOptions"/>.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
         /// <param name="args">Zero or more <see cref="IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, string? requestUri, string resourceName, HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
+        public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, string? requestUri, string resourceName, Ceh.HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
             => CreateJsonHttpRequestFromResource(httpMethod, requestUri, resourceName, typeof(TAssembly).Assembly, requestOptions, args);
 
         /// <summary>
@@ -364,10 +365,10 @@ namespace UnitTestEx.Functions
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
-        /// <param name="requestOptions">The optional <see cref="HttpRequestOptions"/>.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
         /// <param name="args">Zero or more <see cref="IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly assembly, HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
+        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly assembly, Ceh.HttpRequestOptions? requestOptions = null, params IHttpArg[] args)
         {
             if (httpMethod == HttpMethod.Get)
                 Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
