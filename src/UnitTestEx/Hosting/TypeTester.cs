@@ -101,9 +101,9 @@ namespace UnitTestEx.Hosting
                     Implementor.WriteLine($"Result: {ifm.ToString(null, CultureInfo.CurrentCulture)}");
                 else
                 {
-                    Implementor.WriteLine($"Result: {(result == null ? "<null>" : "")}");
+                    Implementor.WriteLine($"Result: {(result == null ? "<null>" : result.GetType().Name)}");
                     if (result != null)
-                        Implementor.WriteLine(JsonSerializer.Serialize(result, JsonWriteFormat.Indented));
+                        Implementor.WriteLine(JsonSerializer.Serialize<dynamic>(result, JsonWriteFormat.Indented));
                 }
             }
 

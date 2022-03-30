@@ -19,7 +19,6 @@ using System.Net.Mime;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Hosting;
 using Ceh = CoreEx.Http;
@@ -138,17 +137,13 @@ namespace UnitTestEx.Functions
                     return tfi.Name;
 
                 var json = File.ReadAllText(fi.FullName);
-                var jn = JsonNode.Parse(json);
-                if (jn != null)
+                var je = (JsonElement)System.Text.Json.JsonSerializer.Deserialize<dynamic>(json, new JsonSerializerOptions { ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+                if (je.TryGetProperty("Values", out var jv))
                 {
-                    var jp = jn["Values"];
-                    if (jp != null)
-                    {
-                        using var fs = tfi.OpenWrite();
-                        using var uw = new Utf8JsonWriter(fs);
-                        jp.WriteTo(uw);
-                        uw.Flush();
-                    }
+                    using var fs = tfi.OpenWrite();
+                    using var uw = new Utf8JsonWriter(fs, new JsonWriterOptions { Indented = true });
+                    jv.WriteTo(uw);
+                    uw.Flush();
                 }
 
                 _localSettingsDone = true;
@@ -172,6 +167,13 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <returns>The <see cref="IServiceProvider"/>.</returns>
         public override IServiceProvider Services => GetHost().Services;
+
+        /// <summary>
+        /// Gets the <see cref="ILogger"/> for the specified <typeparamref name="TCategoryName"/>.
+        /// </summary>
+        /// <typeparam name="TCategoryName">The <see cref="Type"/> to infer the category name.</typeparam>
+        /// <returns>The <see cref="ILogger{TCategoryName}"/>.</returns>
+        public ILogger<TCategoryName> GetLogger<TCategoryName>() => Services.GetRequiredService<ILogger<TCategoryName>>();
 
         /// <summary>
         /// Gets the <see cref="IConfiguration"/> from the underlying host.

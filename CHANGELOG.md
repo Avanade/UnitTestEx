@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.13
+- *[Issue 27](https://github.com/Avanade/UnitTestEx/issues/27)*: The `TypeTester` has been updated to ensure the result is logged correctly regardless of underlying `Type`.
+- *[Issue 28](https://github.com/Avanade/UnitTestEx/issues/28)*: The `FunctionTester` has been updated to be more resilient to the JSON within `local.settings.json`; i.e. ignore comments and trailing commas.
+- *Enhancement:* `ApiTester` and `FunctionTester` updated to provide a `GetLogger<TCategoryName>` method to simplify access to a typed logger.
+
 ## v1.0.12
 - *Enhancement:* **Breaking change.** Integrate [`CoreEx`](https://github.com/Avanade/CoreEx/) package which primarily brings [`IJsonSerializer`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx/Json/IJsonSerializer.cs) functionality to enable configuration of either [`CoreEx.Text.Json.JsonSerializer`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx/Text/Json/JsonSerializer.cs) (default) or [`CoreEx.Newtonsoft.Json.JsonSerializer`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx.Newtonsoft/Json/JsonSerializer.cs). The `MockHttpClientFactory`, `ApiTester` and `FunctionTester` have new method `UseJsonSerializer` to individually update from the default. To change the default for all tests then set [`CoreEx.Json.JsonSerializer.Default`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx/Json/JsonSerializer.cs) to the desired serializer.
 - *Enhancement:* Improved the replacement of the `MockHttpClientFactory` with the `ApiTester` and `FunctionTester`. Existing code `test.ConfigureServices(sc => mcf.Replace(sc))` can be replaced with `test.ReplaceHttpClientFactory(mcf)`.

@@ -60,6 +60,13 @@ namespace UnitTestEx.AspNetCore
         public override IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
 
         /// <summary>
+        /// Gets the <see cref="ILogger"/> for the specified <typeparamref name="TCategoryName"/>.
+        /// </summary>
+        /// <typeparam name="TCategoryName">The <see cref="Type"/> to infer the category name.</typeparam>
+        /// <returns>The <see cref="ILogger{TCategoryName}"/>.</returns>
+        public ILogger<TCategoryName> GetLogger<TCategoryName>() => Services.GetRequiredService<ILogger<TCategoryName>>();
+
+        /// <summary>
         /// Bypasses authorization by using the <see cref="BypassAuthorizationHandler"/> <see cref="IAuthorizationHandler"/>.
         /// </summary>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
