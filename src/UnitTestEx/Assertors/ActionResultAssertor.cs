@@ -144,28 +144,44 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
         /// <remarks>The corresponding location header is not verified.</remarks>
-        public ActionResultAssertor AssertAccepted()
-        {
-            Assert(HttpStatusCode.Accepted);
-            return this;
-        }
+        public ActionResultAssertor AssertAccepted() => Assert(HttpStatusCode.Accepted);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> is <see cref="HttpStatusCode.Created"/>.
         /// </summary>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
         /// <remarks>The corresponding location header is not verified.</remarks>
-        public ActionResultAssertor AssertCreated()
-        {
-            Assert(HttpStatusCode.Created);
-            return this;
-        }
+        public ActionResultAssertor AssertCreated() => Assert(HttpStatusCode.Created);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> is a <see cref="HttpStatusCode.BadRequest"/>.
         /// </summary>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
         public ActionResultAssertor AssertBadRequest() => Assert(HttpStatusCode.BadRequest);
+
+        /// <summary>
+        /// Asserts that the <see cref="Result"/> is a <see cref="HttpStatusCode.PreconditionFailed"/>.
+        /// </summary>
+        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+        public ActionResultAssertor AssertPreconditionFailed() => Assert(HttpStatusCode.PreconditionFailed);
+
+        /// <summary>
+        /// Asserts that the <see cref="Result"/> is a <see cref="HttpStatusCode.Conflict"/>.
+        /// </summary>
+        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+        public ActionResultAssertor AssertConflict() => Assert(HttpStatusCode.Conflict);
+
+        /// <summary>
+        /// Asserts that the <see cref="Result"/> is a <see cref="HttpStatusCode.Unauthorized"/>.
+        /// </summary>
+        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+        public ActionResultAssertor AssertUnauthorized() => Assert(HttpStatusCode.Unauthorized);
+
+        /// <summary>
+        /// Asserts that the <see cref="Result"/> is a <see cref="HttpStatusCode.Forbidden"/>.
+        /// </summary>
+        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+        public ActionResultAssertor AssertForbidden() => Assert(HttpStatusCode.Forbidden);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> contains the expected error <paramref name="messages"/>.

@@ -169,7 +169,7 @@ namespace UnitTestEx.Functions
         public override IServiceProvider Services => GetHost().Services;
 
         /// <summary>
-        /// Gets the <see cref="ILogger"/> for the specified <typeparamref name="TCategoryName"/>.
+        /// Gets the <see cref="ILogger"/> for the specified <typeparamref name="TCategoryName"/> from the underlying <see cref="Services"/>.
         /// </summary>
         /// <typeparam name="TCategoryName">The <see cref="Type"/> to infer the category name.</typeparam>
         /// <returns>The <see cref="ILogger{TCategoryName}"/>.</returns>

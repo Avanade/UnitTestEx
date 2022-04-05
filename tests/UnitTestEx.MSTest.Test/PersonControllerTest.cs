@@ -102,5 +102,17 @@ namespace UnitTestEx.MSTest.Test
                     new ApiError("firstName", "First name is required."),
                     new ApiError("lastName", "Last name is required."));
         }
+
+        [TestMethod]
+        public void Update_Test4()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Controller<PersonController>()
+                .Run(c => c.Update(1, null), new Person { FirstName = null, LastName = null })
+                .AssertBadRequest()
+                .AssertErrors(
+                    new ApiError("firstName", "First name is required."),
+                    new ApiError("lastName", "Last name is required."));
+        }
     }
 }

@@ -65,7 +65,7 @@ namespace UnitTestEx.Hosting
             if (expression.Body.NodeType != ExpressionType.Call)
                 throw new ArgumentException("Expression must be a method invocation.", nameof(expression));
 
-            if (!(expression.Body is MethodCallExpression mce))
+            if (expression.Body is not MethodCallExpression mce)
                 throw new ArgumentException($"Expression must be of Type '{nameof(MethodCallExpression)}'.", nameof(expression));
 
             var pis = mce.Method.GetParameters();
@@ -119,7 +119,7 @@ namespace UnitTestEx.Hosting
             if (expression.Body.NodeType != ExpressionType.Call)
                 throw new ArgumentException("Expression must be a method invocation.", nameof(expression));
 
-            if (!(expression.Body is MethodCallExpression mce))
+            if (expression.Body is not MethodCallExpression mce)
                 throw new ArgumentException($"Expression must be of Type '{nameof(MethodCallExpression)}'.", nameof(expression));
 
             var pis = mce.Method.GetParameters();

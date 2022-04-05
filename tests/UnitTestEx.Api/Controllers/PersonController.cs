@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using CoreEx.Entities;
+using CoreEx.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
@@ -34,6 +36,13 @@ namespace UnitTestEx.Api.Controllers
         public IActionResult GetByArgs(string firstName, string lastName, [FromQuery] List<int> id = default)
         {
             return new ObjectResult($"{firstName}-{lastName}-{string.Join(",", id)}");
+        }
+
+        [HttpGet("paging")]
+        public IActionResult GetPaging()
+        {
+            var ro = Request.GetRequestOptions();
+            return new ObjectResult(ro.Paging);
         }
 
         [HttpPost("{id}")]

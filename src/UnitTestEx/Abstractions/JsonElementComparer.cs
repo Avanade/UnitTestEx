@@ -11,7 +11,7 @@ namespace UnitTestEx.Abstractions
     /// Provides a <see cref="JsonElement"/> comparer where property order is not significant.
     /// </summary>
     /// <remarks>Influenced by <see href="https://stackoverflow.com/questions/60580743/what-is-equivalent-in-jtoken-deepequals-in-system-text-json"/>.</remarks>
-    internal class JsonElementComparer : IEqualityComparer<JsonElement>
+    public class JsonElementComparer : IEqualityComparer<JsonElement>
     {
         private readonly int _maxHashDepth = -1;
 
@@ -66,15 +66,18 @@ namespace UnitTestEx.Abstractions
                     var yPropertiesUnsorted = y.EnumerateObject().ToList();
                     if (xPropertiesUnsorted.Count != yPropertiesUnsorted.Count)
                         return false;
+
                     var xProperties = xPropertiesUnsorted.OrderBy(p => p.Name, StringComparer.Ordinal);
                     var yProperties = yPropertiesUnsorted.OrderBy(p => p.Name, StringComparer.Ordinal);
                     foreach (var (px, py) in xProperties.Zip(yProperties))
                     {
                         if (px.Name != py.Name)
                             return false;
+
                         if (!Equals(px.Value, py.Value))
                             return false;
                     }
+
                     return true;
 
                 default:

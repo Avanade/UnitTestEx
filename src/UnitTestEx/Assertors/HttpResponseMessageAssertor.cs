@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Entities;
+using CoreEx.Http;
 using CoreEx.Json;
 using System;
 using System.Collections.Generic;
@@ -7,6 +9,8 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using UnitTestEx.Abstractions;
 
 namespace UnitTestEx.Assertors
@@ -24,7 +28,7 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="JsonSerializer"/>.</param>
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
         internal HttpResponseMessageAssertor(HttpResponseMessage response, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer)
         {
             Response = response;
@@ -178,6 +182,41 @@ namespace UnitTestEx.Assertors
         public HttpResponseMessageAssertor AssertFromJsonResource<TAssembly, TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, typeof(TAssembly).Assembly, _jsonSerializer), membersToIgnore);
 
         /// <summary>
+        /// Asserts that the <see cref="Response"/> JSON content matches the specified <paramref name="json"/>.
+        /// </summary>
+        /// <param name="json">The expected JSON.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertJson(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+                throw new ArgumentNullException(nameof(json));
+
+            if (Response.Content == null)
+            {
+                _implementor.AssertAreEqual(json, null, "Expected and Actual (no content) JSON values are not equal");
+                return this;
+            }
+
+            if (Response.Content?.Headers?.ContentType?.MediaType == MediaTypeNames.Application.Json)
+            {
+                var exp = new Utf8JsonReader(new BinaryData(json));
+                if (!JsonElement.TryParseValue(ref exp, out JsonElement? eje))
+                    throw new ArgumentException("Expected JSON is not considered valid.", nameof(json));
+
+                var act = new Utf8JsonReader(new BinaryData(Response.Content.ReadAsStringAsync().GetAwaiter().GetResult()));
+                if (!JsonElement.TryParseValue(ref act, out JsonElement? aje))
+                    _implementor.AssertFail("Actual value is not considered valid JSON.");
+
+                if (!new JsonElementComparer().Equals((JsonElement)eje!, (JsonElement)aje!))
+                    _implementor.AssertFail("Expected and Actual JSON values are not equal.");
+            }
+            else
+                _implementor.AssertAreEqual(json, Response.Content?.ReadAsStringAsync().GetAwaiter().GetResult(), "Expected and Actual JSON values are not equal.");
+
+            return this;
+        }
+
+        /// <summary>
         /// Asserts that the <see cref="Response"/> is <see cref="HttpStatusCode.Created"/>.
         /// </summary>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
@@ -194,6 +233,30 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
         public HttpResponseMessageAssertor AssertBadRequest() => Assert(HttpStatusCode.BadRequest);
+
+        /// <summary>
+        /// Asserts that the <see cref="Response"/> is a <see cref="HttpStatusCode.PreconditionFailed"/>.
+        /// </summary>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertPreconditionFailed() => Assert(HttpStatusCode.PreconditionFailed);
+
+        /// <summary>
+        /// Asserts that the <see cref="Response"/> is a <see cref="HttpStatusCode.Conflict"/>.
+        /// </summary>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertConflict() => Assert(HttpStatusCode.Conflict);
+
+        /// <summary>
+        /// Asserts that the <see cref="Response"/> is a <see cref="HttpStatusCode.Unauthorized"/>.
+        /// </summary>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertUnauthorized() => Assert(HttpStatusCode.Unauthorized);
+
+        /// <summary>
+        /// Asserts that the <see cref="Response"/> is a <see cref="HttpStatusCode.Forbidden"/>.
+        /// </summary>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertForbidden() => Assert(HttpStatusCode.Forbidden);
 
         /// <summary>
         /// Asserts that the <see cref="Response"/> contains the expected error <paramref name="messages"/>.
@@ -229,7 +292,7 @@ namespace UnitTestEx.Assertors
         /// </summary>
         private void AssertBadRequestErrors(IEnumerable<ApiError> expected, bool includeField)
         {
-            var val = GetValue<Dictionary<string, string[]>>();
+            var val = GetValue<Dictionary<string, string[]>>() ?? new Dictionary<string, string[]>();
             var act = new List<ApiError>();
             foreach (var err in val)
             {
@@ -248,13 +311,46 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <returns>The result value.</returns>
-        public TResult GetValue<TResult>()
+        public TResult? GetValue<TResult>()
         {
             _implementor.AssertAreEqual(MediaTypeNames.Application.Json, Response.Content?.Headers?.ContentType?.MediaType);
             if (Response.Content == null)
                 return default!;
 
             return _jsonSerializer.Deserialize<TResult>(Response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
+        }
+
+        /// <summary>
+        /// Gets the response content as the deserialized JSON <typeparamref name="TCollResult"/> value.
+        /// </summary>
+        /// <typeparam name="TCollResult">The <see cref="ICollectionResult{TColl, TItem}"/> response <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TColl">The collection <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TItem">The item <see cref="Type"/>.</typeparam>
+        /// <returns>The result value.</returns>
+        public TCollResult? GetValue<TCollResult, TColl, TItem>()
+            where TCollResult : ICollectionResult<TColl, TItem>, new()
+            where TColl : ICollection<TItem>
+        {
+            _implementor.AssertAreEqual(MediaTypeNames.Application.Json, Response.Content?.Headers?.ContentType?.MediaType);
+            if (Response.Content == null)
+                return default!;
+
+            var content = Response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+            try
+            {
+                var result = new TCollResult { Collection = _jsonSerializer.Deserialize<TColl>(content)! };
+
+                if (Response.TryGetPagingResult(out var paging))
+                    result.Paging = paging;
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _implementor.AssertFail($"Unable to deserialize the JSON content to Type {typeof(TColl).FullName}: {ex.Message}");
+                return default!;
+            }
         }
 
         /// <summary>

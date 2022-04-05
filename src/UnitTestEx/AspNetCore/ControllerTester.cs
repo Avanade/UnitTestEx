@@ -12,13 +12,14 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
+using Ceh = CoreEx.Http;
 
 namespace UnitTestEx.AspNetCore
 {
@@ -51,8 +52,11 @@ namespace UnitTestEx.AspNetCore
         /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <param name="value">The optional request body value.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="args">Zero or more <see cref="Ceh.IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor Run(HttpMethod httpMethod, string? requestUri, object? value = null) => RunAsync(httpMethod, requestUri, value).GetAwaiter().GetResult();
+        public HttpResponseMessageAssertor RunWithRequest(HttpMethod httpMethod, string? requestUri, object? value = null, Ceh.HttpRequestOptions? requestOptions = null, params Ceh.IHttpArg[] args)
+            => RunWithRequestAsync(httpMethod, requestUri, value, requestOptions, args).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/>.
@@ -60,17 +64,14 @@ namespace UnitTestEx.AspNetCore
         /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <param name="value">The optional request body value.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="args">Zero or more <see cref="Ceh.IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public async Task<HttpResponseMessageAssertor> RunAsync(HttpMethod httpMethod, string? requestUri, object? value = null)
+        public async Task<HttpResponseMessageAssertor> RunWithRequestAsync(HttpMethod httpMethod, string? requestUri, object? value = null, Ceh.HttpRequestOptions? requestOptions = null, params Ceh.IHttpArg[] args)
         {
-            var req = new HttpRequestMessage(httpMethod, requestUri);
-            if (value != null)
-                req.Content = CreateJsonContentFromValue(value);
-
-            var hc = _testServer.CreateClient();
-
+            var tc = new TypedHttpClient(_testServer.CreateClient(), _jsonSerializer);
             var sw = Stopwatch.StartNew();
-            var res = await hc.SendAsync(req).ConfigureAwait(false);
+            var res = await tc.SendAsync(httpMethod, requestUri, value, requestOptions, args).ConfigureAwait(false);
 
             sw.Stop();
             LogOutput(res, sw);
@@ -178,23 +179,38 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="value">The optional body value where not explicitly passed via the <paramref name="expression"/>.</param>
+        /// <param name="args">Zero or more <see cref="Ceh.IHttpArg"/> objects for <see cref="Uri"/> templating, query string additions, and content body specification.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression) => RunAsync(expression).GetAwaiter().GetResult();
+        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression, object? value = null, Ceh.HttpRequestOptions? requestOptions = null, params Ceh.IHttpArg[] args)
+            => RunAsync(expression, value, requestOptions, args).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
         /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
+        /// <param name="value">The optional body value where not explicitly passed via the <paramref name="expression"/>.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="args">Zero or more <see cref="Ceh.IHttpArg"/> objects for <see cref="Uri"/> templating, query string additions, and content body specification.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public async Task<HttpResponseMessageAssertor> RunAsync<TResult>(Expression<Func<TController, TResult>> expression)
+        public async Task<HttpResponseMessageAssertor> RunAsync<TResult>(Expression<Func<TController, TResult>> expression, object? value = null, Ceh.HttpRequestOptions? requestOptions = null, params Ceh.IHttpArg[] args)
         {
             if (expression.Body.NodeType != ExpressionType.Call)
                 throw new ArgumentException("Expression must be a method invocation.", nameof(expression));
 
-            if (!(expression.Body is MethodCallExpression mce))
+            if (expression.Body is not MethodCallExpression mce)
                 throw new ArgumentException($"Expression must be of Type '{nameof(MethodCallExpression)}'.", nameof(expression));
 
+            // HttpRequestOptions is not *really* valid as a value; move as likely a placement error on behalf of the consuming developer.
+            if (value is Ceh.HttpRequestOptions ro && requestOptions == null)
+            {
+                value = null;
+                requestOptions = ro;
+            }
+
+            // Attempts similar logic to: https://docs.microsoft.com/en-us/aspnet/web-api/overview/formats-and-model-binding/parameter-binding-in-aspnet-web-api
             var pis = mce.Method.GetParameters();
             var @params = new List<(string Name, object? Value)>();
             object? body = null;
@@ -209,11 +225,24 @@ namespace UnitTestEx.AspNetCore
                 var ue = Expression.Convert(mce.Arguments[i], typeof(object));
                 var le = Expression.Lambda<Func<object>>(ue);
                 var val = le.Compile().Invoke();
-                
+
                 if (par.GetCustomAttribute<FromBodyAttribute>() != null)
                     body = val;
                 else
-                    @params.Add((par.Name, val));
+                {
+                    if (par.GetCustomAttribute<System.Web.Http.FromUriAttribute>() == null && par.GetCustomAttribute<FromQueryAttribute>() == null && par.ParameterType.IsClass && par.ParameterType != typeof(string))
+                        body = val;
+                    else
+                        @params.Add((par.Name, val));
+                }
+            }
+
+            if (value != null)
+            {
+                if (body != null)
+                    throw new ArgumentException("A body value can not be explicity specified where the expression already contains a body value.", nameof(value));
+
+                body = value;
             }
 
             var att = mce.Method.GetCustomAttributes<HttpMethodAttribute>(true)?.FirstOrDefault();
@@ -221,7 +250,7 @@ namespace UnitTestEx.AspNetCore
                 throw new InvalidOperationException($"Operation {mce.Method.Name} does not have an {nameof(HttpMethodAttribute)} specified.");
 
             var uri = GetRequestUri(att.Template, @params);
-            return await RunAsync(new HttpMethod(att.HttpMethods.First()), uri, body).ConfigureAwait(false);
+            return await RunWithRequestAsync(new HttpMethod(att.HttpMethods.First()), uri, body, requestOptions, args).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -245,7 +274,7 @@ namespace UnitTestEx.AspNetCore
             {
                 string? value = null;
                 List<string>? list = null;
-                if (Value != null && !(Value is string) && Value is IEnumerable el)
+                if (Value != null && Value is not string && Value is IEnumerable el)
                 {
                     list = new List<string>();
                     foreach (var item in el)
@@ -306,67 +335,23 @@ namespace UnitTestEx.AspNetCore
             return val;
         }
 
-        // TODO: Review need!
-        ///// <summary>
-        ///// Gets (infers) the Request URI.
-        ///// </summary>
-        //private string GetRequestUri(HttpMethod httpMethod, string operationName, object? request = null)
-        //{
-        //    var type = typeof(TController);
-        //    var atts = type.GetCustomAttributes(typeof(RouteAttribute), false);
-        //    if (atts == null || atts.Length != 1)
-        //        throw new InvalidOperationException($"Controller {type.Name} must have a single RouteAttribute specified.");
-
-        //    var name = type.Name.EndsWith("Controller", StringComparison.OrdinalIgnoreCase) ? type.Name[0..^"Controller".Length] : type.Name;
-        //    var route = (atts[0] as RouteAttribute)?.Template.Replace("[controller]", name) + "/" + operationName;
-
-        //    if (httpMethod != HttpMethod.Get || request == null)
-        //        return route;
-
-        //    var dict = new Dictionary<string, string>();
-        //    var json = _jsonSerializer.Serialize(request);
-        //    var je = Stj.JsonDocument.Parse(json).RootElement;
-            
-        //    GetPathsAndValues(dict, JToken.FromObject(request));
-        //    var query = new System.Net.Http.FormUrlEncodedContent(dict);
-
-        //    return route + "?" + query.ReadAsStringAsync().GetAwaiter().GetResult();
-        //}
-
-        ///// <summary>
-        ///// Recursively get all the paths and values.
-        ///// </summary>
-        //private void GetPathsAndValues(IDictionary<string, string> dict, Stj.JsonElement json)
-        //{
-        //    if (json.HasValues)
-        //    {
-        //        foreach (var ct in json.Children().ToList())
-        //        {
-        //            GetPathsAndValues(dict, ct);
-        //        }
-        //    }
-        //    else
-        //    {
-        //        if (json is JValue jv)
-        //        {
-        //            dict.Add(jv.Path, jv.Type == JTokenType.Date
-        //                ? jv.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
-        //                : jv.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        //        }
-        //    }
-        //}
-
-        /// <summary>
-        /// Create the content by JSON serializing the request value.
-        /// </summary>
-        private StringContent? CreateJsonContentFromValue(object value)
+        private class TypedHttpClient : Ceh.TypedHttpClientBase
         {
-            if (value == null)
-                return null;
+            /// <summary>
+            /// Initialize a new instance of the class.
+            /// </summary>
+            public TypedHttpClient(HttpClient hc, IJsonSerializer js) : base(hc, js) { }
 
-            var content = new StringContent(_jsonSerializer.Serialize(value));
-            content.Headers.ContentType = MediaTypeHeaderValue.Parse(MediaTypeNames.Application.Json);
-            return content;
+            /// <summary>
+            /// Provides the primay send capability.
+            /// </summary>
+            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, object? value, Ceh.HttpRequestOptions? requestOptions, Ceh.IHttpArg[] args)
+                => (value == null)
+                    ? await SendAsync(await CreateRequestAsync(method, requestUri ?? "", requestOptions, args), default).ConfigureAwait(false)
+                    : await SendAsync(await CreateJsonRequestAsync(method, requestUri ?? "", value, requestOptions, args), default).ConfigureAwait(false);
+
+            /// <inheritdoc/>
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Client.SendAsync(request, cancellationToken);
         }
     }
 }
