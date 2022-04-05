@@ -1,4 +1,6 @@
-﻿using NUnit.Framework;
+﻿using CoreEx.Entities;
+using CoreEx.Http;
+using NUnit.Framework;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnitTestEx.Api;
@@ -101,6 +103,16 @@ namespace UnitTestEx.NUnit.Test
                 .AssertErrors(
                     new ApiError("firstName", "First name is required."),
                     new ApiError("lastName", "Last name is required."));
+        }
+
+        [Test]
+        public void GetPaging()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Controller<PersonController>()
+                .Run(c => c.GetPaging(), new HttpRequestOptions { Paging = PagingArgs.CreateSkipAndTake(2, 5) })
+                .AssertOK()
+                .AssertJson("{\"page\":null,\"isSkipTake\":true,\"size\":5,\"skip\":2,\"take\":5,\"isGetCount\":false}");
         }
     }
 }

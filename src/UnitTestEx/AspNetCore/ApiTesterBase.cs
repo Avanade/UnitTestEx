@@ -27,7 +27,10 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         protected ApiTesterBase(TestFrameworkImplementor implementor) : base(implementor)
-            => _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => whb.UseSolutionRelativeContentRoot("").ConfigureServices(sc => sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(implementor.CreateLoggerProvider()); })));
+        {
+            Logger = implementor.CreateLogger(GetType().Name);
+            _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => whb.UseSolutionRelativeContentRoot("").ConfigureServices(sc => sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(implementor.CreateLoggerProvider()); })));
+        }
 
         /// <summary>
         /// Gets the <see cref="WebApplicationFactory{TEntryPoint}"/>.
@@ -60,7 +63,13 @@ namespace UnitTestEx.AspNetCore
         public override IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
 
         /// <summary>
-        /// Gets the <see cref="ILogger"/> for the specified <typeparamref name="TCategoryName"/>.
+        /// Gets the runtime <see cref="ILogger"/>.
+        /// </summary>
+        /// <returns>The <see cref="ILogger"/>.</returns>
+        public ILogger Logger { get; }
+
+        /// <summary>
+        /// Gets the <see cref="ILogger"/> for the specified <typeparamref name="TCategoryName"/> from the underlying <see cref="Services"/>.
         /// </summary>
         /// <typeparam name="TCategoryName">The <see cref="Type"/> to infer the category name.</typeparam>
         /// <returns>The <see cref="ILogger{TCategoryName}"/>.</returns>

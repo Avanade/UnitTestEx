@@ -365,10 +365,7 @@ namespace UnitTestEx.Functions
             else if (Parameter.ParameterType == typeof(BinaryData))
                 return msg.Body;
             else
-            {
-                var r = new System.Text.Json.Utf8JsonReader(msg.Body);
-                return System.Text.Json.JsonSerializer.Deserialize(ref r, Parameter.ParameterType);
-            }
+                return JsonSerializer.Deserialize(msg.Body, Parameter.ParameterType);
         }
 
         /// <summary>

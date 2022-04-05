@@ -2,6 +2,13 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.14
+- *Enhancement:* Added body value parameter to the `ControllerTester` to allow where not directly specified for the underlying run method.
+- *Enhancement:* Added `HttpRequestOptions` parameter to the `ControllerTester` to allow further control and configuration of the `Uri` for the `Run` methods.
+- *Enhancement:* Added some additional HTTP status code assertors.
+- *Enhancement:* `HttpResponseMessageAssertor.AssertJson` added to support JSON comparisons where no `Type` is known.
+- *Enhancement:* `HttpResponseMessageAssertor.GetValue<TCollResult, TColl, TItem>` added to support `ICollectionResult` responses.
+
 ## v1.0.13
 - *[Issue 27](https://github.com/Avanade/UnitTestEx/issues/27)*: The `TypeTester` has been updated to ensure the result is logged correctly regardless of underlying `Type`.
 - *[Issue 28](https://github.com/Avanade/UnitTestEx/issues/28)*: The `FunctionTester` has been updated to be more resilient to the JSON within `local.settings.json`; i.e. ignore comments and trailing commas.

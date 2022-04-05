@@ -5,10 +5,11 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.Net.Mime;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace UnitTestEx.Function
 {
@@ -27,8 +28,8 @@ namespace UnitTestEx.Function
             string name = req.Query["name"];
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name ??= data?.name;
+            var data = string.IsNullOrEmpty(requestBody) ? null : JsonSerializer.Deserialize<Namer>(requestBody);
+            name ??= data?.Name;
 
             if (name == "Brian")
             {
@@ -63,14 +64,22 @@ namespace UnitTestEx.Function
         {
             await Task.CompletedTask.ConfigureAwait(false);
             log.LogInformation("C# HTTP trigger function processed a request.");
-            return new ContentResult { Content = JsonConvert.SerializeObject(new { first = person.FirstName, last = person.LastName }), ContentType = MediaTypeNames.Application.Json, StatusCode = 200 };
+            return new ContentResult { Content = JsonSerializer.Serialize(new { first = person.FirstName, last = person.LastName }), ContentType = MediaTypeNames.Application.Json, StatusCode = 200 };
         }
+    }
+
+    public class Namer
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
     }
 
     public class Person
     {
+        [JsonPropertyName("firstName")]
         public string FirstName { get; set; }
 
+        [JsonPropertyName("lastName")]
         public string LastName { get; set; }
     }
 }
