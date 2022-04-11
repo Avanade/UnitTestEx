@@ -2,6 +2,12 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.15
+- *Enhancement:* Added `ActionResultAssertor.GetValue` and `AssertJson` to be consistent with `HttpResponseMessageAssertor`.
+- *Enhancement:* Added `AssertLocationHeader` and `AssertETagHeader` to both `HttpResponseMessageAssertor` and `ActionResultAssertor` (for `ValueContentResult`).
+- *Enhancement:* Updated `JsonElementComparer` to return/list the differences found. Also, supports `PathsToIgnore` functionality.
+- *Enhancement:* Added `MockHttpClientRequest.TraceRequestComparisons` that indicates whether the request content comparison differences should be trace logged to aid in debugging/troubleshooting.
+
 ## v1.0.14
 - *Enhancement:* Added body value parameter to the `ControllerTester` to allow where not directly specified for the underlying run method.
 - *Enhancement:* Added `HttpRequestOptions` parameter to the `ControllerTester` to allow further control and configuration of the `Uri` for the `Run` methods.

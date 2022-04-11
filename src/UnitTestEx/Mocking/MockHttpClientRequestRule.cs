@@ -26,7 +26,7 @@ namespace UnitTestEx.Mocking
         internal List<MockHttpClientResponse>? Responses { get; set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="Moq.Times"/>.
+        /// Gets or sets the number of <see cref="Moq.Times"/>.
         /// </summary>
         internal Times? Times;
     }

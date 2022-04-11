@@ -3,6 +3,7 @@
 using CoreEx.Entities;
 using CoreEx.Http;
 using CoreEx.Json;
+using Microsoft.Net.Http.Headers;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -10,7 +11,6 @@ using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using UnitTestEx.Abstractions;
 
 namespace UnitTestEx.Assertors
@@ -126,6 +126,28 @@ namespace UnitTestEx.Assertors
         public HttpResponseMessageAssertor AssertNotModified() => Assert(HttpStatusCode.NotModified);
 
         /// <summary>
+        /// Asserts that the <see cref="Response"/> <see cref="HttpResponseMessage.Headers"/> <see cref="HeaderNames.Location"/> matches the <paramref name="expectedUri"/> result.
+        /// </summary>
+        /// <param name="expectedUri">The expected <see cref="Uri"/> function.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertLocationHeader<TValue>(Func<TValue?, Uri> expectedUri)
+        {
+            _implementor.AssertAreEqual(expectedUri?.Invoke(GetValue<TValue>()), Response.Headers?.Location, $"Expected and Actual HTTP Response Header '{HeaderNames.Location}' values are not equal.");
+            return this;
+        }
+
+        /// <summary>
+        /// Asserts that the <see cref="Response"/> <see cref="HttpResponseMessage.Headers"/> <see cref="HeaderNames.Location"/> matches the <paramref name="expectedETag"/>.
+        /// </summary>
+        /// <param name="expectedETag">The expected ETag value.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertETagHeader(string expectedETag)
+        {
+            _implementor.AssertAreEqual(expectedETag, Response.Headers?.ETag?.Tag, $"Expected and Actual HTTP Response Header '{HeaderNames.ETag}' values are not equal.");
+            return this;
+        }
+
+        /// <summary>
         /// Asserts that the <see cref="Response"/> matches the <paramref name="expectedValue"/>.
         /// </summary>
         /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
@@ -185,8 +207,9 @@ namespace UnitTestEx.Assertors
         /// Asserts that the <see cref="Response"/> JSON content matches the specified <paramref name="json"/>.
         /// </summary>
         /// <param name="json">The expected JSON.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor AssertJson(string json)
+        public HttpResponseMessageAssertor AssertJson(string json, params string[] pathsToIgnore)
         {
             if (string.IsNullOrEmpty(json))
                 throw new ArgumentNullException(nameof(json));
@@ -207,8 +230,9 @@ namespace UnitTestEx.Assertors
                 if (!JsonElement.TryParseValue(ref act, out JsonElement? aje))
                     _implementor.AssertFail("Actual value is not considered valid JSON.");
 
-                if (!new JsonElementComparer().Equals((JsonElement)eje!, (JsonElement)aje!))
-                    _implementor.AssertFail("Expected and Actual JSON values are not equal.");
+                var jecr = new JsonElementComparer(5).Compare(eje!.Value, aje!.Value, pathsToIgnore);
+                if (jecr != null)
+                    _implementor.AssertFail($"Expected and Actual JSON values are not equal:{Environment.NewLine}{jecr}");
             }
             else
                 _implementor.AssertAreEqual(json, Response.Content?.ReadAsStringAsync().GetAwaiter().GetResult(), "Expected and Actual JSON values are not equal.");
@@ -309,15 +333,15 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Gets the response content as the deserialized JSON value.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The resulting value <see cref="Type"/>.</typeparam>
         /// <returns>The result value.</returns>
-        public TResult? GetValue<TResult>()
+        public TValue? GetValue<TValue>()
         {
             _implementor.AssertAreEqual(MediaTypeNames.Application.Json, Response.Content?.Headers?.ContentType?.MediaType);
             if (Response.Content == null)
                 return default!;
 
-            return _jsonSerializer.Deserialize<TResult>(Response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
+            return _jsonSerializer.Deserialize<TValue>(Response.Content.ReadAsStringAsync().GetAwaiter().GetResult())!;
         }
 
         /// <summary>
@@ -333,7 +357,7 @@ namespace UnitTestEx.Assertors
         {
             _implementor.AssertAreEqual(MediaTypeNames.Application.Json, Response.Content?.Headers?.ContentType?.MediaType);
             if (Response.Content == null)
-                return default!;
+                return default;
 
             var content = Response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 
@@ -349,7 +373,7 @@ namespace UnitTestEx.Assertors
             catch (Exception ex)
             {
                 _implementor.AssertFail($"Unable to deserialize the JSON content to Type {typeof(TColl).FullName}: {ex.Message}");
-                return default!;
+                return default;
             }
         }
 

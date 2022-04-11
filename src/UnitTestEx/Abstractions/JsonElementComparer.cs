@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 
 namespace UnitTestEx.Abstractions
@@ -11,131 +12,366 @@ namespace UnitTestEx.Abstractions
     /// Provides a <see cref="JsonElement"/> comparer where property order is not significant.
     /// </summary>
     /// <remarks>Influenced by <see href="https://stackoverflow.com/questions/60580743/what-is-equivalent-in-jtoken-deepequals-in-system-text-json"/>.</remarks>
-    public class JsonElementComparer : IEqualityComparer<JsonElement>
+    public sealed class JsonElementComparer : IEqualityComparer<JsonElement>, IEqualityComparer<string>
     {
-        private readonly int _maxHashDepth = -1;
+        /// <summary>
+        /// Initializes a new instance of the <see cref="JsonElementComparer"/> class.
+        /// </summary>
+        /// <param name="maxDifferences">The maximum number of differences to detect where performing a <see cref="Compare(JsonElement, JsonElement, CompareArgs)"/> or <see cref="Compare(JsonElement, JsonElement, string[])"/>.</param>
+        public JsonElementComparer(int maxDifferences = 1) => MaxDifferences = maxDifferences;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="JsonElementComparer"/>.
+        /// Gets or sets the maximum number of differences to detect where performing a <see cref="Compare(JsonElement, JsonElement, CompareArgs)"/> or <see cref="Compare(JsonElement, JsonElement, string[])"/>.
         /// </summary>
-        public JsonElementComparer() : this(-1) { }
+        /// <remarks>Defaults to '<c>1</c>'.</remarks>
+        public int MaxDifferences { get; set; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="JsonElementComparer"/> with the specified <paramref name="maxHashDepth"/>.
+        /// Compare two JSON strings for equality.
         /// </summary>
-        /// <param name="maxHashDepth">The maixum hierarchical depth to determine the underlying hash code.</param>
-        public JsonElementComparer(int maxHashDepth) => _maxHashDepth = maxHashDepth;
-
-        /// <inheritdoc/>
-        public bool Equals(JsonElement x, JsonElement y)
+        /// <param name="left">The left JSON <see cref="string"/>.</param>
+        /// <param name="right">The right JSON <see cref="string"/>.</param>
+        /// <param name="pathsToIgnore">Optional list of paths to exclude from the comparison.</param>
+        /// <returns>The resulting comparison error message; <c>null</c> indicates equality.</returns>
+        /// <exception cref="ArgumentException"></exception>
+        public string? Compare(string left, string right, params string[] pathsToIgnore)
         {
-            if (x.ValueKind != y.ValueKind)
-                return false;
+            var ljr = new Utf8JsonReader(new BinaryData(left));
+            if (!JsonElement.TryParseValue(ref ljr, out JsonElement? lje))
+                throw new ArgumentException("JSON is not considered valid.", nameof(left));
 
-            switch (x.ValueKind)
+            var rjr = new Utf8JsonReader(new BinaryData(right));
+            if (!JsonElement.TryParseValue(ref rjr, out JsonElement? rje))
+                throw new ArgumentException("JSON is not considered valid.", nameof(right));
+
+            return Compare(lje.Value, rje.Value, pathsToIgnore);
+        }
+
+        /// <summary>
+        /// Compare two <see cref="JsonElement"/> objects for equality.
+        /// </summary>
+        /// <param name="left">The left <see cref="JsonElement"/>.</param>
+        /// <param name="right">The right <see cref="JsonElement"/>.</param>
+        /// <param name="pathsToIgnore">Optional list of paths to exclude from the comparison.</param>
+        /// <returns>The resulting comparison error message; <c>null</c> indicates equality.</returns>
+        public string? Compare(JsonElement left, JsonElement right, params string[] pathsToIgnore)
+        {
+            var args = new CompareArgs(MaxDifferences, pathsToIgnore);
+            Compare(left, right, args);
+            return args.ErrorMessage;
+        }
+
+        /// <summary>
+        /// Perform the <see cref="JsonElement"/> comparison.
+        /// </summary>
+        private static void Compare(JsonElement left, JsonElement right, CompareArgs args)
+        {
+            if (left.ValueKind != right.ValueKind)
+            {
+                args.AddError(left, right);
+                return;
+            }
+
+            switch (left.ValueKind)
             {
                 case JsonValueKind.Null:
                 case JsonValueKind.True:
                 case JsonValueKind.False:
-                case JsonValueKind.Undefined:
-                    return true;
-
-                // Compare the raw values of numbers, and the text of strings.
-                // Note this means that 0.0 will differ from 0.00 -- which may be correct as deserializing either to `decimal` will result in subtly different results.
-                // Newtonsoft's JValue.Compare(JTokenType valueType, object? objA, object? objB) has logic for detecting "equivalent" values, 
-                // you may want to examine it to see if anything there is required here.
-                // https://github.com/JamesNK/Newtonsoft.Json/blob/master/Src/Newtonsoft.Json/Linq/JValue.cs#L246
-                case JsonValueKind.Number:
-                    return x.GetRawText() == y.GetRawText();
+                    // These are the same by kind, so carry on!
+                    break;
 
                 case JsonValueKind.String:
-                    return x.GetString() == y.GetString(); // Do not use GetRawText() here, it does not automatically resolve JSON escape sequences to their corresponding characters.
+                    // Use GetString() vs GetRawText() to resolve JSON escaping.
+                    if (left.GetString() != right.GetString())
+                        args.AddError(left, right);
 
-                case JsonValueKind.Array:
-                    return x.EnumerateArray().SequenceEqual(y.EnumerateArray(), this);
+                    break;
+
+                case JsonValueKind.Number:
+                    // Use GetDecimal() to compare actual number regardless of formatting.
+                    if (left.GetDecimal() != right.GetDecimal())
+                        args.AddError(left, right);
+
+                    break;
 
                 case JsonValueKind.Object:
-                    // Surprisingly, JsonDocument fully supports duplicate property names.
-                    // I.e. it's perfectly happy to parse {"Value":"a", "Value" : "b"} and will store both
-                    // key/value pairs inside the document!
-                    // A close reading of https://www.rfc-editor.org/rfc/rfc8259#section-4 seems to indicate that
-                    // such objects are allowed but not recommended, and when they arise, interpretation of 
-                    // identically-named properties is order-dependent.  
-                    // So stably sorting by name then comparing values seems the way to go.
-                    var xPropertiesUnsorted = x.EnumerateObject().ToList();
-                    var yPropertiesUnsorted = y.EnumerateObject().ToList();
-                    if (xPropertiesUnsorted.Count != yPropertiesUnsorted.Count)
-                        return false;
+                    var lprops = left.EnumerateObject().ToList();
+                    var rprops = right.EnumerateObject().ToList();
 
-                    var xProperties = xPropertiesUnsorted.OrderBy(p => p.Name, StringComparer.Ordinal);
-                    var yProperties = yPropertiesUnsorted.OrderBy(p => p.Name, StringComparer.Ordinal);
-                    foreach (var (px, py) in xProperties.Zip(yProperties))
+                    foreach (var l in lprops)
                     {
-                        if (px.Name != py.Name)
-                            return false;
+                        args.Compare(l.Name, () =>
+                        {
+                            if (right.TryGetProperty(l.Name, out var r))
+                                Compare(l.Value, r, args);
+                            else
+                                args.AddError("does not exist in right JSON value");
+                        });
 
-                        if (!Equals(px.Value, py.Value))
-                            return false;
+                        if (args.MaxDifferencesFound)
+                            break;
                     }
 
-                    return true;
+                    foreach (var r in rprops)
+                    {
+                        args.Compare(r.Name, () =>
+                        {
+                            if (!left.TryGetProperty(r.Name, out _))
+                                args.AddError("does not exist in left JSON value");
+                        });
+
+                        if (args.MaxDifferencesFound)
+                            break;
+                    }
+
+                    break;
+
+                case JsonValueKind.Array:
+                    var ll = left.EnumerateArray().ToList();
+                    var rl = right.EnumerateArray().ToList();
+                    if (ll.Count != rl.Count)
+                    {
+                        args.AddError($"array lengths not equal: {ll.Count} != {rl.Count}");
+                        break;
+                    }
+
+                    for (int i = 0; i < ll.Count; i++)
+                    {
+                        args.Compare(i, () => Compare(ll[i], rl[i], args));
+                        if (args.MaxDifferencesFound)
+                            break;
+                    }
+
+                    break;
+
+                case JsonValueKind.Undefined:
+                    // Ignore Undefined, assume irrelevant (i.e. not included in comparison).
+                    break;
 
                 default:
-                    throw new JsonException(string.Format("Unknown JsonValueKind {0}", x.ValueKind));
+                    throw new InvalidOperationException($"Unexpected JsonValueKind {left.ValueKind}.");
             }
         }
 
         /// <inheritdoc/>
-        public int GetHashCode(JsonElement obj)
+        public bool Equals(string? x, string? y)
+        {
+            if (x == null && y == null)
+                return true;
+            else if (x == null || y == null)
+                return false;
+
+            var ljr = new Utf8JsonReader(new BinaryData(x));
+            if (!JsonElement.TryParseValue(ref ljr, out JsonElement? lje))
+                throw new ArgumentException("JSON is not considered valid.", nameof(x));
+
+            var rjr = new Utf8JsonReader(new BinaryData(y));
+            if (!JsonElement.TryParseValue(ref rjr, out JsonElement? rje))
+                throw new ArgumentException("JSON is not considered valid.", nameof(y));
+
+            var args = new CompareArgs(1);
+            Compare(lje.Value, rje.Value, args);
+            return !args.MaxDifferencesFound;
+        }
+
+        /// <inheritdoc/>
+        public bool Equals(JsonElement x, JsonElement y)
+        {
+            var args = new CompareArgs(1);
+            Compare(x, y, args);
+            return !args.MaxDifferencesFound;
+        }
+
+        /// <inheritdoc/>
+        public int GetHashCode(string json)
+        {
+            if (json == null)
+                return 0;
+
+            var jr = new Utf8JsonReader(new BinaryData(json));
+            if (!JsonElement.TryParseValue(ref jr, out JsonElement? je))
+                throw new ArgumentException("JSON is not considered valid.", nameof(json));
+
+            return GetHashCode(je.Value);
+        }
+
+        /// <inheritdoc/>
+        public int GetHashCode(JsonElement json)
         {
             var hash = new HashCode();
-            ComputeHashCode(obj, ref hash, 0);
+            ComputeHashCode(json, ref hash);
             return hash.ToHashCode();
         }
 
         /// <summary>
         /// Computes the hash code.
         /// </summary>
-        private void ComputeHashCode(JsonElement obj, ref HashCode hash, int depth)
+        private void ComputeHashCode(JsonElement json, ref HashCode hash)
         {
-            hash.Add(obj.ValueKind);
+            hash.Add(json.ValueKind);
 
-            switch (obj.ValueKind)
+            switch (json.ValueKind)
             {
                 case JsonValueKind.Null:
+                    break;
+
                 case JsonValueKind.True:
+                    hash.Add(true.GetHashCode());
+                    break;
+
                 case JsonValueKind.False:
-                case JsonValueKind.Undefined:
+                    hash.Add(false.GetHashCode());
                     break;
 
                 case JsonValueKind.Number:
-                    hash.Add(obj.GetRawText());
+                    hash.Add(json.GetDecimal().GetHashCode());
                     break;
 
                 case JsonValueKind.String:
-                    hash.Add(obj.GetString());
+                    hash.Add(json.GetString());
                     break;
 
                 case JsonValueKind.Array:
-                    if (depth != _maxHashDepth)
-                        foreach (var item in obj.EnumerateArray())
-                            ComputeHashCode(item, ref hash, depth + 1);
-                    else
-                        hash.Add(obj.GetArrayLength());
-                    break;
-
-                case JsonValueKind.Object:
-                    foreach (var property in obj.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
+                    foreach (var item in json.EnumerateArray())
                     {
-                        hash.Add(property.Name);
-                        if (depth != _maxHashDepth)
-                            ComputeHashCode(property.Value, ref hash, depth + 1);
+                        ComputeHashCode(item, ref hash);
                     }
 
                     break;
 
+                case JsonValueKind.Object:
+                    foreach (var property in json.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
+                    {
+                        hash.Add(property.Name);
+                        ComputeHashCode(property.Value, ref hash);
+                    }
+
+                    break;
+
+                case JsonValueKind.Undefined:
+                    break;
+
                 default:
-                    throw new JsonException(string.Format("Unknown JsonValueKind {0}", obj.ValueKind));
+                    throw new JsonException(string.Format("Unknown JsonValueKind {0}", json.ValueKind));
+            }
+        }
+
+        /// <summary>
+        /// Provides arguments needed to support the comparison.
+        /// </summary>
+        private class CompareArgs
+        {
+            private readonly Stack<string> _path = new();
+            private readonly Stack<string> _qualifiedPath = new();
+            private StringBuilder? _errorMessage;
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="CompareArgs"/> class.
+            /// </summary>
+            /// <param name="maxDifferences">The maximum number of differences to detect.</param>
+            /// <param name="pathsToIgnore">The paths to ignore from the comparison.</param>
+            public CompareArgs(int maxDifferences, params string[] pathsToIgnore)
+            {
+                MaxDifferences = maxDifferences;
+                var maxDepth = 0;
+                PathsToIgnore = CoreEx.Text.Json.JsonFilterer.CreateHashSet(pathsToIgnore, CoreEx.Json.JsonPropertyFilter.Exclude, ref maxDepth);
+            }
+
+            /// <summary>
+            /// Indicates whether to fail fast after first error; versus, report all.
+            /// </summary>
+            public int MaxDifferences { get; }
+
+            /// <summary>
+            /// Gets the current difference count.
+            /// </summary>
+            public int DifferenceCount { get; private set; }
+
+            /// <summary>
+            /// Indicates whether the <see cref="DifferenceCount"/> equals the <see cref="MaxDifferences"/>.
+            /// </summary>
+            public bool MaxDifferencesFound => DifferenceCount >= MaxDifferences;
+
+            /// <summary>
+            /// Get paths to exclude.
+            /// </summary>
+            public HashSet<string> PathsToIgnore { get; }
+
+            /// <summary>
+            /// Gets or sets the current path.
+            /// </summary>
+            public string? Path => _path.Count == 0 ? null : _path.Peek();
+
+            /// <summary>
+            /// Gets or sets the qualified path (includes indexing).
+            /// </summary>
+            public string? QualifiedPath => _qualifiedPath.Count == 0 ? null : _qualifiedPath.Peek();
+
+            /// <summary>
+            /// Gets the error message.
+            /// </summary>
+            public string? ErrorMessage => _errorMessage?.ToString();
+
+            /// <summary>
+            /// Encapsulates a property comparison.
+            /// </summary>
+            /// <param name="name">The property name.</param>
+            /// <param name="action">The action to execute.</param>
+            public void Compare(string name, Action action)
+            {
+                var path = Path == null ? name : $"{Path}.{name}";
+                if (PathsToIgnore.Contains(path))
+                    return;
+
+                _path.Push(path);
+                _qualifiedPath.Push(QualifiedPath == null ? name : $"{QualifiedPath}.{name}");
+
+                action.Invoke();
+
+                _path.Pop();
+                _qualifiedPath.Pop();
+            }
+
+            /// <summary>
+            /// Encapsulates an array item comparison.
+            /// </summary>
+            /// <param name="index">The array index.</param>
+            /// <param name="action">The action to execute.</param>
+            public void Compare(int index, Action action)
+            {
+                _qualifiedPath.Push($"{QualifiedPath}[{index}]");
+
+                action.Invoke();
+
+                _qualifiedPath.Pop();
+            }
+
+            /// <summary>
+            /// Adds the standard not equal error.
+            /// </summary>
+            /// <param name="left">The left <see cref="JsonElement"/>.</param>
+            /// <param name="right">The right <see cref="JsonElement"/>.</param>
+            public void AddError(JsonElement left, JsonElement right) => AddError($"value is not equal: {left.GetRawText()} != {right.GetRawText()}");
+
+            /// <summary>
+            /// Adds the specified error <paramref name="message"/>.
+            /// </summary>
+            /// <param name="message">The error message.</param>
+            public void AddError(string message)
+            {
+                DifferenceCount++;
+                if (_errorMessage == null)
+                    _errorMessage = new();
+                else
+                    _errorMessage.AppendLine();
+
+                _errorMessage.Append($"Path '{QualifiedPath}' {message}");
+
+                if (MaxDifferencesFound)
+                {
+                    _errorMessage.AppendLine();
+                    _errorMessage.Append($"Maximum difference count of '{MaxDifferences}' found; comparison stopped.");
+                }
             }
         }
     }

@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Entities;
 using CoreEx.Json;
+using CoreEx.WebApis;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using System;
@@ -8,6 +10,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Mime;
 using System.Reflection;
+using System.Text.Json;
 using UnitTestEx.Abstractions;
 
 namespace UnitTestEx.Assertors
@@ -360,6 +363,162 @@ namespace UnitTestEx.Assertors
                 if (!cr.AreEqual)
                     Implementor.AssertFail($"Expected and Actual values are not equal: {cr.DifferencesString}");
             }
+
+            return this;
+        }
+
+        /// <summary>
+        /// Asserts that the <see cref="Result"/> JSON content matches the specified <paramref name="json"/>.
+        /// </summary>
+        /// <param name="json">The expected JSON.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
+        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+        public ActionResultAssertor AssertJson(string json, params string[] pathsToIgnore)
+        {
+            if (string.IsNullOrEmpty(json))
+                throw new ArgumentNullException(nameof(json));
+
+            var actj = GetValueAsJson();
+            if (actj == null)
+            {
+                Implementor.AssertAreEqual(json, null, "Expected and Actual (no content) JSON values are not equal");
+                return this;
+            }
+
+            var exp = new Utf8JsonReader(new BinaryData(json));
+            if (!JsonElement.TryParseValue(ref exp, out JsonElement? eje))
+                throw new ArgumentException("Expected JSON is not considered valid.", nameof(json));
+
+            var act = new Utf8JsonReader(new BinaryData(actj));
+            if (!JsonElement.TryParseValue(ref act, out JsonElement? aje))
+                Implementor.AssertFail("Actual value is not considered valid JSON.");
+
+            var jecr = new JsonElementComparer(5).Compare(eje!.Value, aje!.Value, pathsToIgnore);
+            if (jecr != null)
+                Implementor.AssertFail($"Expected and Actual JSON values are not equal:{Environment.NewLine}{jecr}");
+
+            return this;
+        }
+
+        /// <summary>
+        /// Gets the value as a JSON <see cref="string"/>.
+        /// </summary>
+        /// <returns>The JSON <see cref="string"/>.</returns>
+        public string? GetValueAsJson()
+        {
+            if (Result == null)
+                return default;
+            else if (Result is ObjectResult or)
+                return or.Value == null ? default : JsonSerializer.Serialize(or.Value);
+            else if (Result is JsonResult jr)
+                return jr.Value == null ? default : JsonSerializer.Serialize(jr.Value);
+            else if (Result is ContentResult cr)
+            {
+                AssertContentTypeJson();
+                return cr.Content;
+            }
+            else
+                return null;
+        }
+
+        /// <summary>
+        /// Gets the response value.
+        /// </summary>
+        /// <typeparam name="TValue">The resulting value <see cref="Type"/>.</typeparam>
+        /// <returns>The result value.</returns>
+        public TValue? GetValue<TValue>()
+        {
+            if (Result == null)
+                return default;
+            else if (Result is ObjectResult or)
+                return or.Value == null ? default : (or.Value is TValue tv ? tv : GetValueFail<TValue>(or.Value));
+            else if (Result is JsonResult jr)
+                return jr.Value == null ? default : (jr.Value is TValue tv ? tv : GetValueFail<TValue>(jr.Value));
+            else if (Result is ContentResult cr)
+            {
+                if (cr == null || string.IsNullOrEmpty(cr.Content))
+                    return default;
+
+                try
+                {
+                    return JsonSerializer.Deserialize<TValue>(cr.Content);
+                }
+                catch (Exception ex)
+                {
+                    Implementor.AssertFail($"Unable to deserialize the JSON content to Type {typeof(TValue).FullName}: {ex.Message}");
+                    return default; // Will never reach here; needed to compile.
+                }
+            }
+            else
+                return default;
+        }
+
+        /// <summary>
+        /// Gets the response <typeparamref name="TCollResult"/> value.
+        /// </summary>
+        /// <typeparam name="TCollResult">The <see cref="ICollectionResult{TColl, TItem}"/> response <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TColl">The collection <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TItem">The item <see cref="Type"/>.</typeparam>
+        /// <returns>The result value.</returns>
+        public TCollResult? GetValue<TCollResult, TColl, TItem>()
+            where TCollResult : ICollectionResult<TColl, TItem>, new()
+            where TColl : ICollection<TItem>
+        {
+            if (Result != null && Result is ValueContentResult vcr)
+            {
+                if (vcr == null || string.IsNullOrEmpty(vcr.Content))
+                    return default;
+
+                try
+                {
+                    return new TCollResult { Collection = JsonSerializer.Deserialize<TColl>(vcr.Content)!, Paging = vcr.PagingResult };
+                }
+                catch (Exception ex)
+                {
+                    Implementor.AssertFail($"Unable to deserialize the JSON content to Type {typeof(TColl).FullName}: {ex.Message}");
+                }
+            }
+            else
+                Implementor.AssertFail($"The Result must be of Type {typeof(ValueContentResult).FullName} to use GetValue<TCollResult, TColl, TItem>().");
+
+            return default; // Will never reach here; needed to compile.
+        }
+
+        /// <summary>
+        /// Get the response value failure.
+        /// </summary>
+        private TValue? GetValueFail<TValue>(object result)
+        {
+            Implementor.AssertFail($"Value Type '{typeof(TValue).FullName}' is not same as ObjectResult.Value Type '{result.GetType().FullName}'.");
+            return default; // Will never reach here; needed to compile.
+        }
+
+        /// <summary>
+        /// Asserts that the <see cref="ValueContentResult.Location"/> matches the resulting <paramref name="expectedUri"/> result.
+        /// </summary>
+        /// <param name="expectedUri">The expected <see cref="Uri"/> function.</param>
+        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+        public ActionResultAssertor AssertLocationHeader<TValue>(Func<TValue?, Uri> expectedUri)
+        {
+            if (Result != null && Result is ValueContentResult vcr)
+                Implementor.AssertAreEqual(expectedUri?.Invoke(GetValue<TValue>()), vcr.Location, $"Expected and Actual {nameof(ValueContentResult)}.{nameof(ValueContentResult.Location)} values are not equal.");
+            else
+                Implementor.AssertFail($"The Result must be of Type {typeof(ValueContentResult).FullName} to use AssertLocationHeader().");
+
+            return this;
+        }
+
+        /// <summary>
+        /// Asserts that the <see cref="ValueContentResult.ETag"/> matches the <paramref name="expectedETag"/>.
+        /// </summary>
+        /// <param name="expectedETag">The expected ETag value.</param>
+        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+        public ActionResultAssertor AssertETagHeader(string expectedETag)
+        {
+            if (Result != null && Result is ValueContentResult vcr)
+                Implementor.AssertAreEqual(expectedETag, vcr.ETag, $"Expected and Actual {nameof(ValueContentResult)}.{nameof(ValueContentResult.ETag)} values are not equal.");
+            else
+                Implementor.AssertFail($"The Result must be of Type {typeof(ValueContentResult).FullName} to use AssertLocationHeader().");
 
             return this;
         }
