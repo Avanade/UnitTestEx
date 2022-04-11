@@ -100,8 +100,8 @@ namespace UnitTestEx.MSTest.Test
         {
             var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
-            mc.Request(HttpMethod.Post, "products/xyz").WithJsonBody("{\"firstName\":\"Bob\",\"lastName\":\"Jane\"}").Respond.With(HttpStatusCode.Accepted);
-            mc.Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Jenny", LastName = "Browne" }).Respond.With(HttpStatusCode.OK);
+            mc.Request(HttpMethod.Post, "products/xyz").TraceRequestComparisons().WithJsonBody("{\"firstName\":\"Bob\",\"lastName\":\"Jane\"}").Respond.With(HttpStatusCode.Accepted);
+            mc.Request(HttpMethod.Post, "products/xyz").TraceRequestComparisons().WithJsonBody(new Person { FirstName = "Jenny", LastName = "Browne" }).Respond.With(HttpStatusCode.OK);
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);

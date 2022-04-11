@@ -2,6 +2,7 @@
 
 using CoreEx.Json;
 using KellermanSoftware.CompareNetObjects;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using System;
@@ -27,6 +28,7 @@ namespace UnitTestEx.Mocking
         private object? _content;
         private string? _mediaType;
         private string[] _membersToIgnore = Array.Empty<string>();
+        private bool _traceRequestComparisons = false;
 
         /// <summary>
         /// Gets the static <see cref="System.Random"/> instance.
@@ -171,7 +173,13 @@ namespace UnitTestEx.Mocking
                             var bur = new Utf8JsonReader(new BinaryData(body));
 
                             if (JsonElement.TryParseValue(ref cur, out JsonElement? cje) && JsonElement.TryParseValue(ref bur, out JsonElement? bje))
-                                return new JsonElementComparer().Equals((JsonElement)cje, (JsonElement)bje);
+                            {
+                                var differences = new JsonElementComparer(5).Compare((JsonElement)cje, (JsonElement)bje, _membersToIgnore);
+                                if (differences != null && _traceRequestComparisons)
+                                    Implementor.CreateLogger("MockHttpClientRequest").LogTrace($"HTTP request JsonElementComparer differences: {differences}");
+
+                                return differences == null;
+                            }
                         }
 
                         var cc = ObjectComparer.CreateDefaultConfig();
@@ -180,6 +188,9 @@ namespace UnitTestEx.Mocking
                         var cl = new CompareLogic(cc);
                         var cv = JsonSerializer.Deserialize(body, _content!.GetType());
                         var cr = cl.Compare(_content, cv);
+                        if (!cr.AreEqual && _traceRequestComparisons)
+                            Implementor.CreateLogger("MockHttpClientRequest").LogTrace($"HTTP request ObjectComparer differences: {cr.DifferencesString}");
+
                         return cr.AreEqual;
                     }
                     catch
@@ -253,14 +264,16 @@ namespace UnitTestEx.Mocking
         /// Provides the expected request body with the <paramref name="json"/> content (<see cref="MediaTypeNames.Application.Json"/>).
         /// </summary>
         /// <param name="json">The <see cref="MediaTypeNames.Application.Json"/> content.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
-        public MockHttpClientRequestBody WithJsonBody(string json)
+        public MockHttpClientRequestBody WithJsonBody(string json, params string[] pathsToIgnore)
         {
             try
             {
                 _ = JsonSerializer.Deserialize(json);
                 _content = json;
                 _mediaType = MediaTypeNames.Application.Json;
+                _membersToIgnore = pathsToIgnore;
                 return new MockHttpClientRequestBody(Rule);
 
             }
@@ -275,18 +288,21 @@ namespace UnitTestEx.Mocking
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> used to infer <see cref="Assembly"/> that contains the embedded resource.</typeparam>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
-        public MockHttpClientRequestBody WithJsonResourceBody<TAssembly>(string resourceName) => WithJsonResourceBody(resourceName, typeof(TAssembly).Assembly);
+        public MockHttpClientRequestBody WithJsonResourceBody<TAssembly>(string resourceName, params string[] pathsToIgnore) => WithJsonResourceBody(resourceName, typeof(TAssembly).Assembly, pathsToIgnore);
 
         /// <summary>
         /// Provides the expected request body using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
         /// </summary>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
-        public MockHttpClientRequestBody WithJsonResourceBody(string resourceName, Assembly? assembly = null)
+        public MockHttpClientRequestBody WithJsonResourceBody(string resourceName, Assembly? assembly = null, params string[] pathsToIgnore)
         {
             _content = Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly());
+            _membersToIgnore = pathsToIgnore;
             _mediaType = MediaTypeNames.Application.Json;
             return new MockHttpClientRequestBody(Rule);
         }
@@ -301,6 +317,16 @@ namespace UnitTestEx.Mocking
         public MockHttpClientRequest Times(Times times)
         {
             Rule.Times = times;
+            return this;
+        }
+
+        /// <summary>
+        /// Indicates whether the request content comparison differences should be trace logged to aid in debugging/troubleshooting.
+        /// </summary>
+        /// <returns>The <see cref="MockHttpClientRequest"/> to support fluent-style method-chaining.</returns>
+        public MockHttpClientRequest TraceRequestComparisons()
+        {
+            _traceRequestComparisons = true;
             return this;
         }
 
