@@ -43,6 +43,7 @@ namespace UnitTestEx.Hosting
             var sw = Stopwatch.StartNew();
             try
             {
+                LogHeader();
                 var f = ServiceScope.ServiceProvider.CreateInstance<T>();
                 await (function ?? throw new ArgumentNullException(nameof(function)))(f).ConfigureAwait(false);
             }
@@ -55,7 +56,8 @@ namespace UnitTestEx.Hosting
                 sw.Stop();
             }
 
-            LogElapsed(ex, sw.ElapsedMilliseconds);
+            await Task.Delay(0).ConfigureAwait(false);
+            LogResult(ex, sw.ElapsedMilliseconds);
             LogTrailer();
             return new VoidAssertor(ex, Implementor, JsonSerializer);
         }
@@ -79,6 +81,7 @@ namespace UnitTestEx.Hosting
             var sw = Stopwatch.StartNew();
             try
             {
+                LogHeader();
                 var f = ServiceScope.ServiceProvider.CreateInstance<T>();
                 result = await (function ?? throw new ArgumentNullException(nameof(function)))(f).ConfigureAwait(false);
             }
@@ -91,7 +94,8 @@ namespace UnitTestEx.Hosting
                 sw.Stop();
             }
 
-            LogElapsed(ex, sw.ElapsedMilliseconds);
+            await Task.Delay(0).ConfigureAwait(false);
+            LogResult(ex, sw.ElapsedMilliseconds);
 
             if (ex == null)
             {
@@ -111,13 +115,21 @@ namespace UnitTestEx.Hosting
             return new ResultAssertor<TResult>(result, ex, Implementor, JsonSerializer);
         }
 
-        /// <summary>
-        /// Log the elapsed execution time.
-        /// </summary>
-        private void LogElapsed(Exception? ex, long ms)
+        private void LogHeader()
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("GENERIC TYPE TESTER...");
+            Implementor.WriteLine("");
+            Implementor.WriteLine("LOGGING >");
+        }
+
+        /// <summary>
+        /// Log the elapsed execution time.
+        /// </summary>
+        private void LogResult(Exception? ex, long ms)
+        {
+            Implementor.WriteLine("");
+            Implementor.WriteLine("RESULT >");
             Implementor.WriteLine($"Elapsed (ms): {ms}");
             if (ex != null)
             {

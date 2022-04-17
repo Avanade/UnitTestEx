@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
@@ -109,6 +110,18 @@ namespace UnitTestEx.MSTest.Test
             using var test = ApiTester.Create<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Update(1, null), new Person { FirstName = null, LastName = null })
+                .AssertBadRequest()
+                .AssertErrors(
+                    new ApiError("firstName", "First name is required."),
+                    new ApiError("lastName", "Last name is required."));
+        }
+
+        [TestMethod]
+        public void Update_Test5()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Controller<PersonController>()
+                .RunContent(c => c.Update(1, null), "{\"firstName\":null,\"lastName\":null}", MediaTypeNames.Application.Json)
                 .AssertBadRequest()
                 .AssertErrors(
                     new ApiError("firstName", "First name is required."),

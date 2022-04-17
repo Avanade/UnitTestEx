@@ -54,6 +54,11 @@ namespace UnitTestEx.Functions
                 if (a == null)
                     throw new InvalidOperationException($"The function method must have a parameter using the {nameof(ServiceBusTriggerAttribute)}.");
 
+                Implementor.WriteLine("");
+                Implementor.WriteLine("FUNCTION SERVICE BUS TRIGGER TESTER...");
+                Implementor.WriteLine("");
+                Implementor.WriteLine("LOGGING >");
+
                 sbv = v;
                 if (validateTriggerProperties)
                 {
@@ -62,6 +67,7 @@ namespace UnitTestEx.Functions
                 }
             }).ConfigureAwait(false);
 
+            await Task.Delay(0).ConfigureAwait(false);
             LogOutput(ex, ms, sbv);
             return new VoidAssertor(ex, Implementor, JsonSerializer);
         }
@@ -127,7 +133,7 @@ namespace UnitTestEx.Functions
         private void LogOutput(Exception? ex, long ms, object? value)
         {
             Implementor.WriteLine("");
-            Implementor.WriteLine("FUNCTION SERVICE BUS TRIGGER TESTER...");
+            Implementor.WriteLine("RESULT >");
             Implementor.WriteLine($"Elapsed (ms): {ms}");
             Implementor.WriteLine($"Message Type: {(value == null ? "<null>" : value.GetType().Name)}");
 

@@ -4,6 +4,7 @@ using CoreEx.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -34,6 +35,16 @@ namespace UnitTestEx.AspNetCore
         private readonly TestFrameworkImplementor _implementor;
 
         /// <summary>
+        /// Provides the HTTP request body option.
+        /// </summary>
+        private enum BodyOption
+        {
+            None,
+            Content,
+            Value
+        }
+
+        /// <summary>
         /// Initializes a new <see cref="ControllerTester{TController}"/> class.
         /// </summary>
         /// <param name="testServer">The <see cref="TestServer"/>.</param>
@@ -47,55 +58,127 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <summary>
-        /// Runs the controller using an <see cref="HttpRequestMessage"/>.
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> with no body.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
-        /// <param name="value">The optional request body value.</param>
         /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
-        /// <param name="args">Zero or more <see cref="Ceh.IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor RunWithRequest(HttpMethod httpMethod, string? requestUri, object? value = null, Ceh.HttpRequestOptions? requestOptions = null, params Ceh.IHttpArg[] args)
-            => RunWithRequestAsync(httpMethod, requestUri, value, requestOptions, args).GetAwaiter().GetResult();
+        public HttpResponseMessageAssertor RunHttpRequest(HttpMethod httpMethod, string? requestUri, Ceh.HttpRequestOptions? requestOptions = null)
+            => RunJsonHttpRequestAsync(httpMethod, requestUri, requestOptions).GetAwaiter().GetResult();
 
         /// <summary>
-        /// Runs the controller using an <see cref="HttpRequestMessage"/>.
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> with <i>optional</i> <paramref name="body"/> (defaults <c>Content-Type</c> to <see cref="MediaTypeNames.Text.Plain"/>).
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
-        /// <param name="value">The optional request body value.</param>
-        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
-        /// <param name="args">Zero or more <see cref="Ceh.IHttpArg"/> objects for <paramref name="requestUri"/> templating, query string additions, and content body specification.</param>
+        /// <param name="body">The optional body content.</param>
+        /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public async Task<HttpResponseMessageAssertor> RunWithRequestAsync(HttpMethod httpMethod, string? requestUri, object? value = null, Ceh.HttpRequestOptions? requestOptions = null, params Ceh.IHttpArg[] args)
+        public HttpResponseMessageAssertor RunHttpRequest(HttpMethod httpMethod, string? requestUri, string? body = null, string? contentType = MediaTypeNames.Text.Plain)
+            => RunHttpRequestAsync(httpMethod, requestUri, body, null, contentType).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> with <i>optional</i> <paramref name="body"/> (defaults <c>Content-Type</c> to <see cref="MediaTypeNames.Text.Plain"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
+        /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
+        /// <param name="body">The optional body content.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public HttpResponseMessageAssertor RunHttpRequest(HttpMethod httpMethod, string? requestUri, string? body = null, Ceh.HttpRequestOptions? requestOptions = null, string? contentType = MediaTypeNames.Text.Plain)
+            => RunHttpRequestAsync(httpMethod, requestUri, body, requestOptions, contentType).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> with no body.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
+        /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public Task<HttpResponseMessageAssertor> RunHttpRequestAsync(HttpMethod httpMethod, string? requestUri, Ceh.HttpRequestOptions? requestOptions = null)
+            => RunHttpRequestInternalAsync(httpMethod, requestUri, false, null, requestOptions);
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> with <i>optional</i> <paramref name="body"/> (defaults <c>Content-Type</c> to <see cref="MediaTypeNames.Text.Plain"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
+        /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
+        /// <param name="body">The optional body content.</param>
+        /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public Task<HttpResponseMessageAssertor> RunHttpRequestAsync(HttpMethod httpMethod, string? requestUri, string? body = null, string? contentType = MediaTypeNames.Text.Plain)
+            => RunHttpRequestInternalAsync(httpMethod, requestUri, true, body, null, contentType);
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> with <i>optional</i> <paramref name="body"/> (defaults <c>Content-Type</c> to <see cref="MediaTypeNames.Text.Plain"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
+        /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
+        /// <param name="body">The optional body content.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public Task<HttpResponseMessageAssertor> RunHttpRequestAsync(HttpMethod httpMethod, string? requestUri, string? body = null, Ceh.HttpRequestOptions? requestOptions = null, string? contentType = MediaTypeNames.Text.Plain)
+            => RunHttpRequestInternalAsync(httpMethod, requestUri, true, body, requestOptions, contentType);
+
+        /// <summary>
+        /// Runs the controller using the passed parameters.
+        /// </summary>
+        private async Task<HttpResponseMessageAssertor> RunHttpRequestInternalAsync(HttpMethod httpMethod, string? requestUri, bool hasBody, string? body = null, Ceh.HttpRequestOptions? requestOptions = null, string? contentType = MediaTypeNames.Text.Plain)
         {
-            var tc = new TypedHttpClient(_testServer.CreateClient(), _jsonSerializer);
+            if (body != null && httpMethod == HttpMethod.Get)
+                 _implementor.CreateLogger("ControllerTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
+
+            var tc = new TypedHttpClient(_testServer.CreateClient(), _jsonSerializer, req => LogRequest(req));
             var sw = Stopwatch.StartNew();
-            var res = await tc.SendAsync(httpMethod, requestUri, value, requestOptions, args).ConfigureAwait(false);
+            var res = await tc.SendContentAsync(httpMethod, requestUri, hasBody, body, contentType, requestOptions).ConfigureAwait(false);
 
             sw.Stop();
-            LogOutput(res, sw);
+            LogResponse(res, sw);
 
             return new HttpResponseMessageAssertor(res, _implementor, _jsonSerializer);
         }
 
         /// <summary>
-        /// Log the request/response to the output.
+        /// Runs the controller using an <see cref="HttpRequestMessage"/>.
         /// </summary>
-        private void LogOutput(HttpResponseMessage res, Stopwatch sw)
+        /// <param name="httpMethod">The <see cref="HttpMethod"/></param>
+        /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
+        /// <param name="value">The request body value.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public async Task<HttpResponseMessageAssertor> RunJsonHttpRequestAsync(HttpMethod httpMethod, string? requestUri, object? value, Ceh.HttpRequestOptions? requestOptions = null)
         {
-            if (res.RequestMessage == null)
-                return;
+            if (value != null && httpMethod == HttpMethod.Get)
+                _implementor.CreateLogger("ControllerTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
+            var tc = new TypedHttpClient(_testServer.CreateClient(), _jsonSerializer, req => LogRequest(req));
+            var sw = Stopwatch.StartNew();
+            var res = await tc.SendAsync(httpMethod, requestUri, value, requestOptions).ConfigureAwait(false);
+
+            sw.Stop();
+            await Task.Delay(0).ConfigureAwait(false);
+            LogResponse(res, sw);
+
+            return new HttpResponseMessageAssertor(res, _implementor, _jsonSerializer);
+        }
+
+        /// <summary>
+        /// Log the request to the output.
+        /// </summary>
+        private void LogRequest(HttpRequestMessage req)
+        {
             _implementor.WriteLine("");
             _implementor.WriteLine("API TESTER...");
             _implementor.WriteLine("");
             _implementor.WriteLine("REQUEST >");
-            _implementor.WriteLine($"Request: {res.RequestMessage.Method} {res.RequestMessage.RequestUri}");
-            _implementor.WriteLine($"Headers: {(res.RequestMessage.Headers == null || !res.RequestMessage.Headers.Any() ? "none" : "")}");
-            if (res.RequestMessage.Headers != null && res.RequestMessage.Headers.Any())
+            _implementor.WriteLine($"Request: {req.Method} {req.RequestUri}");
+            _implementor.WriteLine($"Headers: {(req.Headers == null || !req.Headers.Any() ? "none" : "")}");
+            if (req.Headers != null && req.Headers.Any())
             {
-                foreach (var hdr in res.RequestMessage.Headers)
+                foreach (var hdr in req.Headers)
                 {
                     var sb = new StringBuilder();
                     foreach (var v in hdr.Value)
@@ -113,26 +196,34 @@ namespace UnitTestEx.AspNetCore
             }
 
             object? jo = null;
-            if (res.RequestMessage.Content != null)
+            if (req.Content != null)
             {
-                // HACK: The Request Content is a forward only stream that is already read; we need to reset this private variable back to the start.
-                if (res.RequestMessage.Content is StreamContent)
-                {
-                    var fi = typeof(StreamContent).GetField("_content", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                    var ms = (MemoryStream)fi!.GetValue(res.RequestMessage.Content)!;
-                    ms.Position = 0;
-                }
+                string? content = null;
 
                 // Parse out the content.
                 try
                 {
-                    jo = _jsonSerializer.Deserialize(res.RequestMessage.Content.ReadAsStringAsync().Result);
+                    content = req.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    if (!string.IsNullOrEmpty(content))
+                        jo = _jsonSerializer.Deserialize(content);
                 }
                 catch (Exception) { /* This is being swallowed by design. */ }
 
-                _implementor.WriteLine($"Content: [{res.RequestMessage.Content?.Headers?.ContentType?.MediaType ?? "None"}]");
-                _implementor.WriteLine(jo == null ? res.RequestMessage.Content?.ToString() : _jsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
+                _implementor.WriteLine($"Content: [{req.Content?.Headers?.ContentType?.MediaType ?? "None"}]");
+                _implementor.WriteLine(jo == null ? content : _jsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
             }
+
+            _implementor.WriteLine("");
+            _implementor.WriteLine("LOGGING >");
+        }
+
+        /// <summary>
+        /// Log the response to the output.
+        /// </summary>
+        private void LogResponse(HttpResponseMessage res, Stopwatch sw)
+        {
+            if (res.RequestMessage == null)
+                return;
 
             _implementor.WriteLine("");
             _implementor.WriteLine($"RESPONSE >");
@@ -149,7 +240,7 @@ namespace UnitTestEx.AspNetCore
                 }
             }
 
-            jo = null;
+            object? jo = null;
             var content = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
             if (!string.IsNullOrEmpty(content) && res.Content?.Headers?.ContentType?.MediaType == MediaTypeNames.Application.Json)
             {
@@ -180,22 +271,92 @@ namespace UnitTestEx.AspNetCore
         /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
-        /// <param name="value">The optional body value where not explicitly passed via the <paramref name="expression"/>.</param>
-        /// <param name="args">Zero or more <see cref="Ceh.IHttpArg"/> objects for <see cref="Uri"/> templating, query string additions, and content body specification.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression, object? value = null, Ceh.HttpRequestOptions? requestOptions = null, params Ceh.IHttpArg[] args)
-            => RunAsync(expression, value, requestOptions, args).GetAwaiter().GetResult();
+        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression, Ceh.HttpRequestOptions? requestOptions = null)
+            => RunAsync(expression, requestOptions).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
         /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
-        /// <param name="value">The optional body value where not explicitly passed via the <paramref name="expression"/>.</param>
         /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
-        /// <param name="args">Zero or more <see cref="Ceh.IHttpArg"/> objects for <see cref="Uri"/> templating, query string additions, and content body specification.</param>
+        /// <param name="value">The optional body value where not explicitly passed via the <paramref name="expression"/>.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public async Task<HttpResponseMessageAssertor> RunAsync<TResult>(Expression<Func<TController, TResult>> expression, object? value = null, Ceh.HttpRequestOptions? requestOptions = null, params Ceh.IHttpArg[] args)
+        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression, object? value, Ceh.HttpRequestOptions? requestOptions = null)
+            => RunAsync(expression, value, requestOptions).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
+        /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <param name="expression">The controller operation invocation expression.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public Task<HttpResponseMessageAssertor> RunAsync<TResult>(Expression<Func<TController, TResult>> expression, Ceh.HttpRequestOptions? requestOptions = null)
+            => RunInternalAsync(expression, BodyOption.None, null, MediaTypeNames.Application.Json, requestOptions);
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
+        /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <param name="expression">The controller operation invocation expression.</param>
+        /// <param name="value">The body value to serialized as JSON.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public Task<HttpResponseMessageAssertor> RunAsync<TResult>(Expression<Func<TController, TResult>> expression, object? value, Ceh.HttpRequestOptions? requestOptions = null)
+            => RunInternalAsync(expression, BodyOption.Value, value, MediaTypeNames.Application.Json, requestOptions);
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
+        /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <param name="expression">The controller operation invocation expression.</param>
+        /// <param name="content">The body content.</param>
+        /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public HttpResponseMessageAssertor RunContent<TResult>(Expression<Func<TController, TResult>> expression, string? content, string? contentType = MediaTypeNames.Text.Plain)
+            => RunContentAsync(expression, content, contentType).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
+        /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <param name="expression">The controller operation invocation expression.</param>
+        /// <param name="content">The body content.</param>
+        /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public HttpResponseMessageAssertor RunContent<TResult>(Expression<Func<TController, TResult>> expression, string? content, Ceh.HttpRequestOptions? requestOptions = null, string? contentType = MediaTypeNames.Text.Plain)
+            => RunContentAsync(expression, content, requestOptions, contentType).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
+        /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <param name="expression">The controller operation invocation expression.</param>
+        /// <param name="content">The body content.</param>
+        /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public Task<HttpResponseMessageAssertor> RunContentAsync<TResult>(Expression<Func<TController, TResult>> expression, string? content, string? contentType = MediaTypeNames.Text.Plain)
+            => RunInternalAsync(expression, BodyOption.Content, content, contentType ?? MediaTypeNames.Text.Plain, null);
+
+        /// <summary>
+        /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
+        /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <param name="expression">The controller operation invocation expression.</param>
+        /// <param name="content">The body content.</param>
+        /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public Task<HttpResponseMessageAssertor> RunContentAsync<TResult>(Expression<Func<TController, TResult>> expression, string? content, Ceh.HttpRequestOptions? requestOptions = null, string? contentType = MediaTypeNames.Text.Plain)
+            => RunInternalAsync(expression, BodyOption.Content, content, contentType ?? MediaTypeNames.Text.Plain, requestOptions);
+
+        /// <summary>
+        /// Runs the controller using the passed parameters.
+        /// </summary>
+        private async Task<HttpResponseMessageAssertor> RunInternalAsync<TResult>(Expression<Func<TController, TResult>> expression, BodyOption bodyOption, object? value, string? contentType, Ceh.HttpRequestOptions? requestOptions = null)
         {
             if (expression.Body.NodeType != ExpressionType.Call)
                 throw new ArgumentException("Expression must be a method invocation.", nameof(expression));
@@ -237,20 +398,27 @@ namespace UnitTestEx.AspNetCore
                 }
             }
 
-            if (value != null)
+            if (bodyOption != BodyOption.None)
             {
                 if (body != null)
-                    throw new ArgumentException("A body value can not be explicity specified where the expression already contains a body value.", nameof(value));
+                    throw new ArgumentException("A Body can not be explicity specified where the expression already contains a body value.", nameof(value));
 
                 body = value;
             }
+            else if (body != null && bodyOption == BodyOption.None)
+                bodyOption = BodyOption.Value;
 
             var att = mce.Method.GetCustomAttributes<HttpMethodAttribute>(true)?.FirstOrDefault();
             if (att == null)
                 throw new InvalidOperationException($"Operation {mce.Method.Name} does not have an {nameof(HttpMethodAttribute)} specified.");
 
             var uri = GetRequestUri(att.Template, @params);
-            return await RunWithRequestAsync(new HttpMethod(att.HttpMethods.First()), uri, body, requestOptions, args).ConfigureAwait(false);
+            return bodyOption switch
+            {
+                BodyOption.Content => await RunHttpRequestAsync(new HttpMethod(att.HttpMethods.First()), uri, (string?)body, requestOptions, contentType).ConfigureAwait(false),
+                BodyOption.Value => await RunJsonHttpRequestAsync(new HttpMethod(att.HttpMethods.First()), uri, body, requestOptions).ConfigureAwait(false),
+                _ => await RunHttpRequestAsync(new HttpMethod(att.HttpMethods.First()), uri, requestOptions).ConfigureAwait(false)
+            };
         }
 
         /// <summary>
@@ -335,23 +503,38 @@ namespace UnitTestEx.AspNetCore
             return val;
         }
 
+        /// <summary>
+        /// Provides the requisite HttpClient sending capabilities.
+        /// </summary>
         private class TypedHttpClient : Ceh.TypedHttpClientBase
         {
+            private readonly Action<HttpRequestMessage> _onBeforeRequest;
+
             /// <summary>
             /// Initialize a new instance of the class.
             /// </summary>
-            public TypedHttpClient(HttpClient hc, IJsonSerializer js) : base(hc, js) { }
+            public TypedHttpClient(HttpClient hc, IJsonSerializer js, Action<HttpRequestMessage> onBeforeRequest) : base(hc, js) => _onBeforeRequest = onBeforeRequest;
 
             /// <summary>
-            /// Provides the primay send capability.
+            /// Provides the content send capability.
             /// </summary>
-            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, object? value, Ceh.HttpRequestOptions? requestOptions, Ceh.IHttpArg[] args)
-                => (value == null)
-                    ? await SendAsync(await CreateRequestAsync(method, requestUri ?? "", requestOptions, args), default).ConfigureAwait(false)
-                    : await SendAsync(await CreateJsonRequestAsync(method, requestUri ?? "", value, requestOptions, args), default).ConfigureAwait(false);
+            public async Task<HttpResponseMessage> SendContentAsync(HttpMethod method, string? requestUri, bool hasContent, string? content, string? contentType, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
+                => hasContent
+                    ? await SendAsync(await CreateContentRequestAsync(method, requestUri ?? "", new StringContent(content ?? string.Empty, Encoding.UTF8, contentType ?? MediaTypeNames.Text.Plain), requestOptions, args).ConfigureAwait(false), default).ConfigureAwait(false)
+                    : await SendAsync(await CreateRequestAsync(method, requestUri ?? "", requestOptions, args).ConfigureAwait(false), default).ConfigureAwait(false);
+
+            /// <summary>
+            /// Provides the serialized JSON send capability.
+            /// </summary>
+            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, object? value, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
+                => await SendAsync(await CreateJsonRequestAsync(method, requestUri ?? "", value, requestOptions, args).ConfigureAwait(false), default).ConfigureAwait(false);
 
             /// <inheritdoc/>
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Client.SendAsync(request, cancellationToken);
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                _onBeforeRequest(request);
+                return Client.SendAsync(request, cancellationToken);
+            }
         }
     }
 }

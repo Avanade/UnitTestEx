@@ -50,28 +50,29 @@ namespace UnitTestEx.Functions
         /// <returns>An <see cref="ActionResultAssertor"/>.</returns>
         public async Task<ActionResultAssertor> RunAsync(Expression<Func<TFunction, Task<IActionResult>>> expression)
         {
-            object? requestVal = null;
-            HttpRequest? httpRequest = null;
             (IActionResult result, Exception? ex, long ms) = await RunAsync(expression, typeof(HttpTriggerAttribute), (p, a, v) =>
             {
                 if (a == null)
                     throw new InvalidOperationException($"The function method must have a parameter using the {nameof(HttpTriggerAttribute)}.");
 
-                requestVal = v;
-                httpRequest = v as HttpRequest;
+                var requestVal = v;
+                var httpRequest = v as HttpRequest;
+                LogRequest(httpRequest, requestVal);
+
                 var httpTriggerAttribute = (HttpTriggerAttribute)a;
                 if (httpRequest != null && !httpTriggerAttribute.Methods.Contains(httpRequest.Method, StringComparer.OrdinalIgnoreCase))
                     throw new InvalidOperationException($"The function {nameof(HttpTriggerAttribute)} supports {nameof(HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid.");
             }).ConfigureAwait(false);
 
-            LogOutput(httpRequest, requestVal, result, ex, ms);
+            await Task.Delay(0).ConfigureAwait(false);
+            LogResponse(result, ex, ms);
             return new ActionResultAssertor(result, ex, Implementor, JsonSerializer);
         }
 
         /// <summary>
-        /// Log the request/response to the output.
+        /// Log the request to the output.
         /// </summary>
-        private void LogOutput(HttpRequest? req, object? reqVal, IActionResult res, Exception? ex, long ms)
+        private void LogRequest(HttpRequest? req, object? reqVal)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("FUNCTION HTTP-TRIGGER TESTER...");
@@ -107,7 +108,7 @@ namespace UnitTestEx.Functions
                     if (req.Body.CanRead)
                     {
                         req.Body.Position = 0;
-                        using var sr = new StreamReader(req.Body);
+                        using var sr = new StreamReader(req.Body, leaveOpen: true);
                         var body = sr.ReadToEnd();
 
                         // Parse out the content.
@@ -120,6 +121,10 @@ namespace UnitTestEx.Functions
                             catch (Exception) { /* This is being swallowed by design. */ }
                         }
 
+                        // Reset the request body position back to start.
+                        req.Body.Position = 0;
+
+                        // Continue logging.
                         Implementor.WriteLine($"Content: [{req.ContentType ?? "None"}]");
                         if (jo != null || !string.IsNullOrEmpty(body))
                             Implementor.WriteLine(jo == null ? body : JsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
@@ -142,6 +147,15 @@ namespace UnitTestEx.Functions
                     Implementor.WriteLine(JsonSerializer.Serialize(reqVal, JsonWriteFormat.Indented));
             }
 
+            Implementor.WriteLine("");
+            Implementor.WriteLine("LOGGING >");
+        }
+
+        /// <summary>
+        /// Log the response to the output.
+        /// </summary>
+        private void LogResponse(IActionResult res, Exception? ex, long ms)
+        {
             Implementor.WriteLine("");
             Implementor.WriteLine($"RESPONSE >");
             Implementor.WriteLine($"Elapsed (ms): {ms}");
