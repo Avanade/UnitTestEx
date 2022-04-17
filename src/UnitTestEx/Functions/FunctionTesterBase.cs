@@ -225,7 +225,7 @@ namespace UnitTestEx.Functions
         /// <param name="requestUri">The requuest uri.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
         public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null) 
-            => CreateHttpRequest(httpMethod, requestUri, (string?)null, null);
+            => CreateHttpRequestInternal(httpMethod, requestUri, false, null, null, null);
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with no body.
@@ -234,28 +234,46 @@ namespace UnitTestEx.Functions
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, Ceh.HttpRequestOptions? requestOptions = null)
-            => CreateHttpRequest(httpMethod, requestUri, null, requestOptions);
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, Ceh.HttpRequestOptions? requestOptions = null)
+            => CreateHttpRequestInternal(httpMethod, requestUri, false, null, requestOptions, null);
 
         /// <summary>
-        /// Creates a new <see cref="HttpRequest"/> with <i>optional</i> <paramref name="body"/> as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Text.Plain"/>.
+        /// Creates a new <see cref="HttpRequest"/> with <i>optional</i> <paramref name="body"/> (defaults <see cref="HttpRequest.ContentType"/> to <see cref="MediaTypeNames.Text.Plain"/>).
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="body">The optional body content.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, string? body = null)
-            => CreateHttpRequest(httpMethod, requestUri, body, null);
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, string? body)
+            => CreateHttpRequestInternal(httpMethod, requestUri, true, body, null, null);
 
         /// <summary>
-        /// Creates a new <see cref="HttpRequest"/> with <i>optional</i> <paramref name="body"/> as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Text.Plain"/>.
+        /// Creates a new <see cref="HttpRequest"/> with <i>optional</i> <paramref name="body"/> (defaults <see cref="HttpRequest.ContentType"/> to <see cref="MediaTypeNames.Text.Plain"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="body">The optional body content.</param>
+        /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, string? body, string? contentType = MediaTypeNames.Text.Plain)
+            => CreateHttpRequestInternal(httpMethod, requestUri, true, body, null, contentType);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with <i>optional</i> <paramref name="body"/> (defaults <see cref="HttpRequest.ContentType"/> to <see cref="MediaTypeNames.Text.Plain"/>).
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="body">The optional body content.</param>
         /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, string? body = null, Ceh.HttpRequestOptions? requestOptions = null)
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, string? body, Ceh.HttpRequestOptions? requestOptions, string? contentType = MediaTypeNames.Text.Plain)
+            => CreateHttpRequestInternal(httpMethod, requestUri, true, body, requestOptions, contentType);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> based on the supplied parameters.
+        /// </summary>
+        private HttpRequest CreateHttpRequestInternal(HttpMethod httpMethod, string? requestUri, bool hasBody, string? body, Ceh.HttpRequestOptions? requestOptions, string? contentType = MediaTypeNames.Text.Plain)
         {
             if (httpMethod == HttpMethod.Get && body != null)
                 Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
@@ -279,10 +297,10 @@ namespace UnitTestEx.Functions
             context.Request.QueryString = qs;
             context.Request.ApplyETag(requestOptions?.ETag);
 
-            if (body != null)
+            if (hasBody)
             {
-                context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
-                context.Request.ContentType = MediaTypeNames.Text.Plain;
+                context.Request.Body = new MemoryStream(body == null ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(body));
+                context.Request.ContentType = contentType ?? MediaTypeNames.Text.Plain;
             }
 
             return context.Request;

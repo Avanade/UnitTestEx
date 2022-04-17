@@ -110,7 +110,7 @@ namespace UnitTestEx.Functions
             }
             catch (AmbiguousMatchException ex)
             {
-                throw new InvalidOperationException($"An unambiquous single trigger method '{methodName}' must only exists.", ex);
+                throw new InvalidOperationException($"An unambiquous single trigger method '{methodName}' must only exist.", ex);
             }
 
             ParameterInfo? pi = null;

@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.16
+- *Enhancement:* Added additional `FunctionTesterBase.CreateHttpRequest` overloads to specify the `Content-Type`; defaults to `MediaTypeNames.Text.Plain`.
+- *Enhancement:* **Breaking change.** Renamed `ControllerTester.RunWithRequest` to `RunHttpRequest` to be more aligned to `FunctionTesterBase`. Also updated to support same set of overloads for consistency.
+- *Enhancement:* Improved the test logging such that the pre-execution details, such as HTTP request content, is output prior to execution to aid debugging of any exceptions/failures. 
+
 ## v1.0.15
 - *Enhancement:* Added `ActionResultAssertor.GetValue` and `AssertJson` to be consistent with `HttpResponseMessageAssertor`.
 - *Enhancement:* Added `AssertLocationHeader` and `AssertETagHeader` to both `HttpResponseMessageAssertor` and `ActionResultAssertor` (for `ValueContentResult`).
