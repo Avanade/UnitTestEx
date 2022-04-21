@@ -84,7 +84,7 @@ test.ReplaceHttpClientFactory(mcf)
 
 To enable in-process integration testing interacting with Azure Service Bus the [`ServiceBusTriggerTester.Emulate`](./src/UnitTestEx/Functions/ServiceBusTriggerTester.cs) method exposes the [`ServiceBusEmulatorTester`](./src/UnitTestEx/Functions/ServiceBusEmulatorTester.cs) type. This integrates directly with [Azure Service Bus](https://azure.microsoft.com/en-us/services/service-bus/) using the underlying functions configuration to determine connection string, etc. The `ServiceBus` _Queue_ or _Topic_ can be cleared (`Clear`), have test messages sent (`Send`), and then executed (`Run`).
 
-The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusSimulationTest.cs).
+The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusEmulationTest.cs).
 
 ``` csharp
 using var test = FunctionTester.Create<Startup>(includeUserSecrets: true);
