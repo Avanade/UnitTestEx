@@ -35,7 +35,7 @@ namespace UnitTestEx.Xunit.Test
                 });
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task ServiceBusReceiver2_Success()
         {
             // Mock the downstream http client.
@@ -59,7 +59,7 @@ namespace UnitTestEx.Xunit.Test
                 });
         }
 
-        [Fact]
+        [SkippableFact]
         public void ServiceBusReceiver2_ValidationError()
         {
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
@@ -77,7 +77,7 @@ namespace UnitTestEx.Xunit.Test
                 });
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task ServiceBusReceiver3_Success()
         {
             // Mock the downstream http client.
@@ -101,7 +101,7 @@ namespace UnitTestEx.Xunit.Test
                 });
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task ServiceBusReceiver3_ValidationError()
         {
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
@@ -119,7 +119,7 @@ namespace UnitTestEx.Xunit.Test
                 });
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task ServiceBusReceiver3_UnhandledException()
         {
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
@@ -137,7 +137,7 @@ namespace UnitTestEx.Xunit.Test
                 });
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task ServiceBusReceiver4_Success()
         {
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.

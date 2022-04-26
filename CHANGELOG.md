@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.17
+- *Fixed:* `ApiTester` was not finding the `appsettings.json` from originating solution. Updated the content root explicitly with the current directory: `UseSolutionRelativeContentRoot(Environment.CurrentDirectory)`.
+- *Enhancement:* Added support for finding `appsettings.unittest.json` file, always added last to override any other previous settings (including environment variables, etc.).
+- *Fixed:* `MockHttpClientRequest` was incorrectly comparing the URL with an unencoded version; will always compare the original URL which must match on encodings also.
+
 ## v1.0.16
 - *Enhancement:* Added additional `FunctionTesterBase.CreateHttpRequest` overloads to specify the `Content-Type`; defaults to `MediaTypeNames.Text.Plain`.
 - *Enhancement:* **Breaking change.** Renamed `ControllerTester.RunWithRequest` to `RunHttpRequest` to be more aligned to `FunctionTesterBase`. Also updated to support same set of overloads for consistency.

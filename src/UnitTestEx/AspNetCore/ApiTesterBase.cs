@@ -29,7 +29,10 @@ namespace UnitTestEx.AspNetCore
         protected ApiTesterBase(TestFrameworkImplementor implementor) : base(implementor)
         {
             Logger = implementor.CreateLogger(GetType().Name);
-            _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => whb.UseSolutionRelativeContentRoot("").ConfigureServices(sc => sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(implementor.CreateLoggerProvider()); })));
+            _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => 
+                whb.UseSolutionRelativeContentRoot(Environment.CurrentDirectory)
+                    .ConfigureAppConfiguration((_, x) => x.AddJsonFile("appsettings.unittest.json", true))
+                    .ConfigureServices(sc => sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(implementor.CreateLoggerProvider()); })));
         }
 
         /// <summary>

@@ -2,7 +2,9 @@
 using CoreEx.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using UnitTestEx.Api.Models;
 
@@ -13,15 +15,20 @@ namespace UnitTestEx.Api.Controllers
     public class PersonController : ControllerBase
     {
         private readonly ILogger<PersonController> _logger;
+        private readonly IConfiguration _config;
 
-        public PersonController(ILogger<PersonController> logger)
+        public PersonController(ILogger<PersonController> logger, IConfiguration config)
         {
             _logger = logger;
+            _config = config;
         }
 
         [HttpGet("{id}")]
         public IActionResult Get(int id)
         {
+            if (_config["SpecialKey"] != "VerySpecialValue")
+                throw new InvalidOperationException("The people do not feel very special!");
+
             if (id == 1)
                 return new JsonResult(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
             else if (id == 2)
