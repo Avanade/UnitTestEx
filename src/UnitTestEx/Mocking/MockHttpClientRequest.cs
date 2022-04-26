@@ -84,7 +84,7 @@ namespace UnitTestEx.Mocking
             {
                 var m = _client.MessageHandler.Protected()
                     .Setup<Task<HttpResponseMessage>>("SendAsync",
-                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri!.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.Is<HttpRequestMessage>(x => RequestPredicate(x)),
                         ItExpr.IsAny<CancellationToken>())
                     .ReturnsAsync(() =>
                     {
@@ -105,7 +105,7 @@ namespace UnitTestEx.Mocking
             {
                 var mseq = _client.MessageHandler.Protected()
                     .SetupSequence<Task<HttpResponseMessage>>("SendAsync",
-                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri!.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.Is<HttpRequestMessage>(x => RequestPredicate(x)),
                         ItExpr.IsAny<CancellationToken>());
 
                 foreach (var response in Rule.Responses)
@@ -143,10 +143,13 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Check the request content for a match.
+        /// Check the request and content for a match.
         /// </summary>
-        private bool RequestContentPredicate(HttpRequestMessage request)
+        private bool RequestPredicate(HttpRequestMessage request)
         {
+            if (request.Method != _method || !request.RequestUri!.OriginalString.EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase))
+                return false;
+
             if (_mediaType == null)
                 return request.Content == null;
 
@@ -343,7 +346,7 @@ namespace UnitTestEx.Mocking
             {
                 _client.MessageHandler.Protected()
                     .Verify<Task<HttpResponseMessage>>("SendAsync", Rule.Times.Value,
-                        ItExpr.Is<HttpRequestMessage>(x => x.Method == _method && x.RequestUri!.ToString().EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase) && RequestContentPredicate(x)),
+                        ItExpr.Is<HttpRequestMessage>(x => RequestPredicate(x)),
                         ItExpr.IsAny<CancellationToken>());
             }
         }

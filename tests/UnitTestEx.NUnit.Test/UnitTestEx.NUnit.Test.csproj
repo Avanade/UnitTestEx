@@ -7,8 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="appsettings.unittest.json" />
     <None Remove="Resources\FunctionTest-ValidJsonResource.json" />
     <None Remove="Resources\MockHttpClientTest-UriAndBody_WithJsonResponse3.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.unittest.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
