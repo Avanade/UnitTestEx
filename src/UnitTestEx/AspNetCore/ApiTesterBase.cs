@@ -29,6 +29,17 @@ namespace UnitTestEx.AspNetCore
         protected ApiTesterBase(TestFrameworkImplementor implementor) : base(implementor)
         {
             Logger = implementor.CreateLogger(GetType().Name);
+
+            // add settings from appsettings.unittest.json so that they are available to the startup class
+            var config = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.unittest.json")
+                .Build();
+            
+            foreach (var key in config.AsEnumerable())
+            {
+                Environment.SetEnvironmentVariable(key.Key, key.Value);
+            }
+
             _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb => 
                 whb.UseSolutionRelativeContentRoot(Environment.CurrentDirectory)
                     .ConfigureAppConfiguration((_, x) => x.AddJsonFile("appsettings.unittest.json", true))
