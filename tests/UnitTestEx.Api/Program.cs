@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 
@@ -15,6 +16,12 @@ namespace UnitTestEx.Api
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
+                })
+                .ConfigureAppConfiguration((ctx, builder) =>
+                {
+                    if (builder.Build()["SpecialKey"] != "VerySpecialValue")
+                        throw new InvalidOperationException("The people do not feel very special!");
                 });
+
     }
 }
