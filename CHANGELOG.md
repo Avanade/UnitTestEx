@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.18
+- *Fixed:* Prior change for `ApiTester` related to `appsettings.unittest.json` was not loading early enough and therefore not available for `startup` configuration activities. This has now been resolved by pre-reading and adding as in-process environment variables.
+
 ## v1.0.17
 - *Fixed:* `ApiTester` was not finding the `appsettings.json` from originating solution. Updated the content root explicitly with the current directory: `UseSolutionRelativeContentRoot(Environment.CurrentDirectory)`.
 - *Enhancement:* Added support for finding `appsettings.unittest.json` file, always added last to override any other previous settings (including environment variables, etc.).
