@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using UnitTestEx.Abstractions;
+using UnitTestEx.Hosting;
 
 namespace UnitTestEx.AspNetCore
 {
@@ -101,6 +102,13 @@ namespace UnitTestEx.AspNetCore
         /// <typeparam name="TController">The API Controller <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="ControllerTester{TController}"/>.</returns>
         public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(WebApplicationFactory.Server, Implementor, JsonSerializer);
+
+        /// <summary>
+        /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
+        /// </summary>
+        /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
+        /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
+        public TypeTester<T> Type<T>() where T : class => new(Services.CreateScope(), Implementor, JsonSerializer);
 
         /// <summary>
         /// Releases all resources.

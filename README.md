@@ -164,7 +164,7 @@ mc.Request(HttpMethod.Get, "products/xyz").Respond.WithSequence(s =>
 });
 ``` 
 
-<br>
+<br/>
 
 ### Delay
 
@@ -181,7 +181,21 @@ mc.Request(HttpMethod.Get, "products/kjl").Respond.WithSequence(s =>
 });
 ```
 
-<br>
+<br/>
+
+### appsettings.unittest.json
+
+_UnitTestEx_ supports the addition of a `appsetting.unittest.json` within the test project that will get loaded automatically when executing tests. This enables settings to be added or modified specifically for the unit testing external to the referenced projects being tested.
+
+Additionally, this can also be used to change the default JSON Serializer for the tests. Defaults to `CoreEx.Text.Json.JsonSerializer`. By adding the following setting the default JSON serializer will be updated at first test execution and will essentially override for all tests. To change serializer for a specific test then use the test classes to specify explicitly.
+
+``` json
+{
+  "DefaultJsonSerializer": "Newtonsoft.Json"
+}
+```
+
+<br/>
 
 ## Examples
 

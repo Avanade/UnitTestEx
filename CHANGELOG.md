@@ -4,6 +4,9 @@ Represents the **NuGet** versions.
 
 ## v1.0.18
 - *Fixed:* Prior change for `ApiTester` related to `appsettings.unittest.json` was not loading early enough and therefore not available for `startup` configuration activities. This has now been resolved by pre-reading and adding as in-process environment variables.
+- *Enhancement:* Added `TypeTester` support to `ApiTester`.
+- *Enhancement:* `TypeTester` updated to `Run` _synchronous_ methods as well as asynchronous.
+- *[Issue 30](https://github.com/Avanade/UnitTestEx/issues/30)*: Added support to specify the default JSON serializer via `appsettings.unittest.json`. The following JSON will set the `CoreEx.Json.JsonSerializer.Default` to use `CoreEx.Newtonsoft.Json.JsonSerializer` versus the default `CoreEx.Text.Json.JsonSerializer`: `{ "DefaultJsonSerializer": "Newtonsoft.Json" }`.
 
 ## v1.0.17
 - *Fixed:* `ApiTester` was not finding the `appsettings.json` from originating solution. Updated the content root explicitly with the current directory: `UseSolutionRelativeContentRoot(Environment.CurrentDirectory)`.
