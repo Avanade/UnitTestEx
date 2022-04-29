@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Net.Mime;
 using System.Threading.Tasks;
@@ -126,6 +127,18 @@ namespace UnitTestEx.MSTest.Test
                 .AssertErrors(
                     new ApiError("firstName", "First name is required."),
                     new ApiError("lastName", "Last name is required."));
+        }
+
+        [TestMethod]
+        public void TypeTester()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Type<PersonController>()
+                .Run(c => c.Get(1))
+                .AssertSuccess()
+                .ToActionResultAssertor()
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
         }
     }
 }

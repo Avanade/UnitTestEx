@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
+using System.IO;
 using UnitTestEx.Mocking;
 
 namespace UnitTestEx.Abstractions
@@ -15,6 +16,29 @@ namespace UnitTestEx.Abstractions
     /// <typeparam name="TSelf">The <see cref="TesterBase{TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class TesterBase<TSelf> where TSelf : TesterBase<TSelf>
     {
+        /// <summary>
+        /// Static constructor.
+        /// </summary>
+        static TesterBase()
+        {
+            try
+            {
+                var fi = new FileInfo(Path.Combine(Environment.CurrentDirectory, "appsettings.unittest.json"));
+                if (!fi.Exists)
+                    return;
+
+                var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(fi.FullName));
+                if (json.RootElement.TryGetProperty("DefaultJsonSerializer", out var je) && je.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    if (string.Compare(je.GetString(), "System.Text.Json", StringComparison.InvariantCultureIgnoreCase) == 0)
+                        CoreEx.Json.JsonSerializer.Default = new CoreEx.Text.Json.JsonSerializer();
+                    else if (string.Compare(je.GetString(), "Newtonsoft.Json", StringComparison.InvariantCultureIgnoreCase) == 0)
+                        CoreEx.Json.JsonSerializer.Default = new CoreEx.Newtonsoft.Json.JsonSerializer();
+                }
+            }
+            catch { } // Swallow and carry on; none of this logic should impact execution.
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="TesterBase{TSelf}"/> class.
         /// </summary>

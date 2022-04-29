@@ -26,6 +26,21 @@ namespace UnitTestEx.Hosting
         internal TypeTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(serviceScope, implementor, jsonSerializer) { }
 
         /// <summary>
+        /// Runs the synchronous method with no result.
+        /// </summary>
+        /// <param name="function">The function execution.</param>
+        /// <returns>A <see cref="VoidAssertor"/>.</returns>
+        public VoidAssertor Run(Action<T> function) => RunAsync(x => { function(x); return Task.CompletedTask; }).GetAwaiter().GetResult();
+
+        /// <summary>
+        ///  Runs the synchronous method with a result.
+        /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <param name="function">The function execution.</param>
+        /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
+        public ResultAssertor<TResult> Run<TResult>(Func<T, TResult> function) => RunAsync(x => Task.FromResult(function(x))).GetAwaiter().GetResult();
+
+        /// <summary>
         /// Runs the asynchronous method with no result.
         /// </summary>
         /// <param name="function">The function execution.</param>
@@ -65,6 +80,7 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Runs the asynchronous method with a result.
         /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <param name="function">The function execution.</param>
         /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
         public ResultAssertor<TResult> Run<TResult>(Func<T, Task<TResult>> function) => RunAsync(function).GetAwaiter().GetResult();
@@ -72,6 +88,7 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Runs the asynchronous method with a result.
         /// </summary>
+        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <param name="function">The function execution.</param>
         /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
         public async Task<ResultAssertor<TResult>> RunAsync<TResult>(Func<T, Task<TResult>> function)
@@ -115,6 +132,9 @@ namespace UnitTestEx.Hosting
             return new ResultAssertor<TResult>(result, ex, Implementor, JsonSerializer);
         }
 
+        /// <summary>
+        /// Logs the header.
+        /// </summary>
         private void LogHeader()
         {
             Implementor.WriteLine("");
