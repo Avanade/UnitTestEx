@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.next
+- *Fixed:* Added extra validation to test methods that accept expressions to ensure only simple expressions (no method-chaining) are allowed. There are other non-expression methods that should be used to enable these more advanced scenarios. In doing so however, some validation and logging features may no longer work as well as the expression enabled additional functionality to be added.
+
 ## v1.0.18
 - *Fixed:* Prior change for `ApiTester` related to `appsettings.unittest.json` was not loading early enough and therefore not available for `startup` configuration activities. This has now been resolved by pre-reading and adding as in-process environment variables.
 - *Enhancement:* Added `TypeTester` support to `ApiTester`.

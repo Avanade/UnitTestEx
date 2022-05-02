@@ -358,11 +358,7 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         private async Task<HttpResponseMessageAssertor> RunInternalAsync<TResult>(Expression<Func<TController, TResult>> expression, BodyOption bodyOption, object? value, string? contentType, Ceh.HttpRequestOptions? requestOptions = null)
         {
-            if (expression.Body.NodeType != ExpressionType.Call)
-                throw new ArgumentException("Expression must be a method invocation.", nameof(expression));
-
-            if (expression.Body is not MethodCallExpression mce)
-                throw new ArgumentException($"Expression must be of Type '{nameof(MethodCallExpression)}'.", nameof(expression));
+            var mce = Hosting.HostTesterBase<object>.MethodCallExpressionValidate(expression);
 
             // HttpRequestOptions is not *really* valid as a value; move as likely a placement error on behalf of the consuming developer.
             if (value is Ceh.HttpRequestOptions ro && requestOptions == null)

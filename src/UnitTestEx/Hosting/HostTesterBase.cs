@@ -4,6 +4,7 @@ using CoreEx.Json;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
@@ -59,15 +60,7 @@ namespace UnitTestEx.Hosting
         /// <returns>The resulting exception if any and elapsed milliseconds.</returns>
         protected async Task<(Exception? Exception, long ElapsedMilliseconds)> RunAsync(Expression<Func<THost, Task>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
-            if (expression == null)
-                throw new ArgumentNullException(nameof(expression));
-
-            if (expression.Body.NodeType != ExpressionType.Call)
-                throw new ArgumentException("Expression must be a method invocation.", nameof(expression));
-
-            if (expression.Body is not MethodCallExpression mce)
-                throw new ArgumentException($"Expression must be of Type '{nameof(MethodCallExpression)}'.", nameof(expression));
-
+            var mce = MethodCallExpressionValidate(expression);
             var pis = mce.Method.GetParameters();
             var @params = new object?[pis.Length];
             Attribute? paramAttribute = null;
@@ -113,15 +106,7 @@ namespace UnitTestEx.Hosting
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
         protected async Task<(TResult Result, Exception? Exception, long ElapsedMilliseconds)> RunAsync<TResult>(Expression<Func<THost, Task<TResult>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
-            if (expression == null)
-                throw new ArgumentNullException(nameof(expression));
-
-            if (expression.Body.NodeType != ExpressionType.Call)
-                throw new ArgumentException("Expression must be a method invocation.", nameof(expression));
-
-            if (expression.Body is not MethodCallExpression mce)
-                throw new ArgumentException($"Expression must be of Type '{nameof(MethodCallExpression)}'.", nameof(expression));
-
+            var mce = MethodCallExpressionValidate(expression);
             var pis = mce.Method.GetParameters();
             var @params = new object?[pis.Length];
             Attribute? paramAttribute = null;
@@ -147,6 +132,7 @@ namespace UnitTestEx.Hosting
 
             try
             {
+                var ob = expression.Compile().Invoke(h);
                 var mr = await ((Task<TResult>)mce.Method.Invoke(h, @params)!).ConfigureAwait(false);
                 sw.Stop();
                 return (mr, null, sw.ElapsedMilliseconds);
@@ -156,6 +142,32 @@ namespace UnitTestEx.Hosting
                 sw.Stop();
                 return (default!, ex, sw.ElapsedMilliseconds);
             }
+        }
+
+        /// <summary>
+        /// Validates that the <paramref name="expression"/> is a valid <see cref="MethodCallExpression"/>.
+        /// </summary>
+        /// <param name="expression">The <see cref="Expression"/>.</param>
+        internal static MethodCallExpression MethodCallExpressionValidate([NotNull] Expression expression)
+        {
+            if (expression == null)
+                throw new ArgumentNullException(nameof(expression));
+
+            if (expression is not LambdaExpression lex)
+                throw new ArgumentException($"Expression must be of Type '{nameof(LambdaExpression)}'.", nameof(expression));
+
+            if (lex.Body.NodeType != ExpressionType.Call)
+                throw new ArgumentException("Expression must be a method invocation.", nameof(expression));
+
+            if (lex.Body is not MethodCallExpression mce)
+                throw new ArgumentException($"Expression must be of Type '{nameof(MethodCallExpression)}'.", nameof(expression));
+
+            if (mce.Object == null || mce.Object.NodeType != ExpressionType.Parameter)
+                throw new InvalidOperationException($"UnitTestEx methods that enable an expression must not include method-chaining '{mce}'; i.e. must be an invocation of a single method with zero or more arguments only." 
+                    + Environment.NewLine + $"This is because UnitTestEx is reflecting the underlying type and arguments to validate, log, and in some instances refactor the execution using this information. If this is not the desired " 
+                    + "behavior then consider using one of the other methods that does not use expressions to execute the test.");
+
+            return mce;
         }
     }
 }
