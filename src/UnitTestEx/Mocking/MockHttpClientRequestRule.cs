@@ -26,8 +26,13 @@ namespace UnitTestEx.Mocking
         internal List<MockHttpClientResponse>? Responses { get; set; }
 
         /// <summary>
+        /// Gets or sets the sequence index for the <see cref="Responses"/>.
+        /// </summary>
+        internal int ResponsesIndex { get; set; }
+
+        /// <summary>
         /// Gets or sets the number of <see cref="Moq.Times"/>.
         /// </summary>
-        internal Times? Times;
+        internal Times? Times { get; set; }
     }
 }
