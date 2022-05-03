@@ -304,7 +304,7 @@ namespace UnitTestEx.Xunit.Test
             sw.Stop();
 
             Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
-            Assert.True(sw.ElapsedMilliseconds >= 500);
+            Assert.True(sw.ElapsedMilliseconds >= 500, $"Actual elapsed milliseconds {sw.ElapsedMilliseconds}.");
         }
 
         [Fact]
