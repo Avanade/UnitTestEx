@@ -2,8 +2,9 @@
 
 Represents the **NuGet** versions.
 
-## v1.0.next
-- *Fixed:* Added extra validation to test methods that accept expressions to ensure only simple expressions (no method-chaining) are allowed. There are other non-expression methods that should be used to enable these more advanced scenarios. In doing so however, some validation and logging features may no longer work as well as the expression enabled additional functionality to be added.
+## v1.0.19
+- *Fixed:* Added extra validation to test methods that accept expressions to ensure only simple expressions (no method-chaining) are allowed. There are other non-expression methods that should be used to enable these more advanced scenarios. In doing so however, some validation and logging features may not work as well as the expression enabled functionalities.
+- *Fixed:* Where using `MockHttpClientResponse.Delay` this was performing a `Thread.Sleep` internally which ignored the usage of the `CancellationToken` passed into the `SendAsync`. The `Thread.Sleep` has been replaced with a `Task.Delay` which is now passed the `CancellationToken` from the caller. This has also been extended where using `WithSequence`.
 
 ## v1.0.18
 - *Fixed:* Prior change for `ApiTester` related to `appsettings.unittest.json` was not loading early enough and therefore not available for `startup` configuration activities. This has now been resolved by pre-reading and adding as in-process environment variables.

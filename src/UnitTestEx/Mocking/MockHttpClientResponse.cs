@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace UnitTestEx.Mocking
 {
@@ -47,13 +48,10 @@ namespace UnitTestEx.Mocking
         internal Action<HttpResponseMessage>? ResponseAction { get; set; }
 
         /// <summary>
-        /// Executes the <see cref="Delay(Func{TimeSpan})"/>; i.e. goes to sleep.
+        /// Executes the <see cref="Delay(Func{TimeSpan})"/>; i.e. goes to sleep for the predetermined time.
         /// </summary>
-        internal void ExecuteDelay()
-        {
-            if (_delay != null)
-                Thread.Sleep(_delay());
-        }
+        /// <param name="cancellationToken">The <see cref="CancellationToken"/>.</param>
+        internal Task ExecuteDelayAsync(CancellationToken cancellationToken) => _delay == null ? Task.CompletedTask : Task.Delay(_delay(), cancellationToken);
 
         /// <summary>
         /// Sets the simulated delay (sleep) for the response.

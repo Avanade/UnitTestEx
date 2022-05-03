@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using UnitTestEx.MSTest.Test.Model;
 using UnitTestEx.MSTest;
 using System.Diagnostics;
+using System.Threading;
 
 namespace UnitTestEx.MSTest.Test
 {
@@ -389,6 +390,49 @@ namespace UnitTestEx.MSTest.Test
             var res = await hc.PostAsync("testing", new StringContent("--my--custom--format--", Encoding.UTF8, "application/custom-format")).ConfigureAwait(false);
             Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
             Assert.AreEqual("--ok--", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+        }
+
+        [TestMethod]
+        public async Task Timeout_CancellationToken()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://d365test"))
+                .Request(HttpMethod.Get, "").Respond.Delay(2500).With(HttpStatusCode.OK);
+
+            var hc = mcf.GetHttpClient("XXX");
+            var ct = new CancellationToken();
+            var tts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            tts.CancelAfter(1000);
+
+            await Assert.ThrowsExceptionAsync<TaskCanceledException>(async () => await hc.GetAsync("", tts.Token).ConfigureAwait(false));
+        }
+
+        [TestMethod]
+        public async Task Timeout_CancellationToken_WithSequence()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://d365test"))
+                .Request(HttpMethod.Get, "").Respond.WithSequence(s =>
+                {
+                    s.Respond().Delay(1000).With(HttpStatusCode.Ambiguous);
+                    s.Respond().Delay(1000).With(HttpStatusCode.BadRequest);
+                    s.Respond().Delay(1000).With(HttpStatusCode.OK);
+                });
+
+            var hc = mcf.GetHttpClient("XXX");
+            var ct = new CancellationToken();
+            var tts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            tts.CancelAfter(1500);
+
+            // First should work a-ok.
+            var res = await hc.GetAsync("", tts.Token).ConfigureAwait(false);
+            Assert.AreEqual(HttpStatusCode.Ambiguous, res.StatusCode);
+            
+            // Second should result in a timeout.
+            await Assert.ThrowsExceptionAsync<TaskCanceledException>(async () => await hc.GetAsync("", tts.Token).ConfigureAwait(false));
+
+            // Verify should fail as not all responses were invoked.
+            Assert.ThrowsException<MockException>(() => mcf.VerifyAll());
         }
     }
 }

@@ -86,17 +86,7 @@ namespace UnitTestEx.Mocking
                     .Setup<Task<HttpResponseMessage>>("SendAsync",
                         ItExpr.Is<HttpRequestMessage>(x => RequestPredicate(x)),
                         ItExpr.IsAny<CancellationToken>())
-                    .ReturnsAsync(() =>
-                    {
-                        var response = Rule.Response!;
-                        response.ExecuteDelay();
-                        var httpResponse = new HttpResponseMessage(response.StatusCode);
-                        if (response.Content != null)
-                            httpResponse.Content = response.Content;
-
-                        response.ResponseAction?.Invoke(httpResponse);
-                        return httpResponse;
-                    });
+                    .Returns((HttpRequestMessage x, CancellationToken ct) => CreateResponseAsync(Rule.Response!, ct));
 
                 if (Rule.Times == null)
                     m.Verifiable($"{_method} '{_requestUri}' request with {BodyToString()} body");
@@ -104,27 +94,37 @@ namespace UnitTestEx.Mocking
             else
             {
                 var mseq = _client.MessageHandler.Protected()
-                    .SetupSequence<Task<HttpResponseMessage>>("SendAsync",
+                    .Setup<Task<HttpResponseMessage>>("SendAsync",
                         ItExpr.Is<HttpRequestMessage>(x => RequestPredicate(x)),
-                        ItExpr.IsAny<CancellationToken>());
-
-                foreach (var response in Rule.Responses)
-                {
-                    mseq.ReturnsAsync(() =>
+                        ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage x, CancellationToken ct) =>
                     {
-                        var httpResponse = new HttpResponseMessage(response.StatusCode);
-                        response.ExecuteDelay();
-                        if (response.Content != null)
-                            httpResponse.Content = response.Content;
+                        if (Rule.ResponsesIndex >= Rule.Responses.Count)
+                            throw new InvalidOperationException($"There were {Rule.Responses.Count} responses configured for the Sequence and these responses have been exhausted; i.e. an unexpected additional invocation has occured.");
 
-                        response.ResponseAction?.Invoke(httpResponse);
-                        return httpResponse;
+                        return CreateResponseAsync(Rule.Responses[Rule.ResponsesIndex++], ct);
                     });
-                }
+
+                Rule.Times = Moq.Times.Exactly(Rule.Responses.Count);
             }
 
             // Mark as mock complete.
             IsMockComplete = true;
+        }
+
+        /// <summary>
+        /// Create the <see cref="HttpResponseMessage"/> from the <see cref="MockHttpClientResponse"/>.
+        /// </summary>
+        private async Task<HttpResponseMessage> CreateResponseAsync(MockHttpClientResponse response, CancellationToken ct)
+        {
+            var httpResponse = new HttpResponseMessage(response.StatusCode);
+            if (response.Content != null)
+                httpResponse.Content = response.Content;
+
+            await response.ExecuteDelayAsync(ct).ConfigureAwait(false);
+
+            response.ResponseAction?.Invoke(httpResponse);
+            return httpResponse;
         }
 
         /// <summary>
