@@ -132,8 +132,7 @@ namespace UnitTestEx.Hosting
 
             try
             {
-                var ob = expression.Compile().Invoke(h);
-                var mr = await ((Task<TResult>)mce.Method.Invoke(h, @params)!).ConfigureAwait(false);
+                var mr = await expression.Compile().Invoke(h).ConfigureAwait(false);
                 sw.Stop();
                 return (mr, null, sw.ElapsedMilliseconds);
             }
