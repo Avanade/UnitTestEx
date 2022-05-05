@@ -274,7 +274,7 @@ namespace UnitTestEx.Abstractions
             {
                 MaxDifferences = maxDifferences;
                 var maxDepth = 0;
-                PathsToIgnore = new(CoreEx.Text.Json.JsonFilterer.CreateDictionary(pathsToIgnore, CoreEx.Json.JsonPropertyFilter.Exclude, StringComparison.OrdinalIgnoreCase, ref maxDepth).Keys);
+                PathsToIgnore = new(CoreEx.Text.Json.JsonFilterer.CreateDictionary(pathsToIgnore, CoreEx.Json.JsonPropertyFilter.Exclude, StringComparison.Ordinal, ref maxDepth).Keys);
             }
 
             /// <summary>
