@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.21
+- *Enhancement:* Update `CoreEx` dependencies to `1.0.3`.
+- *Enhancement:* Improve precision of milliseconds logging,
+
 ## v1.0.20
 - *Fixed:* Expression invocation was incorrectly being invoked twice (and within the same scope), one with an await and the other without, racing each other and referencing the same DI scoped instances. 
 

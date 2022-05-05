@@ -72,7 +72,7 @@ namespace UnitTestEx.Hosting
             }
 
             await Task.Delay(0).ConfigureAwait(false);
-            LogResult(ex, sw.ElapsedMilliseconds);
+            LogResult(ex, sw.Elapsed.TotalMilliseconds);
             LogTrailer();
             return new VoidAssertor(ex, Implementor, JsonSerializer);
         }
@@ -112,7 +112,7 @@ namespace UnitTestEx.Hosting
             }
 
             await Task.Delay(0).ConfigureAwait(false);
-            LogResult(ex, sw.ElapsedMilliseconds);
+            LogResult(ex, sw.Elapsed.TotalMilliseconds);
 
             if (ex == null)
             {
@@ -146,7 +146,7 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Log the elapsed execution time.
         /// </summary>
-        private void LogResult(Exception? ex, long ms)
+        private void LogResult(Exception? ex, double ms)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("RESULT >");

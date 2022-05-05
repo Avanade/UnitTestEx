@@ -58,7 +58,7 @@ namespace UnitTestEx.Hosting
         /// <param name="paramAttributeType">The optional parameter <see cref="Attribute"/> <see cref="Type"/> to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting exception if any and elapsed milliseconds.</returns>
-        protected async Task<(Exception? Exception, long ElapsedMilliseconds)> RunAsync(Expression<Func<THost, Task>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected async Task<(Exception? Exception, double ElapsedMilliseconds)> RunAsync(Expression<Func<THost, Task>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
             var mce = MethodCallExpressionValidate(expression);
             var pis = mce.Method.GetParameters();
@@ -88,12 +88,12 @@ namespace UnitTestEx.Hosting
             {
                 await ((Task)mce.Method.Invoke(h, @params)!).ConfigureAwait(false);
                 sw.Stop();
-                return (null, sw.ElapsedMilliseconds);
+                return (null, sw.Elapsed.TotalMilliseconds);
             }
             catch (Exception ex)
             {
                 sw.Stop();
-                return (ex, sw.ElapsedMilliseconds);
+                return (ex, sw.Elapsed.TotalMilliseconds);
             }
         }
 
@@ -104,7 +104,7 @@ namespace UnitTestEx.Hosting
         /// <param name="paramAttributeType">The optional parameter <see cref="Attribute"/> <see cref="Type"/> to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
-        protected async Task<(TResult Result, Exception? Exception, long ElapsedMilliseconds)> RunAsync<TResult>(Expression<Func<THost, Task<TResult>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected async Task<(TResult Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TResult>(Expression<Func<THost, Task<TResult>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
             var mce = MethodCallExpressionValidate(expression);
             var pis = mce.Method.GetParameters();
@@ -134,12 +134,12 @@ namespace UnitTestEx.Hosting
             {
                 var mr = await expression.Compile().Invoke(h).ConfigureAwait(false);
                 sw.Stop();
-                return (mr, null, sw.ElapsedMilliseconds);
+                return (mr, null, sw.Elapsed.TotalMilliseconds);
             }
             catch (Exception ex)
             {
                 sw.Stop();
-                return (default!, ex, sw.ElapsedMilliseconds);
+                return (default!, ex, sw.Elapsed.TotalMilliseconds);
             }
         }
 

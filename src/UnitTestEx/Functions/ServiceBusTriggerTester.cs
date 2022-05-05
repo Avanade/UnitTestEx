@@ -49,7 +49,7 @@ namespace UnitTestEx.Functions
         public async Task<VoidAssertor> RunAsync(Expression<Func<TFunction, Task>> expression, bool validateTriggerProperties = false)
         {
             object? sbv = null;
-            (Exception? ex, long ms) = await RunAsync(expression, typeof(ServiceBusTriggerAttribute), (p, a, v) =>
+            (Exception? ex, double ms) = await RunAsync(expression, typeof(ServiceBusTriggerAttribute), (p, a, v) =>
             {
                 if (a == null)
                     throw new InvalidOperationException($"The function method must have a parameter using the {nameof(ServiceBusTriggerAttribute)}.");
@@ -130,7 +130,7 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Log the output.
         /// </summary>
-        private void LogOutput(Exception? ex, long ms, object? value)
+        private void LogOutput(Exception? ex, double ms, object? value)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("RESULT >");

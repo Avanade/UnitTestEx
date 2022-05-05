@@ -333,7 +333,7 @@ namespace UnitTestEx.Functions
 
                 sw.Stop();
                 sbsrr.SetUsingActionsWrapper(sbma);
-                LogOutput(null, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, null);
+                LogOutput(null, sw.Elapsed.TotalMilliseconds, sbsrr, autoCompleteOverride, null);
                 return new ServiceBusEmulatorRunAssertor(sbsrr, null, Implementor, JsonSerializer);
             }
             catch (Exception ex)
@@ -346,7 +346,7 @@ namespace UnitTestEx.Functions
                 await sbma.AbandonMessageAsync(sbsrr.Message).ConfigureAwait(false);
 
                 sbsrr.SetUsingActionsWrapper(sbma);
-                LogOutput(ex, sw.ElapsedMilliseconds, sbsrr, autoCompleteOverride, null);
+                LogOutput(ex, sw.Elapsed.TotalMilliseconds, sbsrr, autoCompleteOverride, null);
                 return new ServiceBusEmulatorRunAssertor(sbsrr, ex, Implementor, JsonSerializer);
             }
         }
@@ -394,7 +394,7 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Log the output.
         /// </summary>
-        private void LogOutput(Exception? ex, long ms, ServiceBusEmulatorRunResult sbsrr, bool? autoCompleteOverride, string? extra)
+        private void LogOutput(Exception? ex, double ms, ServiceBusEmulatorRunResult sbsrr, bool? autoCompleteOverride, string? extra)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("FUNCTION SERVICE BUS TRIGGER TESTER...");

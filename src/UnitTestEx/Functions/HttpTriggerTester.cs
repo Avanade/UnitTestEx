@@ -50,7 +50,7 @@ namespace UnitTestEx.Functions
         /// <returns>An <see cref="ActionResultAssertor"/>.</returns>
         public async Task<ActionResultAssertor> RunAsync(Expression<Func<TFunction, Task<IActionResult>>> expression)
         {
-            (IActionResult result, Exception? ex, long ms) = await RunAsync(expression, typeof(HttpTriggerAttribute), (p, a, v) =>
+            (IActionResult result, Exception? ex, double ms) = await RunAsync(expression, typeof(HttpTriggerAttribute), (p, a, v) =>
             {
                 if (a == null)
                     throw new InvalidOperationException($"The function method must have a parameter using the {nameof(HttpTriggerAttribute)}.");
@@ -154,7 +154,7 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Log the response to the output.
         /// </summary>
-        private void LogResponse(IActionResult res, Exception? ex, long ms)
+        private void LogResponse(IActionResult res, Exception? ex, double ms)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine($"RESPONSE >");

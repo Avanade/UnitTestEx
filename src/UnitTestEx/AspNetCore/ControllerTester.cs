@@ -228,7 +228,7 @@ namespace UnitTestEx.AspNetCore
             _implementor.WriteLine("");
             _implementor.WriteLine($"RESPONSE >");
             _implementor.WriteLine($"HttpStatusCode: {res.StatusCode} ({(int)res.StatusCode})");
-            _implementor.WriteLine($"Elapsed (ms): {(sw == null ? "none" : sw.ElapsedMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture))}");
+            _implementor.WriteLine($"Elapsed (ms): {(sw == null ? "none" : sw.Elapsed.TotalMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture))}");
 
             var hdrs = res.Headers?.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
             _implementor.WriteLine($"Headers: {(hdrs == null || !hdrs.Any() ? "none" : "")}");
