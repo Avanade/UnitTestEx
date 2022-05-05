@@ -115,7 +115,7 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Create the <see cref="HttpResponseMessage"/> from the <see cref="MockHttpClientResponse"/>.
         /// </summary>
-        private async Task<HttpResponseMessage> CreateResponseAsync(MockHttpClientResponse response, CancellationToken ct)
+        private static async Task<HttpResponseMessage> CreateResponseAsync(MockHttpClientResponse response, CancellationToken ct)
         {
             var httpResponse = new HttpResponseMessage(response.StatusCode);
             if (response.Content != null)
