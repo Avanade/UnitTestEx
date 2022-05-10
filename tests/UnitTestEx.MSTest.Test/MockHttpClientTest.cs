@@ -178,9 +178,10 @@ namespace UnitTestEx.MSTest.Test
                 mcf.VerifyAll();
                 Assert.Fail();
             }
-            catch (MockException mex)
+            catch (MockHttpClientException mhcex)
             {
-                Logger.LogMessage("{0}", mex.Message);
+                Logger.LogMessage("{0}", mhcex.Message);
+                Assert.AreEqual("The request was invoked 0 times; expected AtLeastOnce. Request: <XXX> POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
             }
         }
 
@@ -204,9 +205,10 @@ namespace UnitTestEx.MSTest.Test
                 mcf.VerifyAll();
                 Assert.Fail();
             }
-            catch (MockException mex)
+            catch (MockHttpClientException mhcex)
             {
-                Logger.LogMessage("{0}", mex.Message);
+                Logger.LogMessage("{0}", mhcex.Message);
+                Assert.AreEqual("The request was invoked 0 times; expected AtLeastOnce. Request: <XXX> POST https://d365test/products/abc {\"firstName\":\"David\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
             }
         }
 
@@ -223,13 +225,18 @@ namespace UnitTestEx.MSTest.Test
                 var hc = mcf.GetHttpClient("XXX");
                 var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
                 Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
 
                 mcf.VerifyAll();
                 Assert.Fail();
             }
-            catch (MockException mex)
+            catch (MockHttpClientException mhcex)
             {
-                Logger.LogMessage("{0}", mex.Message);
+                Logger.LogMessage("{0}", mhcex.Message);
+                Assert.AreEqual("The request was invoked 3 times; expected Exactly(2). Request: <XXX> POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
             }
         }
 
@@ -432,7 +439,8 @@ namespace UnitTestEx.MSTest.Test
             await Assert.ThrowsExceptionAsync<TaskCanceledException>(async () => await hc.GetAsync("", tts.Token).ConfigureAwait(false));
 
             // Verify should fail as not all responses were invoked.
-            Assert.ThrowsException<MockException>(() => mcf.VerifyAll());
+            var ex = Assert.ThrowsException<MockHttpClientException>(() => mcf.VerifyAll());
+            Assert.AreEqual("There were 3 response(s) configured for the Sequence and only 1 response(s) invoked. Request: <XXX> GET https://d365test/ 'No content' ", ex.Message);
         }
     }
 }

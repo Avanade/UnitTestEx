@@ -98,7 +98,7 @@ namespace UnitTestEx.Assertors
         }
 
         /// <summary>
-        /// AAsserts that the <see cref="Result"/> has the specified <c>Content</c> matches the JSON serialized value.
+        /// Asserts that the <see cref="Result"/> has the specified <c>Content</c> matches the JSON serialized value.
         /// </summary>
         /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
@@ -366,6 +366,15 @@ namespace UnitTestEx.Assertors
 
             return this;
         }
+
+        /// <summary>
+        /// Asserts that the <see cref="Result"/> has the specified <c>Content</c> matches the JSON value.
+        /// </summary>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected JSON.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
+        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+        public ActionResultAssertor AssertFromJsonResource(string resourceName, params string[] pathsToIgnore)
+            => Assert(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), pathsToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> JSON content matches the specified <paramref name="json"/>.

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
@@ -87,9 +88,6 @@ namespace UnitTestEx.Mocking
                         ItExpr.Is<HttpRequestMessage>(x => RequestPredicate(x)),
                         ItExpr.IsAny<CancellationToken>())
                     .Returns((HttpRequestMessage x, CancellationToken ct) => CreateResponseAsync(Rule.Response!, ct));
-
-                if (Rule.Times == null)
-                    m.Verifiable($"{_method} '{_requestUri}' request with {BodyToString()} body");
             }
             else
             {
@@ -100,12 +98,10 @@ namespace UnitTestEx.Mocking
                     .Returns((HttpRequestMessage x, CancellationToken ct) =>
                     {
                         if (Rule.ResponsesIndex >= Rule.Responses.Count)
-                            throw new InvalidOperationException($"There were {Rule.Responses.Count} responses configured for the Sequence and these responses have been exhausted; i.e. an unexpected additional invocation has occured.");
+                            throw new MockHttpClientException($"There were {Rule.Responses.Count} responses configured for the Sequence and these responses have been exhausted; i.e. an unexpected additional invocation has occured. Request: {ToString()}");
 
                         return CreateResponseAsync(Rule.Responses[Rule.ResponsesIndex++], ct);
                     });
-
-                Rule.Times = Moq.Times.Exactly(Rule.Responses.Count);
             }
 
             // Mark as mock complete.
@@ -123,6 +119,7 @@ namespace UnitTestEx.Mocking
 
             await response.ExecuteDelayAsync(ct).ConfigureAwait(false);
 
+            response.Count++;
             response.ResponseAction?.Invoke(httpResponse);
             return httpResponse;
         }
@@ -210,6 +207,26 @@ namespace UnitTestEx.Mocking
                 default:
                     return body == _content?.ToString();
             }
+        }
+
+        /// <inheritdoc/>
+        public override string ToString() => $"<{_client.Name}> {_method} {(_client.HttpClient.BaseAddress == null ? _requestUri : new Uri(_client.HttpClient.BaseAddress, _requestUri))} {ContentToString()} {(_mediaType == null ? string.Empty : $"({_mediaType})")}";
+
+        /// <summary>
+        /// Convert the content to a string.
+        /// </summary>
+        private string? ContentToString()
+        {
+            if (_anyContent)
+                return "'Any content'";
+
+            if (_content == null)
+                return "'No content'";
+
+            if (_mediaType?.ToLowerInvariant() == MediaTypeNames.Application.Json && _content is not string)
+                return JsonSerializer.Serialize(_content);
+
+            return _content.ToString();
         }
 
         /// <summary>
@@ -342,13 +359,15 @@ namespace UnitTestEx.Mocking
             if (!IsMockComplete)
                 throw new MockHttpClientException($"The request mock is not completed; the {nameof(MockHttpClientRequest)}.{nameof(IsMockComplete)} must be true for mocking to be verified.");
 
-            if (Rule?.Times != null)
+            if (Rule.Responses == null)
             {
-                _client.MessageHandler.Protected()
-                    .Verify<Task<HttpResponseMessage>>("SendAsync", Rule.Times.Value,
-                        ItExpr.Is<HttpRequestMessage>(x => RequestPredicate(x)),
-                        ItExpr.IsAny<CancellationToken>());
+                var times = Rule.Times ?? Moq.Times.AtLeastOnce();
+                times.Deconstruct(out var from, out var to);
+                if (Rule.Response!.Count < from || Rule.Response!.Count > to)
+                    throw new MockHttpClientException($"The request was invoked {Rule.Response!.Count} times; expected {times}. Request: {ToString()}");
             }
+            else if (Rule.Responses.Sum(x => x.Count) != Rule.Responses.Count)
+                throw new MockHttpClientException($"There were {Rule.Responses.Count} response(s) configured for the Sequence and only {Rule.Responses.Sum(x => x.Count)} response(s) invoked. Request: {ToString()}");
         }
 
         /// <summary>

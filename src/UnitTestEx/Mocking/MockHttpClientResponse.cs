@@ -54,6 +54,11 @@ namespace UnitTestEx.Mocking
         internal Task ExecuteDelayAsync(CancellationToken cancellationToken) => _delay == null ? Task.CompletedTask : Task.Delay(_delay(), cancellationToken);
 
         /// <summary>
+        /// Gets or sets the number of times responded count.
+        /// </summary>
+        internal int Count { get; set; }
+
+        /// <summary>
         /// Sets the simulated delay (sleep) for the response.
         /// </summary>
         /// <param name="timeSpan">The delay (sleep) function.</param>

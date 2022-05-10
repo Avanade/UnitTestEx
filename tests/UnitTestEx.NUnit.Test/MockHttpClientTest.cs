@@ -165,9 +165,9 @@ namespace UnitTestEx.NUnit.Test
                 mcf.VerifyAll();
                 Assert.Fail();
             }
-            catch (MockException mex)
+            catch (MockHttpClientException mhcex)
             {
-                TestContext.Out.WriteLine(mex.Message);
+                Assert.AreEqual("The request was invoked 0 times; expected AtLeastOnce. Request: <XXX> POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
             }
         }
 
@@ -191,9 +191,9 @@ namespace UnitTestEx.NUnit.Test
                 mcf.VerifyAll();
                 Assert.Fail();
             }
-            catch (MockException mex)
+            catch (MockHttpClientException mhcex)
             {
-                TestContext.Out.WriteLine(mex.Message);
+                Assert.AreEqual("The request was invoked 0 times; expected AtLeastOnce. Request: <XXX> POST https://d365test/products/abc {\"firstName\":\"David\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
             }
         }
 
@@ -210,13 +210,17 @@ namespace UnitTestEx.NUnit.Test
                 var hc = mcf.GetHttpClient("XXX");
                 var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
                 Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
 
                 mcf.VerifyAll();
                 Assert.Fail();
             }
-            catch (MockException mex)
+            catch (MockHttpClientException mhcex)
             {
-                TestContext.Out.WriteLine(mex.Message);
+                Assert.AreEqual("The request was invoked 3 times; expected Exactly(2). Request: <XXX> POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
             }
         }
 
