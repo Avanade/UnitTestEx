@@ -204,6 +204,14 @@ namespace UnitTestEx.Assertors
         public HttpResponseMessageAssertor AssertFromJsonResource<TAssembly, TResult>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TResult>(resourceName, typeof(TAssembly).Assembly, _jsonSerializer), membersToIgnore);
 
         /// <summary>
+        /// Asserts that the <see cref="Response"/> matches the JSON value.
+        /// </summary>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected JSON.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
+        public HttpResponseMessageAssertor AssertFromJsonResource(string resourceName, params string[] pathsToIgnore) => Assert(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), pathsToIgnore);
+
+        /// <summary>
         /// Asserts that the <see cref="Response"/> JSON content matches the specified <paramref name="json"/>.
         /// </summary>
         /// <param name="json">The expected JSON.</param>

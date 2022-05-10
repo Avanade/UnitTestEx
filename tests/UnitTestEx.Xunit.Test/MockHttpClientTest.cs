@@ -165,11 +165,11 @@ namespace UnitTestEx.Xunit.Test
             try
             {
                 mcf.VerifyAll();
-                throw new InvalidOperationException("Should not get here!");
+                throw new InvalidOperationException();
             }
-            catch (MockException mex)
+            catch (MockHttpClientException mhcex)
             {
-                Output.WriteLine(mex.Message);
+                Assert.Equal("The request was invoked 0 times; expected AtLeastOnce. Request: <XXX> POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
             }
         }
 
@@ -191,11 +191,11 @@ namespace UnitTestEx.Xunit.Test
                 Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
 
                 mcf.VerifyAll();
-                throw new InvalidOperationException("Should not get here!");
+                throw new InvalidOperationException();
             }
-            catch (MockException mex)
+            catch (MockHttpClientException mhcex)
             {
-                Output.WriteLine(mex.Message);
+                Assert.Equal("The request was invoked 0 times; expected AtLeastOnce. Request: <XXX> POST https://d365test/products/abc {\"firstName\":\"David\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
             }
         }
 
@@ -212,13 +212,17 @@ namespace UnitTestEx.Xunit.Test
                 var hc = mcf.GetHttpClient("XXX");
                 var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
                 Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
+                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
+                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
 
                 mcf.VerifyAll();
-                throw new InvalidOperationException("Should not get here!");
+                throw new InvalidOperationException();
             }
-            catch (MockException mex)
+            catch (MockHttpClientException mhcex)
             {
-                Output.WriteLine(mex.Message);
+                Assert.Equal("The request was invoked 3 times; expected Exactly(2). Request: <XXX> POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
             }
         }
 

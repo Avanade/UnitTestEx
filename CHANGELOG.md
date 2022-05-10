@@ -2,9 +2,13 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.22
+- *Enhancement:* Update `CoreEx` dependencies to `1.0.4`.
+- *Fixed* Updated the Mock verification code and customized implementation to improve checking and error message.
+
 ## v1.0.21
 - *Enhancement:* Update `CoreEx` dependencies to `1.0.3`.
-- *Enhancement:* Improve precision of milliseconds logging,
+- *Enhancement:* Improve precision of milliseconds logging.
 
 ## v1.0.20
 - *Fixed:* Expression invocation was incorrectly being invoked twice (and within the same scope), one with an await and the other without, racing each other and referencing the same DI scoped instances. 

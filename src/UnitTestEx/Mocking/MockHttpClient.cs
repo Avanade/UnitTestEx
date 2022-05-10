@@ -24,6 +24,7 @@ namespace UnitTestEx.Mocking
         {
             Factory = factory;
             HttpClient = new HttpClient(new MockHttpClientHandler(factory, MessageHandler.Object)) { BaseAddress = baseAddress ?? new Uri("https://unittest") };
+            Name = name ?? throw new ArgumentNullException(nameof(name));
             Factory.HttpClientFactory.Setup(x => x.CreateClient(It.Is<string>(x => x == name))).Returns(() => HttpClient);
         }
 
@@ -31,6 +32,11 @@ namespace UnitTestEx.Mocking
         /// Gets the <see cref="MockHttpClientFactory"/>.
         /// </summary>
         internal MockHttpClientFactory Factory { get; }
+
+        /// <summary>
+        /// Gets the logical name of the client.
+        /// </summary>
+        public string Name { get; }
 
         /// <summary>
         /// Gets the <see cref="Mock"/> <see cref="HttpMessageHandler"/>.
