@@ -440,7 +440,7 @@ namespace UnitTestEx.MSTest.Test
 
             // Verify should fail as not all responses were invoked.
             var ex = Assert.ThrowsException<MockHttpClientException>(() => mcf.VerifyAll());
-            Assert.AreEqual("There were 3 response(s) configured for the Sequence and only 1 response(s) invoked. Request: <XXX> GET https://d365test/ 'No content' ", ex.Message);
+            Assert.AreEqual("There were 3 response(s) configured for the Sequence and only 2 response(s) invoked. Request: <XXX> GET https://d365test/ 'No content' ", ex.Message);
         }
     }
 }

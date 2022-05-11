@@ -2,9 +2,12 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.23
+- Fixed:* The mock verification was not correctly updating the counter where there was a timeout. This has been corrected.
+
 ## v1.0.22
 - *Enhancement:* Update `CoreEx` dependencies to `1.0.4`.
-- *Fixed* Updated the Mock verification code and customized implementation to improve checking and error message.
+- *Fixed:* Updated the Mock verification code and customized implementation to improve checking and error message.
 
 ## v1.0.21
 - *Enhancement:* Update `CoreEx` dependencies to `1.0.3`.

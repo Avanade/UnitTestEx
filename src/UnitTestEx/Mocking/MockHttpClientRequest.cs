@@ -113,13 +113,14 @@ namespace UnitTestEx.Mocking
         /// </summary>
         private static async Task<HttpResponseMessage> CreateResponseAsync(MockHttpClientResponse response, CancellationToken ct)
         {
+            response.Count++;
+
             var httpResponse = new HttpResponseMessage(response.StatusCode);
             if (response.Content != null)
                 httpResponse.Content = response.Content;
 
             await response.ExecuteDelayAsync(ct).ConfigureAwait(false);
 
-            response.Count++;
             response.ResponseAction?.Invoke(httpResponse);
             return httpResponse;
         }
