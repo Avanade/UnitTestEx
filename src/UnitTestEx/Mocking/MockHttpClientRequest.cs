@@ -111,7 +111,7 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Create the <see cref="HttpResponseMessage"/> from the <see cref="MockHttpClientResponse"/>.
         /// </summary>
-        private static async Task<HttpResponseMessage> CreateResponseAsync(MockHttpClientResponse response, CancellationToken ct)
+        private async Task<HttpResponseMessage> CreateResponseAsync(MockHttpClientResponse response, CancellationToken ct)
         {
             response.Count++;
 
@@ -121,23 +121,9 @@ namespace UnitTestEx.Mocking
 
             await response.ExecuteDelayAsync(ct).ConfigureAwait(false);
 
+            response.ThrowExceptionIfAny(ex => Implementor.CreateLogger("MockHttpClientRequest").LogInformation($"Mock HTTP Request throwing configured {ex.GetType().Name}: {ex.Message}"));
             response.ResponseAction?.Invoke(httpResponse);
             return httpResponse;
-        }
-
-        /// <summary>
-        /// Converts the body to a string.
-        /// </summary>
-        private string BodyToString()
-        {
-            if (_mediaType == null || _content == null)
-                return "no";
-
-            return _mediaType.ToLowerInvariant() switch
-            {
-                MediaTypeNames.Application.Json => $"'{JsonSerializer.Serialize(_content, JsonWriteFormat.None)}' [{_mediaType}]",
-                _ => $"'{_content}' [{_mediaType}]",
-            };
         }
 
         /// <summary>

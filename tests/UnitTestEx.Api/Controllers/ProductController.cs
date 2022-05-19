@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -20,15 +21,22 @@ namespace UnitTestEx.Api.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(string id)
         {
-            var result = await _httpClient.GetAsync($"products/{id}").ConfigureAwait(false);
-            if (result.StatusCode == HttpStatusCode.NotFound)
-                return new NotFoundResult();
+            try
+            {
+                var result = await _httpClient.GetAsync($"products/{id}").ConfigureAwait(false);
+                if (result.StatusCode == HttpStatusCode.NotFound)
+                    return new NotFoundResult();
 
-            result.EnsureSuccessStatusCode();
+                result.EnsureSuccessStatusCode();
 
-            var str = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
-            var val = JsonConvert.DeserializeObject<dynamic>(str);
-            return new OkObjectResult(val);
+                var str = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var val = JsonConvert.DeserializeObject<dynamic>(str);
+                return new OkObjectResult(val);
+            }
+            catch (DivideByZeroException)
+            {
+                return new BadRequestResult();
+            }
         }
     }
 }

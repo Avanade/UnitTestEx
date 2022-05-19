@@ -20,6 +20,7 @@ namespace UnitTestEx.Mocking
         private readonly MockHttpClientRequest _clientRequest;
         private readonly MockHttpClientRequestRule? _rule;
         private Func<TimeSpan>? _delay;
+        private Exception? _exception;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MockHttpClientResponse"/> class.
@@ -206,6 +207,35 @@ namespace UnitTestEx.Mocking
 
             if (_rule.Responses.Count > 0)
                 _clientRequest.MockResponse();
+        }
+
+        /// <summary>
+        /// Provides the mocked response as the <typeparamref name="TException"/> being thrown versus an <see cref="HttpRequestMessage"/>.
+        /// </summary>
+        /// <typeparam name="TException">The <see cref="Exception"/> <see cref="Type"/>.</typeparam>
+        public void WithException<TException>() where TException : Exception, new() => WithException(new TException());
+
+        /// <summary>
+        /// Provides the mocked response as the <paramref name="exception"/> being thrown versus an <see cref="HttpRequestMessage"/>.
+        /// </summary>
+        /// <param name="exception">The <see cref="Exception"/> that will be thrown.</param>
+        public void WithException(Exception exception)
+        {
+            _exception = exception ?? throw new ArgumentNullException(nameof(exception));
+            With();
+        }
+
+        /// <summary>
+        /// Throws the previously specified <see cref="WithException{TException}"/> or <see cref="WithException(Exception)"/> if any.
+        /// </summary>
+        /// <param name="action">The action to invoke prior to throwing the exception.</param>
+        internal void ThrowExceptionIfAny(Action<Exception> action)
+        {
+            if (_exception != null)
+            {
+                action(_exception);
+                throw _exception;
+            }
         }
     }
 }

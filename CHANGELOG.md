@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.24
+- *Enhancement:* Added `MockHttpClientResponse.WithException` so that the specified exception will be thrown versus returning a response for scenarios where invocating an endpoint results in the likes of a `SocketException` for example.
+
 ## v1.0.23
 - Fixed:* The mock verification was not correctly updating the counter where there was a timeout. This has been corrected.
 

@@ -442,5 +442,27 @@ namespace UnitTestEx.MSTest.Test
             var ex = Assert.ThrowsException<MockHttpClientException>(() => mcf.VerifyAll());
             Assert.AreEqual("There were 3 response(s) configured for the Sequence and only 2 response(s) invoked. Request: <XXX> GET https://d365test/ 'No content' ", ex.Message);
         }
+
+        [TestMethod]
+        public async Task WithException()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://d365test"))
+                .Request(HttpMethod.Get, "").Respond.Delay(100).WithException<DivideByZeroException>();
+
+            var hc = mcf.GetHttpClient("XXX");
+            await Assert.ThrowsExceptionAsync<DivideByZeroException>(() => hc.GetAsync(""));
+        }
+
+        [TestMethod]
+        public async Task ResponseAction_ThrowException()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://d365test"))
+                .Request(HttpMethod.Get, "").Respond.Delay(100).With(HttpStatusCode.OK, x => throw new DivideByZeroException());
+
+            var hc = mcf.GetHttpClient("XXX");
+            await Assert.ThrowsExceptionAsync<DivideByZeroException>(() => hc.GetAsync(""));
+        }
     }
 }

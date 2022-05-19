@@ -41,6 +41,34 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
+        public void WithException()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://somesys"))
+                .Request(HttpMethod.Get, "products/abc").Respond.WithException<DivideByZeroException>();
+
+            using var test = ApiTester.Create<Startup>();
+            test.ReplaceHttpClientFactory(mcf)
+                .Controller<ProductController>()
+                .Run(c => c.Get("abc"))
+                .AssertBadRequest();
+        }
+
+        [Test]
+        public void ResponseAction_ThrowException()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://somesys"))
+                .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" }, response: _ => throw new DivideByZeroException());
+
+            using var test = ApiTester.Create<Startup>();
+            test.ReplaceHttpClientFactory(mcf)
+                .Controller<ProductController>()
+                .Run(c => c.Get("abc"))
+                .AssertBadRequest();
+        }
+
+        [Test]
         public void ServiceProvider()
         {
             var mcf = MockHttpClientFactory.Create();
