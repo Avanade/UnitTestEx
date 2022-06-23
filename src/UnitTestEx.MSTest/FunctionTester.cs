@@ -19,9 +19,10 @@ namespace UnitTestEx.MSTest
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
+        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
         /// <returns>The <see cref="ApiTester{TEntryPoint}"/>.</returns>
-        public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, params KeyValuePair<string, string>[] additionalConfiguration)
+        public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null, string? username = null)
             where TEntryPoint : FunctionsStartup, new() 
-            => new(includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
+            => new(includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration, username);
     }
 }

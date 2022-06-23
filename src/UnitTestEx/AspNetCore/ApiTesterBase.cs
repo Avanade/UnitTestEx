@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Net.Http;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Hosting;
 
@@ -27,7 +29,8 @@ namespace UnitTestEx.AspNetCore
         /// Initializes a new instance of the <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        protected ApiTesterBase(TestFrameworkImplementor implementor) : base(implementor)
+        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="ExecutionContext.Current"/> <see cref="ExecutionContext.Username"/> where configured).</param>
+        protected ApiTesterBase(TestFrameworkImplementor implementor, string? username) : base(implementor, username)
         {
             Logger = implementor.CreateLogger(GetType().Name);
 
@@ -101,7 +104,35 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <typeparam name="TController">The API Controller <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="ControllerTester{TController}"/>.</returns>
-        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(WebApplicationFactory.Server, Implementor, JsonSerializer);
+        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, WebApplicationFactory.Server);
+
+        /// <summary>
+        /// Enables an agent (<see cref="CoreEx.Http.TypedHttpClientBase"/>) to be used to send a <see cref="HttpRequestMessage"/> to the underlying <see cref="TestServer"/>.
+        /// </summary>
+        /// <typeparam name="TAgent">The <see cref="CoreEx.Http.TypedHttpClientBase"/> <see cref="Type"/>.</typeparam>
+        /// <returns>The <see cref="AgentTester{TAgent}"/></returns>
+        public AgentTester<TAgent> Agent<TAgent>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, WebApplicationFactory.Server);
+
+        /// <summary>
+        /// Enables an agent (<see cref="CoreEx.Http.TypedHttpClientBase"/>) to be used to send a <see cref="HttpRequestMessage"/> to the underlying <see cref="TestServer"/>.
+        /// </summary>
+        /// <typeparam name="TResponse">The response value <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TAgent">The <see cref="CoreEx.Http.TypedHttpClientBase"/> <see cref="Type"/>.</typeparam>
+        /// <returns>The <see cref="AgentTester{TAgent}"/></returns>
+        public AgentTester<TAgent, TResponse> Agent<TAgent, TResponse>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, WebApplicationFactory.Server);
+
+        /// <summary>
+        /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/>.
+        /// </summary>
+        /// <returns>The <see cref="HttpTester"/>.</returns>
+        public HttpTester Http() => new(this, WebApplicationFactory.Server);
+
+        /// <summary>
+        /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/> with an expected response value <see cref="Type"/>.
+        /// </summary>
+        /// <typeparam name="TResponse">The response value <see cref="Type"/>.</typeparam>
+        /// <returns>The <see cref="HttpTester{TResponse}"/>.</returns>
+        public HttpTester<TResponse> Http<TResponse>() => new(this, WebApplicationFactory.Server);
 
         /// <summary>
         /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.

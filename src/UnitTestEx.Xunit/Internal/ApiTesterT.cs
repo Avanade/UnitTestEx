@@ -15,6 +15,7 @@ namespace UnitTestEx.Xunit.Internal
         /// Initializes a new instance of the <see cref="ApiTester{TEntryPoint}"/> class.
         /// </summary>
         /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
-        internal ApiTester(ITestOutputHelper output) : base(new Internal.XunitTestImplementor(output)) { }
+        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
+        internal ApiTester(ITestOutputHelper output, string? username) : base(new Internal.XunitTestImplementor(output), username) { }
     }
 }

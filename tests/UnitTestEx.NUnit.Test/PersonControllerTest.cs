@@ -1,11 +1,17 @@
-﻿using CoreEx.Entities;
+﻿using CoreEx.Configuration;
+using CoreEx.Entities;
 using CoreEx.Http;
+using CoreEx.Json;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Api.Models;
+using UnitTestEx.Expectations;
 
 namespace UnitTestEx.NUnit.Test
 {
@@ -114,5 +120,103 @@ namespace UnitTestEx.NUnit.Test
                 .AssertOK()
                 .AssertJson("{\"page\":null,\"isSkipTake\":true,\"size\":5,\"skip\":2,\"take\":5,\"isGetCount\":false}");
         }
+
+        [Test]
+        public async Task Http_Get1()
+        {
+            using var test = ApiTester.Create<Startup>();
+            (await test.Http()
+                .RunAsync(HttpMethod.Get, "Person/1" ))
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Http_Get2()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Http()
+                .Run(HttpMethod.Get, "Person/1")
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Http_Update1()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Http()
+                .Run(HttpMethod.Post, "Person/1", new Person { FirstName = "Bob", LastName = "Smith" })
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Http_Update2()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Http()
+                .ExpectStatusCode(System.Net.HttpStatusCode.MethodNotAllowed)
+                .Run(HttpMethod.Put, "Person/1", new Person { FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Http_Update_Http1()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Http<Person>()
+                .Run(HttpMethod.Post, "Person/1", new Person { FirstName = "Bob", LastName = "Smith" })
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Http_Update_Http2()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Http<Person>()
+                .ExpectStatusCode(System.Net.HttpStatusCode.OK)
+                .ExpectedValue(_ => new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
+                .Run(HttpMethod.Post, "Person/1", new Person { FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Http_Update_Http3()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Http<Person>()
+                .ExpectStatusCode(System.Net.HttpStatusCode.OK)
+                .ExpectedValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
+                .Run(HttpMethod.Post, "Person/1", new Person { FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Http_Update_Typed1()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Agent<PersonAgent, Person>()
+                .Run(a => a.UpdateAsync(new Person { FirstName = "Bob", LastName = "Smith" }, 1))
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Http_Update_Typed2()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Agent<PersonAgent, Person>()
+                .ExpectStatusCode(System.Net.HttpStatusCode.OK)
+                .ExpectedValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
+                .Run(a => a.UpdateAsync(new Person { FirstName = "Bob", LastName = "Smith" }, 1));
+        }
+    }
+
+    public class PersonAgent : CoreEx.Http.TypedHttpClientBase<PersonAgent>
+    {
+        public PersonAgent(HttpClient client, IJsonSerializer jsonSerializer, CoreEx.ExecutionContext executionContext, SettingsBase settings, ILogger<PersonAgent> logger)
+            : base(client, jsonSerializer, executionContext, settings, logger) { }
+
+        public Task<HttpResult<Person>> UpdateAsync(Person value, int id, HttpRequestOptions requestOptions = null, CancellationToken cancellationToken = default)
+            => PostAsync<Person, Person>("Person/{id}", value, requestOptions: requestOptions, args: new IHttpArg[] { new HttpArg<int>("id", id) }, cancellationToken: cancellationToken);
     }
 }

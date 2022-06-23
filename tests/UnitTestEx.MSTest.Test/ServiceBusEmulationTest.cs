@@ -145,7 +145,7 @@ namespace UnitTestEx.MSTest.Test
         public async Task ServiceBusReceiver4_Success()
         {
             // Set up test, and only run where the 'ServiceBusConnectionString' has a value.
-            using var test = FunctionTester.Create<Startup>(includeUserSecrets: true, additionalConfiguration: new KeyValuePair<string, string>("Run4QueueName", "unittestex"));
+            using var test = FunctionTester.Create<Startup>(includeUserSecrets: true, additionalConfiguration: new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>("Run4QueueName", "unittestex") });
             var sbcs = test.Services.GetService<IConfiguration>().GetValue<string>("ServiceBusConnectionString");
             if (sbcs == null)
                 Assert.Inconclusive("ServiceBusConnectionString configuration not set and therefore test cannot function.");

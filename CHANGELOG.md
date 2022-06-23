@@ -2,8 +2,12 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.24
+- *Enhancement:* Updated the `ControllerTester` removing the HTTP request capabilies and moving into new `HttpTester`; this creates a more logical split as the latter needs no knowledge of the `Controller`. This new tester is available via `ApiTester.Http().Run(...)`.
+- *Enhancement:* Added new `UnitTextEx.Expectations` namespace; when added will enable `Expect*` and `Ignore*` pre-execution assertions, that are then executed post `Run`/`RunAsync`. Some testers now also support the specification of a `TResponse` generic `Type` to enable further response value-related expectations.
+
 ## v1.0.23
-- Fixed:* The mock verification was not correctly updating the counter where there was a timeout. This has been corrected.
+- *Fixed:* The mock verification was not correctly updating the counter where there was a timeout. This has been corrected.
 
 ## v1.0.22
 - *Enhancement:* Update `CoreEx` dependencies to `1.0.4`.
