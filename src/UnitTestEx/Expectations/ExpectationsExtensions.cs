@@ -2,6 +2,7 @@
 
 using CoreEx.Abstractions;
 using CoreEx.Entities;
+using CoreEx.Events;
 using System;
 using System.Linq;
 using System.Net;
@@ -130,6 +131,100 @@ namespace UnitTestEx.Expectations
         /// <remarks>Will only check the <see cref="MessageItem.Property"/> where specified (not <c>null</c>).</remarks>
         public static TSelf ExpectMessages<TSelf>(this HttpTesterBase<TSelf> tester, MessageItemCollection messages) where TSelf : HttpTesterBase<TSelf>
             => tester.SetExpectation(t => t.Expectations.SetExpectMessages(messages));
+
+        /// <summary>
+        /// Expects that the corresponding event has been published (in order specified). The expected event <paramref name="subject"/> and <paramref name="action"/> can use wildcards. All other <see cref="EventData"/> properties are not matched/verified.
+        /// </summary>
+        /// <param name="tester">The <see cref="HttpTesterBase{TSelf}"/>.</param>
+        /// <param name="subject">The expected subject (may contain wildcards).</param>
+        /// <param name="action">The expected action (may contain wildcards).</param>
+        /// <remarks>On first invocation will automatically replace <see cref="IEventPublisher"/> with a new <see cref="InMemoryPublisher"/> scoped service (DI) to capture events for this expectation. The other services are therefore required
+        /// for this to function. As this is a scoped service no parallel execution of services against the same test host is supported as this capability is not considered thread-safe.</remarks>
+        public static TSelf ExpectEvent<TSelf>(this HttpTesterBase<TSelf> tester, string subject, string? action = "*") where TSelf : HttpTesterBase<TSelf>
+            => tester.SetExpectation(t => t.Expectations.ExpectedEvents.Expect(null, subject, action));
+
+        /// <summary>
+        /// Expects that the corresponding event has been published (in order specified). The expected event <paramref name="source"/>, <paramref name="subject"/> and <paramref name="action"/> can use wildcards. All other <see cref="EventData"/> 
+        /// properties are not matched/verified.
+        /// </summary>
+        /// <param name="tester">The <see cref="HttpTesterBase{TSelf}"/>.</param>
+        /// <param name="source">The expected source formatted as a <see cref="Uri"/> (may contain wildcards).</param>
+        /// <param name="subject">The expected subject (may contain wildcards).</param>
+        /// <param name="action">The expected action (may contain wildcards).</param>
+        /// <remarks>On first invocation will automatically replace <see cref="IEventPublisher"/> with a new <see cref="InMemoryPublisher"/> scoped service (DI) to capture events for this expectation. The other services are therefore required
+        /// for this to function. As this is a scoped service no parallel execution of services against the same test host is supported as this capability is not considered thread-safe.</remarks>
+        public static TSelf ExpectEvent<TSelf>(this HttpTesterBase<TSelf> tester, string source, string subject, string? action = "*") where TSelf : HttpTesterBase<TSelf>
+            => tester.SetExpectation(t => t.Expectations.ExpectedEvents.Expect(null, source, subject, action));
+
+        /// <summary>
+        /// Expects that the corresponding <paramref name="event"/> has been published (in order specified). All properties for expected event will be compared again the actual.
+        /// </summary>
+        /// <param name="tester">The <see cref="HttpTesterBase{TSelf}"/>.</param>
+        /// <param name="event">The expected <paramref name="event"/>. Wildcards are supported for <see cref="EventDataBase.Subject"/> and <see cref="EventDataBase.Action"/>.</param>
+        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <remarks>Wildcards are supported for <see cref="EventDataBase.Subject"/>, <see cref="EventDataBase.Action"/> and <see cref="EventDataBase.Type"/>.</remarks>
+        public static TSelf ExpectEvent<TSelf>(this HttpTesterBase<TSelf> tester, EventData @event, params string[] membersToIgnore) where TSelf : HttpTesterBase<TSelf>
+            => tester.SetExpectation(t => t.Expectations.ExpectedEvents.Expect(null, @event, membersToIgnore));
+
+        /// <summary>
+        /// Expects that the corresponding <paramref name="event"/> has been published (in order specified). All properties for expected event will be compared again the actual.
+        /// </summary>
+        /// <param name="tester">The <see cref="HttpTesterBase{TSelf}"/>.</param>
+        /// <param name="source">The expected source formatted as a <see cref="Uri"/> (may contain wildcards).</param>
+        /// <param name="event">The expected <paramref name="event"/>. Wildcards are supported for <see cref="EventDataBase.Subject"/> and <see cref="EventDataBase.Action"/>.</param>
+        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <remarks>Wildcards are supported for <see cref="EventDataBase.Subject"/>, <see cref="EventDataBase.Action"/> and <see cref="EventDataBase.Type"/>.</remarks>
+        public static TSelf ExpectEvent<TSelf>(this HttpTesterBase<TSelf> tester, string source, EventData @event, params string[] membersToIgnore) where TSelf : HttpTesterBase<TSelf>
+            => tester.SetExpectation(t => t.Expectations.ExpectedEvents.Expect(null, source, @event, membersToIgnore));
+
+        /// <summary>
+        /// Expects that the corresponding <paramref name="destination"/> event has been published (in order specified). The expected event <paramref name="subject"/> and <paramref name="action"/> can use wildcards. All other <see cref="EventData"/> properties are not matched/verified.
+        /// </summary>
+        /// <param name="tester">The <see cref="HttpTesterBase{TSelf}"/>.</param>
+        /// <param name="destination">The named destination (e.g. queue or topic).</param>
+        /// <param name="subject">The expected subject (may contain wildcards).</param>
+        /// <param name="action">The expected action (may contain wildcards).</param>
+        /// <remarks>On first invocation will automatically replace <see cref="IEventPublisher"/> with a new <see cref="InMemoryPublisher"/> scoped service (DI) to capture events for this expectation. The other services are therefore required
+        /// for this to function. As this is a scoped service no parallel execution of services against the same test host is supported as this capability is not considered thread-safe.</remarks>
+        public static TSelf ExpectDestinationEvent<TSelf>(this HttpTesterBase<TSelf> tester, string destination, string subject, string? action = "*") where TSelf : HttpTesterBase<TSelf>
+            => tester.SetExpectation(t => t.Expectations.ExpectedEvents.Expect(destination, subject, action));
+
+        /// <summary>
+        /// Expects that the corresponding <paramref name="destination"/> event has been published (in order specified). The expected event <paramref name="source"/>, <paramref name="subject"/> and <paramref name="action"/> can use wildcards. All other <see cref="EventData"/> 
+        /// properties are not matched/verified.
+        /// </summary>
+        /// <param name="tester">The <see cref="HttpTesterBase{TSelf}"/>.</param>
+        /// <param name="destination">The named destination (e.g. queue or topic).</param>
+        /// <param name="source">The expected source formatted as a <see cref="Uri"/> (may contain wildcards).</param>
+        /// <param name="subject">The expected subject (may contain wildcards).</param>
+        /// <param name="action">The expected action (may contain wildcards).</param>
+        /// <remarks>On first invocation will automatically replace <see cref="IEventPublisher"/> with a new <see cref="InMemoryPublisher"/> scoped service (DI) to capture events for this expectation. The other services are therefore required
+        /// for this to function. As this is a scoped service no parallel execution of services against the same test host is supported as this capability is not considered thread-safe.</remarks>
+        public static TSelf ExpectDestinationEvent<TSelf>(this HttpTesterBase<TSelf> tester, string destination, string source, string subject, string? action = "*") where TSelf : HttpTesterBase<TSelf>
+            => tester.SetExpectation(t => t.Expectations.ExpectedEvents.Expect(destination, source, subject, action));
+
+        /// <summary>
+        /// Expects that the corresponding <paramref name="destination"/> <paramref name="event"/> has been published (in order specified). All properties for expected event will be compared again the actual.
+        /// </summary>
+        /// <param name="tester">The <see cref="HttpTesterBase{TSelf}"/>.</param>
+        /// <param name="destination">The named destination (e.g. queue or topic).</param>
+        /// <param name="event">The expected <paramref name="event"/>. Wildcards are supported for <see cref="EventDataBase.Subject"/> and <see cref="EventDataBase.Action"/>.</param>
+        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <remarks>Wildcards are supported for <see cref="EventDataBase.Subject"/>, <see cref="EventDataBase.Action"/> and <see cref="EventDataBase.Type"/>.</remarks>
+        public static TSelf ExpectDestinationEvent<TSelf>(this HttpTesterBase<TSelf> tester, string destination, EventData @event, params string[] membersToIgnore) where TSelf : HttpTesterBase<TSelf>
+            => tester.SetExpectation(t => t.Expectations.ExpectedEvents.Expect(destination, @event, membersToIgnore));
+
+        /// <summary>
+        /// Expects that the corresponding <paramref name="destination"/> <paramref name="event"/> has been published (in order specified). All properties for expected event will be compared again the actual.
+        /// </summary>
+        /// <param name="tester">The <see cref="HttpTesterBase{TSelf}"/>.</param>
+        /// <param name="destination">The named destination (e.g. queue or topic).</param>
+        /// <param name="source">The expected source formatted as a <see cref="Uri"/> (may contain wildcards).</param>
+        /// <param name="event">The expected <paramref name="event"/>. Wildcards are supported for <see cref="EventDataBase.Subject"/> and <see cref="EventDataBase.Action"/>.</param>
+        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <remarks>Wildcards are supported for <see cref="EventDataBase.Subject"/>, <see cref="EventDataBase.Action"/> and <see cref="EventDataBase.Type"/>.</remarks>
+        public static TSelf ExpectDestinationEvent<TSelf>(this HttpTesterBase<TSelf> tester, string destination, string source, EventData @event, params string[] membersToIgnore) where TSelf : HttpTesterBase<TSelf>
+            => tester.SetExpectation(t => t.Expectations.ExpectedEvents.Expect(destination, source, @event, membersToIgnore));
 
         #endregion
 

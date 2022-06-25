@@ -3,7 +3,6 @@
 using CoreEx.Http;
 using CoreEx.Json;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -66,8 +65,7 @@ namespace UnitTestEx.AspNetCore
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
         {
-            var tc = new TypedHttpClient(this, TestServer.CreateClient(), JsonSerializer);
-            var res = await tc.SendAsync(httpMethod, requestUri, requestOptions, args).ConfigureAwait(false);
+            var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, requestOptions, args).ConfigureAwait(false);
             return new HttpResponseMessageAssertor(res, Implementor, JsonSerializer);
         }
 
@@ -86,8 +84,7 @@ namespace UnitTestEx.AspNetCore
             if (content != null && httpMethod == HttpMethod.Get)
                 Implementor.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
-            var tc = new TypedHttpClient(this, TestServer.CreateClient(), JsonSerializer);
-            var res = await tc.SendAsync(httpMethod, requestUri, content, contentType, requestOptions, args).ConfigureAwait(false);
+            var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, content, contentType, requestOptions, args).ConfigureAwait(false);
             return new HttpResponseMessageAssertor(res, Implementor, JsonSerializer);
         }
 
@@ -105,8 +102,7 @@ namespace UnitTestEx.AspNetCore
             if (value != null && httpMethod == HttpMethod.Get)
                 Implementor.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
-            var tc = new TypedHttpClient(this, TestServer.CreateClient(), JsonSerializer);
-            var res = await tc.SendAsync(httpMethod, requestUri, value, requestOptions, args).ConfigureAwait(false);
+            var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, value, requestOptions, args).ConfigureAwait(false);
             return new HttpResponseMessageAssertor(res, Implementor, JsonSerializer);
         }
 
@@ -143,7 +139,7 @@ namespace UnitTestEx.AspNetCore
             sc.AddExecutionContext();
             sc.AddSingleton(JsonSerializer);
             sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(Implementor.CreateLoggerProvider()); });
-            sc.AddSingleton(TestServer.CreateClient());
+            sc.AddSingleton(new HttpClient(new LoggingDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress });
             sc.AddSingleton(Owner.Configuration);
             sc.AddDefaultSettings();
             sc.AddScoped<TAgent>();
@@ -158,16 +154,45 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <summary>
-        /// Provides the requisite HttpClient sending capabilities.
+        /// Creates an <see cref="HttpClient"/> for the <see cref="TestServer"/> that logs the request and response to the test output.
         /// </summary>
-        private class TypedHttpClient : Ceh.TypedHttpClientBase
+        /// <returns>The <see cref="HttpClient"/>.</returns>
+        protected HttpClient CreateHttpClient() => new(new LoggingDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress };
+
+        private class LoggingDelegatingHandler : DelegatingHandler
         {
             private readonly HttpTesterBase _httpTester;
 
             /// <summary>
             /// Initialize a new instance of the class.
             /// </summary>
-            public TypedHttpClient(HttpTesterBase httpTester, HttpClient hc, IJsonSerializer js) : base(hc, js) => _httpTester = httpTester;
+            public LoggingDelegatingHandler(HttpTesterBase httpTester, HttpMessageHandler innerHandler) : base(innerHandler) => _httpTester = httpTester;
+
+            /// <inheritdoc/>
+            protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                if (_httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync != null)
+                    await _httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync(request, _httpTester.Owner.Username, cancellationToken);
+
+                _httpTester.LogRequest(request);
+                var sw = Stopwatch.StartNew();
+                var res = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                sw.Stop();
+                await Task.Delay(0, cancellationToken).ConfigureAwait(false);
+                _httpTester.LogResponse(res, sw);
+                return res;
+            }
+        }
+
+        /// <summary>
+        /// Provides the requisite <see cref="HttpClient"/> sending capabilities.
+        /// </summary>
+        private class TypedHttpClient : Ceh.TypedHttpClientBase
+        {
+            /// <summary>
+            /// Initialize a new instance of the class.
+            /// </summary>
+            public TypedHttpClient(HttpTesterBase httpTester) : base(httpTester.CreateHttpClient(), httpTester.JsonSerializer) { }
 
             /// <summary>
             /// Sends with no content.
@@ -188,16 +213,7 @@ namespace UnitTestEx.AspNetCore
                 => await SendAsync(await CreateJsonRequestAsync(method, requestUri ?? "", value, requestOptions, args).ConfigureAwait(false), default).ConfigureAwait(false);
 
             /// <inheritdoc/>
-            protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                _httpTester.LogRequest(request);
-                var sw = Stopwatch.StartNew();
-                var res = await Client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-                sw.Stop();
-                await Task.Delay(0, cancellationToken).ConfigureAwait(false);
-                _httpTester.LogResponse(res, sw);
-                return res;
-            }
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Client.SendAsync(request, cancellationToken);
         }
 
         /// <summary>

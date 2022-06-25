@@ -79,12 +79,12 @@ namespace UnitTestEx.Functions
                             .AddJsonFile("appsettings.json", optional: true)
                             .AddJsonFile("appsettings.development.json", optional: true);
 
-                        if ((!includeUserSecrets.HasValue && FunctionTesterDefaults.IncludeUserSecrets) || (includeUserSecrets.HasValue && includeUserSecrets.Value))
+                        if ((!includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (includeUserSecrets.HasValue && includeUserSecrets.Value))
                             cb.AddUserSecrets<TEntryPoint>();
 
                         cb.AddEnvironmentVariables();
 
-                        if ((!includeUnitTestConfiguration.HasValue && FunctionTesterDefaults.IncludeUnitTestConfiguration) || (includeUnitTestConfiguration.HasValue && includeUnitTestConfiguration.Value))
+                        if ((!includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (includeUnitTestConfiguration.HasValue && includeUnitTestConfiguration.Value))
                             cb.AddJsonFile("appsettings.unittest.json", optional: true);
 
                         if (additionalConfiguration != null)
@@ -203,21 +203,21 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="HttpTriggerTester{TFunction}"/>.</returns>
-        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor, JsonSerializer);
+        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(WireUpServices(() => GetHost().Services.CreateScope()), Implementor, JsonSerializer);
 
         /// <summary>
         /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
         /// </summary>
         /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
         /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
-        public TypeTester<T> Type<T>() where T : class => new(GetHost().Services.CreateScope(), Implementor, JsonSerializer);
+        public TypeTester<T> Type<T>() where T : class => new(WireUpServices(() => GetHost().Services.CreateScope()), Implementor, JsonSerializer);
 
         /// <summary>
         /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> that is to be tested.
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="ServiceBusTriggerTester{TFunction}"/>.</returns>
-        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor, JsonSerializer);
+        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(WireUpServices(() => GetHost().Services.CreateScope()), Implementor, JsonSerializer);
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with no body.
@@ -303,6 +303,9 @@ namespace UnitTestEx.Functions
                 context.Request.Body = new MemoryStream(body == null ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(body));
                 context.Request.ContentType = contentType ?? MediaTypeNames.Text.Plain;
             }
+
+            if (SetUp.OnBeforeHttpRequestSendAsync != null)
+                SetUp.OnBeforeHttpRequestSendAsync(context.Request, Username, CancellationToken.None).GetAwaiter().GetResult();
 
             return context.Request;
         }

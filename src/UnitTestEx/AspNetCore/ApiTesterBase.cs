@@ -104,14 +104,14 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <typeparam name="TController">The API Controller <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="ControllerTester{TController}"/>.</returns>
-        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, WebApplicationFactory.Server);
+        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, WireUpServices(() => WebApplicationFactory.Server));
 
         /// <summary>
         /// Enables an agent (<see cref="CoreEx.Http.TypedHttpClientBase"/>) to be used to send a <see cref="HttpRequestMessage"/> to the underlying <see cref="TestServer"/>.
         /// </summary>
         /// <typeparam name="TAgent">The <see cref="CoreEx.Http.TypedHttpClientBase"/> <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="AgentTester{TAgent}"/></returns>
-        public AgentTester<TAgent> Agent<TAgent>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, WebApplicationFactory.Server);
+        public AgentTester<TAgent> Agent<TAgent>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, WireUpServices(() => WebApplicationFactory.Server));
 
         /// <summary>
         /// Enables an agent (<see cref="CoreEx.Http.TypedHttpClientBase"/>) to be used to send a <see cref="HttpRequestMessage"/> to the underlying <see cref="TestServer"/>.
@@ -119,27 +119,27 @@ namespace UnitTestEx.AspNetCore
         /// <typeparam name="TResponse">The response value <see cref="Type"/>.</typeparam>
         /// <typeparam name="TAgent">The <see cref="CoreEx.Http.TypedHttpClientBase"/> <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="AgentTester{TAgent}"/></returns>
-        public AgentTester<TAgent, TResponse> Agent<TAgent, TResponse>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, WebApplicationFactory.Server);
+        public AgentTester<TAgent, TResponse> Agent<TAgent, TResponse>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, WireUpServices(() => WebApplicationFactory.Server));
 
         /// <summary>
         /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/>.
         /// </summary>
         /// <returns>The <see cref="HttpTester"/>.</returns>
-        public HttpTester Http() => new(this, WebApplicationFactory.Server);
+        public HttpTester Http() => new(this, WireUpServices(() => WebApplicationFactory.Server));
 
         /// <summary>
         /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/> with an expected response value <see cref="Type"/>.
         /// </summary>
         /// <typeparam name="TResponse">The response value <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="HttpTester{TResponse}"/>.</returns>
-        public HttpTester<TResponse> Http<TResponse>() => new(this, WebApplicationFactory.Server);
+        public HttpTester<TResponse> Http<TResponse>() => new(this, WireUpServices(() => WebApplicationFactory.Server));
 
         /// <summary>
         /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
         /// </summary>
         /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
         /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
-        public TypeTester<T> Type<T>() where T : class => new(Services.CreateScope(), Implementor, JsonSerializer);
+        public TypeTester<T> Type<T>() where T : class => new(WireUpServices(() => Services.CreateScope()), Implementor, JsonSerializer);
 
         /// <summary>
         /// Releases all resources.

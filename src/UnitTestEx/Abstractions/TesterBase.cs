@@ -3,6 +3,7 @@
 using CoreEx;
 using CoreEx.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.IO;
 
@@ -13,6 +14,8 @@ namespace UnitTestEx.Abstractions
     /// </summary>
     public abstract class TesterBase
     {
+        private readonly string? _username;
+
         /// <summary>
         /// Static constructor.
         /// </summary>
@@ -45,7 +48,7 @@ namespace UnitTestEx.Abstractions
         {
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
             JsonSerializer = CoreEx.Json.JsonSerializer.Default;
-            Username = username ?? (ExecutionContext.HasCurrent ? ExecutionContext.Current.Username : null);
+            _username = username;
         }
 
         /// <summary>
@@ -54,9 +57,21 @@ namespace UnitTestEx.Abstractions
         protected internal TestFrameworkImplementor Implementor { get; }
 
         /// <summary>
+        /// Gets the <see cref="TestSharedState"/>.
+        /// </summary>
+        public TestSharedState SharedState { get; } = new TestSharedState();
+
+        /// <summary>
+        /// Gets the <see cref="TestSetUp"/>. 
+        /// </summary>
+        /// <remarks>Defaults to <see cref="TestSetUp.Default"/>.</remarks>
+        public TestSetUp SetUp { get; internal set; } = TestSetUp.Default;
+
+        /// <summary>
         /// Gets the test username.
         /// </summary>
-        public string? Username { get; }
+        /// <remarks>This is determined as follows (uses first non <c>null</c> value): as set via the constructor, using the <see cref="ExecutionContext.Username"/>, and finally <see cref="SetUp"/> <see cref="TestSetUp.DefaultUsername"/>.</remarks>
+        public string? Username => _username ?? (ExecutionContext.HasCurrent ? ExecutionContext.Current.Username : SetUp.DefaultUsername);
 
         /// <summary>
         /// Gets the <see cref="IConfiguration"/> from the underlying host.
