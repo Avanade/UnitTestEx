@@ -45,7 +45,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
@@ -55,7 +55,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
         /// <param name="value">The optional body value where not explicitly passed via the <paramref name="expression"/>.</param>
@@ -66,7 +66,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
@@ -76,7 +76,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="value">The body value to serialized as JSON.</param>
         /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
@@ -87,7 +87,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="content">The body content.</param>
         /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
@@ -98,7 +98,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="content">The body content.</param>
         /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
@@ -110,7 +110,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="content">The body content.</param>
         /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
@@ -121,7 +121,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="content">The body content.</param>
         /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>

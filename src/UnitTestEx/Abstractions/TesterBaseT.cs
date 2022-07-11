@@ -22,11 +22,7 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="ExecutionContext.Current"/> <see cref="ExecutionContext.Username"/> where configured).</param>
-        protected TesterBase(TestFrameworkImplementor implementor, string? username) : base(implementor, username)
-        {
-            if (SetUp.ConfigureServices != null)
-                ConfigureServices(SetUp.ConfigureServices);
-        }
+        protected TesterBase(TestFrameworkImplementor implementor, string? username) : base(implementor, username) { }
 
         /// <summary>
         /// Updates (replaces) the <see cref="TesterBase.SetUp"/>.
@@ -40,6 +36,9 @@ namespace UnitTestEx.Abstractions
             if (SetUp.ConfigureServices != null)
                 ConfigureServices(SetUp.ConfigureServices);
 
+            if (SetUp.ExpectedEventsEnabled)
+                UseExpectedEvents();
+
             return (TSelf)this;
         }
 
@@ -52,6 +51,30 @@ namespace UnitTestEx.Abstractions
         {
             JsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
             return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Replaces the <see cref="IEventPublisher"/> with the <see cref="ExpectedEventPublisher"/> to enable the likes of <see cref="Expectations.ExpectationsExtensions.ExpectEvent{TSelf}(IEventExpectations{TSelf}, EventData, string[])"/>, etc.
+        /// </summary>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>This can also be set using <see cref="TestSetUp.ExpectedEventsEnabled"/> either via <see cref="TestSetUp.Default"/> or <see cref="UseSetUp(TestSetUp)"/>.</remarks>
+        public TSelf UseExpectedEvents()
+        {
+            ConfigureServices(ReplaceExpectedEventPublisher);
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Performs the <see cref="IEventPublisher"/> replacement with <see cref="ExpectedEventPublisher"/>.
+        /// </summary>
+        /// <param name="sc">The <see cref="IServiceCollection"/>.</param>
+        internal void ReplaceExpectedEventPublisher(IServiceCollection sc)
+        {
+            if (IsExpectedEventPublisherEnabled)
+                return;
+
+            sc.ReplaceScoped<IEventPublisher, ExpectedEventPublisher>();
+            IsExpectedEventPublisherEnabled = true;
         }
 
         /// <summary>
@@ -170,22 +193,14 @@ namespace UnitTestEx.Abstractions
         public TSelf ReplaceTransient<TService, TImplementation>() where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceTransient<TService, TImplementation>());
 
         /// <summary>
-        /// Wire up special services into the host; specifically the <see cref="TestSharedState"/>.
+        /// Wraps the host execution to perform required start-up style activities; specifically resetting the <see cref="TestSharedState"/>.
         /// </summary>
         /// <typeparam name="T">The result <see cref="Type"/>.</typeparam>
         /// <param name="result">The function to create the result.</param>
         /// <returns>The <paramref name="result"/>.</returns>
-        internal T WireUpServices<T>(Func<T> result)
+        internal T HostExecutionWrapper<T>(Func<T> result)
         {
             SharedState.Reset();
-            ConfigureServices(sc =>
-            {
-                sc.ReplaceScoped<TestSharedState>(_ => SharedState);
-
-                if (SetUp.ExpectedEventsEnabled)
-                    sc.ReplaceScoped<IEventPublisher, ExpectedEventPublisher>();
-            });
-
             return result();
         }
     }

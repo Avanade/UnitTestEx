@@ -20,10 +20,9 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Initializes a new <see cref="TypeTester{TFunction}"/> class.
         /// </summary>
+        /// <param name="tester">The owning <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
-        internal TypeTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(serviceScope, implementor, jsonSerializer) { }
+        internal TypeTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope) { }
 
         /// <summary>
         /// Runs the synchronous method with no result.
@@ -33,12 +32,12 @@ namespace UnitTestEx.Hosting
         public VoidAssertor Run(Action<T> function) => RunAsync(x => { function(x); return Task.CompletedTask; }).GetAwaiter().GetResult();
 
         /// <summary>
-        ///  Runs the synchronous method with a result.
+        /// Runs the synchronous method with a result.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
         /// <param name="function">The function execution.</param>
-        /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
-        public ResultAssertor<TResult> Run<TResult>(Func<T, TResult> function) => RunAsync(x => Task.FromResult(function(x))).GetAwaiter().GetResult();
+        /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
+        public ValueAssertor<TValue> Run<TValue>(Func<T, TValue> function) => RunAsync(x => Task.FromResult(function(x))).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the asynchronous method with no result.
@@ -80,20 +79,20 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Runs the asynchronous method with a result.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
         /// <param name="function">The function execution.</param>
-        /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
-        public ResultAssertor<TResult> Run<TResult>(Func<T, Task<TResult>> function) => RunAsync(function).GetAwaiter().GetResult();
+        /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
+        public ValueAssertor<TValue> Run<TValue>(Func<T, Task<TValue>> function) => RunAsync(function).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the asynchronous method with a result.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
         /// <param name="function">The function execution.</param>
-        /// <returns>A <see cref="ResultAssertor{TResult}"/>.</returns>
-        public async Task<ResultAssertor<TResult>> RunAsync<TResult>(Func<T, Task<TResult>> function)
+        /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
+        public async Task<ValueAssertor<TValue>> RunAsync<TValue>(Func<T, Task<TValue>> function)
         {
-            TResult result = default!;
+            TValue result = default!;
             Exception? ex = null;
             var sw = Stopwatch.StartNew();
             try
@@ -129,7 +128,7 @@ namespace UnitTestEx.Hosting
             }
 
             LogTrailer();
-            return new ResultAssertor<TResult>(result, ex, Implementor, JsonSerializer);
+            return new ValueAssertor<TValue>(result, ex, Implementor, JsonSerializer);
         }
 
         /// <summary>

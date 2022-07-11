@@ -12,10 +12,12 @@ namespace UnitTestEx.AspNetCore
     /// <summary>
     /// Provides the base HTTP testing capabilities.
     /// </summary>
+    /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="Type"/> representing itself.</typeparam>
-    public abstract class HttpTesterBase<TSelf> : HttpTesterBase, IHttpResponseExpectations<TSelf>, IEventExpectations<TSelf> where TSelf : HttpTesterBase<TSelf>
+    public abstract class HttpTesterBase<TValue, TSelf> : HttpTesterBase, IHttpResponseExpectations<TSelf>, IResponseValueExpectations<TValue, TSelf>, IEventExpectations<TSelf> where TSelf : HttpTesterBase<TValue, TSelf>
     {
         private readonly HttpResponseExpectations _httpResponseExpectations;
+        private readonly ResponseValueExpectations<TValue> _responseValueExpectations;
         private readonly EventExpectations _eventExpectations;
 
         /// <summary>
@@ -26,6 +28,7 @@ namespace UnitTestEx.AspNetCore
         internal HttpTesterBase(TesterBase owner, TestServer testServer) : base(owner, testServer)
         {
             _httpResponseExpectations = new HttpResponseExpectations(Owner);
+            _responseValueExpectations = new ResponseValueExpectations<TValue>(Owner);
             _eventExpectations = new EventExpectations(Owner);
         }
 
@@ -33,15 +36,16 @@ namespace UnitTestEx.AspNetCore
         HttpResponseExpectations IHttpResponseExpectations<TSelf>.HttpResponseExpectations => _httpResponseExpectations;
 
         /// <inheritdoc/>
+        ResponseValueExpectations<TValue> IResponseValueExpectations<TValue, TSelf>.ResponseValueExpectations => _responseValueExpectations;
+
+        /// <inheritdoc/>
         EventExpectations IEventExpectations<TSelf>.EventExpectations => _eventExpectations;
 
-        /// <summary>
-        /// Perform the assertion of any expectations.
-        /// </summary>
-        /// <param name="res">The <see cref="HttpResponseMessage"/>/</param>
+        /// <inheritdoc/>
         protected override void AssertExpectations(HttpResponseMessage res)
         {
             _httpResponseExpectations.Assert(HttpResult.CreateAsync(res).GetAwaiter().GetResult());
+            _responseValueExpectations.Assert(HttpResponseExpectations.GetValueFromHttpResponseMessage<TValue>(res, JsonSerializer));
             _eventExpectations.Assert();
         }
     }

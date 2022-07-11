@@ -2,6 +2,7 @@
 
 using Azure.Core.Amqp;
 using Azure.Messaging.ServiceBus;
+using CoreEx.Configuration;
 using CoreEx.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
@@ -28,7 +29,7 @@ namespace UnitTestEx.Functions
     /// <summary>
     /// Provides the basic Azure Function unit-testing capabilities.
     /// </summary>
-    /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
+    /// <typeparam name="TEntryPoint">The <see cref="FunctionsStartup"/> <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class FunctionTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : FunctionsStartup, new() where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
@@ -92,7 +93,14 @@ namespace UnitTestEx.Functions
                     });
                 })
                 .ConfigureAppConfiguration(configurationBuilder => ep2.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(configurationBuilder)))
-                .ConfigureServices(sc => ep2.Configure(MockIFunctionsHostBuilder(sc)));
+                .ConfigureServices(sc =>
+                {
+                    ep2.Configure(MockIFunctionsHostBuilder(sc));
+                    sc.ReplaceScoped(_ => SharedState);
+                    SetUp.ConfigureServices?.Invoke(sc);
+                    if (SetUp.ExpectedEventsEnabled)
+                        ReplaceExpectedEventPublisher(sc);
+                });
         }
 
         /// <summary>
@@ -177,20 +185,26 @@ namespace UnitTestEx.Functions
         public ILogger<TCategoryName> GetLogger<TCategoryName>() => Services.GetRequiredService<ILogger<TCategoryName>>();
 
         /// <summary>
-        /// Gets the <see cref="IConfiguration"/> from the underlying host.
+        /// Gets the <see cref="IConfiguration"/> from the underlying <see cref="Services"/>.
         /// </summary>
         /// <returns>The <see cref="IConfiguration"/>.</returns>
         public override IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
+
+        /// <summary>
+        /// Gets the <see cref="SettingsBase"/> from the underlying host.
+        /// </summary>
+        public override SettingsBase Settings => Services.GetService<SettingsBase>() ?? new DefaultSettings(Configuration);
 
         /// <summary>
         /// Provides an opportunity to further configure the services. This can be called multiple times. 
         /// </summary>
         /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>This will throw an <see cref="InvalidOperationException"/> once the underlying host has been created</remarks>
         public override TSelf ConfigureServices(Action<IServiceCollection> configureServices)
         {
             if (_host != null)
-                throw new InvalidOperationException($"{nameof(ConfigureServices)} cannot be invoked after a test execution has occured.");
+                throw new InvalidOperationException($"{nameof(ConfigureServices)} cannot be invoked after the test host has been created; as a result of executing a test, or using {nameof(Services)}, {nameof(GetLogger)} or {nameof(Configuration)}");
 
             if (configureServices != null)
                 _hostBuilder.ConfigureServices(configureServices);
@@ -203,21 +217,21 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="HttpTriggerTester{TFunction}"/>.</returns>
-        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(WireUpServices(() => GetHost().Services.CreateScope()), Implementor, JsonSerializer);
+        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 
         /// <summary>
         /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
         /// </summary>
         /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
         /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
-        public TypeTester<T> Type<T>() where T : class => new(WireUpServices(() => GetHost().Services.CreateScope()), Implementor, JsonSerializer);
+        public TypeTester<T> Type<T>() where T : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 
         /// <summary>
         /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> that is to be tested.
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="ServiceBusTriggerTester{TFunction}"/>.</returns>
-        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(WireUpServices(() => GetHost().Services.CreateScope()), Implementor, JsonSerializer);
+        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with no body.

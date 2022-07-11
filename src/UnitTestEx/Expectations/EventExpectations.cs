@@ -9,40 +9,46 @@ using UnitTestEx.Abstractions;
 namespace UnitTestEx.Expectations
 {
     /// <summary>
-    /// Provides expected <see cref="CoreEx.Events.EventData"/> matching.
+    /// Provides <see cref="CoreEx.Events.EventData"/> expectations and matching.
     /// </summary>
-    public sealed class ExpectedEvents
+    public sealed class EventExpectations
     {
         private readonly Dictionary<string, List<(string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore)>> _expectedEvents = new();
+        private bool _expectNoEvents;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ExpectedEvents"/> class.
+        /// Initializes a new instance of the <see cref="EventExpectations"/> class.
         /// </summary>
         /// <param name="tester">The <see cref="TesterBase"/>.</param>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        public ExpectedEvents(TesterBase tester, TestFrameworkImplementor implementor)
+        public EventExpectations(TesterBase tester)
         {
             Tester = tester ?? throw new ArgumentNullException(nameof(tester));
-            Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+            _expectNoEvents = tester.SetUp.ExpectNoEvents;
         }
 
         /// <summary>
-        /// Gets the <see cref="UnitTestEx.TestSetUp"/>.
+        /// Gets the <see cref="TesterBase"/>.
         /// </summary>
         public TesterBase Tester { get; }
 
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
-        public TestFrameworkImplementor Implementor { get; }
+        public TestFrameworkImplementor Implementor => Tester.Implementor;
+
+        /// <summary>
+        /// Expects that no events have been published.
+        /// </summary>
+        /// <remarks>This is ignored when an expected event has been configured.</remarks>
+        public void ExpectNoEvents() => _expectNoEvents = true;
 
         /// <summary>
         /// Adds the event into the dictionary.
         /// </summary>
         private void Add(string? destination, (string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore) @event)
         {
-            if (!Tester.SetUp.ExpectedEventsEnabled)
-                throw new NotSupportedException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.ExpectedEventsEnabled)} must be enabled before this functionality can be executed; note that enabling will automatically replace the {nameof(IEventPublisher)} to use the {nameof(ExpectedEventPublisher)}.");
+            if (!Tester.IsExpectedEventPublisherEnabled)
+                throw new NotSupportedException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.ExpectedEventsEnabled)} or TesterBase.UseExpectedEvents must be used before this functionality can be executed; note that enabling will automatically replace the {nameof(IEventPublisher)} to use the {nameof(ExpectedEventPublisher)}.");
 
             var key = destination ?? ExpectedEventPublisher.NullKeyName;
             if (_expectedEvents.TryGetValue(key, out var events))
@@ -89,12 +95,15 @@ namespace UnitTestEx.Expectations
         public void Expect(string? destination, string source, EventData @event, params string[] membersToIgnore) => Add(destination, (source, @event?.Subject, @event?.Action, @event ?? throw new ArgumentNullException(nameof(@event)), membersToIgnore));
 
         /// <summary>
-        /// Verifies that the <see cref="TestSharedState.EventStorage"/> events match the <see cref="ExpectedEvents"/> (in order specified).
+        /// Verifies that the <see cref="TestSharedState.EventStorage"/> events match the <see cref="EventExpectations"/> (in order specified).
         /// </summary>
         public void Assert()
         {
             var names = Tester.SharedState.EventStorage.Keys.ToArray();
-            if (names.Length == 0)
+            if (_expectNoEvents && _expectedEvents.Count == 0 && names.Length > 0)
+                Implementor.AssertFail($"Expected no Event(s); one or more were sent.");
+
+            if (names.Length == 0 && _expectedEvents.Count != 0)
                 Implementor.AssertFail($"Expected Event(s); none were sent.");
 
             if (names.Length != _expectedEvents.Count)

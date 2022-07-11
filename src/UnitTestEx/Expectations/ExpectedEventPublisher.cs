@@ -13,7 +13,7 @@ using UnitTestEx.Abstractions;
 namespace UnitTestEx.Expectations
 {
     /// <summary>
-    /// Provides an <see cref="TestSharedState.EventStorage"/> publisher to support <see cref="ExpectedEvents"/>.
+    /// Provides an <see cref="TestSharedState.EventStorage"/> publisher to support <see cref="EventExpectations"/>.
     /// </summary>
     /// <remarks>Where an <see cref="ILogger"/> is provided then each <see cref="EventData"/> will also be logged during <i>Send</i>.</remarks>
     public sealed class ExpectedEventPublisher : EventPublisher

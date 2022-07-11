@@ -21,15 +21,18 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Initializes a new <see cref="HostTesterBase{TFunction}"/> class.
         /// </summary>
+        /// <param name="tester">The <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
-        protected HostTesterBase(IServiceScope serviceScope, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer)
+        protected HostTesterBase(TesterBase tester, IServiceScope serviceScope)
         {
+            Tester = tester ?? throw new ArgumentNullException(nameof(tester));
             ServiceScope = serviceScope ?? throw new ArgumentNullException(nameof(serviceScope));
-            Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
-            JsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
         }
+
+        /// <summary>
+        /// Gets the owning <see cref="TesterBase"/>.
+        /// </summary>
+        protected TesterBase Tester { get; }
 
         /// <summary>
         /// Gets the <see cref="IServiceScope"/>.
@@ -39,12 +42,12 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
-        protected TestFrameworkImplementor Implementor { get; }
+        protected TestFrameworkImplementor Implementor => Tester.Implementor;
 
         /// <summary>
         /// Gets or sets the <see cref="IJsonSerializer"/>.
         /// </summary>
-        protected IJsonSerializer JsonSerializer { get; set; }
+        protected IJsonSerializer JsonSerializer => Tester.JsonSerializer;
 
         /// <summary>
         /// Create (instantiate) the <typeparamref name="THost"/> using the <see cref="ServiceScope"/> to provide the constructor based dependency injection (DI) values.
@@ -98,13 +101,14 @@ namespace UnitTestEx.Hosting
         }
 
         /// <summary>
-        /// Orchestrates the execution of a method as described by the <paramref name="expression"/> returning a result of <see cref="Type"/> <typeparamref name="TResult"/>.
+        /// Orchestrates the execution of a method as described by the <paramref name="expression"/> returning a result of <see cref="Type"/> <typeparamref name="TValue"/>.
         /// </summary>
+        /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The method execution expression.</param>
         /// <param name="paramAttributeType">The optional parameter <see cref="Attribute"/> <see cref="Type"/> to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
-        protected async Task<(TResult Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TResult>(Expression<Func<THost, Task<TResult>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<THost, Task<TValue>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
             var mce = MethodCallExpressionValidate(expression);
             var pis = mce.Method.GetParameters();

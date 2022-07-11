@@ -9,26 +9,39 @@ using Xunit.Sdk;
 namespace UnitTestEx.Xunit.Internal
 {
     /// <summary>
-    /// Provides the <b>MSUnit</b> <see cref="Abstractions.TestFrameworkImplementor"/> implementation.
+    /// Provides the <b>Xunit</b> <see cref="Abstractions.TestFrameworkImplementor"/> implementation.
     /// </summary>
-    internal sealed class XunitTestImplementor : Abstractions.TestFrameworkImplementor
+    public sealed class XunitTestImplementor : Abstractions.TestFrameworkImplementor
     {
         private readonly ITestOutputHelper _output;
 
         /// <summary>
+        /// Creates a <see cref="XunitTestImplementor"/> using the <paramref name="testOutputHelper"/>.
+        /// </summary>
+        /// <param name="testOutputHelper">The <see cref="ITestOutputHelper"/>.</param>
+        /// <returns>The <see cref="XunitTestImplementor"/>.</returns>
+        public static XunitTestImplementor Create(ITestOutputHelper testOutputHelper) => new(testOutputHelper);
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="XunitTestImplementor"/> class.
         /// </summary>
-        /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
-        public XunitTestImplementor(ITestOutputHelper output) => _output = output ?? throw new ArgumentNullException(nameof(output));
+        /// <param name="testOutputHelper">The <see cref="ITestOutputHelper"/>.</param>
+        public XunitTestImplementor(ITestOutputHelper testOutputHelper) => _output = testOutputHelper ?? throw new ArgumentNullException(nameof(testOutputHelper));
 
         /// <inheritdoc/>
         public override void AssertFail(string? message) => throw new XunitException(message);
 
         /// <inheritdoc/>
-        public override void AssertAreEqual<T>(T expected, T actual, string? message = null) => Assert.Equal(expected, actual);
+        public override void AssertAreEqual<T>(T? expected, T? actual, string? message = null) where T : default => Assert.Equal(expected, actual);
 
         /// <inheritdoc/>
         public override void AssertIsType<TExpectedType>(object actual, string? message = null) => Assert.IsAssignableFrom<TExpectedType>(actual);
+
+        /// <inheritdoc/>
+        public override void AssertIsType(Type expectedType, object actual, string? message = null) => Assert.IsAssignableFrom(expectedType, actual);
+
+        /// <inheritdoc/>
+        public override void AssertInconclusive(string? message) => AssertFail($"Inconclusive: {message}");
 
         /// <inheritdoc/>
         public override void WriteLine(string? message) => _output.WriteLine("{0}", message);

@@ -1,11 +1,13 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using CoreEx;
+using CoreEx.Configuration;
+using CoreEx.Events;
 using CoreEx.Json;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.IO;
+using UnitTestEx.Expectations;
 
 namespace UnitTestEx.Abstractions
 {
@@ -62,7 +64,7 @@ namespace UnitTestEx.Abstractions
         public TestSharedState SharedState { get; } = new TestSharedState();
 
         /// <summary>
-        /// Gets the <see cref="TestSetUp"/>. 
+        /// Gets the configured <see cref="TestSetUp"/>. 
         /// </summary>
         /// <remarks>Defaults to <see cref="TestSetUp.Default"/>.</remarks>
         public TestSetUp SetUp { get; internal set; } = TestSetUp.Default;
@@ -80,6 +82,11 @@ namespace UnitTestEx.Abstractions
         public abstract IConfiguration Configuration { get; }
 
         /// <summary>
+        /// Gets the <see cref="SettingsBase"/> from the underlying host.
+        /// </summary>
+        public abstract SettingsBase Settings { get; }
+
+        /// <summary>
         /// Gets the <see cref="IJsonSerializer"/>.
         /// </summary>
         /// <remarks>Defaults to <see cref="CoreEx.Json.JsonSerializer.Default"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="TesterBase{TSelf}.UseJsonSerializer(IJsonSerializer)"/> method.</remarks>
@@ -90,5 +97,11 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         /// <returns>The <see cref="IServiceProvider"/>.</returns>
         public abstract IServiceProvider Services { get; }
+
+        /// <summary>
+        /// Indicates whether the <see cref="ExpectedEventPublisher"/> has been enabled; i.e. the <see cref="IEventPublisher"/> has been explicitly replaced.
+        /// </summary>
+        /// <remarks>This is set by <see cref="TestSetUp.ExpectedEventsEnabled"/> either via <see cref="TestSetUp.Default"/> or <see cref="TesterBase{TSelf}.UseSetUp(TestSetUp)"/>; or alternatively via <see cref="TesterBase{TSelf}.UseExpectedEvents"/>.</remarks>
+        public bool IsExpectedEventPublisherEnabled { get; internal set; }
     }
 }

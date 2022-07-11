@@ -14,8 +14,8 @@ namespace UnitTestEx.AspNetCore
     /// <summary>
     /// Provides <see cref="HttpRequestMessage"/> send testing with an expected response value.
     /// </summary>
-    /// <typeparam name="TResponse">The expected response <see cref="Type"/>.</typeparam>
-    public class HttpTester<TResponse> : HttpTesterBase<TResponse, HttpTester<TResponse>>
+    /// <typeparam name="TValue">The expected response value <see cref="Type"/>.</typeparam>
+    public class HttpTester<TValue> : HttpTesterBase<TValue, HttpTester<TValue>>
     {
         /// <summary>
         /// Initializes a new <see cref="HttpTester"/> class.

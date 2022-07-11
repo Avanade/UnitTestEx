@@ -54,6 +54,8 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Asserts that an <see cref="Exception"/> was thrown during execution.
         /// </summary>
+        /// <typeparam name="TException">The <see cref="Exception"/> <see cref="Type"/>.</typeparam>
+        /// <param name="expectedMessage">The optional expected message to match.</param>
         /// <returns>The current instance to support fluent-style method-chaining.</returns>
         public TSelf AssertException<TException>(string? expectedMessage = null) where TException : Exception
         {
@@ -66,7 +68,7 @@ namespace UnitTestEx.Assertors
         }
 
         /// <summary>
-        /// Asserts that the run/exception was successful; i.e. there was no <see cref="Exception"/> thrown.
+        /// Asserts that the execution was successful; i.e. there was no <see cref="Exception"/> thrown.
         /// </summary>
         /// <returns>The current instance to support fluent-style method-chaining.</returns>
         public TSelf AssertSuccess()

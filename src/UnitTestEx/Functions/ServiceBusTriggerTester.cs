@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
+using UnitTestEx.Expectations;
 using UnitTestEx.Hosting;
 
 namespace UnitTestEx.Functions
@@ -20,17 +21,21 @@ namespace UnitTestEx.Functions
     /// Provides Azure Function <see cref="ServiceBusTriggerAttribute"/> unit-testing and integration emulation testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
-    public class ServiceBusTriggerTester<TFunction> : HostTesterBase<TFunction> where TFunction : class
+    public class ServiceBusTriggerTester<TFunction> : HostTesterBase<TFunction>, IExceptionSuccessExpectations<ServiceBusTriggerTester<TFunction>> where TFunction : class
     {
         private static readonly Semaphore _semaphore = new(1, 1);
+        private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
+
+        /// <inheritdoc/>
+        ExceptionSuccessExpectations IExceptionSuccessExpectations<ServiceBusTriggerTester<TFunction>>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
 
         /// <summary>
         /// Initializes a new <see cref="ServiceBusTriggerTester{TFunction}"/> class.
         /// </summary>
+        /// <param name="tester">The <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
-        internal ServiceBusTriggerTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(serviceScope, implementor, jsonSerializer) { }
+        internal ServiceBusTriggerTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope)
+            => _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester);
 
         /// <summary>
         /// Runs the Service Bus Triggered (see <see cref="ServiceBusTriggerAttribute"/>) function expected as a parameter within the <paramref name="expression"/>.
@@ -69,6 +74,9 @@ namespace UnitTestEx.Functions
 
             await Task.Delay(0).ConfigureAwait(false);
             LogOutput(ex, ms, sbv);
+
+            _exceptionSuccessExpectations.Assert(ex);
+
             return new VoidAssertor(ex, Implementor, JsonSerializer);
         }
 

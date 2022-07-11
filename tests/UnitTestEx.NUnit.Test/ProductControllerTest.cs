@@ -12,6 +12,14 @@ namespace UnitTestEx.NUnit.Test
     [TestFixture]
     public class ProductControllerTest
     {
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
+        {
+            var uti = NUnit.Internal.NUnitTestImplementor.Create();
+            uti.WriteLine("ONE-TIME-SETUP");
+            System.Diagnostics.Debug.WriteLine("ONE-TIME-SETUP");
+        }
+
         [Test]
         public void Notfound()
         {
@@ -52,7 +60,7 @@ namespace UnitTestEx.NUnit.Test
 
             using var test = ApiTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
-                .UseSetUp(new TestSetUp { ExpectedEventsEnabled = true })
+                .UseExpectedEvents()
                 .Controller<ProductController>()
                 .ExpectDestinationEvent("test-queue", "/test/product/*", "test.product.*c", "*")
                 .ExpectDestinationEvent("test-queue2", "/test/*/xyz", "test.*", "*")
