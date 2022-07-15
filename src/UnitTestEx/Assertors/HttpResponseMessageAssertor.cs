@@ -93,5 +93,12 @@ namespace UnitTestEx.Assertors
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
         public HttpResponseMessageAssertor AssertFromJsonResource<TAssembly, TValue>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TValue>(resourceName, typeof(TAssembly).Assembly, JsonSerializer), membersToIgnore);
+
+        /// <summary>
+        /// Gets the response content as the deserialized JSON value.
+        /// </summary>
+        /// <typeparam name="TValue">The resulting value <see cref="Type"/>.</typeparam>
+        /// <returns>The result value.</returns>
+        public new TValue? GetValue<TValue>() => base.GetValue<TValue>();
     }
 }
