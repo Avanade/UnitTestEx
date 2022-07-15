@@ -35,8 +35,9 @@ namespace UnitTestEx.Xunit
         /// Provides the <b>Xunit</b> API testing capability.
         /// </summary>
         /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
+        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
         /// <returns>The <see cref="ApiTester{TEntryPoint}"/>.</returns>
-        protected ApiTester<TEntryPoint> CreateApiTester<TEntryPoint>() where TEntryPoint : class => new(Output);
+        protected ApiTester<TEntryPoint> CreateApiTester<TEntryPoint>(string? username = null) where TEntryPoint : class => new(Output, username);
 
         /// <summary>
         /// Provides the <b>Xunit</b> API testing capability.
@@ -46,9 +47,10 @@ namespace UnitTestEx.Xunit
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        protected FunctionTester<TEntryPoint> CreateFunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, params KeyValuePair<string, string>[] additionalConfiguration)
+        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
+        protected FunctionTester<TEntryPoint> CreateFunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null, string? username = null)
             where TEntryPoint : FunctionsStartup, new()
-            => new(Output, includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
+            => new(Output, includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration, username);
 
         /// <summary>
         /// Gets the <see cref="Internal.ObjectComparer"/>.

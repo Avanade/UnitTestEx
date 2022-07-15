@@ -37,12 +37,12 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Assert the <see cref="Result"/> <see cref="Type"/>.
         /// </summary>
-        /// <typeparam name="T">The expected <see cref="IActionResult"/> <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TResult">The expected <see cref="IActionResult"/> <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public ActionResultAssertor AssertResultType<T>() where T : IActionResult
+        public ActionResultAssertor AssertResultType<TResult>() where TResult : IActionResult
         {
             AssertSuccess();
-            Implementor.AssertIsType<IStatusCodeActionResult>(Result, $"Result Type '{Result.GetType().Name}' is not expected '{typeof(T).Name}'.");
+            Implementor.AssertIsType<IStatusCodeActionResult>(Result, $"Result Type '{Result.GetType().Name}' is not expected '{typeof(TResult).Name}'.");
             return this;
         }
 
@@ -79,12 +79,12 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Asserts that the <see cref="Result"/> has the specified <c>Content</c> <paramref name="expectedValue"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
         /// <param name="expectedValue">The expected value.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
         /// <remarks>The <see cref="Result"/> must be an <see cref="ObjectResult"/>, <see cref="JsonResult"/> or <see cref="ContentResult"/> or an assertion error will occur.</remarks>
-        public ActionResultAssertor Assert<TResult>(TResult expectedValue, params string[] membersToIgnore)
+        public ActionResultAssertor Assert<TValue>(TValue expectedValue, params string[] membersToIgnore)
         {
             if (Result is ObjectResult)
                 return AssertObjectResult(expectedValue, membersToIgnore);
@@ -100,23 +100,23 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Asserts that the <see cref="Result"/> has the specified <c>Content</c> matches the JSON serialized value.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public ActionResultAssertor AssertFromJsonResource<TResult>(string resourceName, params string[] membersToIgnore)
-            => Assert(Resource.GetJsonValue<TResult>(resourceName, Assembly.GetCallingAssembly(), JsonSerializer), membersToIgnore);
+        public ActionResultAssertor AssertFromJsonResource<TValue>(string resourceName, params string[] membersToIgnore)
+            => Assert(Resource.GetJsonValue<TValue>(resourceName, Assembly.GetCallingAssembly(), JsonSerializer), membersToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> has the specified <c>Content</c> matches the JSON serialized value.
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> to infer the <see cref="Assembly"/> that contains the embedded resource.</typeparam>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public ActionResultAssertor AssertFromJsonResource<TAssembly, TResult>(string resourceName, params string[] membersToIgnore) 
-            => Assert(Resource.GetJsonValue<TResult>(resourceName, typeof(TAssembly).Assembly, JsonSerializer), membersToIgnore);
+        public ActionResultAssertor AssertFromJsonResource<TAssembly, TValue>(string resourceName, params string[] membersToIgnore) 
+            => Assert(Resource.GetJsonValue<TValue>(resourceName, typeof(TAssembly).Assembly, JsonSerializer), membersToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> is an <see cref="HttpStatusCode.NotFound"/>.
@@ -302,11 +302,11 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Asserts that the <see cref="Result"/> is an <see cref="ObjectResult"/> that matches the <paramref name="expectedValue"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
         /// <param name="expectedValue">The expected value.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        internal ActionResultAssertor AssertObjectResult<TResult>(TResult expectedValue, params string[] membersToIgnore)
+        internal ActionResultAssertor AssertObjectResult<TValue>(TValue expectedValue, params string[] membersToIgnore)
         {
             AssertResultType<ObjectResult>();
 
@@ -317,11 +317,11 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Asserts that the <see cref="Result"/> is a <see cref="JsonResult"/> that matches the <paramref name="expectedValue"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
         /// <param name="expectedValue">The expected value.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        internal ActionResultAssertor AssertJsonResult<TResult>(TResult expectedValue, params string[] membersToIgnore)
+        internal ActionResultAssertor AssertJsonResult<TValue>(TValue expectedValue, params string[] membersToIgnore)
         {
             AssertResultType<JsonResult>();
 
@@ -332,17 +332,17 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Asserts that the <see cref="Result"/> is a <see cref="ContentResult"/> that matches the <paramref name="expectedValue"/>.
         /// </summary>
-        /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
         /// <param name="expectedValue">The expected value.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        internal ActionResultAssertor AssertContentResult<TResult>(TResult expectedValue, params string[] membersToIgnore)
+        internal ActionResultAssertor AssertContentResult<TValue>(TValue expectedValue, params string[] membersToIgnore)
         {
             AssertResultType<ContentResult>();
 
             var cr = (ContentResult)Result;
             if (expectedValue != null && cr.Content != null && cr.ContentType == MediaTypeNames.Application.Json)
-                return AssertValue(expectedValue, JsonSerializer.Deserialize<TResult>(cr.Content)!, membersToIgnore);
+                return AssertValue(expectedValue, JsonSerializer.Deserialize<TValue>(cr.Content)!, membersToIgnore);
             else
                 return AssertValue(expectedValue, cr.Content!, membersToIgnore);
         }
@@ -350,7 +350,7 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Assert the value.
         /// </summary>
-        private ActionResultAssertor AssertValue<T>(T? expectedValue, object? actualValue, string[] membersToIgnore)
+        private ActionResultAssertor AssertValue<TValue>(TValue? expectedValue, object? actualValue, string[] membersToIgnore)
         {
             if (expectedValue == null && actualValue == null)
                 return this;
@@ -450,7 +450,11 @@ namespace UnitTestEx.Assertors
 
                 try
                 {
-                    return JsonSerializer.Deserialize<TValue>(cr.Content);
+                    var val = JsonSerializer.Deserialize<TValue>(cr.Content);
+                    if (val is ICollectionResult icr && Result is ValueContentResult vcr)
+                        icr.Paging = vcr.PagingResult;
+
+                    return val;
                 }
                 catch (Exception ex)
                 {
@@ -460,37 +464,6 @@ namespace UnitTestEx.Assertors
             }
             else
                 return default;
-        }
-
-        /// <summary>
-        /// Gets the response <typeparamref name="TCollResult"/> value.
-        /// </summary>
-        /// <typeparam name="TCollResult">The <see cref="ICollectionResult{TColl, TItem}"/> response <see cref="Type"/>.</typeparam>
-        /// <typeparam name="TColl">The collection <see cref="Type"/>.</typeparam>
-        /// <typeparam name="TItem">The item <see cref="Type"/>.</typeparam>
-        /// <returns>The result value.</returns>
-        public TCollResult? GetValue<TCollResult, TColl, TItem>()
-            where TCollResult : ICollectionResult<TColl, TItem>, new()
-            where TColl : ICollection<TItem>
-        {
-            if (Result != null && Result is ValueContentResult vcr)
-            {
-                if (vcr == null || string.IsNullOrEmpty(vcr.Content))
-                    return default;
-
-                try
-                {
-                    return new TCollResult { Collection = JsonSerializer.Deserialize<TColl>(vcr.Content)!, Paging = vcr.PagingResult };
-                }
-                catch (Exception ex)
-                {
-                    Implementor.AssertFail($"Unable to deserialize the JSON content to Type {typeof(TColl).FullName}: {ex.Message}");
-                }
-            }
-            else
-                Implementor.AssertFail($"The Result must be of Type {typeof(ValueContentResult).FullName} to use GetValue<TCollResult, TColl, TItem>().");
-
-            return default; // Will never reach here; needed to compile.
         }
 
         /// <summary>

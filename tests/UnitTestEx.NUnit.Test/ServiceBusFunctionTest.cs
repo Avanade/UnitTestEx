@@ -1,9 +1,11 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
 using System.Net;
 using System.Net.Http;
 using UnitTestEx.Function;
+using UnitTestEx.Expectations;
 
 namespace UnitTestEx.NUnit.Test
 {
@@ -115,6 +117,14 @@ namespace UnitTestEx.NUnit.Test
             var r = hc.GetAsync("test").Result;
             Assert.IsNotNull(r);
             Assert.AreEqual("test output", r.Content.ReadAsStringAsync().Result);
+        }
+
+        [Test]
+        public void Configuration()
+        {
+            using var test = FunctionTester.Create<Startup>();
+            var cv = test.Configuration.GetValue<string>("SpecialKey");
+            Assert.AreEqual("VerySpecialValue", cv);
         }
     }
 }

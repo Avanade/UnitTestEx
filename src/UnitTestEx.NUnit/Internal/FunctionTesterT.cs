@@ -19,7 +19,8 @@ namespace UnitTestEx.NUnit.Internal
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        internal FunctionTester(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) 
-            : base(new NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) { }
+        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
+        internal FunctionTester(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration, string? username) 
+            : base(new NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration, username) { }
     }
 }

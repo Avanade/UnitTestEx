@@ -25,19 +25,33 @@ namespace UnitTestEx.Abstractions
         public abstract void AssertIsType<TExpectedType>(object actual, string? message = null);
 
         /// <summary>
+        /// Asserts whether the <paramref name="actual"/> <see cref="Type"/> is the same as the <paramref name="expectedType"/>.
+        /// </summary>
+        /// <param name="expectedType">The expected <see cref="Type"/>.</param>
+        /// <param name="actual">The actual value.</param>
+        /// <param name="message">The optional failure message.</param>
+        public abstract void AssertIsType(Type expectedType, object actual, string? message = null);
+
+        /// <summary>
         /// Asserts whether the <paramref name="actual"/> and <paramref name="expected"/> value are equal.
         /// </summary>
         /// <typeparam name="T">The value <see cref="Type"/>.</typeparam>
         /// <param name="expected">The expected value.</param>
         /// <param name="actual">The actual value.</param>
         /// <param name="message">The optional failure message.</param>
-        public abstract void AssertAreEqual<T>(T expected, T actual, string? message = null);
+        public abstract void AssertAreEqual<T>(T? expected, T? actual, string? message = null);
 
         /// <summary>
         /// Assert an immediate fail using the specified <paramref name="message"/>.
         /// </summary>
         /// <param name="message">The failure message.</param>
         public abstract void AssertFail(string? message);
+
+        /// <summary>
+        /// Assert execution as inconclusive using the specified <paramref name="message"/>.
+        /// </summary>
+        /// <param name="message">The inconclusive message.</param>
+        public abstract void AssertInconclusive(string? message);
 
         /// <summary>
         /// Creates an <see cref="ILoggerProvider"/>.

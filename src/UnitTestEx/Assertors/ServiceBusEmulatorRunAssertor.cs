@@ -13,7 +13,7 @@ namespace UnitTestEx.Assertors
     public class ServiceBusEmulatorRunAssertor : AssertorBase<ServiceBusEmulatorRunAssertor>
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="ResultAssertor{TResult}"/> class.
+        /// Initializes a new instance of the <see cref="ServiceBusEmulatorRunAssertor"/> class.
         /// </summary>
         /// <param name="result">The result value.</param>
         /// <param name="exception">The <see cref="Exception"/> (if any).</param>

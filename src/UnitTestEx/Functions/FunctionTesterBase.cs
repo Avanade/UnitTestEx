@@ -2,6 +2,7 @@
 
 using Azure.Core.Amqp;
 using Azure.Messaging.ServiceBus;
+using CoreEx.Configuration;
 using CoreEx.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
@@ -13,12 +14,12 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Hosting;
 using Ceh = CoreEx.Http;
@@ -28,7 +29,7 @@ namespace UnitTestEx.Functions
     /// <summary>
     /// Provides the basic Azure Function unit-testing capabilities.
     /// </summary>
-    /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
+    /// <typeparam name="TEntryPoint">The <see cref="FunctionsStartup"/> <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class FunctionTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : FunctionsStartup, new() where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
@@ -60,7 +61,8 @@ namespace UnitTestEx.Functions
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) : base(implementor)
+        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
+        protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration, string? username) : base(implementor, username)
         {
             Logger = implementor.CreateLogger(GetType().Name);
 
@@ -78,12 +80,12 @@ namespace UnitTestEx.Functions
                             .AddJsonFile("appsettings.json", optional: true)
                             .AddJsonFile("appsettings.development.json", optional: true);
 
-                        if ((!includeUserSecrets.HasValue && FunctionTesterDefaults.IncludeUserSecrets) || (includeUserSecrets.HasValue && includeUserSecrets.Value))
+                        if ((!includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (includeUserSecrets.HasValue && includeUserSecrets.Value))
                             cb.AddUserSecrets<TEntryPoint>();
 
                         cb.AddEnvironmentVariables();
 
-                        if ((!includeUnitTestConfiguration.HasValue && FunctionTesterDefaults.IncludeUnitTestConfiguration) || (includeUnitTestConfiguration.HasValue && includeUnitTestConfiguration.Value))
+                        if ((!includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (includeUnitTestConfiguration.HasValue && includeUnitTestConfiguration.Value))
                             cb.AddJsonFile("appsettings.unittest.json", optional: true);
 
                         if (additionalConfiguration != null)
@@ -91,7 +93,14 @@ namespace UnitTestEx.Functions
                     });
                 })
                 .ConfigureAppConfiguration(configurationBuilder => ep2.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(configurationBuilder)))
-                .ConfigureServices(sc => ep2.Configure(MockIFunctionsHostBuilder(sc)));
+                .ConfigureServices(sc =>
+                {
+                    ep2.Configure(MockIFunctionsHostBuilder(sc));
+                    sc.ReplaceScoped(_ => SharedState);
+                    SetUp.ConfigureServices?.Invoke(sc);
+                    if (SetUp.ExpectedEventsEnabled)
+                        ReplaceExpectedEventPublisher(sc);
+                });
         }
 
         /// <summary>
@@ -176,20 +185,26 @@ namespace UnitTestEx.Functions
         public ILogger<TCategoryName> GetLogger<TCategoryName>() => Services.GetRequiredService<ILogger<TCategoryName>>();
 
         /// <summary>
-        /// Gets the <see cref="IConfiguration"/> from the underlying host.
+        /// Gets the <see cref="IConfiguration"/> from the underlying <see cref="Services"/>.
         /// </summary>
         /// <returns>The <see cref="IConfiguration"/>.</returns>
         public override IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
+
+        /// <summary>
+        /// Gets the <see cref="SettingsBase"/> from the underlying host.
+        /// </summary>
+        public override SettingsBase Settings => Services.GetService<SettingsBase>() ?? new DefaultSettings(Configuration);
 
         /// <summary>
         /// Provides an opportunity to further configure the services. This can be called multiple times. 
         /// </summary>
         /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>This will throw an <see cref="InvalidOperationException"/> once the underlying host has been created</remarks>
         public override TSelf ConfigureServices(Action<IServiceCollection> configureServices)
         {
             if (_host != null)
-                throw new InvalidOperationException($"{nameof(ConfigureServices)} cannot be invoked after a test execution has occured.");
+                throw new InvalidOperationException($"{nameof(ConfigureServices)} cannot be invoked after the test host has been created; as a result of executing a test, or using {nameof(Services)}, {nameof(GetLogger)} or {nameof(Configuration)}");
 
             if (configureServices != null)
                 _hostBuilder.ConfigureServices(configureServices);
@@ -202,21 +217,21 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="HttpTriggerTester{TFunction}"/>.</returns>
-        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor, JsonSerializer);
+        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 
         /// <summary>
         /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
         /// </summary>
         /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
         /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
-        public TypeTester<T> Type<T>() where T : class => new(GetHost().Services.CreateScope(), Implementor, JsonSerializer);
+        public TypeTester<T> Type<T>() where T : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 
         /// <summary>
         /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> that is to be tested.
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="ServiceBusTriggerTester{TFunction}"/>.</returns>
-        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(GetHost().Services.CreateScope(), Implementor, JsonSerializer);
+        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 
         /// <summary>
         /// Creates a new <see cref="HttpRequest"/> with no body.
@@ -302,6 +317,9 @@ namespace UnitTestEx.Functions
                 context.Request.Body = new MemoryStream(body == null ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(body));
                 context.Request.ContentType = contentType ?? MediaTypeNames.Text.Plain;
             }
+
+            if (SetUp.OnBeforeHttpRequestSendAsync != null)
+                SetUp.OnBeforeHttpRequestSendAsync(context.Request, Username, CancellationToken.None).GetAwaiter().GetResult();
 
             return context.Request;
         }

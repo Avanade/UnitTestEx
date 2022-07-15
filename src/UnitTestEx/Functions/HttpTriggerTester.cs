@@ -18,6 +18,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
+using UnitTestEx.Expectations;
 using UnitTestEx.Hosting;
 
 namespace UnitTestEx.Functions
@@ -26,15 +27,19 @@ namespace UnitTestEx.Functions
     /// Provides Azure Function <see cref="HttpTriggerAttribute"/> unit-testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
-    public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction> where TFunction : class
+    public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction>, IExceptionSuccessExpectations<HttpTriggerTester<TFunction>> where TFunction : class
     {
+        private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
+
         /// <summary>
         /// Initializes a new <see cref="HttpTriggerTester{TFunction}"/> class.
         /// </summary>
+        /// <param name="tester">The <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
-        internal HttpTriggerTester(IServiceScope serviceScope, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(serviceScope, implementor, jsonSerializer) { }
+        internal HttpTriggerTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope) => _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester);
+
+        /// <inheritdoc/>
+        ExceptionSuccessExpectations IExceptionSuccessExpectations<HttpTriggerTester<TFunction>>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
 
         /// <summary>
         /// Runs the HTTP Triggered (see <see cref="HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
@@ -66,8 +71,18 @@ namespace UnitTestEx.Functions
 
             await Task.Delay(0).ConfigureAwait(false);
             LogResponse(result, ex, ms);
+
+            _exceptionSuccessExpectations.Assert(ex);
+
             return new ActionResultAssertor(result, ex, Implementor, JsonSerializer);
         }
+
+        /// <summary>
+        /// Asserts any expectations.
+        /// </summary>
+        /// <param name="result">The <see cref="IActionResult"/>.</param>
+        /// <param name="exception">The <see cref="Exception"/> is any.</param>
+        protected virtual void OnAssertExpectations(IActionResult result, Exception? exception) => _exceptionSuccessExpectations.Assert(exception);
 
         /// <summary>
         /// Log the request to the output.

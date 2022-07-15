@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using CoreEx.Events;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -11,10 +13,12 @@ namespace UnitTestEx.Api.Controllers
     public class ProductController : ControllerBase
     {
         private readonly HttpClient _httpClient;
+        private readonly IEventPublisher _eventPublisher;
 
-        public ProductController(IHttpClientFactory clientFactory)
+        public ProductController(IHttpClientFactory clientFactory, IEventPublisher eventPublisher)
         {
             _httpClient = clientFactory.CreateClient("XXX");
+            _eventPublisher = eventPublisher;
         }
 
         [HttpGet("{id}")]
@@ -28,6 +32,12 @@ namespace UnitTestEx.Api.Controllers
 
             var str = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
             var val = JsonConvert.DeserializeObject<dynamic>(str);
+
+            _eventPublisher.Publish("test-queue", new EventData { Source = new Uri($"/test/product/{id}", UriKind.Relative), Subject = $"test.product.{id}", Action = "update" });
+            if (id == "xyz")
+                _eventPublisher.Publish("test-queue2", new EventData { Source = new Uri($"/test/product/{id}", UriKind.Relative), Subject = $"test.product.{id}", Action = "update", Value = val });
+
+            await _eventPublisher.SendAsync().ConfigureAwait(false);
             return new OkObjectResult(val);
         }
     }

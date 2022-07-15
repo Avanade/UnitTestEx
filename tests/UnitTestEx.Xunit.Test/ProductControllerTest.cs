@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Http;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
-using UnitTestEx.Xunit;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -42,7 +41,6 @@ namespace UnitTestEx.Xunit.Test
                 .AssertOK()
                 .Assert(new { id = "Abc", description = "A blue carrot" });
         }
-
 
         [Fact]
         public void ServiceProvider()

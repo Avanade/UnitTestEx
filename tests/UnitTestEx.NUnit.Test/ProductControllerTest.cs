@@ -5,12 +5,21 @@ using System.Net;
 using System.Net.Http;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
+using UnitTestEx.Expectations;
 
 namespace UnitTestEx.NUnit.Test
 {
     [TestFixture]
     public class ProductControllerTest
     {
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
+        {
+            var uti = NUnit.Internal.NUnitTestImplementor.Create();
+            uti.WriteLine("ONE-TIME-SETUP");
+            System.Diagnostics.Debug.WriteLine("ONE-TIME-SETUP");
+        }
+
         [Test]
         public void Notfound()
         {
@@ -34,10 +43,30 @@ namespace UnitTestEx.NUnit.Test
 
             using var test = ApiTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
+                .UseSetUp(new TestSetUp { ExpectedEventsEnabled = true })
                 .Controller<ProductController>()
+                .ExpectEvent("/test/product/*", "test.product.*c", "*")
                 .Run(c => c.Get("abc"))
                 .AssertOK()
                 .Assert(new { id = "Abc", description = "A blue carrot" });
+        }
+
+        [Test]
+        public void Success2()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://somesys"))
+                .Request(HttpMethod.Get, "products/xyz").Respond.WithJson(new { id = "Xyz", description = "Xtra yellow elephant" });
+
+            using var test = ApiTester.Create<Startup>();
+            test.ReplaceHttpClientFactory(mcf)
+                .UseExpectedEvents()
+                .Controller<ProductController>()
+                .ExpectDestinationEvent("test-queue", "/test/product/*", "test.product.*c", "*")
+                .ExpectDestinationEvent("test-queue2", "/test/*/xyz", "test.*", "*")
+                .Run(c => c.Get("xyz"))
+                .AssertOK()
+                .Assert(new { id = "Xyz", description = "Xtra yellow elephant" });
         }
 
         [Test]
