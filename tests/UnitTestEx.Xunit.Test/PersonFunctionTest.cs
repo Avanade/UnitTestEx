@@ -1,3 +1,5 @@
+using CoreEx.WebApis;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http;
 using System.Threading.Tasks;
 using UnitTestEx.Function;
@@ -59,6 +61,35 @@ namespace UnitTestEx.Xunit.Test
                 .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Post, "person", new { name = "Brian" }), test.Logger))
                 .AssertBadRequest()
                 .AssertErrors(new ApiError("name", "Name cannot be Brian."));
+        }
+
+        [Fact]
+        public void BadRequest3()
+        {
+            using var test = CreateFunctionTester<Startup>();
+            test.HttpTrigger<PersonFunction>()
+                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Post, "person", new { name = "Damien" }), test.Logger))
+                .AssertException<CoreEx.ValidationException>("Name cannot be Damien.");
+        }
+
+        [Fact]
+        public void BadRequest4()
+        {
+            using var test = CreateFunctionTester<Startup>();
+            test.HttpTrigger<PersonFunction>()
+                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Post, "person", new { name = "Bruce" }), test.Logger))
+                .AssertBadRequest()
+                .AssertErrors("Name cannot be Bruce.");
+        }
+
+        [Fact]
+        public void BadRequestWebApi()
+        {
+            using var test = CreateFunctionTester<Startup>().ConfigureServices(sc => sc.AddWebApi().AddExecutionContext().AddDefaultSettings().AddJsonSerializer());
+            test.HttpTrigger<PersonFunction>()
+                .Run(f => f.RunWebApi(test.CreateJsonHttpRequest(HttpMethod.Get, "person", new { name = "Damien" }), test.Logger))
+                .AssertBadRequest()
+                .AssertErrors("Name cannot be Damien.");
         }
 
         [Fact]

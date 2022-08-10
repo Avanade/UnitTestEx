@@ -37,7 +37,7 @@ namespace UnitTestEx.AspNetCore
 
             // Add settings from appsettings.unittest.json so that they are available to the startup class.
             var config = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.unittest.json")
+                .AddJsonFile("appsettings.unittest.json", optional: true)
                 .Build();
 
             foreach (var key in config.AsEnumerable())
@@ -47,7 +47,7 @@ namespace UnitTestEx.AspNetCore
 
             _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb =>
                 whb.UseSolutionRelativeContentRoot(Environment.CurrentDirectory)
-                    .ConfigureAppConfiguration((_, x) => x.AddJsonFile("appsettings.unittest.json", true))
+                    .ConfigureAppConfiguration((_, x) => x.AddJsonFile("appsettings.unittest.json", optional: true))
                     .ConfigureServices(sc =>
                     {
                         sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(implementor.CreateLoggerProvider()); });

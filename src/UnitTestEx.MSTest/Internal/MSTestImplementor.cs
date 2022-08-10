@@ -25,12 +25,6 @@ namespace UnitTestEx.MSTest.Internal
         public override void AssertAreEqual<T>(T? expected, T? actual, string? message = null) where T : default => Assert.AreEqual(expected, actual, message, new object?[] { expected, actual });
 
         /// <inheritdoc/>
-        public override void AssertIsType<TExpectedType>(object actual, string? message = null) => Assert.IsInstanceOfType(actual, typeof(TExpectedType), message);
-
-        /// <inheritdoc/>
-        public override void AssertIsType(Type expectedType, object actual, string? message = null) => Assert.IsInstanceOfType(actual, expectedType, message);
-
-        /// <inheritdoc/>
         public override void AssertInconclusive(string? message) => Assert.Inconclusive(message);
 
         /// <inheritdoc/>

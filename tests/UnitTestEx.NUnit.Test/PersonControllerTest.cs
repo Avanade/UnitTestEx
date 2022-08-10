@@ -112,6 +112,61 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
+        public void Update_Test4()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Controller<PersonController>()
+                .ExpectStatusCode(System.Net.HttpStatusCode.BadRequest)
+                .ExpectErrors(
+                    "First name is required.",
+                    "Last name is required.")
+                .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }));
+        }
+
+        [Test]
+        public void Update_Test5_ExpectationFailure()
+        {
+            var ex = Assert.Throws<AssertionException>(() =>
+            {
+                using var test = ApiTester.Create<Startup>();
+                test.Controller<PersonController>()
+                    .ExpectStatusCode(System.Net.HttpStatusCode.BadRequest)
+                    .ExpectErrors(
+                        "First name is requiredx.",
+                        "Last name is required.")
+                    .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }));
+            });
+
+            Assert.IsTrue(ex.Message.Contains("Error: First name is requiredx."));
+        }
+
+        [Test]
+        public void Update_Test6()
+        {
+            Assert.Inconclusive("This should be removed when CoreEx v1.0.8 is published.");
+            using var test = ApiTester.Create<Startup>();
+            test.Controller<PersonController>()
+                .ExpectStatusCode(System.Net.HttpStatusCode.BadRequest)
+                .ExpectErrorType(CoreEx.Abstractions.ErrorType.ValidationError, "No can do eighty-eight.")
+                .Run(c => c.Update(88, new Person { FirstName = null, LastName = null }));
+        }
+
+        [Test]
+        public void Update_Test7_ExpectationFailure2()
+        {
+            var ex = Assert.Throws<AssertionException>(() =>
+            {
+                using var test = ApiTester.Create<Startup>();
+                test.Controller<PersonController>()
+                    .ExpectStatusCode(System.Net.HttpStatusCode.BadRequest)
+                    .ExpectErrorType(CoreEx.Abstractions.ErrorType.BusinessError, "No can do eighty-eight.")
+                    .Run(c => c.Update(88, new Person { FirstName = null, LastName = null }));
+            });
+
+            Assert.IsTrue(ex.Message.Contains("Expected ErrorType"));
+        }
+
+        [Test]
         public void GetPaging()
         {
             using var test = ApiTester.Create<Startup>();
@@ -176,7 +231,7 @@ namespace UnitTestEx.NUnit.Test
             using var test = ApiTester.Create<Startup>();
             test.Http<Person>()
                 .ExpectStatusCode(System.Net.HttpStatusCode.OK)
-                .ExpectedValue(_ => new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
+                .ExpectValue(_ => new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
                 .Run(HttpMethod.Post, "Person/1", new Person { FirstName = "Bob", LastName = "Smith" });
         }
 
@@ -186,8 +241,44 @@ namespace UnitTestEx.NUnit.Test
             using var test = ApiTester.Create<Startup>();
             test.Http<Person>()
                 .ExpectStatusCode(System.Net.HttpStatusCode.OK)
-                .ExpectedValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
+                .ExpectValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
                 .Run(HttpMethod.Post, "Person/1", new Person { FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Http_Get_Typed1()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Agent<PersonAgent, Person>()
+                .Run(a => a.GetAsync(1))
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Http_Get_Typed2()
+        {
+            using var test = ApiTester.Create<Startup>();
+            var v = test.Agent<PersonAgent>()
+                .Run(a => a.GetAsync(1))
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
+                .Value;
+
+            Assert.NotNull(v);
+        }
+
+        [Test]
+        public void Http_Get_Typed3()
+        {
+            using var test = ApiTester.Create<Startup>();
+            var v = test.Agent<PersonAgent, Person>()
+                .ExpectStatusCode(System.Net.HttpStatusCode.OK)
+                .ExpectValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
+                .Run(a => a.GetAsync(1))
+                .Value;
+
+            Assert.NotNull(v);
         }
 
         [Test]
@@ -204,10 +295,13 @@ namespace UnitTestEx.NUnit.Test
         public void Http_Update_Typed2()
         {
             using var test = ApiTester.Create<Startup>();
-            test.Agent<PersonAgent, Person>()
+            var v = test.Agent<PersonAgent, Person>()
                 .ExpectStatusCode(System.Net.HttpStatusCode.OK)
-                .ExpectedValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
-                .Run(a => a.UpdateAsync(new Person { FirstName = "Bob", LastName = "Smith" }, 1));
+                .ExpectValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" })
+                .Run(a => a.UpdateAsync(new Person { FirstName = "Bob", LastName = "Smith" }, 1))
+                .Value;
+
+            Assert.NotNull(v);
         }
     }
 
@@ -215,6 +309,8 @@ namespace UnitTestEx.NUnit.Test
     {
         public PersonAgent(HttpClient client, IJsonSerializer jsonSerializer, CoreEx.ExecutionContext executionContext, SettingsBase settings, ILogger<PersonAgent> logger)
             : base(client, jsonSerializer, executionContext, settings, logger) { }
+        public Task<HttpResult<Person>> GetAsync(int id, HttpRequestOptions requestOptions = null, CancellationToken cancellationToken = default)
+            => GetAsync<Person>("Person/{id}", requestOptions: requestOptions, args: new IHttpArg[] { new HttpArg<int>("id", id) }, cancellationToken: cancellationToken);
 
         public Task<HttpResult<Person>> UpdateAsync(Person value, int id, HttpRequestOptions requestOptions = null, CancellationToken cancellationToken = default)
             => PostAsync<Person, Person>("Person/{id}", value, requestOptions: requestOptions, args: new IHttpArg[] { new HttpArg<int>("id", id) }, cancellationToken: cancellationToken);

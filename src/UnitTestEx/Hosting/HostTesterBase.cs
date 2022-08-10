@@ -93,6 +93,11 @@ namespace UnitTestEx.Hosting
                 sw.Stop();
                 return (null, sw.Elapsed.TotalMilliseconds);
             }
+            catch (AggregateException aex)
+            {
+                sw.Stop();
+                return (aex.InnerException ?? aex, sw.Elapsed.TotalMilliseconds);
+            }
             catch (Exception ex)
             {
                 sw.Stop();
@@ -139,6 +144,11 @@ namespace UnitTestEx.Hosting
                 var mr = await expression.Compile().Invoke(h).ConfigureAwait(false);
                 sw.Stop();
                 return (mr, null, sw.Elapsed.TotalMilliseconds);
+            }
+            catch (AggregateException aex)
+            {
+                sw.Stop();
+                return (default!, aex.InnerException ?? aex, sw.Elapsed.TotalMilliseconds);
             }
             catch (Exception ex)
             {

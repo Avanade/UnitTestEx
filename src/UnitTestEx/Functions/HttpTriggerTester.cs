@@ -69,7 +69,7 @@ namespace UnitTestEx.Functions
                     throw new InvalidOperationException($"The function {nameof(HttpTriggerAttribute)} supports {nameof(HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid.");
             }).ConfigureAwait(false);
 
-            await Task.Delay(0).ConfigureAwait(false);
+            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
             LogResponse(result, ex, ms);
 
             _exceptionSuccessExpectations.Assert(ex);

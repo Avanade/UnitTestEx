@@ -14,10 +14,11 @@ namespace UnitTestEx.AspNetCore
     /// </summary>
     /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="Type"/> representing itself.</typeparam>
-    public abstract class HttpTesterBase<TValue, TSelf> : HttpTesterBase, IHttpResponseExpectations<TSelf>, IResponseValueExpectations<TValue, TSelf>, IEventExpectations<TSelf> where TSelf : HttpTesterBase<TValue, TSelf>
+    public abstract class HttpTesterBase<TValue, TSelf> : HttpTesterBase, IExceptionSuccessExpectations<TSelf>, IHttpResponseExpectations<TSelf>, IResponseValueExpectations<TValue, TSelf>, IEventExpectations<TSelf> where TSelf : HttpTesterBase<TValue, TSelf>
     {
+        private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
         private readonly HttpResponseExpectations _httpResponseExpectations;
-        private readonly ResponseValueExpectations<TValue> _responseValueExpectations;
+        private readonly ResponseValueExpectations<TSelf, TValue> _responseValueExpectations;
         private readonly EventExpectations _eventExpectations;
 
         /// <summary>
@@ -27,16 +28,20 @@ namespace UnitTestEx.AspNetCore
         /// <param name="testServer">The <see cref="TestServer"/>.</param>
         internal HttpTesterBase(TesterBase owner, TestServer testServer) : base(owner, testServer)
         {
+            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Owner);
             _httpResponseExpectations = new HttpResponseExpectations(Owner);
-            _responseValueExpectations = new ResponseValueExpectations<TValue>(Owner);
+            _responseValueExpectations = new ResponseValueExpectations<TSelf, TValue>(Owner, (TSelf)this);
             _eventExpectations = new EventExpectations(Owner);
         }
+
+        /// <inheritdoc/>
+        ExceptionSuccessExpectations IExceptionSuccessExpectations<TSelf>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
 
         /// <inheritdoc/>
         HttpResponseExpectations IHttpResponseExpectations<TSelf>.HttpResponseExpectations => _httpResponseExpectations;
 
         /// <inheritdoc/>
-        ResponseValueExpectations<TValue> IResponseValueExpectations<TValue, TSelf>.ResponseValueExpectations => _responseValueExpectations;
+        ResponseValueExpectations<TSelf, TValue> IResponseValueExpectations<TValue, TSelf>.ResponseValueExpectations => _responseValueExpectations;
 
         /// <inheritdoc/>
         EventExpectations IEventExpectations<TSelf>.EventExpectations => _eventExpectations;
@@ -44,7 +49,22 @@ namespace UnitTestEx.AspNetCore
         /// <inheritdoc/>
         protected override void AssertExpectations(HttpResponseMessage res)
         {
-            _httpResponseExpectations.Assert(HttpResult.CreateAsync(res).GetAwaiter().GetResult());
+            var hr = HttpResult.CreateAsync(res).GetAwaiter().GetResult();
+            try
+            {
+                hr.ThrowOnError(true, true);
+                _exceptionSuccessExpectations.Assert(null);
+            }
+            catch (AggregateException aex)
+            {
+                _exceptionSuccessExpectations.Assert(aex.InnerException ?? aex);
+            }
+            catch (Exception ex)
+            {
+                _exceptionSuccessExpectations.Assert(ex);
+            }
+
+            _httpResponseExpectations.Assert(hr);
             _responseValueExpectations.Assert(HttpResponseExpectations.GetValueFromHttpResponseMessage<TValue>(res, JsonSerializer));
             _eventExpectations.Assert();
         }

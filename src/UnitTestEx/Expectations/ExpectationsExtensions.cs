@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx;
 using CoreEx.Abstractions;
 using CoreEx.Entities;
 using CoreEx.Events;
@@ -71,68 +72,6 @@ namespace UnitTestEx.Expectations
         public static TSelf ExpectStatusCode<TSelf>(this IHttpResponseExpectations<TSelf> tester, HttpStatusCode statusCode = HttpStatusCode.OK) where TSelf : IHttpResponseExpectations<TSelf>
             => tester.SetHttpResponseExpectation(t => t.HttpResponseExpectations.SetExpectStatusCode(statusCode));
 
-        /// <summary>
-        /// Expects a response with the specified <paramref name="errorType"/>.
-        /// </summary>
-        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
-        /// <param name="tester">The <see cref="IHttpResponseExpectations{TSelf}"/>.</param>
-        /// <param name="errorType">The <see cref="ErrorType"/>.</param>
-        /// <param name="errorMessage">The expected error message text; where not specified the error message will not be checked.</param>
-        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectErrorType<TSelf>(this IHttpResponseExpectations<TSelf> tester, ErrorType errorType, string? errorMessage = null) where TSelf : IHttpResponseExpectations<TSelf>
-            => tester.SetHttpResponseExpectation(t => t.HttpResponseExpectations.SetExpectErrorType((int)errorType, errorMessage));
-
-        /// <summary>
-        /// Expects a response with the specified <paramref name="errorCode"/>.
-        /// </summary>
-        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
-        /// <param name="tester">The <see cref="IHttpResponseExpectations{TSelf}"/>.</param>
-        /// <param name="errorCode">The error code.</param>
-        /// <param name="errorMessage">The expected error message text; where not specified the error message will not be checked.</param>
-        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectErrorType<TSelf>(this IHttpResponseExpectations<TSelf> tester, int errorCode, string? errorMessage = null) where TSelf : IHttpResponseExpectations<TSelf>
-            => tester.SetHttpResponseExpectation(t => t.HttpResponseExpectations.SetExpectErrorType(errorCode, errorMessage));
-
-        /// <summary>
-        /// Expect a response with the specified <see cref="MessageType.Error"/> messages.
-        /// </summary>
-        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
-        /// <param name="tester">The <see cref="IHttpResponseExpectations{TSelf}"/>.</param>
-        /// <param name="messages">The expected <see cref="MessageType.Error"/> message texts.</param>
-        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectErrors<TSelf>(this IHttpResponseExpectations<TSelf> tester, params string[] messages) where TSelf : IHttpResponseExpectations<TSelf>
-            => tester.SetHttpResponseExpectation(t => t.HttpResponseExpectations.SetExpectMessages(messages));
-
-        /// <summary>
-        /// Expect a response with the specified <paramref name="errors"/>.
-        /// </summary>
-        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
-        /// <param name="tester">The <see cref="IHttpResponseExpectations{TSelf}"/>.</param>
-        /// <param name="errors">The expected <see cref="ApiError"/> collection.</param>
-        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectErrors<TSelf>(this IHttpResponseExpectations<TSelf> tester, params ApiError[] errors) where TSelf : IHttpResponseExpectations<TSelf>
-            => tester.SetHttpResponseExpectation(t => t.HttpResponseExpectations.SetExpectMessages(errors));
-
-        /// <summary>
-        /// Expect a response with the specified <paramref name="messages"/>.
-        /// </summary>
-        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
-        /// <param name="tester">The <see cref="IHttpResponseExpectations{TSelf}"/>.</param>
-        /// <param name="messages">The expected <see cref="MessageType.Error"/> message texts.</param>
-        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectMessages<TSelf>(this IHttpResponseExpectations<TSelf> tester, params string[] messages) where TSelf : IHttpResponseExpectations<TSelf>
-            => tester.SetHttpResponseExpectation(t => t.HttpResponseExpectations.SetExpectMessages(messages));
-
-        /// <summary>
-        /// Expect a response with the specified <paramref name="messages"/>.
-        /// </summary>
-        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
-        /// <param name="tester">The <see cref="IHttpResponseExpectations{TSelf}"/>.</param>
-        /// <param name="messages">The expected <see cref="MessageItemCollection"/> collection.</param>
-        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectMessages<TSelf>(this IHttpResponseExpectations<TSelf> tester, MessageItemCollection messages) where TSelf : IHttpResponseExpectations<TSelf>
-            => tester.SetHttpResponseExpectation(t => t.HttpResponseExpectations.SetExpectMessages(messages));
-
         #endregion
 
         #region IResponseValueExpectations<TValue, TSelf>
@@ -157,14 +96,26 @@ namespace UnitTestEx.Expectations
             => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectNullValue());
 
         /// <summary>
-        /// Expects the <see cref="IPrimaryKey"/> to be implemented and have non-null <see cref="CompositeKey.Args"/>.
+        /// Expects the <see cref="IIdentifier"/> to be implemented and have non-default <see cref="IIdentifier.Id"/> and equal optional <paramref name="id"/>.
         /// </summary>
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
         /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
+        /// <param name="id">The optional expected identifier to compare to.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectPrimaryKey<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectPrimaryKey());
+        public static TSelf ExpectIdentifier<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, object? id = null) where TSelf : IResponseValueExpectations<TValue, TSelf>
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectIdentifier(id));
+
+        /// <summary>
+        /// Expects the <see cref="IPrimaryKey"/> to be implemented and have non-null <see cref="CompositeKey.Args"/> and equal optional <paramref name="primaryKey"/>.
+        /// </summary>
+        /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
+        /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
+        /// <param name="primaryKey">The optional expected primary <see cref="CompositeKey"/> to compare to.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectPrimaryKey<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, CompositeKey? primaryKey = null) where TSelf : IResponseValueExpectations<TValue, TSelf>
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectPrimaryKey(primaryKey));
 
         /// <summary>
         /// Expects the <see cref="IETag"/> to be implemaned and have a non-null value and different to <paramref name="previousETag"/> where specified.
@@ -186,8 +137,8 @@ namespace UnitTestEx.Expectations
         /// <param name="createdby">The specific <see cref="ChangeLog.CreatedBy"/> value where specified (can include wildcards); otherwise, indicates to check for user running the test (see <see cref="Abstractions.TesterBase.Username"/>).</param>
         /// <param name="createdDateGreaterThan">The <see cref="DateTime"/> in which the <see cref="ChangeLog.CreatedDate"/> should be greater than; where <c>null</c> it will default to <see cref="DateTime.Now"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf SetExpectedChangeLogCreated<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, string? createdby = null, DateTime? createdDateGreaterThan = null) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectedChangeLogCreated(createdby, createdDateGreaterThan));
+        public static TSelf ExpectChangeLogCreated<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, string? createdby = null, DateTime? createdDateGreaterThan = null) where TSelf : IResponseValueExpectations<TValue, TSelf>
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectChangeLogCreated(createdby, createdDateGreaterThan));
 
         /// <summary>
         /// Expects the <see cref="IChangeLog"/> to be implemented for the response with generated values for the underlying <see cref="ChangeLog.UpdatedBy"/> and <see cref="ChangeLog.UpdatedDate"/> matching the specified values.
@@ -198,8 +149,8 @@ namespace UnitTestEx.Expectations
         /// <param name="updatedBy">The specific <see cref="ChangeLog.CreatedBy"/> value where specified (can include wildcards); otherwise, indicates to check for user running the test (see <see cref="Abstractions.TesterBase.Username"/>).</param>
         /// <param name="updatedDateGreaterThan">The <see cref="DateTime"/> in which the <see cref="ChangeLog.CreatedDate"/> should be greater than; where <c>null</c> it will default to <see cref="DateTime.Now"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf SetExpectedChangeLogUpdated<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, string? updatedBy = null, DateTime? updatedDateGreaterThan = null) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectedChangeLogUpdated(updatedBy, updatedDateGreaterThan));
+        public static TSelf ExpectChangeLogUpdated<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, string? updatedBy = null, DateTime? updatedDateGreaterThan = null) where TSelf : IResponseValueExpectations<TValue, TSelf>
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectChangeLogUpdated(updatedBy, updatedDateGreaterThan));
 
         /// <summary>
         /// Expect a response comparing the result of the specified <paramref name="expectedValueFunc"/> (and optionally any additional <paramref name="membersToIgnore"/> from the comparison).
@@ -210,8 +161,8 @@ namespace UnitTestEx.Expectations
         /// <param name="expectedValueFunc">The function to generate the response value to compare.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectedValue<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, Func<TSelf, TValue> expectedValueFunc, params string[] membersToIgnore) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectedValue(tester, t => expectedValueFunc((TSelf)t), membersToIgnore));
+        public static TSelf ExpectValue<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, Func<TSelf, TValue> expectedValueFunc, params string[] membersToIgnore) where TSelf : IResponseValueExpectations<TValue, TSelf>
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectValue(t => expectedValueFunc((TSelf)t), membersToIgnore));
 
         /// <summary>
         /// Expect a response comparing the result of the specified <paramref name="expectedValue"/> (and optionally any additional <paramref name="membersToIgnore"/> from the comparison).
@@ -222,8 +173,8 @@ namespace UnitTestEx.Expectations
         /// <param name="expectedValue">The expected response value to compare.</param>
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectedValue<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, TValue expectedValue, params string[] membersToIgnore) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectedValue(tester, _ => expectedValue ?? throw new ArgumentNullException(nameof(expectedValue)), membersToIgnore));
+        public static TSelf ExpectValue<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, TValue expectedValue, params string[] membersToIgnore) where TSelf : IResponseValueExpectations<TValue, TSelf>
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectValue(_ => expectedValue ?? throw new ArgumentNullException(nameof(expectedValue)), membersToIgnore));
 
         /// <summary>
         /// Ignores the <see cref="IChangeLog.ChangeLog"/> property.
@@ -253,7 +204,7 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf IgnorePrimaryKey<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.MembersToIgnore.Add(nameof(IETag.ETag)));
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.MembersToIgnore.Add(nameof(IPrimaryKey.PrimaryKey)));
 
         /// <summary>
         /// Ignores the <see cref="IIdentifier.Id"/> property.
@@ -385,11 +336,70 @@ namespace UnitTestEx.Expectations
         #region IExceptionSuccessExpectations<TSelf>
 
         /// <summary>
+        /// Invokes the set expectation logic.
+        /// </summary>
+        private static TSelf SetExceptionSuccessExpectation<TSelf>(this IExceptionSuccessExpectations<TSelf> tester, Action<IExceptionSuccessExpectations<TSelf>> action) where TSelf : IExceptionSuccessExpectations<TSelf>
+        {
+            action(tester);
+            return (TSelf)tester;
+        }
+
+        /// <summary>
         /// Expects that an <see cref="Exception"/> will be thrown during execution.
         /// </summary>
         /// <param name="tester">The <see cref="IExceptionSuccessExpectations{TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static ExceptionExpectation<TSelf> ExpectException<TSelf>(this IExceptionSuccessExpectations<TSelf> tester) where TSelf : IExceptionSuccessExpectations<TSelf> => new(tester);
+
+        /// <summary>
+        /// Expects that an <see cref="IExceptionResult"/> <see cref="Exception"/> with the specified <paramref name="errorType"/> will be thrown during execution.
+        /// </summary>
+        /// <param name="tester">The <see cref="IExceptionSuccessExpectations{TSelf}"/>.</param>
+        /// <param name="errorType">The error type.</param>
+        /// <param name="expectedMessage">The optional expected message to match.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectErrorType<TSelf>(this IExceptionSuccessExpectations<TSelf> tester, string errorType, string? expectedMessage = null) where TSelf : IExceptionSuccessExpectations<TSelf>
+            => tester.SetExceptionSuccessExpectation(t => t.ExceptionSuccessExpectations.SetExpectErrorType(errorType, expectedMessage));
+
+        /// <summary>
+        /// Expects that an <see cref="IExceptionResult"/> <see cref="Exception"/> with the specified <paramref name="errorType"/> will be thrown during execution.
+        /// </summary>
+        /// <param name="tester">The <see cref="IExceptionSuccessExpectations{TSelf}"/>.</param>
+        /// <param name="errorType">The error type.</param>
+        /// <param name="expectedMessage">The optional expected message to match.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectErrorType<TSelf>(this IExceptionSuccessExpectations<TSelf> tester, CoreEx.Abstractions.ErrorType errorType, string? expectedMessage = null) where TSelf : IExceptionSuccessExpectations<TSelf>
+            => tester.SetExceptionSuccessExpectation(t => t.ExceptionSuccessExpectations.SetExpectErrorType(errorType.ToString(), expectedMessage));
+
+        /// <summary>
+        /// Expect a <see cref="ValidationException"/> was thrown during execution with the specified <see cref="MessageType.Error"/> messages.
+        /// </summary>
+        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
+        /// <param name="tester">The <see cref="IHttpResponseExpectations{TSelf}"/>.</param>
+        /// <param name="messages">The expected <see cref="MessageType.Error"/> message texts.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectErrors<TSelf>(this IExceptionSuccessExpectations<TSelf> tester, params string[] messages) where TSelf : IExceptionSuccessExpectations<TSelf>
+            => tester.SetExceptionSuccessExpectation(t => t.ExceptionSuccessExpectations.SetExpectErrors(messages));
+
+        /// <summary>
+        /// Expect a <see cref="ValidationException"/> was thrown during execution with the specified <paramref name="errors"/>.
+        /// </summary>
+        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
+        /// <param name="tester">The <see cref="IHttpResponseExpectations{TSelf}"/>.</param>
+        /// <param name="errors">The expected <see cref="ApiError"/> collection.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectErrors<TSelf>(this IExceptionSuccessExpectations<TSelf> tester, params ApiError[] errors) where TSelf : IExceptionSuccessExpectations<TSelf>
+            => tester.SetExceptionSuccessExpectation(t => t.ExceptionSuccessExpectations.SetExpectErrors(errors));
+
+        /// <summary>
+        /// Expect a <see cref="ValidationException"/> was thrown during execution with the specified <paramref name="messages"/>.
+        /// </summary>
+        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
+        /// <param name="tester">The <see cref="IHttpResponseExpectations{TSelf}"/>.</param>
+        /// <param name="messages">The expected <see cref="MessageItemCollection"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectErrors<TSelf>(this IExceptionSuccessExpectations<TSelf> tester, MessageItemCollection messages) where TSelf : IExceptionSuccessExpectations<TSelf>
+            => tester.SetExceptionSuccessExpectation(t => t.ExceptionSuccessExpectations.SetExpectErrors(messages));
 
         /// <summary>
         /// Expects that the execution was successful; i.e. there was no <see cref="Exception"/> thrown.
@@ -398,7 +408,7 @@ namespace UnitTestEx.Expectations
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns> 
         public static TSelf ExpectSuccess<TSelf>(this IExceptionSuccessExpectations<TSelf> tester) where TSelf : IExceptionSuccessExpectations<TSelf>
         { 
-            tester.ExceptionSuccessExpectations.ExpectSuccess();
+            tester.ExceptionSuccessExpectations.SetExpectSuccess();
             return (TSelf)tester;
         }
 
@@ -422,7 +432,7 @@ namespace UnitTestEx.Expectations
             /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
             public TSelf Any(string? expectedMessage = null)
             {
-                _tester.ExceptionSuccessExpectations.ExpectException(expectedMessage);
+                _tester.ExceptionSuccessExpectations.SetExpectException(expectedMessage);
                 return (TSelf)_tester;
             }
 
@@ -434,7 +444,7 @@ namespace UnitTestEx.Expectations
             /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
             public TSelf Type<TException>(string? expectedMessage = null) where TException : Exception
             {
-                _tester.ExceptionSuccessExpectations.ExpectException<TException>(expectedMessage);
+                _tester.ExceptionSuccessExpectations.SetExpectException<TException>(expectedMessage);
                 return (TSelf)_tester;
             }
         }

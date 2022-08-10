@@ -66,6 +66,8 @@ namespace UnitTestEx.AspNetCore
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
         {
             var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, requestOptions, args).ConfigureAwait(false);
+            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+            AssertExpectations(res);
             return new HttpResponseMessageAssertor(res, Implementor, JsonSerializer);
         }
 
@@ -85,6 +87,8 @@ namespace UnitTestEx.AspNetCore
                 Implementor.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
             var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, content, contentType, requestOptions, args).ConfigureAwait(false);
+            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+            AssertExpectations(res);
             return new HttpResponseMessageAssertor(res, Implementor, JsonSerializer);
         }
 
@@ -103,6 +107,8 @@ namespace UnitTestEx.AspNetCore
                 Implementor.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
             var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, value, requestOptions, args).ConfigureAwait(false);
+            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+            AssertExpectations(res);
             return new HttpResponseMessageAssertor(res, Implementor, JsonSerializer);
         }
 
@@ -112,7 +118,7 @@ namespace UnitTestEx.AspNetCore
         /// <param name="func">The function to execute the HTTP request.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
         protected Task<HttpResponseMessageAssertor> RunAsync<TAgent>(Func<TAgent, Task<HttpResult>> func) where TAgent : TypedHttpClientBase
-            => RunWrapperAsync<TAgent>(async a => new HttpResponseMessageAssertor((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)).Response, Implementor, JsonSerializer));
+            => RunWrapperAsync<TAgent, HttpResponseMessageAssertor>(async a => new HttpResponseMessageAssertor((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)).Response, Implementor, JsonSerializer));
 
         /// <summary>
         /// Sends using the <paramref name="func"/>.
@@ -120,20 +126,28 @@ namespace UnitTestEx.AspNetCore
         /// <param name="func">The function to execute the HTTP request.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
         protected Task<HttpResponseMessageAssertor> RunAsync<TAgent>(Func<TAgent, Task<HttpResponseMessage>> func) where TAgent : TypedHttpClientBase
-            => RunWrapperAsync<TAgent>(async a => new HttpResponseMessageAssertor((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)), Implementor, JsonSerializer));
+            => RunWrapperAsync<TAgent, HttpResponseMessageAssertor>(async a => new HttpResponseMessageAssertor((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)), Implementor, JsonSerializer));
 
         /// <summary>
         /// Sends using the <paramref name="func"/>.
         /// </summary>
         /// <param name="func">The function to execute the HTTP request.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-        protected Task<HttpResponseMessageAssertor> RunAsync<TAgent, TResponse>(Func<TAgent, Task<HttpResult<TResponse>>> func) where TAgent : TypedHttpClientBase
-            => RunWrapperAsync<TAgent>(async a => new HttpResponseMessageAssertor((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)).Response, Implementor, JsonSerializer));
+        protected Task<HttpResponseMessageAssertor<TValue>> RunAsync<TAgent, TValue>(Func<TAgent, Task<HttpResult<TValue>>> func) where TAgent : TypedHttpClientBase
+            => RunWrapperAsync<TAgent, HttpResponseMessageAssertor<TValue>>(async a => new HttpResponseMessageAssertor<TValue>((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)).Response, Implementor, JsonSerializer));
+
+        /// <summary>
+        /// Sends using the <paramref name="func"/>.
+        /// </summary>
+        /// <param name="func">The function to execute the HTTP request.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
+        protected Task<HttpResponseMessageAssertor<TValue>> RunAsync<TAgent, TValue>(Func<TAgent, Task<HttpResponseMessage>> func) where TAgent : TypedHttpClientBase
+            => RunWrapperAsync<TAgent, HttpResponseMessageAssertor<TValue>>(async a => new HttpResponseMessageAssertor<TValue>((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)), Implementor, JsonSerializer));
 
         /// <summary>
         /// Wraps and runs the function.
         /// </summary>
-        private async Task<HttpResponseMessageAssertor> RunWrapperAsync<TAgent>(Func<TAgent, Task<HttpResponseMessageAssertor>> func) where TAgent : TypedHttpClientBase
+        private async Task<TAssertor> RunWrapperAsync<TAgent, TAssertor>(Func<TAgent, Task<TAssertor>> func) where TAgent : TypedHttpClientBase where TAssertor : HttpResponseMessageAssertorBase
         {
             var sc = new ServiceCollection();
             sc.AddExecutionContext();
@@ -148,6 +162,9 @@ namespace UnitTestEx.AspNetCore
             var agent = scope.ServiceProvider.GetRequiredService<TAgent>();
 
             var resp = await func(agent).ConfigureAwait(false);
+
+            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+            AssertExpectations(resp.Response);
 
             scope.Dispose();
             return resp;
@@ -314,9 +331,6 @@ namespace UnitTestEx.AspNetCore
             Implementor.WriteLine("");
             Implementor.WriteLine(new string('=', 80));
             Implementor.WriteLine("");
-
-            // Assert any expectations.
-            AssertExpectations(res);
         }
 
         /// <summary>

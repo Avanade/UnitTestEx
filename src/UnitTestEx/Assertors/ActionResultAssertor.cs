@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Mime;
 using System.Reflection;
@@ -42,7 +43,9 @@ namespace UnitTestEx.Assertors
         public ActionResultAssertor AssertResultType<TResult>() where TResult : IActionResult
         {
             AssertSuccess();
-            Implementor.AssertIsType<IStatusCodeActionResult>(Result, $"Result Type '{Result.GetType().Name}' is not expected '{typeof(TResult).Name}'.");
+            if (Result is not TResult)
+                Implementor.AssertFail($"Result Type '{Result.GetType().Name}' is not expected '{typeof(TResult).Name}'.");
+
             return this;
         }
 
@@ -192,33 +195,31 @@ namespace UnitTestEx.Assertors
         /// <param name="messages">The expected error messages.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
         /// <remarks>The field (key) is not validated; only the error message texts.</remarks>
-        public ActionResultAssertor AssertErrors(params string[] messages)
+        public override ActionResultAssertor AssertErrors(params string[] messages)
         {
-            var expected = new List<ApiError>();
-            foreach (var m in messages)
-            {
-                expected.Add(new ApiError(null, m));
-            }
-
-            AssertBadRequestErrors(expected, false);
-            return this;
+            var mic = new MessageItemCollection();
+            messages.ForEach(m => mic.AddError(m));
+            return AssertErrors(mic);
         }
 
         /// <summary>
-        /// Asserts that the <see cref="Result"/> contains the <paramref name="expected"/> errors.
+        /// Asserts that the <see cref="Result"/> contains the specified <paramref name="errors"/>.
         /// </summary>
-        /// <param name="expected">The expected errors.</param>
+        /// <param name="errors">The expected errors.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public ActionResultAssertor AssertErrors(params ApiError[] expected)
+        public override ActionResultAssertor AssertErrors(params ApiError[] errors)
         {
-            AssertBadRequestErrors(expected, true);
-            return this;
+            var mic = new MessageItemCollection();
+            errors.ForEach(e => mic.Add(MessageItem.CreateErrorMessage(e.Field, e.Message)));
+            return AssertErrors(mic);
         }
 
         /// <summary>
-        /// Asserts the expected vs actual errors.
+        /// Asserts that the <see cref="Result"/> contains the expected <paramref name="messages"/>.
         /// </summary>
-        private void AssertBadRequestErrors(IEnumerable<ApiError> expected, bool includeField)
+        /// <param name="messages">The expected <see cref="MessageItemCollection"/> collection.</param>
+        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+        public override ActionResultAssertor AssertErrors(MessageItemCollection messages)
         {
             AssertSuccess();
 
@@ -227,6 +228,8 @@ namespace UnitTestEx.Assertors
                 eval = or.Value;
             else if (Result is JsonResult jr)
                 eval = jr.Value;
+            else if (Result is ContentResult cr)
+                eval = cr.Content;
 
             var val = new Dictionary<string, string[]>();
             if (eval is string str)
@@ -242,17 +245,19 @@ namespace UnitTestEx.Assertors
                 }
             }
 
-            var act = new List<ApiError>();
+            var act = new MessageItemCollection();
             foreach (var err in val)
             {
                 foreach (var msg in err.Value)
                 {
-                    act.Add(new ApiError(includeField ? err.Key : null, msg));
+                    act.AddPropertyError(err.Key, msg);
                 }
             }
 
-            if (!ApiError.TryAreMatched(expected, act, includeField, out var message))
-                Implementor.AssertFail(message);
+            if (messages != null && !Expectations.ExpectationsExtensions.TryAreMessagesMatched(messages, act, out var errorMessage))
+                Implementor.AssertFail(errorMessage);
+
+            return this;
         }
 
         /// <summary>

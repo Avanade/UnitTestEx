@@ -13,7 +13,9 @@ namespace UnitTestEx.AspNetCore
     /// <summary>
     /// Provides <b>HTTP Agent</b> <see cref="TypedHttpClientBase"/> testing.
     /// </summary>
-    public class AgentTester<TAgent, TResponse> : HttpTesterBase<TResponse, AgentTester<TAgent, TResponse>> where TAgent : TypedHttpClientBase
+    /// <typeparam name="TAgent">The Agent (inherits from <see cref="TypedHttpClientBase"/>) <see cref="Type"/>.</typeparam>
+    /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
+    public class AgentTester<TAgent, TValue> : HttpTesterBase<TValue, AgentTester<TAgent, TValue>> where TAgent : TypedHttpClientBase
     {
         /// <summary>
         /// Initializes a new <see cref="AgentTester{TAgent}"/> class.
@@ -26,42 +28,28 @@ namespace UnitTestEx.AspNetCore
         /// Runs the test by executing a <typeparamref name="TAgent"/> method.
         /// </summary>
         /// <param name="func">The function to execution.</param>
-        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor Run(Func<TAgent, Task<HttpResult>> func) => base.RunAsync(func).GetAwaiter().GetResult();
+        /// <returns>An <see cref="HttpResponseMessageAssertor{TValue}"/>.</returns>
+        public HttpResponseMessageAssertor<TValue> Run(Func<TAgent, Task<HttpResult<TValue>>> func) => base.RunAsync<TAgent, TValue>(func).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the test by executing a <typeparamref name="TAgent"/> method.
         /// </summary>
         /// <param name="func">The function to execution.</param>
-        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor Run(Func<TAgent, Task<HttpResult<TResponse>>> func) => base.RunAsync(func).GetAwaiter().GetResult();
+        /// <returns>An <see cref="HttpResponseMessageAssertor{TValue}"/>.</returns>
+        public HttpResponseMessageAssertor<TValue> Run(Func<TAgent, Task<HttpResponseMessage>> func) => base.RunAsync<TAgent, TValue>(func).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the test by executing a <typeparamref name="TAgent"/> method.
         /// </summary>
         /// <param name="func">The function to execution.</param>
-        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor Run(Func<TAgent, Task<HttpResponseMessage>> func) => base.RunAsync(func).GetAwaiter().GetResult();
+        /// <returns>An <see cref="HttpResponseMessageAssertor{TValue}"/>.</returns>
+        public Task<HttpResponseMessageAssertor<TValue>> RunAsync(Func<TAgent, Task<HttpResult<TValue>>> func) => base.RunAsync<TAgent, TValue>(func);
 
         /// <summary>
         /// Runs the test by executing a <typeparamref name="TAgent"/> method.
         /// </summary>
         /// <param name="func">The function to execution.</param>
-        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public Task<HttpResponseMessageAssertor> RunAsync(Func<TAgent, Task<HttpResult>> func) => base.RunAsync(func);
-
-        /// <summary>
-        /// Runs the test by executing a <typeparamref name="TAgent"/> method.
-        /// </summary>
-        /// <param name="func">The function to execution.</param>
-        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public Task<HttpResponseMessageAssertor> RunAsync(Func<TAgent, Task<HttpResult<TResponse>>> func) => base.RunAsync(func);
-
-        /// <summary>
-        /// Runs the test by executing a <typeparamref name="TAgent"/> method.
-        /// </summary>
-        /// <param name="func">The function to execution.</param>
-        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public Task<HttpResponseMessageAssertor> RunAsync(Func<TAgent, Task<HttpResponseMessage>> func) => base.RunAsync(func);
+        /// <returns>An <see cref="HttpResponseMessageAssertor{TValue}"/>.</returns>
+        public Task<HttpResponseMessageAssertor<TValue>> RunAsync(Func<TAgent, Task<HttpResponseMessage>> func) => base.RunAsync<TAgent, TValue>(func);
     }
 }

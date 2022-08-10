@@ -11,20 +11,7 @@ namespace UnitTestEx
     /// </summary>
     public static class ExtensionMethods
     {
-        /// <summary>
-        /// Removes all items from the <see cref="IServiceCollection"/> for the specified <typeparamref name="TService"/>.
-        /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
-        /// <param name="services">The <see cref="IServiceCollection"/>.</param>
-        /// <returns><c>true</c> if item was successfully removed; otherwise, <c>false</c>. Also returns <c>false</c> if item was not found.</returns>
-        public static bool Remove<TService>(this IServiceCollection services) where TService : class
-        {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(TService));
-            return descriptor != null && services.Remove(descriptor);
-        }
+        #region Singleton
 
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service <paramref name="instance"/>. 
@@ -79,6 +66,10 @@ namespace UnitTestEx
             return services.AddSingleton<TService, TImplementation>();
         }
 
+        #endregion
+
+        #region Scoped
+
         /// <summary>
         /// Replaces (where existing), or adds, a scoped service using an <paramref name="implementationFactory"/>.
         /// </summary>
@@ -123,6 +114,10 @@ namespace UnitTestEx
             return services.AddScoped<TService, TImplementation>();
         }
 
+        #endregion
+
+        #region Transient
+
         /// <summary>
         /// Replaces (where existing), or adds, a transient service using an <paramref name="implementationFactory"/>.
         /// </summary>
@@ -166,6 +161,8 @@ namespace UnitTestEx
             services.Remove<TService>();
             return services.AddTransient<TService, TImplementation>();
         }
+
+        #endregion
 
         /// <summary>
         /// Create (or get) an instance of <see cref="Type"/> <typeparamref name="T"/> using Dependency Injection (DI) using the <paramref name="serviceProvider"/>.

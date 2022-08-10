@@ -1,7 +1,10 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx;
+using CoreEx.Entities;
 using CoreEx.Json;
 using System;
+using System.Linq;
 using UnitTestEx.Abstractions;
 
 namespace UnitTestEx.Assertors
@@ -60,9 +63,54 @@ namespace UnitTestEx.Assertors
         public TSelf AssertException<TException>(string? expectedMessage = null) where TException : Exception
         {
             AssertException();
-            Implementor.AssertIsType<TException>(Exception!, $"Expected Exception type '{typeof(TException).Name}' not equal to actual '{Exception!.GetType().Name}'.");
+            if (Exception!.GetType() != typeof(TException))
+                Implementor.AssertFail($"Expected Exception type '{typeof(TException).Name}' not equal to actual '{Exception!.GetType().Name}'.");
+
             if (expectedMessage != null && expectedMessage != Exception.Message)
                 Implementor.AssertAreEqual(expectedMessage, Exception.Message, $"Expected Exception message '{expectedMessage}' not equal to actual '{Exception.Message}'.");
+
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Asserts that a <see cref="ValidationException"/> was thrown during execution with the specified <see cref="MessageType.Error"/> messages.
+        /// </summary>
+        /// <param name="messages">The expected <see cref="MessageType.Error"/> message texts.</param>
+        /// <returns>The current instance to support fluent-style method-chaining.</returns>
+        public virtual TSelf AssertErrors(params string[] messages)
+        {
+            var mic = new MessageItemCollection();
+            messages.ForEach(m => mic.AddError(m));
+            return AssertErrors(mic);
+        }
+
+        /// <summary>
+        /// Asserts that a <see cref="ValidationException"/> was thrown during execution with the specified <paramref name="errors"/>.
+        /// </summary>
+        /// <param name="errors">The expected <see cref="ApiError"/> collection.</param>
+        /// <returns>The current instance to support fluent-style method-chaining.</returns>
+        public virtual TSelf AssertErrors(params ApiError[] errors)
+        {
+            var mic = new MessageItemCollection();
+            errors.ForEach(e => mic.Add(MessageItem.CreateErrorMessage(e.Field, e.Message)));
+            return AssertErrors(mic);
+        }
+
+        /// <summary>
+        /// Asserts that a <see cref="ValidationException"/> was thrown during execution with the specified <paramref name="messages"/>.
+        /// </summary>
+        /// <param name="messages">The expected <see cref="MessageItemCollection"/> collection.</param>
+        /// <returns>The current instance to support fluent-style method-chaining.</returns>
+        public virtual TSelf AssertErrors(MessageItemCollection messages)
+        {
+            AssertException();
+            if (Exception is ValidationException vex)
+            {
+                if (messages != null && !Expectations.ExpectationsExtensions.TryAreMessagesMatched(messages, vex.Messages, out var errorMessage))
+                    Implementor.AssertFail(errorMessage);
+            }
+            else
+                Implementor.AssertFail($"Expected Exception type '{typeof(ValidationException).Name}' not equal to actual '{Exception!.GetType().Name}'.");
 
             return (TSelf)this;
         }
