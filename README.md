@@ -80,26 +80,6 @@ test.ReplaceHttpClientFactory(mcf)
 
 <br/>
 
-## Generic Type and IValidator
-
-To test a component that relies on Dependency Injection (DI) directly without the runtime expense of instantiating the underlying host (e.g. ASP.NET Core) the following exists:
-
-- `GenericTester` - enables any `Type` to be tested.
-- `ValidationTester` - inherits the `GenericTester` with a focus on `IValidator` testing.
-
-The following is an [example](./tests/UnitTestEx.NUnit.Test/Other/ValidationTest.cs).
-
-``` csharp
-using var test = ValidationTester.Create();
-test.ReplaceScoped<IValidator<Person>, PersonValidator>()
-    .Run<IValidator<Person>, Person>(new Person())
-    .AssertErrors(
-        "Identifier is required.",
-        "First Name is required.");
-```
-
-<br/>
-
 ### Service Bus Emulation
 
 To enable in-process integration testing interacting with Azure Service Bus the [`ServiceBusTriggerTester.Emulate`](./src/UnitTestEx/Functions/ServiceBusTriggerTester.cs) method exposes the [`ServiceBusEmulatorTester`](./src/UnitTestEx/Functions/ServiceBusEmulatorTester.cs) type. This integrates directly with [Azure Service Bus](https://azure.microsoft.com/en-us/services/service-bus/) using the underlying functions configuration to determine connection string, etc. The `ServiceBus` _Queue_ or _Topic_ can be cleared (`Clear`), have test messages sent (`Send`), and then executed (`Run`).
@@ -132,6 +112,26 @@ test.ReplaceHttpClientFactory(mcf)
     .Type<ServiceBusFunction>()
     .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
     .AssertSuccess();
+```
+
+<br/>
+
+## Generic Type and IValidator
+
+To test a component that relies on Dependency Injection (DI) directly without the runtime expense of instantiating the underlying host (e.g. ASP.NET Core) the following exists:
+
+- `GenericTester` - enables any `Type` to be tested.
+- `ValidationTester` - inherits the `GenericTester` with a focus on `IValidator` testing.
+
+The following is an [example](./tests/UnitTestEx.NUnit.Test/Other/ValidationTest.cs).
+
+``` csharp
+using var test = ValidationTester.Create();
+test.ReplaceScoped<IValidator<Person>, PersonValidator>()
+    .Run<IValidator<Person>, Person>(new Person())
+    .AssertErrors(
+        "Identifier is required.",
+        "First Name is required.");
 ```
 
 <br/>
