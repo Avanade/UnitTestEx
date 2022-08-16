@@ -1,8 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using System;
-using UnitTestEx.Abstractions;
-
 namespace UnitTestEx.Expectations
 {
     /// <summary>

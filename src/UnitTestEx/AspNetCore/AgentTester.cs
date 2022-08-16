@@ -34,6 +34,13 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <param name="func">The function to execution.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public HttpResponseMessageAssertor<TValue> Run<TValue>(Func<TAgent, Task<HttpResult<TValue>>> func) => base.RunAsync<TAgent, TValue>(func).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Runs the test by executing a <typeparamref name="TAgent"/> method.
+        /// </summary>
+        /// <param name="func">The function to execution.</param>
+        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
         public HttpResponseMessageAssertor Run(Func<TAgent, Task<HttpResponseMessage>> func) => base.RunAsync(func).GetAwaiter().GetResult();
 
         /// <summary>
@@ -48,7 +55,13 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <param name="func">The function to execution.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public Task<HttpResponseMessageAssertor> RunAsync(Func<TAgent, Task<HttpResponseMessage>> func) => base.RunAsync(func);
+        public Task<HttpResponseMessageAssertor<TValue>> RunAsync<TValue>(Func<TAgent, Task<HttpResult<TValue>>> func) => base.RunAsync(func);
 
+        /// <summary>
+        /// Runs the test by executing a <typeparamref name="TAgent"/> method.
+        /// </summary>
+        /// <param name="func">The function to execution.</param>
+        /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public Task<HttpResponseMessageAssertor> RunAsync(Func<TAgent, Task<HttpResponseMessage>> func) => base.RunAsync(func);
     }
 }

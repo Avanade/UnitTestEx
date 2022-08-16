@@ -17,22 +17,6 @@ namespace UnitTestEx.Abstractions
         public abstract void WriteLine(string? message);
 
         /// <summary>
-        /// Asserts whether the <paramref name="actual"/> <see cref="Type"/> is the same as the <typeparamref name="TExpectedType"/>.
-        /// </summary>
-        /// <typeparam name="TExpectedType">The expected <see cref="Type"/>.</typeparam>
-        /// <param name="actual">The actual value.</param>
-        /// <param name="message">The optional failure message.</param>
-        public abstract void AssertIsType<TExpectedType>(object actual, string? message = null);
-
-        /// <summary>
-        /// Asserts whether the <paramref name="actual"/> <see cref="Type"/> is the same as the <paramref name="expectedType"/>.
-        /// </summary>
-        /// <param name="expectedType">The expected <see cref="Type"/>.</param>
-        /// <param name="actual">The actual value.</param>
-        /// <param name="message">The optional failure message.</param>
-        public abstract void AssertIsType(Type expectedType, object actual, string? message = null);
-
-        /// <summary>
         /// Asserts whether the <paramref name="actual"/> and <paramref name="expected"/> value are equal.
         /// </summary>
         /// <typeparam name="T">The value <see cref="Type"/>.</typeparam>

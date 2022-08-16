@@ -340,14 +340,16 @@ namespace UnitTestEx.Functions
             {
                 sw.Stop();
 
-                logger.LogWarning($"Exception bubbled out of the Function execution; this may be the desired the behavior: {ex.Message}");
+                var tex = ex is AggregateException aex ? aex.InnerException ?? ex : ex;
+
+                logger.LogWarning($"Exception bubbled out of the Function execution; this may be the desired the behavior: {tex.Message}");
 
                 // Where unhandled then automatically abandon.
                 await sbma.AbandonMessageAsync(sbsrr.Message).ConfigureAwait(false);
 
                 sbsrr.SetUsingActionsWrapper(sbma);
-                LogOutput(ex, sw.Elapsed.TotalMilliseconds, sbsrr, autoCompleteOverride, null);
-                return new ServiceBusEmulatorRunAssertor(sbsrr, ex, Implementor, JsonSerializer);
+                LogOutput(tex, sw.Elapsed.TotalMilliseconds, sbsrr, autoCompleteOverride, null);
+                return new ServiceBusEmulatorRunAssertor(sbsrr, tex, Implementor, JsonSerializer);
             }
         }
 

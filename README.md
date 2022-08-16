@@ -80,6 +80,26 @@ test.ReplaceHttpClientFactory(mcf)
 
 <br/>
 
+## Generic Type and IValidator
+
+To test a component that relies on Dependency Injection (DI) directly without the runtime expense of instantiating the underlying host (e.g. ASP.NET Core) the following exists:
+
+- `GenericTester` - enables any `Type` to be tested.
+- `ValidationTester` - inherits the `GenericTester` with a focus on `IValidator` testing.
+
+The following is an [example](./tests/UnitTestEx.NUnit.Test/Other/ValidationTest.cs).
+
+``` csharp
+using var test = ValidationTester.Create();
+test.ReplaceScoped<IValidator<Person>, PersonValidator>()
+    .Run<IValidator<Person>, Person>(new Person())
+    .AssertErrors(
+        "Identifier is required.",
+        "First Name is required.");
+```
+
+<br/>
+
 ### Service Bus Emulation
 
 To enable in-process integration testing interacting with Azure Service Bus the [`ServiceBusTriggerTester.Emulate`](./src/UnitTestEx/Functions/ServiceBusTriggerTester.cs) method exposes the [`ServiceBusEmulatorTester`](./src/UnitTestEx/Functions/ServiceBusEmulatorTester.cs) type. This integrates directly with [Azure Service Bus](https://azure.microsoft.com/en-us/services/service-bus/) using the underlying functions configuration to determine connection string, etc. The `ServiceBus` _Queue_ or _Topic_ can be cleared (`Clear`), have test messages sent (`Send`), and then executed (`Run`).
@@ -183,7 +203,39 @@ mc.Request(HttpMethod.Get, "products/kjl").Respond.WithSequence(s =>
 
 <br/>
 
-### appsettings.unittest.json
+## Expectations
+
+By default _UnitTestEx_ provides out-of-the-box `Assert*` capabilities that are applied after execution to verify the test results. However, by adding the `UnitTestEx.Expectations` namespace in a test additional `Expect*` capabilities will be enabled (where applicable). These allow expectations to be defined prior to the execution which are automatically asserted on execution. 
+
+The following is an [example](./tests/UnitTestEx.NUnit.Test/PersonControllerTest.cs).
+
+``` csharp
+using var test = ApiTester.Create<Startup>();
+test.Controller<PersonController>()
+    .ExpectStatusCode(System.Net.HttpStatusCode.BadRequest)
+    .ExpectErrors(
+        "First name is requiredx.",
+        "Last name is required.")
+    .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }));
+```
+
+These also offer more tightly coupled `CoreEx` usage test verification scenarios. The following is another [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs) verifying event publishing.
+
+``` csharp
+using var test = ApiTester.Create<Startup>();
+test.ReplaceHttpClientFactory(mcf)
+    .UseExpectedEvents()
+    .Controller<ProductController>()
+    .ExpectDestinationEvent("test-queue", "/test/product/*", "test.product.*z", "*")
+    .ExpectDestinationEvent("test-queue2", "/test/*/xyz", "test.*", "*")
+    .Run(c => c.Get("xyz"))
+    .AssertOK()
+    .Assert(new { id = "Xyz", description = "Xtra yellow elephant" });
+```
+
+<br/>
+
+## appsettings.unittest.json
 
 _UnitTestEx_ supports the addition of a `appsettings.unittest.json` within the test project that will get loaded automatically when executing tests. This enables settings to be added or modified specifically for the unit testing external to the referenced projects being tested.
 

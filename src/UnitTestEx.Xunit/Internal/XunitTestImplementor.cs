@@ -35,12 +35,6 @@ namespace UnitTestEx.Xunit.Internal
         public override void AssertAreEqual<T>(T? expected, T? actual, string? message = null) where T : default => Assert.Equal(expected, actual);
 
         /// <inheritdoc/>
-        public override void AssertIsType<TExpectedType>(object actual, string? message = null) => Assert.IsAssignableFrom<TExpectedType>(actual);
-
-        /// <inheritdoc/>
-        public override void AssertIsType(Type expectedType, object actual, string? message = null) => Assert.IsAssignableFrom(expectedType, actual);
-
-        /// <inheritdoc/>
         public override void AssertInconclusive(string? message) => AssertFail($"Inconclusive: {message}");
 
         /// <inheritdoc/>

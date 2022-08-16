@@ -2,6 +2,14 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.25
+- *Fixed:* Renamed `Expect` extensions methods to match convention consistently.
+- *Enhancement:* Added `SystemExtensionMethods` class to enable the likes of `int.ToGuid()` for setting test-oriented `Guid` values.
+- *Fixed:* `ApiTester` updated such that `appsettings.unittest.json` is optional.
+- *Enhancement:* Added `ValidationTester` to support testing of an `IValidator` directly.
+- *Enhancement:* Added `GenericTester` to support testing of any generic code directly.
+- *Fixed:* Handle `AggregateException` by using its `InnerException` as the `Exception`.
+
 ## v1.0.24
 - *Enhancement:* Updated the `ControllerTester` removing the HTTP request capabilies and moving into new `HttpTester`; this creates a more logical split as the latter needs no knowledge of the `Controller`. This new tester is available via `ApiTester.Http().Run(...)`.
 - *Enhancement:* Added new `UnitTextEx.Expectations` namespace; when added will enable `Expect*` and `Ignore*` pre-execution assertions, that are then executed post `Run`/`RunAsync`. Some testers now also support the specification of a `TResponse` generic `Type` to enable further response value-related expectations.

@@ -296,7 +296,6 @@ namespace UnitTestEx.Mocking
                 _mediaType = MediaTypeNames.Application.Json;
                 _membersToIgnore = pathsToIgnore;
                 return new MockHttpClientRequestBody(Rule);
-
             }
             catch (Exception ex)
             {

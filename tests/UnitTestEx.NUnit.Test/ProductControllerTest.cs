@@ -62,7 +62,7 @@ namespace UnitTestEx.NUnit.Test
             test.ReplaceHttpClientFactory(mcf)
                 .UseExpectedEvents()
                 .Controller<ProductController>()
-                .ExpectDestinationEvent("test-queue", "/test/product/*", "test.product.*c", "*")
+                .ExpectDestinationEvent("test-queue", "/test/product/*", "test.product.*z", "*")
                 .ExpectDestinationEvent("test-queue2", "/test/*/xyz", "test.*", "*")
                 .Run(c => c.Get("xyz"))
                 .AssertOK()

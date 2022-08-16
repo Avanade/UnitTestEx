@@ -129,6 +129,9 @@ namespace UnitTestEx.Expectations
                 Implementor.AssertFail($"Expected event(s) to be published to destination(s): {missing}; none were found.");
         }
 
+        /// <summary>
+        /// Gets the event from the event storage.
+        /// </summary>
         private List<EventData> GetEvents(string? name) => Tester.SharedState.EventStorage.TryGetValue(name ?? ExpectedEventPublisher.NullKeyName, out var queue) ? queue.ToList() : new();
 
         /// <summary>
@@ -150,16 +153,16 @@ namespace UnitTestEx.Expectations
 
                 // Assert source, subject, action and type using wildcards where specified.
                 if (expectedEvents[i].Source != null && !WildcardMatch(expectedEvents[i].Source!, act.Source?.ToString(), '/'))
-                    Implementor.AssertFail($"Destination {destination}: Expected Event[{i}].{nameof(EventDataBase.Source)} '{expectedEvents[i].Source}' is not equal to actual '{act.Source}'.");
+                    Implementor.AssertFail($"Destination {destination}: Expected Event[{i}].{nameof(EventDataBase.Source)} '{expectedEvents[i].Source}' does not match actual '{act.Source}'.");
 
                 if (wcexp.Subject != null && !WildcardMatch(wcexp.Subject!, act.Subject?.ToString(), Tester.SetUp.ExpectedEventsEventDataFormatter.SubjectSeparatorCharacter))
-                    Implementor.AssertFail($"Destination {destination}: Expected Event[{i}].{nameof(EventDataBase.Subject)} '{wcexp.Subject}' is not equal to actual '{act.Subject}'.");
+                    Implementor.AssertFail($"Destination {destination}: Expected Event[{i}].{nameof(EventDataBase.Subject)} '{wcexp.Subject}' does not match actual '{act.Subject}'.");
 
                 if (wcexp.Action != null && !WildcardMatch(wcexp.Action!, act.Action?.ToString(), char.MinValue))
-                    Implementor.AssertFail($"Destination {destination}: Expected Event[{i}].{nameof(EventDataBase.Action)} '{wcexp.Action}' is not equal to actual '{act.Action}'.");
+                    Implementor.AssertFail($"Destination {destination}: Expected Event[{i}].{nameof(EventDataBase.Action)} '{wcexp.Action}' does not match actual '{act.Action}'.");
 
                 if (wcexp.Type != null && !WildcardMatch(wcexp.Type!, act.Type?.ToString(), Tester.SetUp.ExpectedEventsEventDataFormatter.TypeSeparatorCharacter))
-                    Implementor.AssertFail($"Destination {destination}: Expected Event[{i}].{nameof(EventDataBase.Type)} '{wcexp.Type}' is not equal to actual '{act.Type}'.");
+                    Implementor.AssertFail($"Destination {destination}: Expected Event[{i}].{nameof(EventDataBase.Type)} '{wcexp.Type}' does not match actual '{act.Type}'.");
 
                 // Where there is *no* expected eventdata then skip comparison.
                 if (exp == null)
@@ -168,6 +171,7 @@ namespace UnitTestEx.Expectations
                 // Compare the events.
                 var list = new List<string>(Tester.SetUp.ExpectedEventsMembersToIgnore);
                 list.AddRange(new string[] { nameof(EventDataBase.Source), nameof(EventDataBase.Subject), nameof(EventDataBase.Action), nameof(EventDataBase.Type) });
+                list.AddRange(expectedEvents[i].MembersToIgnore);
 
                 var cr = ObjectComparer.Compare(exp, act, list.ToArray());
                 if (!cr.AreEqual)
@@ -184,7 +188,10 @@ namespace UnitTestEx.Expectations
         /// <returns><c>true</c> where there is a wildcard match; otherwise, <c>false</c>.</returns>
         public bool WildcardMatch(string expected, string? actual, char separatorCharacter)
         {
-            var eparts = (expected ?? throw new ArgumentNullException(nameof(expected))).Split(separatorCharacter);
+            if ((expected ?? throw new ArgumentNullException(nameof(expected))) == "*")
+                return true;
+
+            var eparts = expected.Split(separatorCharacter);
             if (actual == null)
                 return false;
 
@@ -196,7 +203,7 @@ namespace UnitTestEx.Expectations
                 if (i >= aparts.Length)
                     return false;
 
-                if (new string[] { aparts[i] }.WhereWildcard(x => x, aparts[i], ignoreCase: false, wildcard: Tester.SetUp.ExpectedEventsWildcard).FirstOrDefault() == null)
+                if (new string[] { aparts[i] }.WhereWildcard(x => x, eparts[i], ignoreCase: false, wildcard: Tester.SetUp.ExpectedEventsWildcard).FirstOrDefault() == null)
                     return false;
             }
 

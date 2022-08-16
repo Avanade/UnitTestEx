@@ -1,4 +1,5 @@
-﻿using CoreEx.Entities;
+﻿using CoreEx;
+using CoreEx.Entities;
 using CoreEx.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -55,6 +56,9 @@ namespace UnitTestEx.Api.Controllers
         [HttpPost("{id}")]
         public IActionResult Update(int id, [FromBody] Person person)
         {
+            if (id == 88)
+                return new ValidationException("No can do eighty-eight.").ToResult();
+
             var msd = new ModelStateDictionary();
 
             if (string.IsNullOrEmpty(person.FirstName))

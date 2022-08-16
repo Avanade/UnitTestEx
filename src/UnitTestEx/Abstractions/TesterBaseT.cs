@@ -97,7 +97,7 @@ namespace UnitTestEx.Abstractions
         /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
         /// <param name="mock">The <see cref="Mock{T}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf MockSingletonService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceSingleton(_ => mock.Object));
+        public TSelf MockSingleton<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceSingleton(_ => mock.Object));
 
         /// <summary>
         /// Replaces (where existing), or adds, a scoped service with a mock object.
@@ -105,7 +105,7 @@ namespace UnitTestEx.Abstractions
         /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
         /// <param name="mock">The <see cref="Mock{T}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf MockScopedService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceScoped(_ => mock.Object));
+        public TSelf MockScoped<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceScoped(_ => mock.Object));
 
         /// <summary>
         /// Replaces (where existing), or adds, a transient service with a mock object.
@@ -113,7 +113,7 @@ namespace UnitTestEx.Abstractions
         /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
         /// <param name="mock">The <see cref="Mock{T}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf MockTransientService<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceTransient(_ => mock.Object));
+        public TSelf MockTransient<TService>(Mock<TService> mock) where TService : class => ConfigureServices(sc => sc.ReplaceTransient(_ => mock.Object));
 
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service <paramref name="instance"/>. 

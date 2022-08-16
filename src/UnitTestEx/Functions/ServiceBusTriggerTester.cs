@@ -72,7 +72,7 @@ namespace UnitTestEx.Functions
                 }
             }).ConfigureAwait(false);
 
-            await Task.Delay(0).ConfigureAwait(false);
+            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
             LogOutput(ex, ms, sbv);
 
             _exceptionSuccessExpectations.Assert(ex);

@@ -61,6 +61,10 @@ namespace UnitTestEx.Hosting
                 var f = ServiceScope.ServiceProvider.CreateInstance<T>();
                 await (function ?? throw new ArgumentNullException(nameof(function)))(f).ConfigureAwait(false);
             }
+            catch (AggregateException aex)
+            {
+                ex = aex.InnerException ?? aex;
+            }
             catch (Exception uex)
             {
                 ex = uex;
@@ -70,7 +74,7 @@ namespace UnitTestEx.Hosting
                 sw.Stop();
             }
 
-            await Task.Delay(0).ConfigureAwait(false);
+            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
             LogResult(ex, sw.Elapsed.TotalMilliseconds);
             LogTrailer();
             return new VoidAssertor(ex, Implementor, JsonSerializer);
@@ -101,6 +105,10 @@ namespace UnitTestEx.Hosting
                 var f = ServiceScope.ServiceProvider.CreateInstance<T>();
                 result = await (function ?? throw new ArgumentNullException(nameof(function)))(f).ConfigureAwait(false);
             }
+            catch (AggregateException aex)
+            {
+                ex = aex.InnerException ?? aex;
+            }
             catch (Exception uex)
             {
                 ex = uex;
@@ -110,7 +118,7 @@ namespace UnitTestEx.Hosting
                 sw.Stop();
             }
 
-            await Task.Delay(0).ConfigureAwait(false);
+            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
             LogResult(ex, sw.Elapsed.TotalMilliseconds);
 
             if (ex == null)

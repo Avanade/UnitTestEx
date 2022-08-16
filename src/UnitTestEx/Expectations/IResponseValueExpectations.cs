@@ -10,8 +10,8 @@ namespace UnitTestEx.Expectations
     public interface IResponseValueExpectations<TValue, TSelf> where TSelf : IResponseValueExpectations<TValue, TSelf>
     {
         /// <summary>
-        /// Gets the <see cref="Expectations.ResponseValueExpectations{TValue}"/>.
+        /// Gets the <see cref="ResponseValueExpectations{TContext, TValue}"/>.
         /// </summary>
-        ResponseValueExpectations<TValue> ResponseValueExpectations { get; }
+        ResponseValueExpectations<TSelf, TValue> ResponseValueExpectations { get; }
     }
 }

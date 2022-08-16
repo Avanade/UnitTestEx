@@ -28,7 +28,7 @@ namespace UnitTestEx.Assertors
         internal HttpResponseMessageAssertor(HttpResponseMessage response, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(response, implementor, jsonSerializer) { }
 
         /// <summary>
-        /// Asserts that the <see cref="HttpResponseMessageAssertorBase{TSelf}.Response"/> <see cref="HttpResponseMessage.Headers"/> <see cref="HeaderNames.Location"/> matches the <paramref name="expectedUri"/> result.
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> <see cref="HttpResponseMessage.Headers"/> <see cref="HeaderNames.Location"/> matches the <paramref name="expectedUri"/> result.
         /// </summary>
         /// <param name="expectedUri">The expected <see cref="Uri"/> function.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
@@ -39,7 +39,7 @@ namespace UnitTestEx.Assertors
         }
 
         /// <summary>
-        /// Asserts that the <see cref="HttpResponseMessageAssertorBase{TSelf}.Response"/> matches the <paramref name="expectedValue"/>.
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> matches the <paramref name="expectedValue"/>.
         /// </summary>
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
         /// <param name="expectedValue">The expected value.</param>
@@ -76,7 +76,7 @@ namespace UnitTestEx.Assertors
         }
 
         /// <summary>
-        /// Asserts that the <see cref="HttpResponseMessageAssertorBase{TSelf}.Response"/> matches the JSON serialized value.
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> matches the JSON serialized value.
         /// </summary>
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
@@ -85,7 +85,7 @@ namespace UnitTestEx.Assertors
         public HttpResponseMessageAssertor AssertFromJsonResource<TValue>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TValue>(resourceName, Assembly.GetCallingAssembly(), JsonSerializer), membersToIgnore);
 
         /// <summary>
-        /// Asserts that the <see cref="HttpResponseMessageAssertorBase{TSelf}.Response"/> matches the JSON serialized value.
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> matches the JSON serialized value.
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> to infer the <see cref="Assembly"/> that contains the embedded resource.</typeparam>
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
@@ -93,12 +93,5 @@ namespace UnitTestEx.Assertors
         /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/> to support fluent-style method-chaining.</returns>
         public HttpResponseMessageAssertor AssertFromJsonResource<TAssembly, TValue>(string resourceName, params string[] membersToIgnore) => Assert(Resource.GetJsonValue<TValue>(resourceName, typeof(TAssembly).Assembly, JsonSerializer), membersToIgnore);
-
-        /// <summary>
-        /// Gets the response content as the deserialized JSON value.
-        /// </summary>
-        /// <typeparam name="TValue">The resulting value <see cref="Type"/>.</typeparam>
-        /// <returns>The result value.</returns>
-        public new TValue? GetValue<TValue>() => base.GetValue<TValue>();
     }
 }

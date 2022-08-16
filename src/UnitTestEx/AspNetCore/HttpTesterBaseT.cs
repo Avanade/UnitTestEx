@@ -13,8 +13,9 @@ namespace UnitTestEx.AspNetCore
     /// Provides the base HTTP testing capabilities.
     /// </summary>
     /// <typeparam name="TSelf">The <see cref="Type"/> representing itself.</typeparam>
-    public abstract class HttpTesterBase<TSelf> : HttpTesterBase, IHttpResponseExpectations<TSelf>, IEventExpectations<TSelf> where TSelf : HttpTesterBase<TSelf>
+    public abstract class HttpTesterBase<TSelf> : HttpTesterBase, IExceptionSuccessExpectations<TSelf>, IHttpResponseExpectations<TSelf>, IEventExpectations<TSelf> where TSelf : HttpTesterBase<TSelf>
     {
+        private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
         private readonly HttpResponseExpectations _httpResponseExpectations;
         private readonly EventExpectations _eventExpectations;
 
@@ -25,9 +26,13 @@ namespace UnitTestEx.AspNetCore
         /// <param name="testServer">The <see cref="TestServer"/>.</param>
         internal HttpTesterBase(TesterBase owner, TestServer testServer) : base(owner, testServer)
         {
+            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Owner);
             _httpResponseExpectations = new HttpResponseExpectations(Owner);
             _eventExpectations = new EventExpectations(Owner);
         }
+
+        /// <inheritdoc/>
+        ExceptionSuccessExpectations IExceptionSuccessExpectations<TSelf>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
 
         /// <inheritdoc/>
         HttpResponseExpectations IHttpResponseExpectations<TSelf>.HttpResponseExpectations => _httpResponseExpectations;
@@ -41,7 +46,22 @@ namespace UnitTestEx.AspNetCore
         /// <param name="res">The <see cref="HttpResponseMessage"/>/</param>
         protected override void AssertExpectations(HttpResponseMessage res)
         {
-            _httpResponseExpectations.Assert(HttpResult.CreateAsync(res).GetAwaiter().GetResult());
+            var hr = HttpResult.CreateAsync(res).GetAwaiter().GetResult();
+            try 
+            {
+                hr.ThrowOnError(true, true);
+                _exceptionSuccessExpectations.Assert(null);
+            }
+            catch (AggregateException aex)
+            {
+                _exceptionSuccessExpectations.Assert(aex.InnerException ?? aex);
+            }
+            catch (Exception ex)
+            {
+                _exceptionSuccessExpectations.Assert(ex);
+            }
+
+            _httpResponseExpectations.Assert(hr);
             _eventExpectations.Assert();
         }
     }
