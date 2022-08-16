@@ -118,7 +118,7 @@ namespace UnitTestEx.Expectations
             => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectPrimaryKey(primaryKey));
 
         /// <summary>
-        /// Expects the <see cref="IETag"/> to be implemaned and have a non-null value and different to <paramref name="previousETag"/> where specified.
+        /// Expects the <see cref="IETag"/> to be implemented and have a non-null value and different to <paramref name="previousETag"/> where specified.
         /// </summary>
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
         /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>

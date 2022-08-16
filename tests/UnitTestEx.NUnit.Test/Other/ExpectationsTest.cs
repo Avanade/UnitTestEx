@@ -168,10 +168,10 @@ namespace UnitTestEx.NUnit.Test.Other
             Assert.AreEqual("Expected IETag.ETag to have a non-null value.", ex.Message);
 
             e.SetExpectETag("A");
-            e.Assert(new Entity<string> { ETag = "A" });
+            e.Assert(new Entity<string> { ETag = "B" });
 
-            ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string> { ETag = "B" }));
-            Assert.IsTrue(ex.Message.Contains("Expected IETag.ETag value of 'A'; actual 'B'."), ex.Message);
+            ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string> { ETag = "A" }));
+            Assert.IsTrue(ex.Message.Contains("Expected IETag.ETag value of 'A' to be different to actual."), ex.Message);
         }
 
         [Test]

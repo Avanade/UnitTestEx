@@ -175,8 +175,8 @@ namespace UnitTestEx.Expectations
                 if (et == null || et!.ETag == null)
                     Tester.Implementor.AssertFail($"Expected {nameof(IETag)}.{nameof(IETag.ETag)} to have a non-null value.");
 
-                if (_expectedPreviousETag != null)
-                    Tester.Implementor.AssertAreEqual(_expectedPreviousETag, et!.ETag, $"Expected {nameof(IETag)}.{nameof(IETag.ETag)} value of '{_expectedPreviousETag}'; actual '{et!.ETag}'.");
+                if (_expectedPreviousETag != null && _expectedPreviousETag == et!.ETag)
+                    Tester.Implementor.AssertFail($"Expected {nameof(IETag)}.{nameof(IETag.ETag)} value of '{_expectedPreviousETag}' to be different to actual.");
             }
 
             if (_expectedChangeLog != null)
