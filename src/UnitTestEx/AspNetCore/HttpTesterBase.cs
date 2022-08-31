@@ -33,6 +33,7 @@ namespace UnitTestEx.AspNetCore
         {
             Owner = owner;
             TestServer = testServer;
+            UserName = Owner.UserName;
         }
 
         /// <summary>
@@ -54,6 +55,11 @@ namespace UnitTestEx.AspNetCore
         /// Gets the <see cref="IJsonSerializer"/>.
         /// </summary>
         public IJsonSerializer JsonSerializer => Owner.JsonSerializer;
+
+        /// <summary>
+        /// Gets or sets the test user name (defaults to <see cref="TesterBase.UserName"/>).
+        /// </summary>
+        protected string? UserName { get; set; }
 
         /// <summary>
         /// Sends with no content.
@@ -153,7 +159,7 @@ namespace UnitTestEx.AspNetCore
             sc.AddExecutionContext();
             sc.AddSingleton(JsonSerializer);
             sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(Implementor.CreateLoggerProvider()); });
-            sc.AddSingleton(new HttpClient(new LoggingDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress });
+            sc.AddSingleton(new HttpClient(new HttpDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress });
             sc.AddSingleton(Owner.Configuration);
             sc.AddDefaultSettings();
             sc.AddScoped<TAgent>();
@@ -174,22 +180,25 @@ namespace UnitTestEx.AspNetCore
         /// Creates an <see cref="HttpClient"/> for the <see cref="TestServer"/> that logs the request and response to the test output.
         /// </summary>
         /// <returns>The <see cref="HttpClient"/>.</returns>
-        protected HttpClient CreateHttpClient() => new(new LoggingDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress };
+        protected HttpClient CreateHttpClient() => new(new HttpDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress };
 
-        private class LoggingDelegatingHandler : DelegatingHandler
+        /// <summary>
+        /// Orchestrates the HTTP request send.
+        /// </summary>
+        private class HttpDelegatingHandler : DelegatingHandler
         {
             private readonly HttpTesterBase _httpTester;
 
             /// <summary>
             /// Initialize a new instance of the class.
             /// </summary>
-            public LoggingDelegatingHandler(HttpTesterBase httpTester, HttpMessageHandler innerHandler) : base(innerHandler) => _httpTester = httpTester;
+            public HttpDelegatingHandler(HttpTesterBase httpTester, HttpMessageHandler innerHandler) : base(innerHandler) => _httpTester = httpTester;
 
             /// <inheritdoc/>
             protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 if (_httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync != null)
-                    await _httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync(request, _httpTester.Owner.Username, cancellationToken);
+                    await _httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync(request, _httpTester.UserName, cancellationToken);
 
                 _httpTester.LogRequest(request);
                 var sw = Stopwatch.StartNew();

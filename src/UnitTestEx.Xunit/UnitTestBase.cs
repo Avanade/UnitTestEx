@@ -36,9 +36,8 @@ namespace UnitTestEx.Xunit
         /// Provides the <b>Xunit</b> API testing capability.
         /// </summary>
         /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
         /// <returns>The <see cref="ApiTester{TEntryPoint}"/>.</returns>
-        protected ApiTester<TEntryPoint> CreateApiTester<TEntryPoint>(string? username = null) where TEntryPoint : class => new(Output, username);
+        protected ApiTester<TEntryPoint> CreateApiTester<TEntryPoint>() where TEntryPoint : class => new(Output);
 
         /// <summary>
         /// Provides the <b>Xunit</b> API testing capability.
@@ -47,25 +46,23 @@ namespace UnitTestEx.Xunit
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
         /// <returns>The <see cref="FunctionTester{TEntryPoint}"/>.</returns>
-        protected FunctionTester<TEntryPoint> CreateFunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null, string? username = null)
+        protected FunctionTester<TEntryPoint> CreateFunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null)
             where TEntryPoint : FunctionsStartup, new()
-            => new(Output, includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration, username);
+            => new(Output, includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
 
         /// <summary>
         /// Provides the <b>Xunit</b> <see cref="IValidator"/> testing capability.
         /// </summary>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
+        /// <param name="userName">The user name (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
         /// <returns>The <see cref="ValidationTester"/>.</returns>
-        protected ValidationTester CreateValidationTester(string? username = null) => new(Output, username);
+        protected ValidationTester CreateValidationTester(string? userName = null) => new(Output);
 
         /// <summary>
         /// Provides the <b>Xunit</b> generic testing capability.
         /// </summary>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
         /// <returns>The <see cref="GenericTester"/>.</returns>
-        protected GenericTester CreateGenericTester(string? username = null) => new(Output, username);
+        protected GenericTester CreateGenericTester(string? userName = null) => new(Output);
 
         /// <summary>
         /// Gets the <see cref="Internal.ObjectComparer"/>.

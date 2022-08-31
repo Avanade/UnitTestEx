@@ -30,8 +30,7 @@ namespace UnitTestEx.AspNetCore
         /// Initializes a new instance of the <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="ExecutionContext.Current"/> <see cref="ExecutionContext.Username"/> where configured).</param>
-        protected ApiTesterBase(TestFrameworkImplementor implementor, string? username) : base(implementor, username)
+        protected ApiTesterBase(TestFrameworkImplementor implementor) : base(implementor)
         {
             Logger = implementor.CreateLogger(GetType().Name);
 

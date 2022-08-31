@@ -134,7 +134,7 @@ namespace UnitTestEx.Expectations
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
         /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
-        /// <param name="createdby">The specific <see cref="ChangeLog.CreatedBy"/> value where specified (can include wildcards); otherwise, indicates to check for user running the test (see <see cref="Abstractions.TesterBase.Username"/>).</param>
+        /// <param name="createdby">The specific <see cref="ChangeLog.CreatedBy"/> value where specified (can include wildcards); otherwise, indicates to check for user running the test (see <see cref="Abstractions.TesterBase.UserName"/>).</param>
         /// <param name="createdDateGreaterThan">The <see cref="DateTime"/> in which the <see cref="ChangeLog.CreatedDate"/> should be greater than; where <c>null</c> it will default to <see cref="DateTime.Now"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf ExpectChangeLogCreated<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, string? createdby = null, DateTime? createdDateGreaterThan = null) where TSelf : IResponseValueExpectations<TValue, TSelf>
@@ -146,7 +146,7 @@ namespace UnitTestEx.Expectations
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
         /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
-        /// <param name="updatedBy">The specific <see cref="ChangeLog.CreatedBy"/> value where specified (can include wildcards); otherwise, indicates to check for user running the test (see <see cref="Abstractions.TesterBase.Username"/>).</param>
+        /// <param name="updatedBy">The specific <see cref="ChangeLog.CreatedBy"/> value where specified (can include wildcards); otherwise, indicates to check for user running the test (see <see cref="Abstractions.TesterBase.UserName"/>).</param>
         /// <param name="updatedDateGreaterThan">The <see cref="DateTime"/> in which the <see cref="ChangeLog.CreatedDate"/> should be greater than; where <c>null</c> it will default to <see cref="DateTime.Now"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf ExpectChangeLogUpdated<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, string? updatedBy = null, DateTime? updatedDateGreaterThan = null) where TSelf : IResponseValueExpectations<TValue, TSelf>

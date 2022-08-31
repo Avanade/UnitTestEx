@@ -15,7 +15,6 @@ namespace UnitTestEx.Xunit.Internal
         /// Initializes a new instance of the <see cref="ValidationTester"/> class.
         /// </summary>
         /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
-        internal ValidationTester(ITestOutputHelper output, string? username) : base(new XunitTestImplementor(output), username) { }
+        internal ValidationTester(ITestOutputHelper output) : base(new XunitTestImplementor(output)) { }
     }
 }

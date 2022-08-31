@@ -9,7 +9,7 @@ namespace UnitTestEx.MSTest.Internal
     /// <summary>
     /// Provides the <b>MSTest</b> <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> implementation.
     /// </summary>
-    /// <typeparam name="TEntryPoint"></typeparam>
+    /// <typeparam name="TEntryPoint">The Function startup <see cref="System.Type"/>.</typeparam>
     public class FunctionTester<TEntryPoint> : FunctionTesterBase<TEntryPoint, FunctionTester<TEntryPoint>> where TEntryPoint : FunctionsStartup, new()
     {
         /// <summary>
@@ -18,8 +18,7 @@ namespace UnitTestEx.MSTest.Internal
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
-        internal FunctionTester(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration, string? username) 
-            : base(new MSTestImplementor(), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration, username) { }
+        internal FunctionTester(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) 
+            : base(new MSTestImplementor(), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) { }
     }
 }

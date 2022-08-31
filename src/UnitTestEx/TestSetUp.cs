@@ -75,10 +75,10 @@ namespace UnitTestEx
         public static DefaultSettings GetSettings(string? environmentVariablePrefix = null) => new(GetConfiguration(environmentVariablePrefix));
 
         /// <summary>
-        /// Gets or sets the default username.
+        /// Gets or sets the default user name.
         /// </summary>
         /// <remarks>Defaults to '<c>Anonymous</c>'.</remarks>
-        public string DefaultUsername { get; set; } = "Anonymous";
+        public string DefaultUserName { get; set; } = "Anonymous";
 
         /// <summary>
         /// Defines an <see cref="CoreEx.Entities.IETag.ETag"/> value that <i>should</i> result in a concurrency error.
@@ -128,13 +128,13 @@ namespace UnitTestEx
         /// <summary>
         /// Gets or sets the function that enables the <see cref="HttpRequestMessage"/> to be updated before each send for the <see cref="AspNetCore.ApiTesterBase{TEntryPoint, TSelf}"/>.
         /// </summary>
-        /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBase.Username"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
+        /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBase.UserName"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
         public Func<HttpRequestMessage, string?, CancellationToken, Task>? OnBeforeHttpRequestMessageSendAsync { get; set; }
 
         /// <summary>
         /// Gets or sets the function that enables the <see cref="HttpRequestMessage"/> to be updated before each send for the <see cref="Functions.HttpTriggerTester{TFunction}"/>.
         /// </summary>
-        /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBase.Username"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
+        /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBase.UserName"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
         public Func<HttpRequest, string?, CancellationToken, Task>? OnBeforeHttpRequestSendAsync { get; set; }
 
         /// <summary>

@@ -12,8 +12,7 @@ namespace UnitTestEx.MSTest
         /// <summary>
         /// Creates a new instance of the <see cref="ValidationTester"/> class.
         /// </summary>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
         /// <returns>The <see cref="ValidationTester"/>.</returns>
-        public static Internal.ValidationTester Create(string? username = null) => new(username);
+        public static Internal.ValidationTester Create() => new();
     }
 }

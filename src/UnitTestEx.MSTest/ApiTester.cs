@@ -15,7 +15,6 @@ namespace UnitTestEx.MSTest
         /// </summary>
         /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="ApiTester{TEntryPoint}"/>.</returns>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
-        public static ApiTester<TEntryPoint> Create<TEntryPoint>(string? username = null) where TEntryPoint : class => new(username);
+        public static ApiTester<TEntryPoint> Create<TEntryPoint>() where TEntryPoint : class => new();
     }
 }

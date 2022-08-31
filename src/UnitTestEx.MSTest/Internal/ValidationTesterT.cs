@@ -13,7 +13,6 @@ namespace UnitTestEx.MSTest.Internal
         /// <summary>
         /// Initializes a new instance of the <see cref="ValidationTester"/> class.
         /// </summary>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
-        internal ValidationTester(string? username) : base(new MSTestImplementor(), username) { }
+        internal ValidationTester() : base(new MSTestImplementor()) { }
     }
 }

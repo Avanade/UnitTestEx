@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.26
+- *Enhancement:* Moved `username` from all constructors to `UseUser(userName)` method. Additional, `WithUser(userName)` added to `ApiTester` to override the user name for a specific test invocation.
+- *Enhancement:* All references to `Username` renamed to `UserName` for consistency with the .NET framework naming convention.
+- *Enhancement:* Added `UserApiTester` to provide a shared `ApiTester` instance per test class; versus instantiating per test method. Be aware that using may result in cross-test contamination.
+
 ## v1.0.25
 - *Fixed:* Renamed `Expect` extensions methods to match convention consistently.
 - *Enhancement:* Added `SystemExtensionMethods` class to enable the likes of `int.ToGuid()` for setting test-oriented `Guid` values.

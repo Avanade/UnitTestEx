@@ -15,7 +15,6 @@ namespace UnitTestEx.NUnit.Internal
         /// <summary>
         /// Initializes a new instance of the <see cref="ApiTester{TEntryPoint}"/> class.
         /// </summary>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
-        internal ApiTester(string? username) : base(new Internal.NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext), username) { }
+        internal ApiTester() : base(new Internal.NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext)) { }
     }
 }

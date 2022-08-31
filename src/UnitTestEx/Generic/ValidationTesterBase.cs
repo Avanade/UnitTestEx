@@ -21,8 +21,7 @@ namespace UnitTestEx.Generic
         /// Initializes a new instance of the <see cref="ValidationTesterBase{TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
-        protected ValidationTesterBase(TestFrameworkImplementor implementor, string? username) : base(implementor, username) { }
+        protected ValidationTesterBase(TestFrameworkImplementor implementor) : base(implementor) { }
 
         /// <summary>
         /// Sets the <see cref="ExecutionContext.OperationType"/> to the specified <paramref name="operationType"/>.

@@ -26,8 +26,7 @@ namespace UnitTestEx.Generic
         /// Initializes a new instance of the <see cref="GenericTesterCore{TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
-        protected GenericTesterCore(TestFrameworkImplementor implementor, string? username) : base(implementor, username)
+        protected GenericTesterCore(TestFrameworkImplementor implementor) : base(implementor)
         {
             Logger = implementor.CreateLogger(GetType().Name);
             _exceptionSuccessExpectations = new(this);
@@ -43,7 +42,7 @@ namespace UnitTestEx.Generic
                 })
                 .ConfigureServices(sc =>
                 {
-                    sc.AddExecutionContext(sp => { var ec = SetUp.ExecutionContextFactory(sp); ec.Username = username ?? SetUp.DefaultUsername; return ec; });
+                    sc.AddExecutionContext(sp => { var ec = SetUp.ExecutionContextFactory(sp); ec.Username = UserName; return ec; });
                     sc.AddSettings<DefaultSettings>();
                     sc.ReplaceScoped(_ => SharedState);
                     SetUp.ConfigureServices?.Invoke(sc);

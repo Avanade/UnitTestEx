@@ -61,8 +61,7 @@ namespace UnitTestEx.Functions
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
-        protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration, string? username) : base(implementor, username)
+        protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) : base(implementor)
         {
             Logger = implementor.CreateLogger(GetType().Name);
 
@@ -319,7 +318,7 @@ namespace UnitTestEx.Functions
             }
 
             if (SetUp.OnBeforeHttpRequestSendAsync != null)
-                SetUp.OnBeforeHttpRequestSendAsync(context.Request, Username, CancellationToken.None).GetAwaiter().GetResult();
+                SetUp.OnBeforeHttpRequestSendAsync(context.Request, UserName, CancellationToken.None).GetAwaiter().GetResult();
 
             return context.Request;
         }

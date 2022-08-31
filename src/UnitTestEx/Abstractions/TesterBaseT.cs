@@ -21,8 +21,7 @@ namespace UnitTestEx.Abstractions
         /// Initializes a new instance of the <see cref="TesterBase{TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="ExecutionContext.Current"/> <see cref="ExecutionContext.Username"/> where configured).</param>
-        protected TesterBase(TestFrameworkImplementor implementor, string? username) : base(implementor, username) { }
+        protected TesterBase(TestFrameworkImplementor implementor) : base(implementor) { }
 
         /// <summary>
         /// Updates (replaces) the <see cref="TesterBase.SetUp"/>.
@@ -39,6 +38,17 @@ namespace UnitTestEx.Abstractions
             if (SetUp.ExpectedEventsEnabled)
                 UseExpectedEvents();
 
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Updates (replaces) the default test <see cref="TesterBase.UserName"/>.
+        /// </summary>
+        /// <param name="userName">The test user name (a <c>null</c> value will reset to <see cref="TesterBase.SetUp"/> <see cref="TestSetUp.DefaultUserName"/>).</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf UseUser(string? userName)
+        {
+            UserName = userName ?? SetUp.DefaultUserName;
             return (TSelf)this;
         }
 

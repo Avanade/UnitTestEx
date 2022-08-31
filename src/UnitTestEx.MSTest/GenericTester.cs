@@ -10,8 +10,7 @@ namespace UnitTestEx.MSTest
         /// <summary>
         /// Creates a new instance of the <see cref="GenericTester"/> class.
         /// </summary>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
         /// <returns>The <see cref="GenericTester"/>.</returns>
-        public static Internal.GenericTester Create(string? username = null) => new(username);
+        public static Internal.GenericTester Create() => new();
     }
 }

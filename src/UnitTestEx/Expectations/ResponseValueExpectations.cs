@@ -91,13 +91,13 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Expects the <see cref="IChangeLog"/> to be implemented for the response with generated values for the underlying <see cref="ChangeLog.CreatedBy"/> and <see cref="ChangeLog.CreatedDate"/> matching the specified values.
         /// </summary>
-        /// <param name="createdby">The specific <see cref="ChangeLog.CreatedBy"/> value where specified (can include wildcards); otherwise, indicates to check for user running the test (see <see cref="Abstractions.TesterBase.Username"/>).</param>
+        /// <param name="createdby">The specific <see cref="ChangeLog.CreatedBy"/> value where specified (can include wildcards); otherwise, indicates to check for user running the test (see <see cref="Abstractions.TesterBase.UserName"/>).</param>
         /// <param name="createdDateGreaterThan">The <see cref="DateTime"/> in which the <see cref="ChangeLog.CreatedDate"/> should be greater than or equal to; where <c>null</c> it will default to <see cref="DateTime.Now"/>.</param>
         public void SetExpectChangeLogCreated(string? createdby = null, DateTime? createdDateGreaterThan = null)
         {
             VerifyImplements<IChangeLog>();
             _expectedChangeLog ??= new ChangeLog();
-            _expectedChangeLog.CreatedBy = createdby ?? Tester.Username;
+            _expectedChangeLog.CreatedBy = createdby ?? Tester.UserName;
             _expectedChangeLog.CreatedDate = Cleaner.Clean(createdDateGreaterThan ?? DateTime.UtcNow.Subtract(new TimeSpan(0, 0, 1)));
             MembersToIgnore.Add(nameof(IChangeLog.ChangeLog));
         }
@@ -105,13 +105,13 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Expects the <see cref="IChangeLog"/> to be implemented for the response with generated values for the underlying <see cref="ChangeLog.UpdatedBy"/> and <see cref="ChangeLog.UpdatedDate"/> matching the specified values.
         /// </summary>
-        /// <param name="updatedBy">The specific <see cref="ChangeLog.CreatedBy"/> value where specified (can include wildcards); otherwise, indicates to check for user running the test (see <see cref="Abstractions.TesterBase.Username"/>).</param>
+        /// <param name="updatedBy">The specific <see cref="ChangeLog.CreatedBy"/> value where specified (can include wildcards); otherwise, indicates to check for user running the test (see <see cref="Abstractions.TesterBase.UserName"/>).</param>
         /// <param name="updatedDateGreaterThan">The <see cref="DateTime"/> in which the <see cref="ChangeLog.CreatedDate"/> should be greater than or equal to; where <c>null</c> it will default to <see cref="DateTime.Now"/>.</param>
         public void SetExpectChangeLogUpdated(string? updatedBy = null, DateTime? updatedDateGreaterThan = null)
         {
             VerifyImplements<IChangeLog>();
             _expectedChangeLog ??= new ChangeLog();
-            _expectedChangeLog.UpdatedBy = updatedBy ?? Tester.Username;
+            _expectedChangeLog.UpdatedBy = updatedBy ?? Tester.UserName;
             _expectedChangeLog.UpdatedDate = Cleaner.Clean(updatedDateGreaterThan ?? DateTime.UtcNow.Subtract(new TimeSpan(0, 0, 1)));
             MembersToIgnore.Add(nameof(IChangeLog.ChangeLog));
         }

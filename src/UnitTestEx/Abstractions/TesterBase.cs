@@ -16,7 +16,7 @@ namespace UnitTestEx.Abstractions
     /// </summary>
     public abstract class TesterBase
     {
-        private readonly string? _username;
+        private string? _userName;
 
         /// <summary>
         /// Static constructor.
@@ -45,12 +45,10 @@ namespace UnitTestEx.Abstractions
         /// Initializes a new instance of the <see cref="TesterBase"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="ExecutionContext.Current"/> <see cref="ExecutionContext.Username"/> where configured).</param>
-        protected TesterBase(TestFrameworkImplementor implementor, string? username)
+        protected TesterBase(TestFrameworkImplementor implementor)
         {
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
             JsonSerializer = CoreEx.Json.JsonSerializer.Default;
-            _username = username;
         }
 
         /// <summary>
@@ -70,10 +68,14 @@ namespace UnitTestEx.Abstractions
         public TestSetUp SetUp { get; internal set; } = TestSetUp.Default;
 
         /// <summary>
-        /// Gets the test username.
+        /// Gets the test user name.
         /// </summary>
-        /// <remarks>This is determined as follows (uses first non <c>null</c> value): as set via the constructor, using the <see cref="ExecutionContext.Username"/>, and finally <see cref="SetUp"/> <see cref="TestSetUp.DefaultUsername"/>.</remarks>
-        public string? Username => _username ?? (ExecutionContext.HasCurrent ? ExecutionContext.Current.Username : SetUp.DefaultUsername);
+        /// <remarks>This is determined as follows (uses first non <c>null</c> value): as set via the property, using the <see cref="ExecutionContext.Username"/>, and finally <see cref="SetUp"/> <see cref="TestSetUp.DefaultUserName"/>.</remarks>
+        public string UserName
+        {
+            get => _userName ?? (ExecutionContext.HasCurrent ? ExecutionContext.Current.Username : SetUp.DefaultUserName);
+            protected set => _userName = value ?? SetUp.DefaultUserName;
+        }
 
         /// <summary>
         /// Gets the <see cref="IConfiguration"/> from the underlying host.

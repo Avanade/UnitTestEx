@@ -41,6 +41,17 @@ namespace UnitTestEx.AspNetCore
         EventExpectations IEventExpectations<TSelf>.EventExpectations => _eventExpectations;
 
         /// <summary>
+        /// Sets (overrides) the test user name (defaults to <see cref="TesterBase.UserName"/>).
+        /// </summary>
+        /// <param name="userName">The test user name.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public TSelf WithUser(string? userName)
+        {
+            UserName = userName;
+            return (TSelf)this;
+        }
+
+        /// <summary>
         /// Perform the assertion of any expectations.
         /// </summary>
         /// <param name="res">The <see cref="HttpResponseMessage"/>/</param>

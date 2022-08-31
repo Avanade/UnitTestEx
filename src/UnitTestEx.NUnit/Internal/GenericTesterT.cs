@@ -13,7 +13,6 @@ namespace UnitTestEx.NUnit.Internal
         /// <summary>
         /// Initializes a new instance of the <see cref="GenericTester"/> class.
         /// </summary>
-        /// <param name="username">The username (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
-        internal GenericTester(string? username) : base(new NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext), username) { }
+        internal GenericTester() : base(new NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext)) { }
     }
 }
