@@ -2,6 +2,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using UnitTestEx.MSTest.Internal;
 
 namespace UnitTestEx.MSTest.Test.Other
 {
@@ -11,7 +12,7 @@ namespace UnitTestEx.MSTest.Test.Other
         [TestMethod]
         public void Test()
         {
-            var l = new MSTestLogger("LoggerTest");
+            var l = new MSTestImplementor().CreateLoggerProvider().CreateLogger("LoggerTest");
 
             var scope = l.BeginScope(new Dictionary<string, object>() { { "CorrelationId", "abc" }, { "AltCode", 1234 } });
             l.LogInformation("A single line of {Text}.", "text");

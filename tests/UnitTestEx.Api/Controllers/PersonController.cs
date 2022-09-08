@@ -26,6 +26,8 @@ namespace UnitTestEx.Api.Controllers
         [HttpGet("{id}")]
         public IActionResult Get(int id)
         {
+            _logger.LogInformation("{Content}", $"Get using identifier {id}.");
+
             if (_config["SpecialKey"] != "VerySpecialValue")
                 throw new InvalidOperationException("The people do not feel very special!");
 

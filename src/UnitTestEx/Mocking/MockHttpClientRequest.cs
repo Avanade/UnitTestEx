@@ -177,7 +177,7 @@ namespace UnitTestEx.Mocking
                             {
                                 var differences = new JsonElementComparer(5).Compare((JsonElement)cje, (JsonElement)bje, _membersToIgnore);
                                 if (differences != null && _traceRequestComparisons)
-                                    Implementor.CreateLogger("MockHttpClientRequest").LogTrace($"HTTP request JsonElementComparer differences: {differences}");
+                                    Implementor.WriteLine($"HTTP request JsonElementComparer differences: {differences}");
 
                                 return differences == null;
                             }
@@ -190,7 +190,7 @@ namespace UnitTestEx.Mocking
                         var cv = JsonSerializer.Deserialize(body, _content!.GetType());
                         var cr = cl.Compare(_content, cv);
                         if (!cr.AreEqual && _traceRequestComparisons)
-                            Implementor.CreateLogger("MockHttpClientRequest").LogTrace($"HTTP request ObjectComparer differences: {cr.DifferencesString}");
+                            Implementor.WriteLine($"HTTP request ObjectComparer differences: {cr.DifferencesString}");
 
                         return cr.AreEqual;
                     }

@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.Extensions.Logging;
 using System;
 using Xunit;
 using Xunit.Abstractions;
@@ -39,11 +38,5 @@ namespace UnitTestEx.Xunit.Internal
 
         /// <inheritdoc/>
         public override void WriteLine(string? message) => _output.WriteLine("{0}", message);
-
-        /// <inheritdoc/>
-        public override ILoggerProvider CreateLoggerProvider() => new XunitLoggerProvider(_output);
-
-        /// <inheritdoc/>
-        public override ILogger CreateLogger(string name) => new XunitLogger(_output, name);
     }
 }

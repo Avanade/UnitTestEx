@@ -28,12 +28,12 @@ namespace UnitTestEx.Generic
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         protected GenericTesterCore(TestFrameworkImplementor implementor) : base(implementor)
         {
-            Logger = implementor.CreateLogger(GetType().Name);
+            Logger = LoggerProvider.CreateLogger(GetType().Name);
             _exceptionSuccessExpectations = new(this);
 
             _hostBuilder = new HostBuilder()
                 .UseEnvironment("Development")
-                .ConfigureLogging((lb) => lb.AddProvider(implementor.CreateLoggerProvider()))
+                .ConfigureLogging((lb) => lb.AddProvider(LoggerProvider))
                 .ConfigureAppConfiguration(cb =>
                 {
                     cb.SetBasePath(Environment.CurrentDirectory)

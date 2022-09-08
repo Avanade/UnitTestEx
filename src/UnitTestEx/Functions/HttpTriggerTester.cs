@@ -161,9 +161,6 @@ namespace UnitTestEx.Functions
                 else
                     Implementor.WriteLine(JsonSerializer.Serialize(reqVal, JsonWriteFormat.Indented));
             }
-
-            Implementor.WriteLine("");
-            Implementor.WriteLine("LOGGING >");
         }
 
         /// <summary>
@@ -171,6 +168,19 @@ namespace UnitTestEx.Functions
         /// </summary>
         private void LogResponse(IActionResult res, Exception? ex, double ms)
         {
+            Implementor.WriteLine("");
+            Implementor.WriteLine("LOGGING >");
+            var messages = Tester.SharedState.GetLoggerMessages();
+            if (messages.Any())
+            {
+                foreach (var msg in messages)
+                {
+                    Implementor.WriteLine(msg);
+                }
+            }
+            else
+                Implementor.WriteLine("None.");
+
             Implementor.WriteLine("");
             Implementor.WriteLine($"RESPONSE >");
             Implementor.WriteLine($"Elapsed (ms): {ms}");

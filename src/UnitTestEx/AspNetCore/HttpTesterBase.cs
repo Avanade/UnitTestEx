@@ -90,7 +90,7 @@ namespace UnitTestEx.AspNetCore
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, string? content, string? contentType, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
         {
             if (content != null && httpMethod == HttpMethod.Get)
-                Implementor.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
+                Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
             var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, content, contentType, requestOptions, args).ConfigureAwait(false);
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
@@ -110,7 +110,7 @@ namespace UnitTestEx.AspNetCore
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, object? value, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
         {
             if (value != null && httpMethod == HttpMethod.Get)
-                Implementor.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
+                Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
             var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, value, requestOptions, args).ConfigureAwait(false);
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
@@ -158,10 +158,11 @@ namespace UnitTestEx.AspNetCore
             var sc = new ServiceCollection();
             sc.AddExecutionContext();
             sc.AddSingleton(JsonSerializer);
-            sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(Implementor.CreateLoggerProvider()); });
+            sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(Owner.LoggerProvider); });
             sc.AddSingleton(new HttpClient(new HttpDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress });
             sc.AddSingleton(Owner.Configuration);
             sc.AddDefaultSettings();
+            sc.AddSingleton(Owner.SharedState);
             sc.AddScoped<TAgent>();
 
             using var scope = sc.BuildServiceProvider().CreateScope();
@@ -268,8 +269,6 @@ namespace UnitTestEx.AspNetCore
 
                     Implementor.WriteLine($"  {hdr.Key}: {sb}");
                 }
-
-                Implementor.WriteLine("");
             }
 
             object? jo = null;
@@ -286,12 +285,12 @@ namespace UnitTestEx.AspNetCore
                 }
                 catch (Exception) { /* This is being swallowed by design. */ }
 
+                if (req.Headers != null && req.Headers.Any())
+                    Implementor.WriteLine("");
+
                 Implementor.WriteLine($"Content: [{req.Content?.Headers?.ContentType?.MediaType ?? "None"}]");
                 Implementor.WriteLine(jo == null ? content : JsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
             }
-
-            Implementor.WriteLine("");
-            Implementor.WriteLine("LOGGING >");
         }
 
         /// <summary>
@@ -299,6 +298,19 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         private void LogResponse(HttpResponseMessage res, Stopwatch sw)
         {
+            Implementor.WriteLine("");
+            Implementor.WriteLine("LOGGING >");
+            var messages = Owner.SharedState.GetLoggerMessages();
+            if (messages.Any())
+            {
+                foreach (var msg in messages)
+                {
+                    Implementor.WriteLine(msg);
+                }
+            }
+            else
+                Implementor.WriteLine("None.");
+
             if (res.RequestMessage == null)
                 return;
 

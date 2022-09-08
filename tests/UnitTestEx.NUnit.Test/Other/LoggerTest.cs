@@ -2,7 +2,7 @@
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using NFI = NUnit.Framework.Internal;
+using UnitTestEx.NUnit.Internal;
 
 namespace UnitTestEx.NUnit.Test.Other
 {
@@ -12,7 +12,7 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void Test()
         {
-            var l = new NUnitLogger(NFI.TestExecutionContext.CurrentContext, "LoggerTest");
+            var l = new NUnitTestImplementor().CreateLoggerProvider().CreateLogger("LoggerTest");
 
             var scope = l.BeginScope(new Dictionary<string, object>() { { "CorrelationId", "abc" }, { "AltCode", 1234 } });
             l.LogInformation("A single line of {Text}.", "text");

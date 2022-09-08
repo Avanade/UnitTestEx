@@ -1,9 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.Extensions.Logging;
 using NUnit.Framework;
-using System;
-using NFI = NUnit.Framework.Internal;
 
 namespace UnitTestEx.NUnit.Internal
 {
@@ -12,20 +9,11 @@ namespace UnitTestEx.NUnit.Internal
     /// </summary>
     public sealed class NUnitTestImplementor : Abstractions.TestFrameworkImplementor
     {
-        private readonly NFI.TestExecutionContext _context;
-
         /// <summary>
-        /// Creates a <see cref="NUnitTestImplementor"/> using the <paramref name="testExecutionContext"/>.
+        /// Creates a <see cref="NUnitTestImplementor"/> .
         /// </summary>
-        /// <param name="testExecutionContext">The <see cref="NFI.TestExecutionContext"/>. Defaults to <see cref="NFI.TestExecutionContext.CurrentContext"/>.</param>
         /// <returns>The <see cref="NUnitTestImplementor"/>.</returns>
-        public static NUnitTestImplementor Create(NFI.TestExecutionContext? testExecutionContext = null) => new(testExecutionContext ?? NFI.TestExecutionContext.CurrentContext);
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="NUnitLoggerProvider"/> class.
-        /// </summary>
-        /// <param name="context">The <see cref="NFI.TestExecutionContext"/>.</param>
-        public NUnitTestImplementor(NFI.TestExecutionContext context) => _context = context;
+        public static NUnitTestImplementor Create() => new();
 
         /// <inheritdoc/>
         public override void AssertFail(string? message) => Assert.Fail(message);
@@ -38,11 +26,5 @@ namespace UnitTestEx.NUnit.Internal
 
         /// <inheritdoc/>
         public override void WriteLine(string? message) => TestContext.Out.WriteLine(message);
-
-        /// <inheritdoc/>
-        public override ILoggerProvider CreateLoggerProvider() => new NUnitLoggerProvider(_context);
-
-        /// <inheritdoc/>
-        public override ILogger CreateLogger(string name) => new NUnitLogger(_context, name);
     }
 }

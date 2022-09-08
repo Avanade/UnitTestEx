@@ -4,6 +4,7 @@ using CoreEx;
 using CoreEx.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
@@ -115,8 +116,6 @@ namespace UnitTestEx.Generic
 
             Implementor.WriteLine("VALIDATE >");
             Implementor.WriteLine($"Validator: {(validatorType == null ? "<function>" : validatorType)}");
-            Implementor.WriteLine("");
-            Implementor.WriteLine("LOGGING >");
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -134,6 +133,19 @@ namespace UnitTestEx.Generic
             }
 
             sw.Stop();
+
+            Implementor.WriteLine("");
+            Implementor.WriteLine("LOGGING >");
+            var messages = SharedState.GetLoggerMessages();
+            if (messages.Any())
+            {
+                foreach (var msg in messages)
+                {
+                    Implementor.WriteLine(msg);
+                }
+            }
+            else
+                Implementor.WriteLine("None.");
 
             Implementor.WriteLine("");
             Implementor.WriteLine("RESULT >");

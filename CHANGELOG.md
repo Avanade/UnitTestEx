@@ -5,7 +5,8 @@ Represents the **NuGet** versions.
 ## v1.0.26
 - *Enhancement:* Moved `username` from all constructors to `UseUser(userName)` method. Additional, `WithUser(userName)` added to `ApiTester` to override the user name for a specific test invocation.
 - *Enhancement:* All references to `Username` renamed to `UserName` for consistency with the .NET framework naming convention.
-- *Enhancement:* Added `UserApiTester` to provide a shared `ApiTester` instance per test class; versus instantiating per test method. Be aware that using may result in cross-test contamination.
+- *Enhancement:* Added `UsingApiTester` to provide a shared `ApiTester` instance per test class; versus instantiating per test method. Be aware that using may result in cross-test contamination.
+- *Enhancement:* The `ILogger` test instances updated to use `TestSharedState` as a means to pass between hosted process and test process. Be aware that when tests are executed asynchronously there is currently no guarantee that the logs will be attributed to the correct test.
 
 ## v1.0.25
 - *Fixed:* Renamed `Expect` extensions methods to match convention consistently.

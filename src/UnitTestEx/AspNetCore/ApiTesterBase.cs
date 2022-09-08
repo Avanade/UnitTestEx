@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx;
 using CoreEx.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +31,7 @@ namespace UnitTestEx.AspNetCore
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         protected ApiTesterBase(TestFrameworkImplementor implementor) : base(implementor)
         {
-            Logger = implementor.CreateLogger(GetType().Name);
+            Logger = LoggerProvider.CreateLogger(GetType().Name);
 
             // Add settings from appsettings.unittest.json so that they are available to the startup class.
             var config = new ConfigurationBuilder()
@@ -49,7 +48,7 @@ namespace UnitTestEx.AspNetCore
                     .ConfigureAppConfiguration((_, x) => x.AddJsonFile("appsettings.unittest.json", optional: true))
                     .ConfigureServices(sc =>
                     {
-                        sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(implementor.CreateLoggerProvider()); });
+                        sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(LoggerProvider); });
                         sc.ReplaceScoped(_ => SharedState);
                         SetUp.ConfigureServices?.Invoke(sc);
                         if (SetUp.ExpectedEventsEnabled)

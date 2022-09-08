@@ -5,9 +5,11 @@ using CoreEx.Configuration;
 using CoreEx.Events;
 using CoreEx.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using UnitTestEx.Expectations;
+using UnitTestEx.Logging;
 
 namespace UnitTestEx.Abstractions
 {
@@ -48,6 +50,7 @@ namespace UnitTestEx.Abstractions
         protected TesterBase(TestFrameworkImplementor implementor)
         {
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+            LoggerProvider = new SharedStateLoggerProvider(SharedState);
             JsonSerializer = CoreEx.Json.JsonSerializer.Default;
         }
 
@@ -55,6 +58,11 @@ namespace UnitTestEx.Abstractions
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
         protected internal TestFrameworkImplementor Implementor { get; }
+
+        /// <summary>
+        /// Gets the <see cref="SharedStateLoggerProvider"/> <see cref="ILoggerProvider"/>.
+        /// </summary>
+        public SharedStateLoggerProvider LoggerProvider { get; }
 
         /// <summary>
         /// Gets the <see cref="TestSharedState"/>.
