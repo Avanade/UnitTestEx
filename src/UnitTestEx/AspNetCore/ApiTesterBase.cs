@@ -33,6 +33,10 @@ namespace UnitTestEx.AspNetCore
         {
             Logger = LoggerProvider.CreateLogger(GetType().Name);
 
+            // Default the .NET environment environment variable.
+            Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", TestSetUp.Environment);
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", TestSetUp.Environment);
+
             // Add settings from appsettings.unittest.json so that they are available to the startup class.
             var config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.unittest.json", optional: true)

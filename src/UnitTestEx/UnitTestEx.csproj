@@ -17,8 +17,8 @@
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.7.0" />
     <PackageReference Include="CompareNETObjects" Version="4.78.0" />
-    <PackageReference Include="CoreEx" Version="1.0.8" />
-    <PackageReference Include="CoreEx.Newtonsoft" Version="1.0.8" />
+    <PackageReference Include="CoreEx" Version="1.0.9" />
+    <PackageReference Include="CoreEx.Newtonsoft" Version="1.0.9" />
     <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.12" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.3.0" />

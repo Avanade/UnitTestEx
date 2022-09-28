@@ -7,6 +7,9 @@ Represents the **NuGet** versions.
 - *Enhancement:* All references to `Username` renamed to `UserName` for consistency with the .NET framework naming convention.
 - *Enhancement:* Added `UsingApiTester` to provide a shared `ApiTester` instance per test class; versus instantiating per test method. Be aware that using may result in cross-test contamination.
 - *Enhancement:* The `ILogger` test instances updated to use `TestSharedState` as a means to pass between hosted process and test process. Be aware that when tests are executed asynchronously there is currently no guarantee that the logs will be attributed to the correct test.
+- *Enhancement:* Added `TestSetUp.Environment` to specify the .NET environment for the likes of configuration file loading; defaults to `Development`.
+- *Enhancement:* The mocked `Response.RequestMessage` property is now updated with the initiating request.
+- *Enhancement:* Support for mocked default (unnamed) `HttpClient` added via `MockHttpClientFactory.CreateDefaultClient` method.
 
 ## v1.0.25
 - *Fixed:* Renamed `Expect` extensions methods to match convention consistently.

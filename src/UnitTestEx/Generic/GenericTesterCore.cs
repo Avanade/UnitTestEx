@@ -42,7 +42,7 @@ namespace UnitTestEx.Generic
                 })
                 .ConfigureServices(sc =>
                 {
-                    sc.AddExecutionContext(sp => { var ec = SetUp.ExecutionContextFactory(sp); ec.Username = UserName; return ec; });
+                    sc.AddExecutionContext(sp => { var ec = SetUp.ExecutionContextFactory(sp); ec.UserName = UserName; return ec; });
                     sc.AddSettings<DefaultSettings>();
                     sc.ReplaceScoped(_ => SharedState);
                     SetUp.ConfigureServices?.Invoke(sc);

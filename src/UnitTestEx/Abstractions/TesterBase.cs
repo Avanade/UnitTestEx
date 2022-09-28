@@ -78,10 +78,10 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Gets the test user name.
         /// </summary>
-        /// <remarks>This is determined as follows (uses first non <c>null</c> value): as set via the property, using the <see cref="ExecutionContext.Username"/>, and finally <see cref="SetUp"/> <see cref="TestSetUp.DefaultUserName"/>.</remarks>
+        /// <remarks>This is determined as follows (uses first non <c>null</c> value): as set via the property, using the <see cref="ExecutionContext.UserName"/>, and finally <see cref="SetUp"/> <see cref="TestSetUp.DefaultUserName"/>.</remarks>
         public string UserName
         {
-            get => _userName ?? (ExecutionContext.HasCurrent ? ExecutionContext.Current.Username : SetUp.DefaultUserName);
+            get => _userName ?? (ExecutionContext.HasCurrent ? ExecutionContext.Current.UserName : SetUp.DefaultUserName);
             protected set => _userName = value ?? SetUp.DefaultUserName;
         }
 

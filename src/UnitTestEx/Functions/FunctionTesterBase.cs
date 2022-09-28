@@ -67,7 +67,7 @@ namespace UnitTestEx.Functions
 
             var ep2 = new TEntryPoint();
             _hostBuilder = new HostBuilder()
-                .UseEnvironment("Development")
+                .UseEnvironment(TestSetUp.Environment)
                 .ConfigureLogging((lb) => lb.AddProvider(LoggerProvider))
                 .ConfigureWebHostDefaults(c =>
                 {

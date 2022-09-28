@@ -68,6 +68,9 @@ namespace UnitTestEx.Mocking
         /// <remarks>Only a single client can be created per logical name.</remarks>
         public MockHttpClient CreateClient(string name, Uri baseAddress)
         {
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
+
             if (_mockClients.ContainsKey(name ?? throw new ArgumentNullException(nameof(name))))
                 throw new ArgumentException("This named client has already been defined.", nameof(name));
 
@@ -85,11 +88,46 @@ namespace UnitTestEx.Mocking
         /// <remarks>Only a single client can be created per logical name.</remarks>
         public MockHttpClient CreateClient(string name, string? baseAddress = null)
         {
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
+
             if (_mockClients.ContainsKey(name ?? throw new ArgumentNullException(nameof(name))))
                 throw new ArgumentException("This named client has already been defined.", nameof(name));
 
             var mc = new MockHttpClient(this, name, baseAddress == null ? null : new Uri(baseAddress));
             _mockClients.Add(name, mc);
+            return mc;
+        }
+
+        /// <summary>
+        /// Creates the default (unnamed) <see cref="MockHttpClient"/>.
+        /// </summary>
+        /// <param name="baseAddress">The base address of Uniform Resource Identifier (URI) of the Internet resource used when sending requests.</param>
+        /// <returns>The <see cref="MockHttpClient"/>.</returns>
+        /// <remarks>Only a single default client can be created.</remarks>
+        public MockHttpClient CreateDefaultClient(Uri baseAddress)
+        {
+            if (_mockClients.ContainsKey(string.Empty))
+                throw new InvalidOperationException("The default client has already been defined.");
+
+            var mc = new MockHttpClient(this, string.Empty, baseAddress);
+            _mockClients.Add(string.Empty, mc);
+            return mc;
+        }
+
+        /// <summary>
+        /// Creates the default (unnamed) <see cref="MockHttpClient"/>.
+        /// </summary>
+        /// <param name="baseAddress">The base address of Uniform Resource Identifier (URI) of the Internet resource used when sending requests; defaults to '<c>https://unittest</c>' where not specified.</param>
+        /// <returns>The <see cref="MockHttpClient"/>.</returns>
+        /// <remarks>Only a single default client can be created.</remarks>
+        public MockHttpClient CreateDefaultClient(string? baseAddress = null)
+        {
+            if (_mockClients.ContainsKey(string.Empty))
+                throw new InvalidOperationException("The default client has already been defined.");
+
+            var mc = new MockHttpClient(this, string.Empty, baseAddress == null ? null : new Uri(baseAddress));
+            _mockClients.Add(string.Empty, mc);
             return mc;
         }
 
@@ -111,6 +149,12 @@ namespace UnitTestEx.Mocking
         /// <param name="name">The logical name of the client.</param>
         /// <returns>The <see cref="HttpClient"/> where it exists; otherwise; <c>null</c>.</returns>
         public HttpClient? GetHttpClient(string name) => _mockClients.GetValueOrDefault(name ?? throw new ArgumentNullException(nameof(name)))?.HttpClient;
+
+        /// <summary>
+        /// Gets the default (unnamed) mocked <see cref="HttpClient"/>.
+        /// </summary>
+        /// <returns>The default <see cref="HttpClient"/> where it exists; otherwise; <c>null</c>.</returns>
+        public HttpClient? GetHttpClient() => _mockClients.GetValueOrDefault(string.Empty)?.HttpClient;
 
         /// <summary>
         /// Verifies that all verifiable <see cref="Mock"/> expectations have been met for all <see cref="MockHttpClient"/> instances; being all requests have been invoked.

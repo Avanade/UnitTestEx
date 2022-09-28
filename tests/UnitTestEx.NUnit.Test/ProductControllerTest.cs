@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
 using System.Net;
@@ -82,6 +83,32 @@ namespace UnitTestEx.NUnit.Test
             var r = hc.GetAsync("test").Result;
             Assert.IsNotNull(r);
             Assert.AreEqual("test output", r.Content.ReadAsStringAsync().Result);
+        }
+
+        [Test]
+        public void Configuration()
+        {
+            using var test = ApiTester.Create<Startup>();
+            var cv = test.Configuration.GetValue<string>("SpecialKey");
+            Assert.AreEqual("VerySpecialValue", cv);
+            
+            cv = test.Configuration.GetValue<string>("OtherKey");
+            Assert.AreEqual("OtherValue", cv);
+        }
+
+        [Test]
+        public void DefaultHttpClient()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateDefaultClient(new Uri("https://someothersys"))
+                .Request(HttpMethod.Get, "products/default").Respond.WithJson(new { id = "Def", description = "Default" });
+
+            using var test = ApiTester.Create<Startup>();
+            test.ReplaceHttpClientFactory(mcf)
+                .Controller<ProductController>()
+                .Run(c => c.Get())
+                .AssertOK()
+                .Assert(new { id = "Def", description = "Default" });
         }
     }
 }

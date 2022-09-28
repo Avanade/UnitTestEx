@@ -14,11 +14,13 @@ namespace UnitTestEx.Api.Controllers
     {
         private readonly HttpClient _httpClient;
         private readonly IEventPublisher _eventPublisher;
+        private readonly HttpClient _defaultHttpClient;
 
         public ProductController(IHttpClientFactory clientFactory, IEventPublisher eventPublisher)
         {
             _httpClient = clientFactory.CreateClient("XXX");
             _eventPublisher = eventPublisher;
+            _defaultHttpClient = clientFactory.CreateClient();
         }
 
         [HttpGet("{id}")]
@@ -38,6 +40,19 @@ namespace UnitTestEx.Api.Controllers
                 _eventPublisher.Publish("test-queue2", new EventData { Source = new Uri($"/test/product/{id}", UriKind.Relative), Subject = $"test.product.{id}", Action = "update", Value = val });
 
             await _eventPublisher.SendAsync().ConfigureAwait(false);
+            return new OkObjectResult(val);
+        }
+
+        [HttpGet("")]
+        public async Task<IActionResult> Get()
+        {
+            var result = await _defaultHttpClient.GetAsync($"products/default").ConfigureAwait(false);
+            if (result.StatusCode == HttpStatusCode.NotFound)
+                return new NotFoundResult();
+
+            result.EnsureSuccessStatusCode();
+            var str = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var val = JsonConvert.DeserializeObject<dynamic>(str);
             return new OkObjectResult(val);
         }
     }
