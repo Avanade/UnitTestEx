@@ -210,7 +210,7 @@ namespace UnitTestEx.Abstractions
         /// <returns>The <paramref name="result"/>.</returns>
         internal T HostExecutionWrapper<T>(Func<T> result)
         {
-            SharedState.Reset();
+            SharedState.ResetEventStorage();
             return result();
         }
     }

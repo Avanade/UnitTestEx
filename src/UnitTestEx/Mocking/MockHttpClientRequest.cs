@@ -87,7 +87,7 @@ namespace UnitTestEx.Mocking
                     .Setup<Task<HttpResponseMessage>>("SendAsync",
                         ItExpr.Is<HttpRequestMessage>(x => RequestPredicate(x)),
                         ItExpr.IsAny<CancellationToken>())
-                    .Returns((HttpRequestMessage x, CancellationToken ct) => CreateResponseAsync(Rule.Response!, ct));
+                    .Returns((HttpRequestMessage req, CancellationToken ct) => CreateResponseAsync(req, Rule.Response!, ct));
             }
             else
             {
@@ -95,12 +95,12 @@ namespace UnitTestEx.Mocking
                     .Setup<Task<HttpResponseMessage>>("SendAsync",
                         ItExpr.Is<HttpRequestMessage>(x => RequestPredicate(x)),
                         ItExpr.IsAny<CancellationToken>())
-                    .Returns((HttpRequestMessage x, CancellationToken ct) =>
+                    .Returns((HttpRequestMessage req, CancellationToken ct) =>
                     {
                         if (Rule.ResponsesIndex >= Rule.Responses.Count)
                             throw new MockHttpClientException($"There were {Rule.Responses.Count} responses configured for the Sequence and these responses have been exhausted; i.e. an unexpected additional invocation has occured. Request: {ToString()}");
 
-                        return CreateResponseAsync(Rule.Responses[Rule.ResponsesIndex++], ct);
+                        return CreateResponseAsync(req, Rule.Responses[Rule.ResponsesIndex++], ct);
                     });
             }
 
@@ -111,11 +111,12 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Create the <see cref="HttpResponseMessage"/> from the <see cref="MockHttpClientResponse"/>.
         /// </summary>
-        private static async Task<HttpResponseMessage> CreateResponseAsync(MockHttpClientResponse response, CancellationToken ct)
+        private static async Task<HttpResponseMessage> CreateResponseAsync(HttpRequestMessage request, MockHttpClientResponse response, CancellationToken ct)
         {
             response.Count++;
 
             var httpResponse = new HttpResponseMessage(response.StatusCode);
+            httpResponse.RequestMessage = request;
             if (response.Content != null)
                 httpResponse.Content = response.Content;
 
@@ -177,7 +178,7 @@ namespace UnitTestEx.Mocking
                             {
                                 var differences = new JsonElementComparer(5).Compare((JsonElement)cje, (JsonElement)bje, _membersToIgnore);
                                 if (differences != null && _traceRequestComparisons)
-                                    Implementor.CreateLogger("MockHttpClientRequest").LogTrace($"HTTP request JsonElementComparer differences: {differences}");
+                                    Implementor.WriteLine($"HTTP request JsonElementComparer differences: {differences}");
 
                                 return differences == null;
                             }
@@ -190,7 +191,7 @@ namespace UnitTestEx.Mocking
                         var cv = JsonSerializer.Deserialize(body, _content!.GetType());
                         var cr = cl.Compare(_content, cv);
                         if (!cr.AreEqual && _traceRequestComparisons)
-                            Implementor.CreateLogger("MockHttpClientRequest").LogTrace($"HTTP request ObjectComparer differences: {cr.DifferencesString}");
+                            Implementor.WriteLine($"HTTP request ObjectComparer differences: {cr.DifferencesString}");
 
                         return cr.AreEqual;
                     }

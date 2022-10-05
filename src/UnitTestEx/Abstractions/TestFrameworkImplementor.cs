@@ -2,6 +2,7 @@
 
 using Microsoft.Extensions.Logging;
 using System;
+using UnitTestEx.Logging;
 
 namespace UnitTestEx.Abstractions
 {
@@ -41,13 +42,6 @@ namespace UnitTestEx.Abstractions
         /// Creates an <see cref="ILoggerProvider"/>.
         /// </summary>
         /// <returns>The <see cref="ILoggerProvider"/>.</returns>
-        public abstract ILoggerProvider CreateLoggerProvider();
-
-        /// <summary>
-        /// Creates an <see cref="ILogger"/> instance with the specified <paramref name="name"/>.
-        /// </summary>
-        /// <param name="name">The logger name.</param>
-        /// <returns>The <see cref="ILogger"/>.</returns>
-        public abstract ILogger CreateLogger(string name);
+        public ILoggerProvider CreateLoggerProvider() => new TestFrameworkImplementorLoggerProvider(this);
     }
 }

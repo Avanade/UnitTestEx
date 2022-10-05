@@ -63,12 +63,12 @@ namespace UnitTestEx.Functions
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
         protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) : base(implementor)
         {
-            Logger = implementor.CreateLogger(GetType().Name);
+            Logger = LoggerProvider.CreateLogger(GetType().Name);
 
             var ep2 = new TEntryPoint();
             _hostBuilder = new HostBuilder()
-                .UseEnvironment("Development")
-                .ConfigureLogging((lb) => lb.AddProvider(implementor.CreateLoggerProvider()))
+                .UseEnvironment(TestSetUp.Environment)
+                .ConfigureLogging((lb) => lb.AddProvider(LoggerProvider))
                 .ConfigureWebHostDefaults(c =>
                 {
                     c.ConfigureAppConfiguration((cx, cb) =>
@@ -290,7 +290,7 @@ namespace UnitTestEx.Functions
         private HttpRequest CreateHttpRequestInternal(HttpMethod httpMethod, string? requestUri, bool hasBody, string? body, Ceh.HttpRequestOptions? requestOptions, string? contentType = MediaTypeNames.Text.Plain)
         {
             if (httpMethod == HttpMethod.Get && body != null)
-                Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
+                LoggerProvider.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
             var context = new DefaultHttpContext();
 
@@ -344,7 +344,7 @@ namespace UnitTestEx.Functions
         public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, string? requestUri, object value, Ceh.HttpRequestOptions? requestOptions = null)
         {
             if (httpMethod == HttpMethod.Get)
-                Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
+                LoggerProvider.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
             var hr = CreateHttpRequest(httpMethod, requestUri, requestOptions);
             hr.Body = new MemoryStream(JsonSerializer.SerializeToBinaryData(value).ToArray());
@@ -398,7 +398,7 @@ namespace UnitTestEx.Functions
         public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly assembly, Ceh.HttpRequestOptions? requestOptions = null)
         {
             if (httpMethod == HttpMethod.Get)
-                Implementor.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
+                LoggerProvider.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
             var hr = CreateHttpRequest(httpMethod, requestUri, requestOptions);
             hr.Body = new MemoryStream(Encoding.UTF8.GetBytes(Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly())));

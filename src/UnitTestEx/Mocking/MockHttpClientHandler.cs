@@ -24,7 +24,7 @@ namespace UnitTestEx.Mocking
         /// <inheritdoc/>
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var logger = _factory.Logger ?? _factory.Implementor.CreateLogger(nameof(MockHttpClientFactory));
+            var logger = _factory.Logger ?? _factory.Implementor.CreateLoggerProvider().CreateLogger(nameof(MockHttpClientFactory));
             logger.LogInformation($"Sending HTTP request {request.Method} {request.RequestUri} {LogContent(request.Content)}");
 
             var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);

@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Net.Mime;
 using System.Threading;
@@ -61,8 +62,6 @@ namespace UnitTestEx.Functions
 
                 Implementor.WriteLine("");
                 Implementor.WriteLine("FUNCTION SERVICE BUS TRIGGER TESTER...");
-                Implementor.WriteLine("");
-                Implementor.WriteLine("LOGGING >");
 
                 sbv = v;
                 if (validateTriggerProperties)
@@ -140,6 +139,19 @@ namespace UnitTestEx.Functions
         /// </summary>
         private void LogOutput(Exception? ex, double ms, object? value)
         {
+            Implementor.WriteLine("");
+            Implementor.WriteLine("LOGGING >");
+            var messages = Tester.SharedState.GetLoggerMessages();
+            if (messages.Any())
+            {
+                foreach (var msg in messages)
+                {
+                    Implementor.WriteLine(msg);
+                }
+            }
+            else
+                Implementor.WriteLine("None.");
+
             Implementor.WriteLine("");
             Implementor.WriteLine("RESULT >");
             Implementor.WriteLine($"Elapsed (ms): {ms}");

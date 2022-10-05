@@ -41,6 +41,13 @@ namespace UnitTestEx
         public static bool FunctionTesterIncludeUserSecrets { get; set; }
 
         /// <summary>
+        /// Gets or sets the environment used for loading the likes of configuration files.
+        /// </summary>
+        /// <remarks>Sets the <c>DOTNET_ENVIRONMENT</c> environment variable; for more information <see href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/configuration/?view=aspnetcore-6.0#default-host-configuration"/>.
+        /// Defaults to '<c>Development</c>'.</remarks>
+        public static string Environment { get; set; } = "Development";
+
+        /// <summary>
         /// Gets or sets the <see cref="Task.Delay(int)"/> milliseconds to allow a host to finalize/dispose before expecting/asserting result.
         /// </summary>
         public static int TaskDelayMilliseconds { get; set; } = 1;
@@ -54,7 +61,7 @@ namespace UnitTestEx
         public static IConfiguration GetConfiguration(string? environmentVariablePrefix = null)
         {
             var cb = new ConfigurationBuilder()
-                .SetBasePath(Environment.CurrentDirectory)
+                .SetBasePath(System.Environment.CurrentDirectory)
                 .AddJsonFile("appsettings.unittest.json", optional: true);
 
             if (environmentVariablePrefix == null)
@@ -62,7 +69,7 @@ namespace UnitTestEx
             else
                 cb.AddEnvironmentVariables(environmentVariablePrefix.EndsWith("_", StringComparison.InvariantCulture) ? environmentVariablePrefix : environmentVariablePrefix + "_");
 
-            cb.AddCommandLine(Environment.GetCommandLineArgs());
+            cb.AddCommandLine(System.Environment.GetCommandLineArgs());
             return cb.Build();
         }
 

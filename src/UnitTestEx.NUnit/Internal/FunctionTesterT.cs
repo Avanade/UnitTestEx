@@ -3,7 +3,6 @@
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using System.Collections.Generic;
 using UnitTestEx.Functions;
-using NFI = NUnit.Framework.Internal;
 
 namespace UnitTestEx.NUnit.Internal
 {
@@ -20,6 +19,6 @@ namespace UnitTestEx.NUnit.Internal
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
         internal FunctionTester(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) 
-            : base(new NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) { }
+            : base(new NUnitTestImplementor(), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) { }
     }
 }

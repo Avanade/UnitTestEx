@@ -2,7 +2,6 @@
 
 using CoreEx.Validation;
 using UnitTestEx.Generic;
-using NFI = NUnit.Framework.Internal;
 
 namespace UnitTestEx.NUnit.Internal
 {
@@ -14,6 +13,6 @@ namespace UnitTestEx.NUnit.Internal
         /// <summary>
         /// Initializes a new instance of the <see cref="ValidationTester"/> class.
         /// </summary>
-        internal ValidationTester() : base(new NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext)) { }
+        internal ValidationTester() : base(new NUnitTestImplementor()) { }
     }
 }

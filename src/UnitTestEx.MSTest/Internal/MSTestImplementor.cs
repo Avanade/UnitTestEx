@@ -1,9 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.VisualStudio.TestTools.UnitTesting.Logging;
-using System;
 
 namespace UnitTestEx.MSTest.Internal
 {
@@ -29,11 +27,5 @@ namespace UnitTestEx.MSTest.Internal
 
         /// <inheritdoc/>
         public override void WriteLine(string? message) => Logger.LogMessage("{0}", message);
-
-        /// <inheritdoc/>
-        public override ILoggerProvider CreateLoggerProvider() => new MSTestLoggerProvider();
-
-        /// <inheritdoc/>
-        public override ILogger CreateLogger(string name) => new MSTestLogger(name);
     }
 }

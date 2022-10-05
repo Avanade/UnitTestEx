@@ -250,6 +250,7 @@ namespace UnitTestEx.NUnit.Test
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
             Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
             Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.IsNotNull(res.RequestMessage);
 
             Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
         }
@@ -360,6 +361,23 @@ namespace UnitTestEx.NUnit.Test
             var res = await hc.PostAsync("testing", new StringContent("--my--custom--format--", Encoding.UTF8, "application/custom-format")).ConfigureAwait(false);
             Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
             Assert.AreEqual("--ok--", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+        }
+
+        [Test]
+        public async Task DefaultHttpClient()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateDefaultClient(new Uri("https://d365test"))
+                .Request(HttpMethod.Post, "products/xyz").WithAnyBody()
+                .Respond.WithJson("{\"first\":\"Bob\",\"last\":\"Jane\"}", HttpStatusCode.Accepted);
+
+            var hc = mcf.GetHttpClient();
+            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+            Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.IsNotNull(res.RequestMessage);
+
+            Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
         }
     }
 }

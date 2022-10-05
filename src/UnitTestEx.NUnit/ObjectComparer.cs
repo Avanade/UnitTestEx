@@ -3,7 +3,6 @@
 using KellermanSoftware.CompareNetObjects;
 using System;
 using UnitTestEx.NUnit.Internal;
-using NFI = NUnit.Framework.Internal;
 
 namespace UnitTestEx.NUnit
 {
@@ -21,7 +20,7 @@ namespace UnitTestEx.NUnit
         public static void Assert(object? expected, object? actual, params string[] membersToIgnore)
         {
             var cr = Abstractions.ObjectComparer.Compare(expected, actual, membersToIgnore);
-            new NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext).AssertAreEqual(true, cr.AreEqual, cr.DifferencesString);
+            new NUnitTestImplementor().AssertAreEqual(true, cr.AreEqual, cr.DifferencesString);
         }
 
         /// <summary>
@@ -34,7 +33,7 @@ namespace UnitTestEx.NUnit
         public static void Assert(Action<ComparisonConfig> comparisonConfig, object? expected, object? actual, params string[] membersToIgnore)
         {
             var cr = Abstractions.ObjectComparer.Compare(comparisonConfig, expected, actual, membersToIgnore);
-            new NUnitTestImplementor(NFI.TestExecutionContext.CurrentContext).AssertAreEqual(true, cr.AreEqual, cr.DifferencesString);
+            new NUnitTestImplementor().AssertAreEqual(true, cr.AreEqual, cr.DifferencesString);
         }
     }
 }
