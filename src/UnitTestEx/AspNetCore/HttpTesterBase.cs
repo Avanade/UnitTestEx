@@ -156,7 +156,7 @@ namespace UnitTestEx.AspNetCore
         private async Task<TAssertor> RunWrapperAsync<TAgent, TAssertor>(Func<TAgent, Task<TAssertor>> func) where TAgent : TypedHttpClientBase where TAssertor : HttpResponseMessageAssertorBase
         {
             var sc = new ServiceCollection();
-            sc.AddExecutionContext();
+            sc.AddExecutionContext(sp => new CoreEx.ExecutionContext { UserName = UserName ?? Owner.SetUp.DefaultUserName });
             sc.AddSingleton(JsonSerializer);
             sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(Owner.LoggerProvider); });
             sc.AddSingleton(new HttpClient(new HttpDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress });

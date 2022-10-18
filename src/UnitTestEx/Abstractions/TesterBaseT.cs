@@ -53,6 +53,23 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
+        /// Updates (replaces) the default test <see cref="TesterBase.UserName"/>.
+        /// </summary>
+        /// <param name="userIdentifier">The test user identifier (a <c>null</c> value will reset to <see cref="TesterBase.SetUp"/> <see cref="TestSetUp.DefaultUserName"/>).</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>The <see cref="TestSetUp.UserNameConverter"/> is required for the conversion to take place.</remarks>
+        public TSelf UseUser(object? userIdentifier)
+        {
+            if (userIdentifier == null)
+                return UseUser(null);
+
+            if (SetUp.UserNameConverter == null)
+                throw new InvalidOperationException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.UserNameConverter)} must be defined to support user identifier conversion.");
+
+            return UseUser(SetUp.UserNameConverter(userIdentifier));
+        }
+
+        /// <summary>
         /// Updates the <see cref="JsonSerializer"/> used by the <see cref="TesterBase{TSelf}"/> itself, not the underlying executing host which should be configured separately.
         /// </summary>
         /// <param name="jsonSerializer">The <see cref="JsonSerializer"/>.</param>

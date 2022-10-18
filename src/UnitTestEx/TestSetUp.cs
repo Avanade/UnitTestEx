@@ -88,6 +88,11 @@ namespace UnitTestEx
         public string DefaultUserName { get; set; } = "Anonymous";
 
         /// <summary>
+        /// Gets or sets the function to convert a non-<see cref="string"/> user name to a <see cref="string"/> equivalent.
+        /// </summary>
+        public Func<object, string>? UserNameConverter { get; set; }
+
+        /// <summary>
         /// Defines an <see cref="CoreEx.Entities.IETag.ETag"/> value that <i>should</i> result in a concurrency error.
         /// </summary>
         /// <remarks>Defaults to '<c>ZZZZZZZZZZZZ</c>'.</remarks>
