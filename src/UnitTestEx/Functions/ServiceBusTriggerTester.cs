@@ -36,7 +36,7 @@ namespace UnitTestEx.Functions
         /// <param name="tester">The <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
         internal ServiceBusTriggerTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope)
-            => _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester);
+            => _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester.Implementor);
 
         /// <summary>
         /// Runs the Service Bus Triggered (see <see cref="ServiceBusTriggerAttribute"/>) function expected as a parameter within the <paramref name="expression"/>.

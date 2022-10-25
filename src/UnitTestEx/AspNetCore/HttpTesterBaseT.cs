@@ -27,7 +27,7 @@ namespace UnitTestEx.AspNetCore
         /// <param name="testServer">The <see cref="TestServer"/>.</param>
         internal HttpTesterBase(TesterBase owner, TestServer testServer) : base(owner, testServer)
         {
-            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Owner);
+            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Owner.Implementor);
             _httpResponseExpectations = new HttpResponseExpectations(Owner);
             _eventExpectations = new EventExpectations(Owner);
         }

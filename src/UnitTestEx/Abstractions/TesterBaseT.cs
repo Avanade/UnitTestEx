@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx;
 using CoreEx.Events;
 using CoreEx.Json;
 using Microsoft.Extensions.DependencyInjection;

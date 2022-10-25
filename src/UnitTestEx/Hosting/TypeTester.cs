@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
+using UnitTestEx.Expectations;
 
 namespace UnitTestEx.Hosting
 {
@@ -15,14 +16,19 @@ namespace UnitTestEx.Hosting
     /// Provides the generic <see cref="Type"/> unit-testing capabilities.
     /// </summary>
     /// <typeparam name="T">The <see cref="Type"/> (must be a <c>class</c>).</typeparam>
-    public class TypeTester<T> : HostTesterBase<T> where T : class
+    public class TypeTester<T> : HostTesterBase<T>, IExceptionSuccessExpectations<TypeTester<T>> where T : class
     {
+        private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
+
         /// <summary>
         /// Initializes a new <see cref="TypeTester{TFunction}"/> class.
         /// </summary>
         /// <param name="tester">The owning <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        internal TypeTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope) { }
+        internal TypeTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope) => _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Implementor);
+
+        /// <inheritdoc/>
+        ExceptionSuccessExpectations IExceptionSuccessExpectations<TypeTester<T>>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
 
         /// <summary>
         /// Runs the synchronous method with no result.
@@ -77,6 +83,7 @@ namespace UnitTestEx.Hosting
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
             LogResult(ex, sw.Elapsed.TotalMilliseconds);
             LogTrailer();
+            _exceptionSuccessExpectations.Assert(ex);
             return new VoidAssertor(ex, Implementor, JsonSerializer);
         }
 
@@ -136,6 +143,7 @@ namespace UnitTestEx.Hosting
             }
 
             LogTrailer();
+            _exceptionSuccessExpectations.Assert(ex);
             return new ValueAssertor<TValue>(result, ex, Implementor, JsonSerializer);
         }
 
@@ -145,7 +153,8 @@ namespace UnitTestEx.Hosting
         private void LogHeader()
         {
             Implementor.WriteLine("");
-            Implementor.WriteLine("GENERIC TYPE TESTER...");
+            Implementor.WriteLine("TYPE TESTER...");
+            Implementor.WriteLine($"Type: {typeof(T).Name} [{typeof(T).FullName}]");
             Implementor.WriteLine("");
             Implementor.WriteLine("LOGGING >");
         }

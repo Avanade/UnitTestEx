@@ -1,11 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Generic;
 using System.Net.Mime;
 using System.Threading.Tasks;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Api.Models;
+using UnitTestEx.Expectations;
 
 namespace UnitTestEx.MSTest.Test
 {
@@ -134,8 +136,8 @@ namespace UnitTestEx.MSTest.Test
         {
             using var test = ApiTester.Create<Startup>();
             test.Type<PersonController>()
+                .ExpectSuccess()
                 .Run(c => c.Get(1))
-                .AssertSuccess()
                 .ToActionResultAssertor()
                 .AssertOK()
                 .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });

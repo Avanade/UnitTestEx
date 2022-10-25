@@ -52,12 +52,13 @@ namespace UnitTestEx.Abstractions
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
             LoggerProvider = new SharedStateLoggerProvider(SharedState);
             JsonSerializer = CoreEx.Json.JsonSerializer.Default;
+            SetUp = (TestSetUp)TestSetUp.Default.Clone();
         }
 
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
-        protected internal TestFrameworkImplementor Implementor { get; }
+        public TestFrameworkImplementor Implementor { get; }
 
         /// <summary>
         /// Gets the <see cref="SharedStateLoggerProvider"/> <see cref="ILoggerProvider"/>.

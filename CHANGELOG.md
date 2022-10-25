@@ -10,6 +10,9 @@ Represents the **NuGet** versions.
 - *Enhancement:* Added `TestSetUp.Environment` to specify the .NET environment for the likes of configuration file loading; defaults to `Development`.
 - *Enhancement:* The mocked `Response.RequestMessage` property is now updated with the initiating request.
 - *Enhancement:* Support for mocked default (unnamed) `HttpClient` added via `MockHttpClientFactory.CreateDefaultClient` method.
+- *Enhancement:* `TestSetUp` cloned (from `TestSetUp.Default`) per `TesterBase` instance to allow specific test changes.
+- *Enhancement:* `EventExpectations` now supports `HasEvents` which simply verifies that one or more events were sent. 
+- *Enhancement:* `ValidationTester` extended to support `RunCode` methods that execute passed action/function then catch and validate any thrown `ValidationException`.
 
 ## v1.0.25
 - *Fixed:* Renamed `Expect` extensions methods to match convention consistently.

@@ -15,6 +15,7 @@ namespace UnitTestEx.Expectations
     {
         private readonly Dictionary<string, List<(string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore)>> _expectedEvents = new();
         private bool _expectNoEvents;
+        private bool _expectEvents;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EventExpectations"/> class.
@@ -43,12 +44,29 @@ namespace UnitTestEx.Expectations
         public void ExpectNoEvents() => _expectNoEvents = true;
 
         /// <summary>
+        /// Expects that at least one event has been published.
+        /// </summary>
+        public void ExpectEvents()
+        {
+            if (!Tester.IsExpectedEventPublisherEnabled)
+                throw new NotSupportedException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.ExpectedEventsEnabled)} or TesterBase.UseExpectedEvents must be used before this functionality can be executed; note that enabling will automatically replace the {nameof(IEventPublisher)} to use the {nameof(ExpectedEventPublisher)}.");
+
+            if (_expectedEvents.Count > 0)
+                throw new InvalidOperationException($"{nameof(ExpectEvents)} can not be used where one or more explicit events has already been defined.");
+
+            _expectEvents = true;
+        }
+
+        /// <summary>
         /// Adds the event into the dictionary.
         /// </summary>
         private void Add(string? destination, (string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore) @event)
         {
             if (!Tester.IsExpectedEventPublisherEnabled)
                 throw new NotSupportedException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.ExpectedEventsEnabled)} or TesterBase.UseExpectedEvents must be used before this functionality can be executed; note that enabling will automatically replace the {nameof(IEventPublisher)} to use the {nameof(ExpectedEventPublisher)}.");
+
+            if (_expectEvents)
+                throw new InvalidOperationException($"An explicit {nameof(Expect)} can not be used where {nameof(ExpectEvents)} has already been defined.");
 
             var key = destination ?? ExpectedEventPublisher.NullKeyName;
             if (_expectedEvents.TryGetValue(key, out var events))
@@ -100,11 +118,14 @@ namespace UnitTestEx.Expectations
         public void Assert()
         {
             var names = Tester.SharedState.EventStorage.Keys.ToArray();
-            if (_expectNoEvents && _expectedEvents.Count == 0 && names.Length > 0)
+            if (_expectNoEvents && !_expectEvents && _expectedEvents.Count == 0 && names.Length > 0)
                 Implementor.AssertFail($"Expected no Event(s); one or more were sent.");
 
-            if (names.Length == 0 && _expectedEvents.Count != 0)
+            if (names.Length == 0 && (_expectEvents || _expectedEvents.Count != 0))
                 Implementor.AssertFail($"Expected Event(s); none were sent.");
+
+            if (_expectEvents)
+                return;
 
             if (names.Length != _expectedEvents.Count)
                 Implementor.AssertFail($"Expected {_expectedEvents.Count} event destination(s); there were {names.Length}.");

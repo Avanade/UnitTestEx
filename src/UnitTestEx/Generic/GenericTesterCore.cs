@@ -29,7 +29,7 @@ namespace UnitTestEx.Generic
         protected GenericTesterCore(TestFrameworkImplementor implementor) : base(implementor)
         {
             Logger = LoggerProvider.CreateLogger(GetType().Name);
-            _exceptionSuccessExpectations = new(this);
+            _exceptionSuccessExpectations = new(implementor);
 
             _hostBuilder = new HostBuilder()
                 .UseEnvironment("Development")

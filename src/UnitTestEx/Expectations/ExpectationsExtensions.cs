@@ -230,6 +230,26 @@ namespace UnitTestEx.Expectations
         }
 
         /// <summary>
+        /// Expects that no events have been published. 
+        /// </summary>
+        /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        /// <remarks>On first invocation will automatically replace <see cref="IEventPublisher"/> with a new <see cref="InMemoryPublisher"/> scoped service (DI) to capture events for this expectation. The other services are therefore required
+        /// for this to function. As this is a scoped service no parallel execution of services against the same test host is supported as this capability is not considered thread-safe.</remarks>
+        public static TSelf ExpectNoEvents<TSelf>(this IEventExpectations<TSelf> tester) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.ExpectNoEvents());
+
+        /// <summary>
+        /// Expects that at least one event has been published. 
+        /// </summary>
+        /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        /// <remarks>On first invocation will automatically replace <see cref="IEventPublisher"/> with a new <see cref="InMemoryPublisher"/> scoped service (DI) to capture events for this expectation. The other services are therefore required
+        /// for this to function. As this is a scoped service no parallel execution of services against the same test host is supported as this capability is not considered thread-safe.</remarks>
+        public static TSelf ExpectEvents<TSelf>(this IEventExpectations<TSelf> tester) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.ExpectEvents());
+
+        /// <summary>
         /// Expects that the corresponding event has been published (in order specified). The expected event <paramref name="subject"/> and <paramref name="action"/> can use wildcards. All other <see cref="EventData"/> properties are not matched/verified.
         /// </summary>
         /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
