@@ -1,8 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Events;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using UnitTestEx.Expectations;
 
@@ -22,9 +20,9 @@ namespace UnitTestEx.Abstractions
         internal TestSharedState() { }
 
         /// <summary>
-        /// Gets the event storage for the <see cref="ExpectedEventPublisher"/>.
+        /// Gets or sets the <see cref="ExpectedEventPublisher"/>.
         /// </summary>
-        public ConcurrentDictionary<string, ConcurrentQueue<EventData>> EventStorage { get; } = new();
+        public ExpectedEventPublisher? ExpectedEventPublisher { get; set; }
 
         /// <summary>
         /// Adds the <see cref="ILogger"/> log message.
@@ -53,8 +51,12 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Resets the <see cref="EventStorage"/> shared state.
+        /// Resets the <see cref="TestSharedState"/>.
         /// </summary>
-        public void ResetEventStorage() => EventStorage.Clear();
+        public void ResetEventStorage()
+        {
+            ExpectedEventPublisher = null;
+            _logOutput.Clear();
+        }
     }
 }

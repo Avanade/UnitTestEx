@@ -74,7 +74,7 @@ namespace UnitTestEx.Abstractions
         /// Gets the configured <see cref="TestSetUp"/>. 
         /// </summary>
         /// <remarks>Defaults to <see cref="TestSetUp.Default"/>.</remarks>
-        public TestSetUp SetUp { get; internal set; } = TestSetUp.Default;
+        public TestSetUp SetUp { get; internal set; }
 
         /// <summary>
         /// Gets the test user name.
