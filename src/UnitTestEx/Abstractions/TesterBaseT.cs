@@ -5,6 +5,7 @@ using CoreEx.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
+using System.Collections.Generic;
 using UnitTestEx.Expectations;
 using UnitTestEx.Mocking;
 
@@ -16,11 +17,19 @@ namespace UnitTestEx.Abstractions
     /// <typeparam name="TSelf">The <see cref="TesterBase{TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class TesterBase<TSelf> : TesterBase where TSelf : TesterBase<TSelf>
     {
+        private bool _hostInstantiated;
+        private readonly List<Action<IServiceCollection>> _configureServices = new();
+
         /// <summary>
         /// Initializes a new instance of the <see cref="TesterBase{TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         protected TesterBase(TestFrameworkImplementor implementor) : base(implementor) { }
+
+        /// <summary>
+        /// Gets the synchronization object where syncronized access is required.
+        /// </summary>
+        protected object SyncRoot { get; } = new object();
 
         /// <summary>
         /// Updates (replaces) the <see cref="TesterBase.SetUp"/>.
@@ -104,11 +113,64 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Provides an opportunity to further configure the services. This can be called multiple times. 
+        /// Resets the underlying host to instantiate a new instance.
+        /// </summary>
+        /// <param name="resetConfiguredServices">Indicates whether to reset the previously configured services.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ResetHost(bool resetConfiguredServices = false)
+        {
+            lock (SyncRoot)
+            {
+                _hostInstantiated = IsExpectedEventPublisherEnabled = false;
+                if (resetConfiguredServices)
+                    _configureServices.Clear();
+
+                ResetHost();
+                return (TSelf)this;
+            }
+        }
+
+        /// <summary>
+        /// Resets the underlying host to instantiate a new instance.
+        /// </summary>
+        protected abstract void ResetHost();
+
+        /// <summary>
+        /// Adds the previously <see cref="ConfigureServices(Action{IServiceCollection})"/> to the <paramref name="services"/>.
+        /// </summary>
+        /// <remarks>It is recommended that this is performed within a <see cref="SyncRoot"/> to ensure thread-safety.</remarks>
+        protected void AddConfiguredServices(IServiceCollection services)
+        {
+            if (_hostInstantiated)
+                throw new InvalidOperationException($"Underlying host has been instantiated and as such the {nameof(ConfigureServices)} operations can no longer be used.");
+
+            foreach (var configureService in _configureServices)
+            {
+                configureService(services);
+            }
+
+            _hostInstantiated = true;
+        }
+
+        /// <summary>
+        /// Provides an opportunity to further configure the services before the underlying host is instantiated.
         /// </summary>
         /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public abstract TSelf ConfigureServices(Action<IServiceCollection> configureServices);
+        /// <remarks>This can be called multiple times prior to the underlying host being instantiated. Internally, the <paramref name="configureServices"/> is queued and then played in order when the host is initially instantiated.
+        /// Once instantiated, further calls will result in a <see cref="InvalidOperationException"/>.</remarks>
+        public TSelf ConfigureServices(Action<IServiceCollection> configureServices)
+        {
+            lock (SyncRoot)
+            {
+                if (_configureServices == null)
+                    throw new InvalidOperationException($"Underlying host has been instantiated and as such the {nameof(ConfigureServices)} operations can no longer be used.");
+
+                _configureServices.Add(configureServices);
+            }
+
+            return (TSelf)this;
+        }
 
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service with the <paramref name="mockHttpClientFactory"/>.

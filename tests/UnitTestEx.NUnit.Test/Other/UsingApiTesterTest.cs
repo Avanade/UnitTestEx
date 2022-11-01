@@ -35,5 +35,16 @@ namespace UnitTestEx.NUnit.Test.Other
                 .AssertOK()
                 .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
         }
+
+        [Test]
+        public void Get4_WithResetHost()
+        {
+            ApiTester.ResetHost();
+
+            Controller<Api.Controllers.PersonController>()
+                .Run(a => a.Get(1))
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
     }
 }

@@ -17,7 +17,6 @@ namespace UnitTestEx.Generic
     /// <typeparam name="TSelf">The <see cref="GenericTesterCore{TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class GenericTesterCore<TSelf> : TesterBase<TSelf>, IDisposable, Expectations.IExceptionSuccessExpectations<TSelf> where TSelf : GenericTesterCore<TSelf>
     {
-        private readonly IHostBuilder _hostBuilder;
         private IHost? _host;
         private bool _disposed;
         private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
@@ -30,25 +29,6 @@ namespace UnitTestEx.Generic
         {
             Logger = LoggerProvider.CreateLogger(GetType().Name);
             _exceptionSuccessExpectations = new(implementor);
-
-            _hostBuilder = new HostBuilder()
-                .UseEnvironment("Development")
-                .ConfigureLogging((lb) => lb.AddProvider(LoggerProvider))
-                .ConfigureAppConfiguration(cb =>
-                {
-                    cb.SetBasePath(Environment.CurrentDirectory)
-                      .AddEnvironmentVariables()
-                      .AddJsonFile("appsettings.unittest.json", optional: true);
-                })
-                .ConfigureServices(sc =>
-                {
-                    sc.AddExecutionContext(sp => { var ec = SetUp.ExecutionContextFactory(sp); ec.UserName = UserName; return ec; });
-                    sc.AddSettings<DefaultSettings>();
-                    sc.ReplaceScoped(_ => SharedState);
-                    SetUp.ConfigureServices?.Invoke(sc);
-                    if (SetUp.ExpectedEventsEnabled)
-                        ReplaceExpectedEventPublisher(sc);
-                });
         }
 
         /// <summary>
@@ -60,7 +40,35 @@ namespace UnitTestEx.Generic
         /// <summary>
         /// Gets the <see cref="IHost"/>.
         /// </summary>
-        private IHost GetHost() => _host ??= _hostBuilder.Build();
+        private IHost GetHost()
+        {
+            lock (SyncRoot)
+            {
+                return _host ??= new HostBuilder()
+                    .UseEnvironment("Development")
+                    .ConfigureLogging((lb) => lb.AddProvider(LoggerProvider))
+                    .ConfigureAppConfiguration(cb =>
+                    {
+                        cb.SetBasePath(Environment.CurrentDirectory)
+                          .AddEnvironmentVariables()
+                          .AddJsonFile("appsettings.unittest.json", optional: true);
+                    })
+                    .ConfigureServices(sc =>
+                    {
+                        sc.AddExecutionContext(sp => { var ec = SetUp.ExecutionContextFactory(sp); ec.UserName = UserName; return ec; });
+                        sc.AddSettings<DefaultSettings>();
+                        sc.ReplaceScoped(_ => SharedState);
+                        SetUp.ConfigureServices?.Invoke(sc);
+                        if (SetUp.ExpectedEventsEnabled)
+                            ReplaceExpectedEventPublisher(sc);
+
+                        AddConfiguredServices(sc);
+                    }).Build();
+            }
+        }
+
+        /// <inheritdoc/>
+        protected override void ResetHost() => _host = null;
 
         /// <summary>
         /// Gets the <see cref="IServiceProvider"/> from the underlying host.
@@ -88,23 +96,6 @@ namespace UnitTestEx.Generic
 
         /// <inheritdoc/>
         public ExceptionSuccessExpectations ExceptionSuccessExpectations => _exceptionSuccessExpectations;
-
-        /// <summary>
-        /// Provides an opportunity to further configure the services. This can be called multiple times. 
-        /// </summary>
-        /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>This will throw an <see cref="InvalidOperationException"/> once the underlying host has been created</remarks>
-        public override TSelf ConfigureServices(Action<IServiceCollection> configureServices)
-        {
-            if (_host != null)
-                throw new InvalidOperationException($"{nameof(ConfigureServices)} cannot be invoked after the test host has been created; as a result of executing a test, or using {nameof(Services)}, {nameof(GetLogger)} or {nameof(Configuration)}");
-
-            if (configureServices != null)
-                _hostBuilder.ConfigureServices(configureServices);
-
-            return (TSelf)this;
-        }
 
         /// <summary>
         /// Releases all resources.

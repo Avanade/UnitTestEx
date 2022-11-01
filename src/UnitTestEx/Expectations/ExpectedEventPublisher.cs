@@ -43,7 +43,6 @@ namespace UnitTestEx.Expectations
             _jsonSerializer = jsonSerializer ?? JsonSerializer.Default;
         }
 
-
         /// <summary>
         /// Gets the dictionary that contains the sent events by destination.
         /// </summary>

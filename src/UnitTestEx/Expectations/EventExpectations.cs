@@ -14,7 +14,7 @@ namespace UnitTestEx.Expectations
     public sealed class EventExpectations
     {
         private readonly Dictionary<string, List<(string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore)>> _expectedEvents = new();
-        private bool _expectNoEvents;
+        private bool _expectNoEvents = true;
         private bool _expectEvents;
 
         /// <summary>
@@ -24,7 +24,8 @@ namespace UnitTestEx.Expectations
         public EventExpectations(TesterBase tester)
         {
             Tester = tester ?? throw new ArgumentNullException(nameof(tester));
-            _expectNoEvents = tester.SetUp.ExpectNoEvents;
+            if (tester.IsExpectedEventPublisherEnabled)
+                _expectNoEvents = tester.SetUp.ExpectNoEvents;
         }
 
         /// <summary>

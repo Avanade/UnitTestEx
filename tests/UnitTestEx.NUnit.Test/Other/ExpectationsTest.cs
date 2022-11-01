@@ -143,17 +143,17 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void ResponseValue_ExpectPrimaryKey()
         {
-            var e = new ResponseValueExpectations<object, Entity<string>>(GenericTester.Create(), new object());
+            var e = new ResponseValueExpectations<object, Entity2<string>>(GenericTester.Create(), new object());
             e.SetExpectPrimaryKey();
-            e.Assert(new Entity<string> { Id = "A" });
+            e.Assert(new Entity2<string> { Id = "A" });
 
-            var ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string>()));
+            var ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity2<string>()));
             Assert.AreEqual("Expected IPrimaryKey.PrimaryKey.Args to have one or more non-default values.", ex.Message);
 
             e.SetExpectPrimaryKey(new CompositeKey("A"));
-            e.Assert(new Entity<string> { Id = "A" });
+            e.Assert(new Entity2<string> { Id = "A" });
 
-            ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string> { Id = "B" }));
+            ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity2<string> { Id = "B" }));
             Assert.IsTrue(ex.Message.Contains("Expected IPrimaryKey.PrimaryKey value of 'A'; actual 'B'."), ex.Message);
         }
 
@@ -291,7 +291,7 @@ namespace UnitTestEx.NUnit.Test.Other
             e.ExpectNoEvents();
 
             var ex = Assert.Throws<AssertionException>(() => e.Assert());
-            Assert.AreEqual("Expected no Event(s); one or more were sent.", ex.Message);
+            Assert.AreEqual("Expected no Event(s); one or more were published.", ex.Message);
         }
 
         [Test]
@@ -388,15 +388,14 @@ namespace UnitTestEx.NUnit.Test.Other
         public void Event_Expect_Count()
         {
             var t = GenericTester.Create().UseExpectedEvents();
-            var _ = t.Services;
+            var ep = t.Services.GetRequiredService<CoreEx.Events.IEventPublisher>();
 
             var e = new EventExpectations(t);
             e.Expect(null, new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "xx" });
 
             var ex = Assert.Throws<AssertionException>(() => e.Assert());
-            Assert.AreEqual("Expected Event(s); none were sent.", ex.Message);
+            Assert.AreEqual("Expected Event(s); none were published.", ex.Message);
 
-            var ep = t.Services.GetRequiredService<CoreEx.Events.IEventPublisher>();
             ep.Publish("d1", new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created" });
             ep.Publish("d2", new CoreEx.Events.EventData { Source = new Uri("mydata/uvw", UriKind.Relative), Subject = "data.def", Action = "created" });
             ep.SendAsync().GetAwaiter().GetResult();
