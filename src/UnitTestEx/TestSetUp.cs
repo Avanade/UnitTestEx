@@ -182,7 +182,7 @@ namespace UnitTestEx
         }
 
         /// <summary>
-        /// Executes the registered set up asynchronsously.
+        /// Executes the registered set up synchronsously.
         /// </summary>
         /// <param name="data">The optional data.</param>
         /// <returns><c>true</c> indicates that the set up was successful; otherwise, <c>false</c>.</returns>

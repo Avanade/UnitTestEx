@@ -396,8 +396,8 @@ namespace UnitTestEx.NUnit.Test.Other
             var ex = Assert.Throws<AssertionException>(() => e.Assert());
             Assert.AreEqual("Expected Event(s); none were published.", ex.Message);
 
-            ep.Publish("d1", new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created" });
-            ep.Publish("d2", new CoreEx.Events.EventData { Source = new Uri("mydata/uvw", UriKind.Relative), Subject = "data.def", Action = "created" });
+            ep.PublishNamed("d1", new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created" });
+            ep.PublishNamed("d2", new CoreEx.Events.EventData { Source = new Uri("mydata/uvw", UriKind.Relative), Subject = "data.def", Action = "created" });
             ep.SendAsync().GetAwaiter().GetResult();
 
             ex = Assert.Throws<AssertionException>(() => e.Assert());
@@ -405,7 +405,7 @@ namespace UnitTestEx.NUnit.Test.Other
 
             t = GenericTester.Create().UseExpectedEvents();
             ep = t.Services.GetRequiredService<CoreEx.Events.IEventPublisher>();
-            ep.Publish("d1", new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created" });
+            ep.PublishNamed("d1", new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created" });
             ep.SendAsync().GetAwaiter().GetResult();
 
             e = new EventExpectations(t);

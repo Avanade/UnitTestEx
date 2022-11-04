@@ -35,9 +35,9 @@ namespace UnitTestEx.Api.Controllers
             var str = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
             var val = JsonConvert.DeserializeObject<dynamic>(str);
 
-            _eventPublisher.Publish("test-queue", new EventData { Source = new Uri($"/test/product/{id}", UriKind.Relative), Subject = $"test.product.{id}", Action = "update" });
+            _eventPublisher.PublishNamed("test-queue", new EventData { Source = new Uri($"/test/product/{id}", UriKind.Relative), Subject = $"test.product.{id}", Action = "update" });
             if (id == "xyz")
-                _eventPublisher.Publish("test-queue2", new EventData { Source = new Uri($"/test/product/{id}", UriKind.Relative), Subject = $"test.product.{id}", Action = "update", Value = val });
+                _eventPublisher.PublishNamed("test-queue2", new EventData { Source = new Uri($"/test/product/{id}", UriKind.Relative), Subject = $"test.product.{id}", Action = "update", Value = val });
 
             await _eventPublisher.SendAsync().ConfigureAwait(false);
             return new OkObjectResult(val);
