@@ -13,7 +13,7 @@ using UnitTestEx.Abstractions;
 namespace UnitTestEx.Expectations
 {
     /// <summary>
-    /// Provides an <see cref="TestSharedState.EventStorage"/> publisher to support <see cref="EventExpectations"/>.
+    /// Provides an expected event publisher to support <see cref="EventExpectations"/>.
     /// </summary>
     /// <remarks>Where an <see cref="ILogger"/> is provided then each <see cref="EventData"/> will also be logged during <i>Send</i>.</remarks>
     public sealed class ExpectedEventPublisher : EventPublisher
@@ -38,14 +38,20 @@ namespace UnitTestEx.Expectations
             : base(eventDataFormatter, new CoreEx.Text.Json.EventDataSerializer(), new NullEventSender())
         {
             _sharedState = sharedState ?? throw new ArgumentNullException(nameof(sharedState));
+            _sharedState.ExpectedEventPublisher = this;
             _logger = logger;
             _jsonSerializer = jsonSerializer ?? JsonSerializer.Default;
         }
 
+        /// <summary>
+        /// Gets the dictionary that contains the sent events by destination.
+        /// </summary>
+        public ConcurrentDictionary<string, ConcurrentQueue<EventData>> SentEvents { get; } = new();
+
         /// <inheritdoc/>
         protected override Task OnEventSendAsync(string? name, EventData eventData, EventSendData eventSendData, CancellationToken cancellationToken)
         {
-            var queue = _sharedState.EventStorage.GetOrAdd(name ?? NullKeyName, _ => new ConcurrentQueue<EventData>());
+            var queue = SentEvents.GetOrAdd(name ?? NullKeyName, _ => new ConcurrentQueue<EventData>());
             queue.Enqueue(eventData);
 
             if (_logger != null)

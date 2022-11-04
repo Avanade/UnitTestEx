@@ -2,6 +2,14 @@
 
 Represents the **NuGet** versions.
 
+## v1.0.27
+- *Enhancement:* `TestSetUp` cloned (from `TestSetUp.Default`) per `TesterBase` instance to allow specific test changes.
+- *Enhancement:* `EventExpectations` now supports `HasEvents` which simply verifies that one or more events were sent (ignores contents). 
+- *Enhancement:* `ValidationTester` extended to support `RunCode` methods that execute passed action/function then catch and validate any thrown `ValidationException`.
+- *Enhancement:* Added user identifier (`object`) support for `UseUser` and `WithUser` that leverages the `TestSetUp.UserNameConverter`.
+- *Enhancement:* Underlying host created within the context of a `lock` to ensure thread-safety. Protections now in place to prohibit further changes once host has been created (`ResetHost` added to explicitly enable further changes if/when needed).
+- *Enhancement* `HttpTesterBase` supports multi-threaded logging leveraging the new `unit-test-ex-request-id` header to coordinate between test and api.
+
 ## v1.0.26
 - *Enhancement:* Moved `username` from all constructors to `UseUser(userName)` method. Additional, `WithUser(userName)` added to `ApiTester` to override the user name for a specific test invocation.
 - *Enhancement:* All references to `Username` renamed to `UserName` for consistency with the .NET framework naming convention.

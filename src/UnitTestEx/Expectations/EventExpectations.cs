@@ -14,7 +14,8 @@ namespace UnitTestEx.Expectations
     public sealed class EventExpectations
     {
         private readonly Dictionary<string, List<(string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore)>> _expectedEvents = new();
-        private bool _expectNoEvents;
+        private bool _expectNoEvents = true;
+        private bool _expectEvents;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EventExpectations"/> class.
@@ -23,7 +24,8 @@ namespace UnitTestEx.Expectations
         public EventExpectations(TesterBase tester)
         {
             Tester = tester ?? throw new ArgumentNullException(nameof(tester));
-            _expectNoEvents = tester.SetUp.ExpectNoEvents;
+            if (tester.IsExpectedEventPublisherEnabled)
+                _expectNoEvents = tester.SetUp.ExpectNoEvents;
         }
 
         /// <summary>
@@ -43,12 +45,29 @@ namespace UnitTestEx.Expectations
         public void ExpectNoEvents() => _expectNoEvents = true;
 
         /// <summary>
+        /// Expects that at least one event has been published.
+        /// </summary>
+        public void ExpectEvents()
+        {
+            if (!Tester.IsExpectedEventPublisherEnabled)
+                throw new NotSupportedException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.ExpectedEventsEnabled)} or TesterBase.UseExpectedEvents must be used before this functionality can be executed; note that enabling will automatically replace the {nameof(IEventPublisher)} to use the {nameof(ExpectedEventPublisher)}.");
+
+            if (_expectedEvents.Count > 0)
+                throw new InvalidOperationException($"{nameof(ExpectEvents)} can not be used where one or more explicit events has already been defined.");
+
+            _expectEvents = true;
+        }
+
+        /// <summary>
         /// Adds the event into the dictionary.
         /// </summary>
         private void Add(string? destination, (string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore) @event)
         {
             if (!Tester.IsExpectedEventPublisherEnabled)
                 throw new NotSupportedException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.ExpectedEventsEnabled)} or TesterBase.UseExpectedEvents must be used before this functionality can be executed; note that enabling will automatically replace the {nameof(IEventPublisher)} to use the {nameof(ExpectedEventPublisher)}.");
+
+            if (_expectEvents)
+                throw new InvalidOperationException($"An explicit {nameof(Expect)} can not be used where {nameof(ExpectEvents)} has already been defined.");
 
             var key = destination ?? ExpectedEventPublisher.NullKeyName;
             if (_expectedEvents.TryGetValue(key, out var events))
@@ -95,16 +114,30 @@ namespace UnitTestEx.Expectations
         public void Expect(string? destination, string source, EventData @event, params string[] membersToIgnore) => Add(destination, (source, @event?.Subject, @event?.Action, @event ?? throw new ArgumentNullException(nameof(@event)), membersToIgnore));
 
         /// <summary>
-        /// Verifies that the <see cref="TestSharedState.EventStorage"/> events match the <see cref="EventExpectations"/> (in order specified).
+        /// Verifies that the <see cref="ExpectedEventPublisher"/> events match the <see cref="EventExpectations"/> (in order specified).
         /// </summary>
         public void Assert()
         {
-            var names = Tester.SharedState.EventStorage.Keys.ToArray();
-            if (_expectNoEvents && _expectedEvents.Count == 0 && names.Length > 0)
-                Implementor.AssertFail($"Expected no Event(s); one or more were sent.");
+            if (Tester.SharedState.ExpectedEventPublisher == null)
+            {
+                if (_expectNoEvents)
+                    return;
+                else
+                    throw new InvalidOperationException($"The {nameof(TesterBase.SharedState)}.{nameof(ExpectedEventPublisher)} must not be null; there is an internal issue.");
+            }
 
-            if (names.Length == 0 && _expectedEvents.Count != 0)
-                Implementor.AssertFail($"Expected Event(s); none were sent.");
+            if (!Tester.SharedState.ExpectedEventPublisher.IsEmpty)
+                Implementor.AssertFail("Expected Event Publish/Send mismatch; there are one or more published events that have not been sent.");
+
+            var names = Tester.SharedState.ExpectedEventPublisher.SentEvents.Keys.ToArray();
+            if (_expectNoEvents && !_expectEvents && _expectedEvents.Count == 0 && names.Length > 0)
+                Implementor.AssertFail($"Expected no Event(s); one or more were published.");
+
+            if (names.Length == 0 && (_expectEvents || _expectedEvents.Count != 0))
+                Implementor.AssertFail($"Expected Event(s); none were published.");
+
+            if (_expectEvents)
+                return;
 
             if (names.Length != _expectedEvents.Count)
                 Implementor.AssertFail($"Expected {_expectedEvents.Count} event destination(s); there were {names.Length}.");
@@ -132,7 +165,7 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Gets the event from the event storage.
         /// </summary>
-        private List<EventData> GetEvents(string? name) => Tester.SharedState.EventStorage.TryGetValue(name ?? ExpectedEventPublisher.NullKeyName, out var queue) ? queue.ToList() : new();
+        private List<EventData> GetEvents(string? name) => Tester.SharedState.ExpectedEventPublisher!.SentEvents.TryGetValue(name ?? ExpectedEventPublisher.NullKeyName, out var queue) ? queue.ToList() : new();
 
         /// <summary>
         /// Asserts the events for the destination.

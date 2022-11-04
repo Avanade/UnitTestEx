@@ -24,18 +24,13 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Initializes a new instance of the <see cref="ExceptionSuccessExpectations"/> class.
         /// </summary>
-        /// <param name="tester">The <see cref="TesterBase"/>.</param>
-        public ExceptionSuccessExpectations(TesterBase tester) => Tester = tester ?? throw new ArgumentNullException(nameof(tester));
-
-        /// <summary>
-        /// Gets the <see cref="TesterBase"/>.
-        /// </summary>
-        public TesterBase Tester { get; }
+        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
+        public ExceptionSuccessExpectations(TestFrameworkImplementor implementor) => Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
 
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
-        public TestFrameworkImplementor Implementor => Tester.Implementor;
+        public TestFrameworkImplementor Implementor { get; }
 
         /// <summary>
         /// Expects that an <see cref="Exception"/> will be thrown during execution.
@@ -123,9 +118,6 @@ namespace UnitTestEx.Expectations
         /// </summary>
         private void VerifyConsistency(bool expectingError, Action action)
         {
-            if (expectingError && _expectException)
-                throw new InvalidOperationException("Only a single exception/error expectation can be added.");
-
             if (expectingError && _expectSuccess)
                 throw new InvalidOperationException("Can not add an exception/error expectation where a success expectation has already been defined.");
 

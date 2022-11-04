@@ -169,5 +169,92 @@ namespace UnitTestEx.Generic
             ExceptionSuccessExpectations.Assert(exception);
             return new ValueAssertor<IValidationResult>(validationResult!, exception, Implementor, JsonSerializer);
         }
+
+        /// <summary>
+        /// Executes the <paramref name="validation"/> function where a thrown <see cref="ValidationException"/> contains the validation result.
+        /// </summary>
+        /// <param name="validation">The function performing the validation.</param>
+        public VoidAssertor RunCode(Func<Task> validation) => RunCodeAsync(validation).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Executes the <paramref name="validation"/> action where a thrown <see cref="ValidationException"/> contains the validation result.
+        /// </summary>
+        /// <param name="validation">The action performing the validation.</param>
+        public VoidAssertor RunCode(Action validation) => RunCodeAsync(() => { validation(); return Task.CompletedTask; }).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Executes the <paramref name="validation"/> function where a thrown <see cref="ValidationException"/> contains the validation result.
+        /// </summary>
+        /// <param name="validation">The function performing the validation.</param>
+        public async Task<VoidAssertor> RunCodeAsync(Func<Task> validation)
+        {
+            if (validation == null)
+                throw new ArgumentNullException(nameof(validation));
+
+            Implementor.WriteLine("");
+            Implementor.WriteLine("VALIDATION TESTER...");
+            Implementor.WriteLine("");
+
+            var ec = Services.GetRequiredService<ExecutionContext>();
+            ec.OperationType = _operationType;
+
+            Exception? exception = null;
+
+            Implementor.WriteLine("VALIDATE >");
+            Implementor.WriteLine($"Validator: <function>");
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            try
+            {
+                await validation().ConfigureAwait(false);
+            }
+            catch (AggregateException aex)
+            {
+                exception = aex.InnerException ?? aex;
+            }
+            catch (Exception ex)
+            {
+                exception = ex;
+            }
+
+            sw.Stop();
+
+            Implementor.WriteLine("");
+            Implementor.WriteLine("LOGGING >");
+            var messages = SharedState.GetLoggerMessages();
+            if (messages.Any())
+            {
+                foreach (var msg in messages)
+                {
+                    Implementor.WriteLine(msg);
+                }
+            }
+            else
+                Implementor.WriteLine("None.");
+
+            Implementor.WriteLine("");
+            Implementor.WriteLine("RESULT >");
+            Implementor.WriteLine($"Elapsed (ms): {sw.Elapsed.TotalMilliseconds}");
+            if (exception != null)
+            {
+                if (exception is ValidationException vex)
+                {
+                    Implementor.WriteLine($"Validation Exception:");
+                    Implementor.WriteLine(new CoreEx.Text.Json.JsonSerializer().Serialize(vex.Messages, CoreEx.Json.JsonWriteFormat.Indented));
+                }
+                else
+                {
+                    Implementor.WriteLine($"Exception: {exception.Message} [{exception.GetType().Name}]");
+                    Implementor.WriteLine(exception.ToString());
+                }
+            }
+
+            Implementor.WriteLine("");
+            Implementor.WriteLine(new string('=', 80));
+            Implementor.WriteLine("");
+
+            ExceptionSuccessExpectations.Assert(exception);
+            return new VoidAssertor(exception, Implementor, JsonSerializer);
+        }
     }
 }

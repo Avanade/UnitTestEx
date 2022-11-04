@@ -12,7 +12,7 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public async Task Get1()
         {
-            (await ApiTester.Http()
+            (await Http()
                 .RunAsync(HttpMethod.Get, "Person/1"))
                 .AssertOK()
                 .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
@@ -21,7 +21,7 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void Get2()
         {
-            ApiTester.Agent<PersonAgent, Person>()
+            Agent<PersonAgent, Person>()
                 .Run(a => a.GetAsync(1))
                 .AssertOK()
                 .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
@@ -30,7 +30,18 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void Get3()
         {
-            ApiTester.Controller<Api.Controllers.PersonController>()
+            Controller<Api.Controllers.PersonController>()
+                .Run(a => a.Get(1))
+                .AssertOK()
+                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Get4_WithResetHost()
+        {
+            ApiTester.ResetHost();
+
+            Controller<Api.Controllers.PersonController>()
                 .Run(a => a.Get(1))
                 .AssertOK()
                 .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });

@@ -18,24 +18,24 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void ExceptionSuccess_ExpectException()
         {
-            var e = new ExceptionSuccessExpectations(GenericTester.Create());
+            var e = new ExceptionSuccessExpectations(GenericTester.Create().Implementor);
             e.SetExpectException();
 
             var ex = Assert.Throws<AssertionException>(() => e.Assert(null));
             Assert.AreEqual("Expected an exception; however, the execution was successful.", ex.Message);
 
-            e = new ExceptionSuccessExpectations(GenericTester.Create());
+            e = new ExceptionSuccessExpectations(GenericTester.Create().Implementor);
             e.SetExpectException<ValidationException>();
 
             ex = Assert.Throws<AssertionException>(() => e.Assert(null));
             Assert.AreEqual("Expected an exception; however, the execution was successful.", ex.Message);
 
-            e = new ExceptionSuccessExpectations(GenericTester.Create());
+            e = new ExceptionSuccessExpectations(GenericTester.Create().Implementor);
             e.SetExpectException();
             e.Assert(new ValidationException("Error"));
             e.Assert(new DivideByZeroException("Error"));
 
-            e = new ExceptionSuccessExpectations(GenericTester.Create());
+            e = new ExceptionSuccessExpectations(GenericTester.Create().Implementor);
             e.SetExpectException("Error");
             e.Assert(new ValidationException("Error"));
             e.Assert(new DivideByZeroException("Error"));
@@ -43,14 +43,14 @@ namespace UnitTestEx.NUnit.Test.Other
             ex = Assert.Throws<AssertionException>(() => e.Assert(new ValidationException("Bananas")));
             Assert.IsTrue(ex.Message.Contains("Expected Exception message 'Error' not equal to actual 'Bananas'."), ex.Message);
 
-            e = new ExceptionSuccessExpectations(GenericTester.Create());
+            e = new ExceptionSuccessExpectations(GenericTester.Create().Implementor);
             e.SetExpectException<ValidationException>();
             e.Assert(new ValidationException("Error"));
 
             ex = Assert.Throws<AssertionException>(() => e.Assert(new DivideByZeroException("Error")));
             Assert.AreEqual("Expected Exception type 'ValidationException' not equal to actual 'DivideByZeroException'.", ex.Message);
 
-            e = new ExceptionSuccessExpectations(GenericTester.Create());
+            e = new ExceptionSuccessExpectations(GenericTester.Create().Implementor);
             e.SetExpectException<ValidationException>("Error");
             e.Assert(new ValidationException("Error"));
 
@@ -61,13 +61,13 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void ExceptionSuccess_ExpectErrorType()
         {
-            var e = new ExceptionSuccessExpectations(GenericTester.Create());
+            var e = new ExceptionSuccessExpectations(GenericTester.Create().Implementor);
             e.SetExpectErrorType("ValidationError");
 
             var ex = Assert.Throws<AssertionException>(() => e.Assert(new DivideByZeroException()));
             Assert.IsTrue(ex.Message.Contains("Expected an ErrorType of ValidationError; however, the exception 'DivideByZeroException' does not implement IExtendedException."), ex.Message);
 
-            e = new ExceptionSuccessExpectations(GenericTester.Create());
+            e = new ExceptionSuccessExpectations(GenericTester.Create().Implementor);
             e.SetExpectErrorType("ValidationError");
             e.Assert(new ValidationException());
 
@@ -78,7 +78,7 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void ExceptionSuccess_ExpectErrors()
         {
-            var e = new ExceptionSuccessExpectations(GenericTester.Create());
+            var e = new ExceptionSuccessExpectations(GenericTester.Create().Implementor);
             e.SetExpectErrors("Abc", "Def");
 
             var mic = new CoreEx.Entities.MessageItemCollection();
@@ -98,7 +98,7 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void ExceptionSuccess_ExpectSuccess()
         {
-            var e = new ExceptionSuccessExpectations(GenericTester.Create());
+            var e = new ExceptionSuccessExpectations(GenericTester.Create().Implementor);
             e.SetExpectSuccess();
             e.Assert(null);
 
@@ -143,17 +143,17 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void ResponseValue_ExpectPrimaryKey()
         {
-            var e = new ResponseValueExpectations<object, Entity<string>>(GenericTester.Create(), new object());
+            var e = new ResponseValueExpectations<object, Entity2<string>>(GenericTester.Create(), new object());
             e.SetExpectPrimaryKey();
-            e.Assert(new Entity<string> { Id = "A" });
+            e.Assert(new Entity2<string> { Id = "A" });
 
-            var ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string>()));
+            var ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity2<string>()));
             Assert.AreEqual("Expected IPrimaryKey.PrimaryKey.Args to have one or more non-default values.", ex.Message);
 
             e.SetExpectPrimaryKey(new CompositeKey("A"));
-            e.Assert(new Entity<string> { Id = "A" });
+            e.Assert(new Entity2<string> { Id = "A" });
 
-            ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string> { Id = "B" }));
+            ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity2<string> { Id = "B" }));
             Assert.IsTrue(ex.Message.Contains("Expected IPrimaryKey.PrimaryKey value of 'A'; actual 'B'."), ex.Message);
         }
 
@@ -291,7 +291,7 @@ namespace UnitTestEx.NUnit.Test.Other
             e.ExpectNoEvents();
 
             var ex = Assert.Throws<AssertionException>(() => e.Assert());
-            Assert.AreEqual("Expected no Event(s); one or more were sent.", ex.Message);
+            Assert.AreEqual("Expected no Event(s); one or more were published.", ex.Message);
         }
 
         [Test]
@@ -388,17 +388,16 @@ namespace UnitTestEx.NUnit.Test.Other
         public void Event_Expect_Count()
         {
             var t = GenericTester.Create().UseExpectedEvents();
-            var _ = t.Services;
+            var ep = t.Services.GetRequiredService<CoreEx.Events.IEventPublisher>();
 
             var e = new EventExpectations(t);
             e.Expect(null, new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "xx" });
 
             var ex = Assert.Throws<AssertionException>(() => e.Assert());
-            Assert.AreEqual("Expected Event(s); none were sent.", ex.Message);
+            Assert.AreEqual("Expected Event(s); none were published.", ex.Message);
 
-            var ep = t.Services.GetRequiredService<CoreEx.Events.IEventPublisher>();
-            ep.Publish("d1", new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created" });
-            ep.Publish("d2", new CoreEx.Events.EventData { Source = new Uri("mydata/uvw", UriKind.Relative), Subject = "data.def", Action = "created" });
+            ep.PublishNamed("d1", new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created" });
+            ep.PublishNamed("d2", new CoreEx.Events.EventData { Source = new Uri("mydata/uvw", UriKind.Relative), Subject = "data.def", Action = "created" });
             ep.SendAsync().GetAwaiter().GetResult();
 
             ex = Assert.Throws<AssertionException>(() => e.Assert());
@@ -406,7 +405,7 @@ namespace UnitTestEx.NUnit.Test.Other
 
             t = GenericTester.Create().UseExpectedEvents();
             ep = t.Services.GetRequiredService<CoreEx.Events.IEventPublisher>();
-            ep.Publish("d1", new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created" });
+            ep.PublishNamed("d1", new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created" });
             ep.SendAsync().GetAwaiter().GetResult();
 
             e = new EventExpectations(t);
@@ -415,7 +414,20 @@ namespace UnitTestEx.NUnit.Test.Other
             Assert.AreEqual("Published event(s) to destination 'd1'; these were not expected.", ex.Message);
         }
 
-        public class Entity<TId> : IIdentifier<TId>, IPrimaryKey, IChangeLog, IETag where TId : IComparable<TId>, IEquatable<TId>
+        public class Entity<TId> : IIdentifier<TId>, IChangeLog, IETag where TId : IComparable<TId>, IEquatable<TId>
+        {
+            public TId Id { get; set; }
+
+            public string Name { get; set; }
+
+            public CompositeKey PrimaryKey => new CompositeKey(Id);
+
+            public ChangeLog ChangeLog { get; set; }
+
+            public string ETag { get; set; }
+        }
+
+        public class Entity2<TId> : IPrimaryKey, IChangeLog, IETag where TId : IComparable<TId>, IEquatable<TId>
         {
             public TId Id { get; set; }
 

@@ -19,9 +19,11 @@ namespace UnitTestEx
     /// <summary>
     /// Orchestrates the set up for testing and provides default test settings.
     /// </summary>
-    public class TestSetUp
+    public class TestSetUp : ICloneable
     {
         private static readonly SemaphoreSlim _semaphore = new(1, 1);
+        private TestSetUp? _clonedFrom;
+        private bool _setUpSet = false;
         private int _setUpCount;
         private Func<int, object?, CancellationToken, Task<bool>>? _setUpFunc;
 
@@ -88,6 +90,11 @@ namespace UnitTestEx
         public string DefaultUserName { get; set; } = "Anonymous";
 
         /// <summary>
+        /// Gets or sets the function to convert a non-<see cref="string"/> user name to a <see cref="string"/> equivalent.
+        /// </summary>
+        public Func<object, string>? UserNameConverter { get; set; }
+
+        /// <summary>
         /// Defines an <see cref="CoreEx.Entities.IETag.ETag"/> value that <i>should</i> result in a concurrency error.
         /// </summary>
         /// <remarks>Defaults to '<c>ZZZZZZZZZZZZ</c>'.</remarks>
@@ -144,14 +151,38 @@ namespace UnitTestEx
         /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBase.UserName"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
         public Func<HttpRequest, string?, CancellationToken, Task>? OnBeforeHttpRequestSendAsync { get; set; }
 
+        /// <inheritdoc/>
+        /// <remarks>The <see cref="RegisterSetUp(Func{int, object?, CancellationToken, Task{bool}}?)"/> will reference the originating unless explicitly registered (overriddent) for the cloned instance.</remarks>
+        public object Clone() => new TestSetUp
+        {
+            DefaultUserName = DefaultUserName,
+            UserNameConverter = UserNameConverter,
+            ConcurrencyErrorETag = ConcurrencyErrorETag,
+            ExpectedEventsEnabled = ExpectedEventsEnabled,
+            ExpectNoEvents = ExpectNoEvents,
+            ExpectedEventsMembersToIgnore = ExpectedEventsMembersToIgnore,
+            ExpectedEventsWildcard = ExpectedEventsWildcard,
+            ExpectedEventsEventDataFormatter = ExpectedEventsEventDataFormatter,
+            ConfigureServices = ConfigureServices,
+            ExecutionContextFactory = ExecutionContextFactory,
+            OnBeforeHttpRequestMessageSendAsync = OnBeforeHttpRequestMessageSendAsync,
+            OnBeforeHttpRequestSendAsync = OnBeforeHttpRequestSendAsync,
+            _clonedFrom = this
+        };
+
         /// <summary>
         /// Registers the <paramref name="setUpFunc"/> that will be executed whenever <see cref="SetUp"/> or <see cref="SetUpAsync"/> is invoked.
         /// </summary>
         /// <param name="setUpFunc">The set up function. The first argument is the current count of invocations, and second is the optional data object. The return value indicates success.</param>
-        public void RegisterSetUp(Func<int, object?, CancellationToken, Task<bool>> setUpFunc) => _setUpFunc = setUpFunc;
+        public void RegisterSetUp(Func<int, object?, CancellationToken, Task<bool>>? setUpFunc)
+        {
+            _setUpSet = true;
+            _setUpFunc = setUpFunc;
+            _setUpCount = 0;
+        }
 
         /// <summary>
-        /// Executes the registered set up asynchronsously.
+        /// Executes the registered set up synchronsously.
         /// </summary>
         /// <param name="data">The optional data.</param>
         /// <returns><c>true</c> indicates that the set up was successful; otherwise, <c>false</c>.</returns>
@@ -167,18 +198,34 @@ namespace UnitTestEx
         /// <remarks>This operation is thread-safe.</remarks>
         public async Task<bool> SetUpAsync(object? data = null, CancellationToken cancellationToken = default)
         {
-            if (_setUpFunc == null)
+            if (SetUpFunc == null)
                 throw new InvalidOperationException("Set up can not be invoked as no set up function has been registered; please use RegisterSetUp() to enable.");
 
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                return await _setUpFunc(_setUpCount++, data, cancellationToken).ConfigureAwait(false);
+                return await SetUpFunc(GetSetUpCount()++, data, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
                 _semaphore.Release();
             }
+        }
+
+        /// <summary>
+        /// Gets the set up function crawling up the cloned hierarchy.
+        /// </summary>
+        private Func<int, object?, CancellationToken, Task<bool>>? SetUpFunc => _setUpSet ? _setUpFunc : _clonedFrom?.SetUpFunc;
+
+        /// <summary>
+        /// Gets the count (by reference) crawling up the cloned hierarchy.
+        /// </summary>
+        private ref int GetSetUpCount()
+        {
+            if (_setUpSet || _clonedFrom == null)
+                return ref _setUpCount;
+
+            return ref _clonedFrom.GetSetUpCount();
         }
     }
 }

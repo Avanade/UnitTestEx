@@ -25,6 +25,11 @@ namespace UnitTestEx.AspNetCore
     public abstract class HttpTesterBase
     {
         /// <summary>
+        /// Gets the '<c>unit-test-ex-request-id</c>' constant.
+        /// </summary>
+        internal const string RequestIdName = "unit-test-ex-request-id";
+
+        /// <summary>
         /// Initializes a new <see cref="HttpTesterBase"/> class.
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
@@ -156,7 +161,7 @@ namespace UnitTestEx.AspNetCore
         private async Task<TAssertor> RunWrapperAsync<TAgent, TAssertor>(Func<TAgent, Task<TAssertor>> func) where TAgent : TypedHttpClientBase where TAssertor : HttpResponseMessageAssertorBase
         {
             var sc = new ServiceCollection();
-            sc.AddExecutionContext();
+            sc.AddExecutionContext(sp => new CoreEx.ExecutionContext { UserName = UserName ?? Owner.SetUp.DefaultUserName });
             sc.AddSingleton(JsonSerializer);
             sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(Owner.LoggerProvider); });
             sc.AddSingleton(new HttpClient(new HttpDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress });
@@ -201,12 +206,15 @@ namespace UnitTestEx.AspNetCore
                 if (_httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync != null)
                     await _httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync(request, _httpTester.UserName, cancellationToken);
 
+                var requestId = Guid.NewGuid().ToString();
+                request.Headers.Add(RequestIdName, requestId);
+
                 _httpTester.LogRequest(request);
                 var sw = Stopwatch.StartNew();
                 var res = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 sw.Stop();
                 await Task.Delay(0, cancellationToken).ConfigureAwait(false);
-                _httpTester.LogResponse(res, sw);
+                _httpTester.LogResponse(requestId, res, sw);
                 return res;
             }
         }
@@ -296,11 +304,11 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Log the response to the output.
         /// </summary>
-        private void LogResponse(HttpResponseMessage res, Stopwatch sw)
+        private void LogResponse(string requestId, HttpResponseMessage res, Stopwatch sw)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("LOGGING >");
-            var messages = Owner.SharedState.GetLoggerMessages();
+            var messages = Owner.SharedState.GetLoggerMessages(requestId);
             if (messages.Any())
             {
                 foreach (var msg in messages)

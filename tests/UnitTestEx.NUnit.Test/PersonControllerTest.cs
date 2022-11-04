@@ -58,6 +58,15 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
+        public void Get_Test4_WithResetHost()
+        {
+            using var test = ApiTester.Create<Startup>().ResetHost();
+            test.Controller<PersonController>()
+                .Run(c => c.Get(4))
+                .AssertNotFound();
+        }
+
+        [Test]
         public void GetByArgs_Test1()
         {
             using var test = ApiTester.Create<Startup>();

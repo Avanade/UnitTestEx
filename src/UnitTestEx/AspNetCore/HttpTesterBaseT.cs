@@ -2,6 +2,7 @@
 
 using CoreEx.Http;
 using Microsoft.AspNetCore.TestHost;
+using Moq;
 using System;
 using System.Net.Http;
 using UnitTestEx.Abstractions;
@@ -26,7 +27,7 @@ namespace UnitTestEx.AspNetCore
         /// <param name="testServer">The <see cref="TestServer"/>.</param>
         internal HttpTesterBase(TesterBase owner, TestServer testServer) : base(owner, testServer)
         {
-            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Owner);
+            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Owner.Implementor);
             _httpResponseExpectations = new HttpResponseExpectations(Owner);
             _eventExpectations = new EventExpectations(Owner);
         }
@@ -49,6 +50,23 @@ namespace UnitTestEx.AspNetCore
         {
             UserName = userName;
             return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Sets (overrides) the test user name (defaults to <see cref="TesterBase.UserName"/>).
+        /// </summary>
+        /// <param name="userIdentifier">The test user identifier.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        /// <remarks>The <see cref="TestSetUp.UserNameConverter"/> is required for the conversion to take place.</remarks>
+        public TSelf WithUser(object? userIdentifier)
+        {
+            if (userIdentifier == null)
+                return WithUser(null);
+
+            if (Owner.SetUp.UserNameConverter == null)
+                throw new InvalidOperationException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.UserNameConverter)} must be defined to support user identifier conversion.");
+
+            return WithUser(Owner.SetUp.UserNameConverter(userIdentifier));
         }
 
         /// <summary>

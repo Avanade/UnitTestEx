@@ -2,6 +2,8 @@
 
 using CoreEx.Configuration;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -23,7 +25,7 @@ namespace UnitTestEx.AspNetCore
     public abstract class ApiTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : class where TSelf : ApiTesterBase<TEntryPoint, TSelf> 
     {
         private bool _disposed;
-        private WebApplicationFactory<TEntryPoint> _waf;
+        private WebApplicationFactory<TEntryPoint>? _waf;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> class.
@@ -46,43 +48,45 @@ namespace UnitTestEx.AspNetCore
             {
                 Environment.SetEnvironmentVariable(key.Key, key.Value);
             }
-
-            _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb =>
-                whb.UseSolutionRelativeContentRoot(Environment.CurrentDirectory)
-                    .ConfigureAppConfiguration((_, x) => x.AddJsonFile("appsettings.unittest.json", optional: true))
-                    .ConfigureServices(sc =>
-                    {
-                        sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(LoggerProvider); });
-                        sc.ReplaceScoped(_ => SharedState);
-                        SetUp.ConfigureServices?.Invoke(sc);
-                        if (SetUp.ExpectedEventsEnabled)
-                            ReplaceExpectedEventPublisher(sc);
-                    }));
         }
 
         /// <summary>
-        /// Gets the <see cref="WebApplicationFactory{TEntryPoint}"/>.
+        /// Gets the <see cref="WebApplicationFactory{TEntryPoint}"/>; instantiates on first access.
         /// </summary>
-        internal WebApplicationFactory<TEntryPoint> WebApplicationFactory => _waf!;
-
-        /// <summary>
-        /// Provides an opportunity to further configure the services. This can be called multiple times. 
-        /// </summary>
-        /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public override TSelf ConfigureServices(Action<IServiceCollection> configureServices)
+        internal WebApplicationFactory<TEntryPoint> GetWebApplicationFactory()
         {
-            if (configureServices != null)
-                _waf = WebApplicationFactory.WithWebHostBuilder(whb => whb.ConfigureServices(configureServices));
+            lock (SyncRoot)
+            {
+                if (_waf != null)
+                    return _waf;
 
-            return (TSelf)this;
+                return _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb =>
+                    whb.UseSolutionRelativeContentRoot(Environment.CurrentDirectory)
+                        .ConfigureAppConfiguration((_, x) => x.AddJsonFile("appsettings.unittest.json", optional: true))
+                        .ConfigureServices(sc =>
+                        {
+                            sc.AddHttpContextAccessor();
+                            SharedState.HttpContextAccessor = sc.BuildServiceProvider().GetRequiredService<IHttpContextAccessor>();
+
+                            sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(LoggerProvider); });
+                            sc.ReplaceScoped(_ => SharedState);
+                            SetUp.ConfigureServices?.Invoke(sc);
+                            if (SetUp.ExpectedEventsEnabled)
+                                ReplaceExpectedEventPublisher(sc);
+
+                            AddConfiguredServices(sc);
+                        }));
+            }
         }
+
+        /// <inheritdoc/>
+        protected override void ResetHost() => _waf = null;
 
         /// <summary>
         /// Gets the <see cref="IServiceProvider"/> from the underlying host.
         /// </summary>
         /// <returns>The <see cref="IServiceProvider"/>.</returns>
-        public override IServiceProvider Services => _waf.Services;
+        public override IServiceProvider Services => GetWebApplicationFactory().Services;
 
         /// <summary>
         /// Gets the <see cref="IConfiguration"/> from the underlying host.
@@ -119,14 +123,14 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <typeparam name="TController">The API Controller <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="ControllerTester{TController}"/>.</returns>
-        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, HostExecutionWrapper(() => WebApplicationFactory.Server));
+        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, HostExecutionWrapper(() => GetWebApplicationFactory().Server));
 
         /// <summary>
         /// Enables an agent (<see cref="CoreEx.Http.TypedHttpClientBase"/>) to be used to send a <see cref="HttpRequestMessage"/> to the underlying <see cref="TestServer"/>.
         /// </summary>
         /// <typeparam name="TAgent">The <see cref="CoreEx.Http.TypedHttpClientBase"/> <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="AgentTester{TAgent}"/></returns>
-        public AgentTester<TAgent> Agent<TAgent>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, HostExecutionWrapper(() => WebApplicationFactory.Server));
+        public AgentTester<TAgent> Agent<TAgent>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, HostExecutionWrapper(() => GetWebApplicationFactory().Server));
 
         /// <summary>
         /// Enables an agent (<see cref="CoreEx.Http.TypedHttpClientBase"/>) to be used to send a <see cref="HttpRequestMessage"/> to the underlying <see cref="TestServer"/>.
@@ -134,20 +138,20 @@ namespace UnitTestEx.AspNetCore
         /// <typeparam name="TResponse">The response value <see cref="Type"/>.</typeparam>
         /// <typeparam name="TAgent">The <see cref="CoreEx.Http.TypedHttpClientBase"/> <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="AgentTester{TAgent}"/></returns>
-        public AgentTester<TAgent, TResponse> Agent<TAgent, TResponse>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, HostExecutionWrapper(() => WebApplicationFactory.Server));
+        public AgentTester<TAgent, TResponse> Agent<TAgent, TResponse>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, HostExecutionWrapper(() => GetWebApplicationFactory().Server));
 
         /// <summary>
         /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/>.
         /// </summary>
         /// <returns>The <see cref="HttpTester"/>.</returns>
-        public HttpTester Http() => new(this, HostExecutionWrapper(() => WebApplicationFactory.Server));
+        public HttpTester Http() => new(this, HostExecutionWrapper(() => GetWebApplicationFactory().Server));
 
         /// <summary>
         /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/> with an expected response value <see cref="Type"/>.
         /// </summary>
         /// <typeparam name="TResponse">The response value <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="HttpTester{TResponse}"/>.</returns>
-        public HttpTester<TResponse> Http<TResponse>() => new(this, HostExecutionWrapper(() => WebApplicationFactory.Server));
+        public HttpTester<TResponse> Http<TResponse>() => new(this, HostExecutionWrapper(() => GetWebApplicationFactory().Server));
 
         /// <summary>
         /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
@@ -174,7 +178,12 @@ namespace UnitTestEx.AspNetCore
             if (_disposed)
                 return;
 
-            _waf.Dispose();
+            if (_waf != null)
+            {
+                _waf.Dispose();
+                _waf = null;
+            }
+
             _disposed = true;
         }
     }

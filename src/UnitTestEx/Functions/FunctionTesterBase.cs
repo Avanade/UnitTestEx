@@ -36,7 +36,9 @@ namespace UnitTestEx.Functions
         private static readonly object _lock = new();
         private static bool _localSettingsDone = false;
 
-        private readonly IHostBuilder _hostBuilder;
+        private bool? _includeUnitTestConfiguration;
+        private bool? _includeUserSecrets;
+        private IEnumerable<KeyValuePair<string, string>>? _additionalConfiguration;
         private IHost? _host;
         private bool _disposed;
 
@@ -64,42 +66,9 @@ namespace UnitTestEx.Functions
         protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) : base(implementor)
         {
             Logger = LoggerProvider.CreateLogger(GetType().Name);
-
-            var ep2 = new TEntryPoint();
-            _hostBuilder = new HostBuilder()
-                .UseEnvironment(TestSetUp.Environment)
-                .ConfigureLogging((lb) => lb.AddProvider(LoggerProvider))
-                .ConfigureWebHostDefaults(c =>
-                {
-                    c.ConfigureAppConfiguration((cx, cb) =>
-                    {
-                        cb.SetBasePath(Environment.CurrentDirectory)
-                            .AddInMemoryCollection(new KeyValuePair<string, string>[] { new KeyValuePair<string, string>("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost") })
-                            .AddJsonFile(GetLocalSettingsJson(), optional: true)
-                            .AddJsonFile("appsettings.json", optional: true)
-                            .AddJsonFile("appsettings.development.json", optional: true);
-
-                        if ((!includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (includeUserSecrets.HasValue && includeUserSecrets.Value))
-                            cb.AddUserSecrets<TEntryPoint>();
-
-                        cb.AddEnvironmentVariables();
-
-                        if ((!includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (includeUnitTestConfiguration.HasValue && includeUnitTestConfiguration.Value))
-                            cb.AddJsonFile("appsettings.unittest.json", optional: true);
-
-                        if (additionalConfiguration != null)
-                            cb.AddInMemoryCollection(additionalConfiguration);
-                    });
-                })
-                .ConfigureAppConfiguration(configurationBuilder => ep2.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(configurationBuilder)))
-                .ConfigureServices(sc =>
-                {
-                    ep2.Configure(MockIFunctionsHostBuilder(sc));
-                    sc.ReplaceScoped(_ => SharedState);
-                    SetUp.ConfigureServices?.Invoke(sc);
-                    if (SetUp.ExpectedEventsEnabled)
-                        ReplaceExpectedEventPublisher(sc);
-                });
+            _includeUnitTestConfiguration = includeUnitTestConfiguration;
+            _includeUserSecrets = includeUserSecrets;
+            _additionalConfiguration = additionalConfiguration;
         }
 
         /// <summary>
@@ -168,7 +137,55 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Gets the <see cref="IHost"/>.
         /// </summary>
-        private IHost GetHost() => _host ??= _hostBuilder.Build();
+        private IHost GetHost()
+        {
+            lock (SyncRoot)
+            {
+                if (_host != null)
+                    return _host;
+
+                var ep2 = new TEntryPoint();
+                return _host = new HostBuilder()
+                    .UseEnvironment(TestSetUp.Environment)
+                    .ConfigureLogging((lb) => lb.AddProvider(LoggerProvider))
+                    .ConfigureWebHostDefaults(c =>
+                    {
+                        c.ConfigureAppConfiguration((cx, cb) =>
+                        {
+                            cb.SetBasePath(Environment.CurrentDirectory)
+                                .AddInMemoryCollection(new KeyValuePair<string, string>[] { new KeyValuePair<string, string>("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost") })
+                                .AddJsonFile(GetLocalSettingsJson(), optional: true)
+                                .AddJsonFile("appsettings.json", optional: true)
+                                .AddJsonFile("appsettings.development.json", optional: true);
+
+                            if ((!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (_includeUserSecrets.HasValue && _includeUserSecrets.Value))
+                                cb.AddUserSecrets<TEntryPoint>();
+
+                            cb.AddEnvironmentVariables();
+
+                            if ((!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (_includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value))
+                                cb.AddJsonFile("appsettings.unittest.json", optional: true);
+
+                            if (_additionalConfiguration != null)
+                                cb.AddInMemoryCollection(_additionalConfiguration);
+                        });
+                    })
+                    .ConfigureAppConfiguration(configurationBuilder => ep2.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(configurationBuilder)))
+                    .ConfigureServices(sc =>
+                    {
+                        ep2.Configure(MockIFunctionsHostBuilder(sc));
+                        sc.ReplaceScoped(_ => SharedState);
+                        SetUp.ConfigureServices?.Invoke(sc);
+                        if (SetUp.ExpectedEventsEnabled)
+                            ReplaceExpectedEventPublisher(sc);
+
+                        AddConfiguredServices(sc);
+                    }).Build();
+            }
+        }
+
+        /// <inheritdoc/>
+        protected override void ResetHost() => _host = null;
 
         /// <summary>
         /// Gets the <see cref="IServiceProvider"/> from the underlying host.
@@ -193,23 +210,6 @@ namespace UnitTestEx.Functions
         /// Gets the <see cref="SettingsBase"/> from the underlying host.
         /// </summary>
         public override SettingsBase Settings => Services.GetService<SettingsBase>() ?? new DefaultSettings(Configuration);
-
-        /// <summary>
-        /// Provides an opportunity to further configure the services. This can be called multiple times. 
-        /// </summary>
-        /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>This will throw an <see cref="InvalidOperationException"/> once the underlying host has been created</remarks>
-        public override TSelf ConfigureServices(Action<IServiceCollection> configureServices)
-        {
-            if (_host != null)
-                throw new InvalidOperationException($"{nameof(ConfigureServices)} cannot be invoked after the test host has been created; as a result of executing a test, or using {nameof(Services)}, {nameof(GetLogger)} or {nameof(Configuration)}");
-
-            if (configureServices != null)
-                _hostBuilder.ConfigureServices(configureServices);
-
-            return (TSelf)this;
-        }
 
         /// <summary>
         /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> that is to be tested.

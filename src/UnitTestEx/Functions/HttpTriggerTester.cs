@@ -36,7 +36,7 @@ namespace UnitTestEx.Functions
         /// </summary>
         /// <param name="tester">The <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        internal HttpTriggerTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope) => _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester);
+        internal HttpTriggerTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope) => _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester.Implementor);
 
         /// <inheritdoc/>
         ExceptionSuccessExpectations IExceptionSuccessExpectations<HttpTriggerTester<TFunction>>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
