@@ -182,16 +182,16 @@ namespace UnitTestEx.NUnit.Test.Other
             e.Assert(new Entity<string> { ChangeLog = new ChangeLog { CreatedBy = "Anonymous", CreatedDate = DateTime.UtcNow } });
 
             var ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string>()));
-            Assert.AreEqual("Expected IChangeLog.ChangeLog to have a non-null value.", ex.Message);
+            Assert.AreEqual("Expected Change Log (IChangeLogAuditLog.ChangeLogAudit) to have a non-null value.", ex.Message);
 
             ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string> { ChangeLog = new ChangeLog() }));
-            Assert.AreEqual("Expected IChangeLog.ChangeLog.CreatedBy value of 'Anonymous'; actual was null.", ex.Message);
+            Assert.AreEqual("Expected Change Log (IChangeLogAuditLog.ChangeLogAudit).CreatedBy value of 'Anonymous'; actual was null.", ex.Message);
 
             ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string> { ChangeLog = new ChangeLog { CreatedBy = "Anonymous" } }));
-            Assert.AreEqual("Expected IChangeLog.ChangeLog.CreatedDate to have a non-null value.", ex.Message);
+            Assert.AreEqual("Expected Change Log (IChangeLogAuditLog.ChangeLogAudit).CreatedDate to have a non-null value.", ex.Message);
 
             ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string> { ChangeLog = new ChangeLog { CreatedBy = "Anonymous", CreatedDate = DateTime.UtcNow.AddMinutes(-1) } }));
-            Assert.IsTrue(ex.Message.Contains("Expected IChangeLog.ChangeLog.CreatedDate value of '") && ex.Message.Contains("' must be greater than or equal to expected."), ex.Message);
+            Assert.IsTrue(ex.Message.Contains("Expected Change Log (IChangeLogAuditLog.ChangeLogAudit).CreatedDate value of '") && ex.Message.Contains("' must be greater than or equal to expected."), ex.Message);
 
             e.SetExpectChangeLogCreated("Banana");
             e.Assert(new Entity<string> { ChangeLog = new ChangeLog { CreatedBy = "Banana", CreatedDate = DateTime.UtcNow } });
@@ -211,16 +211,16 @@ namespace UnitTestEx.NUnit.Test.Other
             e.Assert(new Entity<string> { ChangeLog = new ChangeLog { UpdatedBy = "Anonymous", UpdatedDate = DateTime.UtcNow } });
 
             var ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string>()));
-            Assert.AreEqual("Expected IChangeLog.ChangeLog to have a non-null value.", ex.Message);
+            Assert.AreEqual("Expected Change Log (IChangeLogAuditLog.ChangeLogAudit) to have a non-null value.", ex.Message);
 
             ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string> { ChangeLog = new ChangeLog() }));
-            Assert.AreEqual("Expected IChangeLog.ChangeLog.UpdatedBy value of 'Anonymous'; actual was null.", ex.Message);
+            Assert.AreEqual("Expected Change Log (IChangeLogAuditLog.ChangeLogAudit).UpdatedBy value of 'Anonymous'; actual was null.", ex.Message);
 
             ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string> { ChangeLog = new ChangeLog { UpdatedBy = "Anonymous" } }));
-            Assert.AreEqual("Expected IChangeLog.ChangeLog.UpdatedDate to have a non-null value.", ex.Message);
+            Assert.AreEqual("Expected Change Log (IChangeLogAuditLog.ChangeLogAudit).UpdatedDate to have a non-null value.", ex.Message);
 
             ex = Assert.Throws<AssertionException>(() => e.Assert(new Entity<string> { ChangeLog = new ChangeLog { UpdatedBy = "Anonymous", UpdatedDate = DateTime.UtcNow.AddMinutes(-1) } }));
-            Assert.IsTrue(ex.Message.Contains("Expected IChangeLog.ChangeLog.UpdatedDate value of '") && ex.Message.Contains("' must be greater than or equal to expected."), ex.Message);
+            Assert.IsTrue(ex.Message.Contains("Expected Change Log (IChangeLogAuditLog.ChangeLogAudit).UpdatedDate value of '") && ex.Message.Contains("' must be greater than or equal to expected."), ex.Message);
 
             e.SetExpectChangeLogUpdated("Banana");
             e.Assert(new Entity<string> { ChangeLog = new ChangeLog { UpdatedBy = "Banana", UpdatedDate = DateTime.UtcNow } });
