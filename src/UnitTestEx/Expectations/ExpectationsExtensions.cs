@@ -129,7 +129,7 @@ namespace UnitTestEx.Expectations
             => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectETag(previousETag));
 
         /// <summary>
-        /// Expects the <see cref="IChangeLog"/> to be implemented for the response with generated values for the underlying <see cref="ChangeLog.CreatedBy"/> and <see cref="ChangeLog.CreatedDate"/> matching the specified values.
+        /// Expects the <see cref="IChangeLogAuditLog"/> to be implemented for the response with generated values for the underlying <see cref="IChangeLogAudit.CreatedBy"/> and <see cref="IChangeLogAudit.CreatedDate"/> matching the specified values.
         /// </summary>
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
         /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
@@ -141,7 +141,7 @@ namespace UnitTestEx.Expectations
             => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectChangeLogCreated(createdby, createdDateGreaterThan));
 
         /// <summary>
-        /// Expects the <see cref="IChangeLog"/> to be implemented for the response with generated values for the underlying <see cref="ChangeLog.UpdatedBy"/> and <see cref="ChangeLog.UpdatedDate"/> matching the specified values.
+        /// Expects the <see cref="IChangeLogAuditLog"/> to be implemented for the response with generated values for the underlying <see cref="IChangeLogAudit.UpdatedBy"/> and <see cref="IChangeLogAudit.UpdatedDate"/> matching the specified values.
         /// </summary>
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
         /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>

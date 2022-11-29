@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v2.0.0
+- *Enhancement:* Updated `CoreEx` dependencies to `2.0.0` as breaking changes were introduced. There are no breaking changes within `UnitTestEx` as a result; primarily related to the key `CoreEx` dependency.
+
 ## v1.0.27
 - *Enhancement:* `TestSetUp` cloned (from `TestSetUp.Default`) per `TesterBase` instance to allow specific test changes.
 - *Enhancement:* `EventExpectations` now supports `HasEvents` which simply verifies that one or more events were sent (ignores contents). 

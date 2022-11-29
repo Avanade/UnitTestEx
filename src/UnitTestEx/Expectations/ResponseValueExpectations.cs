@@ -95,7 +95,7 @@ namespace UnitTestEx.Expectations
         /// <param name="createdDateGreaterThan">The <see cref="DateTime"/> in which the <see cref="ChangeLog.CreatedDate"/> should be greater than or equal to; where <c>null</c> it will default to <see cref="DateTime.Now"/>.</param>
         public void SetExpectChangeLogCreated(string? createdby = null, DateTime? createdDateGreaterThan = null)
         {
-            VerifyImplements<IChangeLog>();
+            VerifyImplements<IChangeLogAuditLog>();
             _expectedChangeLog ??= new ChangeLog();
             _expectedChangeLog.CreatedBy = createdby ?? Tester.UserName;
             _expectedChangeLog.CreatedDate = Cleaner.Clean(createdDateGreaterThan ?? DateTime.UtcNow.Subtract(new TimeSpan(0, 0, 1)));
@@ -109,7 +109,7 @@ namespace UnitTestEx.Expectations
         /// <param name="updatedDateGreaterThan">The <see cref="DateTime"/> in which the <see cref="ChangeLog.CreatedDate"/> should be greater than or equal to; where <c>null</c> it will default to <see cref="DateTime.Now"/>.</param>
         public void SetExpectChangeLogUpdated(string? updatedBy = null, DateTime? updatedDateGreaterThan = null)
         {
-            VerifyImplements<IChangeLog>();
+            VerifyImplements<IChangeLogAuditLog>();
             _expectedChangeLog ??= new ChangeLog();
             _expectedChangeLog.UpdatedBy = updatedBy ?? Tester.UserName;
             _expectedChangeLog.UpdatedDate = Cleaner.Clean(updatedDateGreaterThan ?? DateTime.UtcNow.Subtract(new TimeSpan(0, 0, 1)));
@@ -181,48 +181,48 @@ namespace UnitTestEx.Expectations
 
             if (_expectedChangeLog != null)
             {
-                var cl = value as IChangeLog;
-                if (cl == null || cl.ChangeLog == null)
-                    Tester.Implementor.AssertFail($"Expected {nameof(IChangeLog)}.{nameof(ChangeLog)} to have a non-null value.");
+                var cl = value as IChangeLogAuditLog;
+                if (cl == null || cl.ChangeLogAudit == null)
+                    Tester.Implementor.AssertFail($"Expected Change Log ({nameof(IChangeLogAuditLog)}.{nameof(IChangeLogAuditLog.ChangeLogAudit)}) to have a non-null value.");
 
                 if (_expectedChangeLog.CreatedBy != null)
                 {
-                    if (cl!.ChangeLog!.CreatedBy == null)
-                        Tester.Implementor.AssertFail($"Expected {nameof(IChangeLog)}.{nameof(ChangeLog)}.{nameof(ChangeLog.CreatedBy)} value of '{_expectedChangeLog.CreatedBy}'; actual was null.");
+                    if (cl!.ChangeLogAudit!.CreatedBy == null)
+                        Tester.Implementor.AssertFail($"Expected Change Log ({nameof(IChangeLogAuditLog)}.{nameof(IChangeLogAuditLog.ChangeLogAudit)}).{nameof(ChangeLog.CreatedBy)} value of '{_expectedChangeLog.CreatedBy}'; actual was null.");
                     else
                     {
                         var wcr = Wildcard.BothAll.Parse(_expectedChangeLog.CreatedBy).ThrowOnError();
-                        if (cl?.ChangeLog?.CreatedBy == null || !wcr.CreateRegex().IsMatch(cl!.ChangeLog!.CreatedBy))
-                            Tester.Implementor.AssertFail($"Expected {nameof(IChangeLog)}.{nameof(ChangeLog)}.{nameof(ChangeLog.CreatedBy)} value of '{_expectedChangeLog.CreatedBy}'; actual '{cl?.ChangeLog?.CreatedBy}'.");
+                        if (cl?.ChangeLogAudit?.CreatedBy == null || !wcr.CreateRegex().IsMatch(cl!.ChangeLogAudit!.CreatedBy))
+                            Tester.Implementor.AssertFail($"Expected Change Log ({nameof(IChangeLogAuditLog)}.{nameof(IChangeLogAuditLog.ChangeLogAudit)}).{nameof(ChangeLog.CreatedBy)} value of '{_expectedChangeLog.CreatedBy}'; actual '{cl?.ChangeLogAudit?.CreatedBy}'.");
                     }
                 }
 
                 if (_expectedChangeLog.CreatedDate != null)
                 {
-                    if (!cl!.ChangeLog!.CreatedDate.HasValue)
-                        Tester.Implementor.AssertFail($"Expected {nameof(IChangeLog)}.{nameof(IChangeLog.ChangeLog)}.{nameof(ChangeLog.CreatedDate)} to have a non-null value.");
-                    else if (cl!.ChangeLog!.CreatedDate.Value < _expectedChangeLog.CreatedDate.Value)
-                        Tester.Implementor.AssertFail($"Expected {nameof(IChangeLog)}.{nameof(IChangeLog.ChangeLog)}.{nameof(ChangeLog.CreatedDate)} value of '{_expectedChangeLog.CreatedDate.Value}'; actual '{cl.ChangeLog.CreatedDate.Value}' must be greater than or equal to expected.");
+                    if (!cl!.ChangeLogAudit!.CreatedDate.HasValue)
+                        Tester.Implementor.AssertFail($"Expected Change Log ({nameof(IChangeLogAuditLog)}.{nameof(IChangeLogAuditLog.ChangeLogAudit)}).{nameof(ChangeLog.CreatedDate)} to have a non-null value.");
+                    else if (cl!.ChangeLogAudit!.CreatedDate.Value < _expectedChangeLog.CreatedDate.Value)
+                        Tester.Implementor.AssertFail($"Expected Change Log ({nameof(IChangeLogAuditLog)}.{nameof(IChangeLogAuditLog.ChangeLogAudit)}).{nameof(ChangeLog.CreatedDate)} value of '{_expectedChangeLog.CreatedDate.Value}'; actual '{cl.ChangeLogAudit.CreatedDate.Value}' must be greater than or equal to expected.");
                 }
 
                 if (_expectedChangeLog.UpdatedBy != null)
                 {
-                    if (cl!.ChangeLog!.UpdatedBy == null)
-                        Tester.Implementor.AssertFail($"Expected {nameof(IChangeLog)}.{nameof(ChangeLog)}.{nameof(ChangeLog.UpdatedBy)} value of '{_expectedChangeLog.UpdatedBy}'; actual was null.");
+                    if (cl!.ChangeLogAudit!.UpdatedBy == null)
+                        Tester.Implementor.AssertFail($"Expected Change Log ({nameof(IChangeLogAuditLog)}.{nameof(IChangeLogAuditLog.ChangeLogAudit)}).{nameof(ChangeLog.UpdatedBy)} value of '{_expectedChangeLog.UpdatedBy}'; actual was null.");
                     else
                     {
                         var wcr = Wildcard.BothAll.Parse(_expectedChangeLog.UpdatedBy).ThrowOnError();
-                        if (cl?.ChangeLog?.UpdatedBy == null || !wcr.CreateRegex().IsMatch(cl!.ChangeLog!.UpdatedBy))
-                            Tester.Implementor.AssertFail($"Expected {nameof(IChangeLog)}.{nameof(ChangeLog)}.{nameof(ChangeLog.UpdatedBy)} value of '{_expectedChangeLog.UpdatedBy}'; actual '{cl?.ChangeLog?.UpdatedBy}'.");
+                        if (cl?.ChangeLogAudit?.UpdatedBy == null || !wcr.CreateRegex().IsMatch(cl!.ChangeLogAudit!.UpdatedBy))
+                            Tester.Implementor.AssertFail($"Expected Change Log ({nameof(IChangeLogAuditLog)}.{nameof(IChangeLogAuditLog.ChangeLogAudit)}).{nameof(ChangeLog.UpdatedBy)} value of '{_expectedChangeLog.UpdatedBy}'; actual '{cl?.ChangeLogAudit?.UpdatedBy}'.");
                     }
                 }
 
                 if (_expectedChangeLog.UpdatedDate != null)
                 {
-                    if (!cl!.ChangeLog!.UpdatedDate.HasValue)
-                        Tester.Implementor.AssertFail($"Expected {nameof(IChangeLog)}.{nameof(IChangeLog.ChangeLog)}.{nameof(ChangeLog.UpdatedDate)} to have a non-null value.");
-                    else if (cl!.ChangeLog!.UpdatedDate.Value < _expectedChangeLog.UpdatedDate.Value)
-                        Tester.Implementor.AssertFail($"Expected {nameof(IChangeLog)}.{nameof(IChangeLog.ChangeLog)}.{nameof(ChangeLog.UpdatedDate)} value of '{_expectedChangeLog.UpdatedDate.Value}'; actual '{cl.ChangeLog.UpdatedDate.Value}' must be greater than or equal to expected.");
+                    if (!cl!.ChangeLogAudit!.UpdatedDate.HasValue)
+                        Tester.Implementor.AssertFail($"Expected Change Log ({nameof(IChangeLogAuditLog)}.{nameof(IChangeLogAuditLog.ChangeLogAudit)}).{nameof(ChangeLog.UpdatedDate)} to have a non-null value.");
+                    else if (cl!.ChangeLogAudit!.UpdatedDate.Value < _expectedChangeLog.UpdatedDate.Value)
+                        Tester.Implementor.AssertFail($"Expected Change Log ({nameof(IChangeLogAuditLog)}.{nameof(IChangeLogAuditLog.ChangeLogAudit)}).{nameof(ChangeLog.UpdatedDate)} value of '{_expectedChangeLog.UpdatedDate.Value}'; actual '{cl.ChangeLogAudit.UpdatedDate.Value}' must be greater than or equal to expected.");
                 }
             }
 

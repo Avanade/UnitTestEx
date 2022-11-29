@@ -34,6 +34,7 @@ The most general guideline is that we use all the VS default settings in terms o
 5. Open-braces (`{`) go on a new line (an `if` with single-line statement does not need braces).
 6. Use any language features available to you (expression-bodied members, throw expressions, tuples, etc.) as long as they make for readable, manageable code.
 7. All methods and properties must include the [XML documentation comments](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/xmldoc/xml-documentation-comments). Private methods and properties only need to specifiy the [summary](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/xmldoc/summary) as a minimum.
+8. Breaking changes should be avoided where possible; however, to minimize lifetime costs they are acceptable (also avoid alternatives unless additive to minimize codebase bloat). For the most part be guided by [Semantic Versioning 2.0.0](https://semver.org/).
 
 For further guidance see ASP.NET Core [Engineering guidelines](https://github.com/aspnet/AspNetCore/wiki/Engineering-guidelines).
 
