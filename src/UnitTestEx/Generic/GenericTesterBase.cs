@@ -62,6 +62,8 @@ namespace UnitTestEx.Generic
             if (function == null)
                 throw new ArgumentNullException(nameof(function));
 
+            TestSetUp.LogAutoSetUpOutputs(Implementor);
+
             Implementor.WriteLine("");
             Implementor.WriteLine("VALIDATION TESTER...");
             Implementor.WriteLine("");
@@ -150,6 +152,8 @@ namespace UnitTestEx.Generic
         {
             if (function == null)
                 throw new ArgumentNullException(nameof(function));
+
+            TestSetUp.LogAutoSetUpOutputs(Implementor);
 
             Implementor.WriteLine("");
             Implementor.WriteLine("VALIDATION TESTER...");

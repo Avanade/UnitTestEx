@@ -4,6 +4,8 @@ using NUnit.Framework;
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
+using UnitTestEx;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Expectations;
@@ -13,12 +15,21 @@ namespace UnitTestEx.NUnit.Test
     [TestFixture]
     public class ProductControllerTest
     {
+        public ProductControllerTest()
+        {
+            TestSetUp.Default.RegisterAutoSetUp((_, __, ___) =>
+            {
+                return Task.FromResult((true, "Some real magic happened here!"));
+            });
+        }
+
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
             var uti = NUnit.Internal.NUnitTestImplementor.Create();
-            uti.WriteLine("ONE-TIME-SETUP");
+            uti.WriteLine("ONE-TIME-SETUP"); // This does not work; bug of test framework.
             System.Diagnostics.Debug.WriteLine("ONE-TIME-SETUP");
+            TestSetUp.Default.SetUp();
         }
 
         [Test]
