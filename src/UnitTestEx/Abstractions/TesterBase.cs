@@ -53,6 +53,7 @@ namespace UnitTestEx.Abstractions
             LoggerProvider = new SharedStateLoggerProvider(SharedState);
             JsonSerializer = CoreEx.Json.JsonSerializer.Default;
             SetUp = (TestSetUp)TestSetUp.Default.Clone();
+            TestSetUp.LogAutoSetUpOutputs(Implementor);
         }
 
         /// <summary>

@@ -63,6 +63,8 @@ namespace UnitTestEx.Hosting
         /// <returns>The resulting exception if any and elapsed milliseconds.</returns>
         protected async Task<(Exception? Exception, double ElapsedMilliseconds)> RunAsync(Expression<Func<THost, Task>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
+            TestSetUp.LogAutoSetUpOutputs(Implementor);
+
             var mce = MethodCallExpressionValidate(expression);
             var pis = mce.Method.GetParameters();
             var @params = new object?[pis.Length];
@@ -115,6 +117,8 @@ namespace UnitTestEx.Hosting
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
         protected async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<THost, Task<TValue>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
+            TestSetUp.LogAutoSetUpOutputs(Implementor);
+
             var mce = MethodCallExpressionValidate(expression);
             var pis = mce.Method.GetParameters();
             var @params = new object?[pis.Length];

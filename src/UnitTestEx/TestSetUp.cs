@@ -1,18 +1,19 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Configuration;
 using CoreEx.Events;
 using CoreEx.Wildcards;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using UnitTestEx.Functions;
 using UnitTestEx.Abstractions;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
-using CoreEx.Configuration;
+using UnitTestEx.Functions;
 
 namespace UnitTestEx
 {
@@ -22,10 +23,13 @@ namespace UnitTestEx
     public class TestSetUp : ICloneable
     {
         private static readonly SemaphoreSlim _semaphore = new(1, 1);
+        private static readonly ConcurrentQueue<string> _autoSetUpOutputs = new();
+
         private TestSetUp? _clonedFrom;
         private bool _setUpSet = false;
         private int _setUpCount;
         private Func<int, object?, CancellationToken, Task<bool>>? _setUpFunc;
+        private Func<int, object?, CancellationToken, Task<(bool, string?)>>? _autoSetUpFunc;
 
         /// <summary>
         /// Gets or sets the default <see cref="TestSetUp"/>.
@@ -82,6 +86,29 @@ namespace UnitTestEx
         /// <returns>The <see cref="DefaultSettings"/>.</returns>
         /// <remarks>The is built outside of any host and therefore host specific configuration is not available.</remarks>
         public static DefaultSettings GetSettings(string? environmentVariablePrefix = null) => new(GetConfiguration(environmentVariablePrefix));
+
+        /// <summary>
+        /// Gets the <see cref="AutoSetUpFunc"/> result output from the beginning of the internal queue.
+        /// </summary>
+        /// <returns>The output text from the beginning of the internal queue; where <c>null</c> this indicates no further outputs currently remain queued.</returns>
+        public static string? GetAutoSetUpOutput() => _autoSetUpOutputs.TryDequeue(out var o) ? o : null;
+
+        /// <summary>
+        /// Logs the output from any previously executed <see cref="RegisterAutoSetUp"/> executions (see <see cref="GetAutoSetUpOutput"/>).
+        /// </summary>
+        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
+        public static void LogAutoSetUpOutputs(TestFrameworkImplementor implementor)
+        {
+            var output = GetAutoSetUpOutput();
+            while (!string.IsNullOrEmpty(output))
+            {
+                implementor.WriteLine("");
+                implementor.WriteLine("TEST-SET-UP OUTPUT >");
+                implementor.WriteLine(output);
+                implementor.WriteLine(new string('=', 80));
+                output = GetAutoSetUpOutput();
+            }
+        }
 
         /// <summary>
         /// Gets or sets the default user name.
@@ -152,7 +179,7 @@ namespace UnitTestEx
         public Func<HttpRequest, string?, CancellationToken, Task>? OnBeforeHttpRequestSendAsync { get; set; }
 
         /// <inheritdoc/>
-        /// <remarks>The <see cref="RegisterSetUp(Func{int, object?, CancellationToken, Task{bool}}?)"/> will reference the originating unless explicitly registered (overriddent) for the cloned instance.</remarks>
+        /// <remarks>The <see cref="RegisterSetUp"/> and <see cref="RegisterAutoSetUp"/> will reference the originating unless explicitly registered (overridden) for the cloned instance.</remarks>
         public object Clone() => new TestSetUp
         {
             DefaultUserName = DefaultUserName,
@@ -173,11 +200,25 @@ namespace UnitTestEx
         /// <summary>
         /// Registers the <paramref name="setUpFunc"/> that will be executed whenever <see cref="SetUp"/> or <see cref="SetUpAsync"/> is invoked.
         /// </summary>
-        /// <param name="setUpFunc">The set up function. The first argument is the current count of invocations, and second is the optional data object. The return value indicates success.</param>
+        /// <param name="setUpFunc">The set up function. The first argument is the current count of invocations, and the second is the optional data object. The return value indicates success.</param>
         public void RegisterSetUp(Func<int, object?, CancellationToken, Task<bool>>? setUpFunc)
         {
             _setUpSet = true;
             _setUpFunc = setUpFunc;
+            _autoSetUpFunc = null;
+            _setUpCount = 0;
+        }
+
+        /// <summary>
+        /// Registers the <paramref name="autoSetUpFunc"/> that will be executed whenever <see cref="SetUp"/> or <see cref="SetUpAsync"/> is invoked.
+        /// </summary>
+        /// <param name="autoSetUpFunc">The set up function. The first argument is the current count of invocations, and the second is the optional data object. The return value indicates success with a corresponding output to be logged.</param>
+        /// <remarks>This will automatically perform a <see cref="TestFrameworkImplementor.AssertFail(string?)"/> on error. On success the output will be cache temporarily and logged within the logging-phase of the next executing test.</remarks>
+        public void RegisterAutoSetUp(Func<int, object?, CancellationToken, Task<(bool, string?)>>? autoSetUpFunc)
+        {
+            _setUpSet = true;
+            _setUpFunc = null;
+            _autoSetUpFunc = autoSetUpFunc;
             _setUpCount = 0;
         }
 
@@ -198,13 +239,30 @@ namespace UnitTestEx
         /// <remarks>This operation is thread-safe.</remarks>
         public async Task<bool> SetUpAsync(object? data = null, CancellationToken cancellationToken = default)
         {
-            if (SetUpFunc == null)
-                throw new InvalidOperationException("Set up can not be invoked as no set up function has been registered; please use RegisterSetUp() to enable.");
+            if (SetUpFunc == null && AutoSetUpFunc == null)
+                throw new InvalidOperationException("Set up can not be invoked as no set up function has been registered; please use RegisterSetUp() ot AutoRegisterSetUp() to enable.");
 
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                return await SetUpFunc(GetSetUpCount()++, data, cancellationToken).ConfigureAwait(false);
+                if (SetUpFunc != null)
+                    return await SetUpFunc(GetSetUpCount()++, data, cancellationToken).ConfigureAwait(false);
+
+                if (AutoSetUpFunc != null)
+                {
+                    var (Success, Output) = await AutoSetUpFunc(GetSetUpCount()++, data, cancellationToken).ConfigureAwait(false);
+                    if (Success)
+                    {
+                        if (!string.IsNullOrEmpty(Output))
+                            _autoSetUpOutputs.Enqueue(Output);
+
+                        return true;
+                    }
+                    else
+                        throw new TestSetUpException(Output);
+                }
+
+                return true;
             }
             finally
             {
@@ -216,6 +274,11 @@ namespace UnitTestEx
         /// Gets the set up function crawling up the cloned hierarchy.
         /// </summary>
         private Func<int, object?, CancellationToken, Task<bool>>? SetUpFunc => _setUpSet ? _setUpFunc : _clonedFrom?.SetUpFunc;
+
+        /// <summary>
+        /// Gets the auto set up function crawling up the cloned hierarchy.
+        /// </summary>
+        private Func<int, object?, CancellationToken, Task<(bool, string?)>>? AutoSetUpFunc => _setUpSet ? _autoSetUpFunc : _clonedFrom?.AutoSetUpFunc;
 
         /// <summary>
         /// Gets the count (by reference) crawling up the cloned hierarchy.
