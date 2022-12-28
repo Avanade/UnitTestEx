@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v2.1.1
+- *Fixed:* Incorrect package deployment; corrected.
+
 ## v2.1.0
 - *Enhancement:* Added `TestSetUp.RegisterAutoSetUp` that will automatically throw a `TestSetUpException` where unsuccessful; otherwise, queues the successful output message. This is required as most testing frameworks do not allow for a log write during construction or fuxture set up. The underlying _UnitTestEx_ test classes will automatically log write where entries are discovered in the queue. This will at least ensure one of the underlying tests will output the success output where applicable. Otherwise, to log write explicitly use `TestSetUp.LogAutoSetUpOutputs`.
 
