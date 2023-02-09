@@ -67,6 +67,42 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
+        public async Task Get_Test5_AnonymousType_OK()
+        {
+            using var test = ApiTester.Create<Startup>();
+            (await test.Controller<PersonController>()
+                .RunAsync(c => c.Get(1)))
+                .AssertOK()
+                .Assert(new { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Get_Test5_AnonymousType_AssertFail()
+        {
+            Assert.Throws<AssertionException>(() =>
+            {
+                using var test = ApiTester.Create<Startup>();
+                test.Controller<PersonController>()
+                    .Run(c => c.Get(1))
+                    .AssertOK()
+                    .Assert(new { Fruit = "Apple" });
+            });
+        }
+
+        [Test]
+        public void Get_Test5_AnonymousType_AssertFail2()
+        {
+            Assert.Throws<AssertionException>(() =>
+            {
+                using var test = ApiTester.Create<Startup>();
+                test.Controller<PersonController>()
+                    .Run(c => c.Get(1))
+                    .AssertOK()
+                    .AssertJson("{\"data\": \"this_is_a_test\"}");
+            });
+        }
+
+        [Test]
         public void GetByArgs_Test1()
         {
             using var test = ApiTester.Create<Startup>();
@@ -152,7 +188,6 @@ namespace UnitTestEx.NUnit.Test
         [Test]
         public void Update_Test6()
         {
-            Assert.Inconclusive("This should be removed when CoreEx v1.0.8 is published.");
             using var test = ApiTester.Create<Startup>();
             test.Controller<PersonController>()
                 .ExpectStatusCode(System.Net.HttpStatusCode.BadRequest)

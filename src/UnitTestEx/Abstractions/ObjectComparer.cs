@@ -14,7 +14,7 @@ namespace UnitTestEx.Abstractions
         {
             CompareStaticFields = false,
             CompareStaticProperties = false,
-            CompareReadOnly = false,
+            CompareReadOnly = true,
             CompareFields = false,
             MaxDifferences = 20,
             MaxMillisecondsDateDifference = 100,

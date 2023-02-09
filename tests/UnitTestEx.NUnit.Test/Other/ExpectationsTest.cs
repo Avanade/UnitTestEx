@@ -420,8 +420,6 @@ namespace UnitTestEx.NUnit.Test.Other
 
             public string Name { get; set; }
 
-            public CompositeKey PrimaryKey => new CompositeKey(Id);
-
             public ChangeLog ChangeLog { get; set; }
 
             public string ETag { get; set; }

@@ -327,13 +327,13 @@ namespace UnitTestEx.Xunit.Test
             var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             sw.Stop();
             Assert.Equal(HttpStatusCode.NotModified, res.StatusCode);
-            Assert.True(sw.ElapsedMilliseconds >= 245);
+            Assert.True(sw.ElapsedMilliseconds >= 245, $"Actual elapsed milliseconds {sw.ElapsedMilliseconds}.");
 
             sw.Restart();
             res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             sw.Stop();
             Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
-            Assert.True(sw.ElapsedMilliseconds >= 95);
+            Assert.True(sw.ElapsedMilliseconds >= 95, $"Actual elapsed milliseconds {sw.ElapsedMilliseconds}.");
         }
 
         [Fact]

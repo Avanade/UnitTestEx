@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v2.1.2
+- *Issue [52](https://github.com/Avanade/UnitTestEx/issues/52):* `UnitTestBase.TestServer` is now `public` (versus previous `protected`).
+- *Issue [51](https://github.com/Avanade/UnitTestEx/issues/51):* Anonymous types create read-only properties; these were by default ignored when comparing. Read-only properties are now included by default within the `ObjectComparer`; note that these defaults can be overridden where applicable.
+
 ## v2.1.1
 - *Fixed:* Incorrect package deployment; corrected.
 
