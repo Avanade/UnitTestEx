@@ -36,7 +36,7 @@ namespace UnitTestEx.MSTest.Test
             using var test = FunctionTester.Create<Startup>();
             var r = test.ReplaceHttpClientFactory(mcf)
                 .Type<ServiceBusFunction>()
-                .Run(f => f.Run(new Person { FirstName = "Bob", LastName = "Smith" }, test.Logger))
+                .Run(f => f.Run(new Person { FirstName = "Bob", LastName = (string)null }, test.Logger))
                 .AssertException<HttpRequestException>("Response status code does not indicate success: 500 (Internal Server Error).");
 
             mcf.VerifyAll();
@@ -82,7 +82,7 @@ namespace UnitTestEx.MSTest.Test
             using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
-                .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
+                .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = (string)null }), test.Logger))
                 .AssertException<HttpRequestException>("Response status code does not indicate success: 500 (Internal Server Error).");
 
             mcf.VerifyAll();

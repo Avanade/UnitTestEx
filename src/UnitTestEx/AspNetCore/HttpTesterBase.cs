@@ -36,8 +36,8 @@ namespace UnitTestEx.AspNetCore
         /// <param name="testServer">The <see cref="TestServer"/>.</param>
         internal HttpTesterBase(TesterBase owner, TestServer testServer)
         {
-            Owner = owner;
-            TestServer = testServer;
+            Owner = owner ?? throw new ArgumentNullException(nameof(owner));
+            TestServer = testServer ?? throw new ArgumentNullException(nameof(testServer));
             UserName = Owner.UserName;
         }
 
@@ -47,9 +47,9 @@ namespace UnitTestEx.AspNetCore
         public TesterBase Owner { get; }
 
         /// <summary>
-        /// Gets the <see cref="TestServer"/>.
+        /// Gets the underlying <see cref="TestServer"/>.
         /// </summary>
-        protected internal TestServer TestServer { get; }
+        public TestServer TestServer { get; }
 
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
@@ -64,7 +64,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Gets or sets the test user name (defaults to <see cref="TesterBase.UserName"/>).
         /// </summary>
-        protected string? UserName { get; set; }
+        public string? UserName { get; protected set; }
 
         /// <summary>
         /// Sends with no content.
