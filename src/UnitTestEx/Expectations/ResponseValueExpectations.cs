@@ -4,7 +4,6 @@ using CoreEx.Entities;
 using CoreEx.Wildcards;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnitTestEx.Abstractions;
 using UnitTestEx.AspNetCore;
 
@@ -73,7 +72,7 @@ namespace UnitTestEx.Expectations
             VerifyImplements<IPrimaryKey>();
             _expectedPrimaryKey = true;
             _expectedPrimaryKeyValue = primaryKey;
-            MembersToIgnore.Add(nameof(IPrimaryKey.PrimaryKey));
+            MembersToIgnore.Add($"{typeof(TValue).Name}.{nameof(IPrimaryKey.PrimaryKey)}");
         }
 
         /// <summary>
@@ -85,7 +84,7 @@ namespace UnitTestEx.Expectations
             VerifyImplements<IETag>();
             _expectedETag = true;
             _expectedPreviousETag = previousETag;
-            MembersToIgnore.Add(nameof(IETag.ETag));
+            MembersToIgnore.Add($"{typeof(TValue).Name}.{nameof(IETag.ETag)}");
         }
 
         /// <summary>
@@ -99,7 +98,7 @@ namespace UnitTestEx.Expectations
             _expectedChangeLog ??= new ChangeLog();
             _expectedChangeLog.CreatedBy = createdby ?? Tester.UserName;
             _expectedChangeLog.CreatedDate = Cleaner.Clean(createdDateGreaterThan ?? DateTime.UtcNow.Subtract(new TimeSpan(0, 0, 1)));
-            MembersToIgnore.Add(nameof(IChangeLog.ChangeLog));
+            MembersToIgnore.Add($"{typeof(TValue).Name}.{nameof(IChangeLog.ChangeLog)}");
         }
 
         /// <summary>
@@ -113,7 +112,7 @@ namespace UnitTestEx.Expectations
             _expectedChangeLog ??= new ChangeLog();
             _expectedChangeLog.UpdatedBy = updatedBy ?? Tester.UserName;
             _expectedChangeLog.UpdatedDate = Cleaner.Clean(updatedDateGreaterThan ?? DateTime.UtcNow.Subtract(new TimeSpan(0, 0, 1)));
-            MembersToIgnore.Add(nameof(IChangeLog.ChangeLog));
+            MembersToIgnore.Add($"{typeof(TValue).Name}.{nameof(IChangeLog.ChangeLog)}");
         }
 
         /// <summary>

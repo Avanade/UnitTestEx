@@ -46,13 +46,15 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Gets the dictionary that contains the sent events by destination.
         /// </summary>
-        public ConcurrentDictionary<string, ConcurrentQueue<EventData>> SentEvents { get; } = new();
+        /// <remarks>The sent events are queued as the JSON-serialized representation of the <see cref="EventData"/>.</remarks>
+        public ConcurrentDictionary<string, ConcurrentQueue<string?>> SentEvents { get; } = new();
 
         /// <inheritdoc/>
         protected override Task OnEventSendAsync(string? name, EventData eventData, EventSendData eventSendData, CancellationToken cancellationToken)
         {
-            var queue = SentEvents.GetOrAdd(name ?? NullKeyName, _ => new ConcurrentQueue<EventData>());
-            queue.Enqueue(eventData);
+            var queue = SentEvents.GetOrAdd(name ?? NullKeyName, _ => new ConcurrentQueue<string?>());
+            var json = _jsonSerializer.Serialize(eventData, JsonWriteFormat.Indented);
+            queue.Enqueue(json);
 
             if (_logger != null)
             {
@@ -61,8 +63,6 @@ namespace UnitTestEx.Expectations
                     sb.Append($" (destination: '{name}')");
 
                 sb.AppendLine(" ->");
-
-                var json = _jsonSerializer.Serialize(eventData, JsonWriteFormat.Indented);
                 sb.Append(json);
                 _logger.LogInformation("{Event}", sb.ToString());
             }

@@ -262,6 +262,18 @@ namespace UnitTestEx.Expectations
             => tester.SetEventExpectation(t => t.EventExpectations.Expect(null, subject, action));
 
         /// <summary>
+        /// Expects that the corresponding event <paramref name="value"/> has been published (in order specified). The expected event <paramref name="subject"/> and <paramref name="action"/> can use wildcards.
+        /// </summary>
+        /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
+        /// <param name="value">The expected <see cref="EventData.Value"/>.</param>
+        /// <param name="subject">The expected subject (may contain wildcards).</param>
+        /// <param name="action">The expected action (may contain wildcards).</param>
+        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectEventValue<TSelf>(this IEventExpectations<TSelf> tester, object? value, string subject, string? action, params string[] membersToIgnore) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.Expect(null, new EventData { Subject = subject, Action = action, Value = value }, membersToIgnore));
+
+        /// <summary>
         /// Expects that the corresponding event has been published (in order specified). The expected event <paramref name="source"/>, <paramref name="subject"/> and <paramref name="action"/> can use wildcards. All other <see cref="EventData"/> 
         /// properties are not matched/verified.
         /// </summary>
@@ -310,6 +322,19 @@ namespace UnitTestEx.Expectations
         /// for this to function. As this is a scoped service no parallel execution of services against the same test host is supported as this capability is not considered thread-safe.</remarks>
         public static TSelf ExpectDestinationEvent<TSelf>(this IEventExpectations<TSelf> tester, string destination, string subject, string? action = "*") where TSelf : IEventExpectations<TSelf>
             => tester.SetEventExpectation(t => t.EventExpectations.Expect(destination, subject, action));
+
+        /// <summary>
+        /// Expects that the corresponding <paramref name="destination"/> event <paramref name="value"/> has been published (in order specified). The expected event <paramref name="subject"/> and <paramref name="action"/> can use wildcards.
+        /// </summary>
+        /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
+        /// <param name="destination">The named destination (e.g. queue or topic).</param>
+        /// <param name="value">The expected <see cref="EventData.Value"/>.</param>
+        /// <param name="subject">The expected subject (may contain wildcards).</param>
+        /// <param name="action">The expected action (may contain wildcards).</param>
+        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectDestinationEventValue<TSelf>(this IEventExpectations<TSelf> tester, object? value, string destination, string subject, string? action, params string[] membersToIgnore) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.Expect(destination, new EventData { Subject = subject, Action = action, Value = value }, membersToIgnore));
 
         /// <summary>
         /// Expects that the corresponding <paramref name="destination"/> event has been published (in order specified). The expected event <paramref name="source"/>, <paramref name="subject"/> and <paramref name="action"/> can use wildcards. All other <see cref="EventData"/> 

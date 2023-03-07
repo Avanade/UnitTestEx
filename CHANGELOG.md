@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v2.1.3
+- *Fixed:* The `EventExpectations` internally assigned [members to ignore](https://github.com/GregFinzer/Compare-Net-Objects/wiki/Ignoring-Members) updated to use `ClassName.MemberName` syntax to explicitly ignore.
+- *Fixed:* Added `ExpectEventValue` and `ExpectDestinationEventValue` expectations to simplify specification versus having to instantiate `EventData` with expected `Value`.
+- *Fixed:* To remove any `EventData.Value` implementation (`Type`) differences the `EventData` is now serialized during runtime publish, then deserialized prior to expectation check within test.
+
 ## v2.1.2
 - *Issue [52](https://github.com/Avanade/UnitTestEx/issues/52):* `UnitTestBase.TestServer` is now `public` (versus previous `protected`).
 - *Issue [51](https://github.com/Avanade/UnitTestEx/issues/51):* Anonymous types create read-only properties; these were by default ignored when comparing. Read-only properties are now included by default within the `ObjectComparer`; note that these defaults can be overridden where applicable.
