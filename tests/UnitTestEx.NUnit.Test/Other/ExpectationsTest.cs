@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
+using UnitTestEx.Api.Models;
 using UnitTestEx.Expectations;
 using NU = NUnit;
 
@@ -381,6 +382,28 @@ namespace UnitTestEx.NUnit.Test.Other
 
             e = new EventExpectations(t);
             e.Expect(null, new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "yy" }, "TenantId");
+            e.Assert();
+        }
+
+        [Test]
+        public void Event_Expect_EventData_Value()
+        {
+            var t = GenericTester.Create().UseExpectedEvents();
+            var ep = t.Services.GetRequiredService<CoreEx.Events.IEventPublisher>();
+
+            ep.Publish(new CoreEx.Events.EventData<Person> { Id = Guid.NewGuid().ToString(), Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "xx", Value = new Person { Id = 1, FirstName = "Mary", LastName = "Jane" } });
+            ep.SendAsync().GetAwaiter().GetResult();
+
+            var e = new EventExpectations(t);
+            e.Expect(null, new CoreEx.Events.EventData<Person> { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "xx", Value = new Person { Id = 1, FirstName = "Mary", LastName = "Jane" } });
+            e.Assert();
+
+            e = new EventExpectations(t);
+            e.Expect(null, new CoreEx.Events.EventData<Person> { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "xx", Value = new Person { Id = 1, FirstName = "Mary", LastName = "Contrary" } });
+            Assert.Throws<AssertionException>(() => e.Assert());
+
+            e = new EventExpectations(t);
+            e.Expect(null, new CoreEx.Events.EventData<Person> { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "xx", Value = new Person { Id = 1, FirstName = "Mary", LastName = "Contrary" } }, "LastName");
             e.Assert();
         }
 

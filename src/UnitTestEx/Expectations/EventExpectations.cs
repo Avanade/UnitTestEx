@@ -165,12 +165,12 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Gets the event from the event storage.
         /// </summary>
-        private List<EventData> GetEvents(string? name) => Tester.SharedState.ExpectedEventPublisher!.SentEvents.TryGetValue(name ?? ExpectedEventPublisher.NullKeyName, out var queue) ? queue.ToList() : new();
+        private List<string?> GetEvents(string? name) => Tester.SharedState.ExpectedEventPublisher!.SentEvents.TryGetValue(name ?? ExpectedEventPublisher.NullKeyName, out var queue) ? queue.ToList() : new();
 
         /// <summary>
         /// Asserts the events for the destination.
         /// </summary>
-        private void AssertDestination(string? destination, List<(string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore)> expectedEvents, List<EventData> actualEvents)
+        private void AssertDestination(string? destination, List<(string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore)> expectedEvents, List<string?> actualEvents)
         {
             if (actualEvents == null)
                 throw new ArgumentNullException(nameof(actualEvents));
@@ -180,9 +180,9 @@ namespace UnitTestEx.Expectations
 
             for (int i = 0; i < actualEvents.Count; i++)
             {
-                var act = actualEvents[i]!;
                 var exp = expectedEvents[i].Event;
                 var wcexp = exp ?? new EventData { Subject = expectedEvents[i].Subject, Action = expectedEvents[i].Action };
+                var act = (EventData)Tester.JsonSerializer.Deserialize(actualEvents[i]!, wcexp.GetType())!;
 
                 // Assert source, subject, action and type using wildcards where specified.
                 if (expectedEvents[i].Source != null && !WildcardMatch(expectedEvents[i].Source!, act.Source?.ToString(), '/'))
@@ -202,14 +202,31 @@ namespace UnitTestEx.Expectations
                     continue;
 
                 // Compare the events.
-                var list = new List<string>(Tester.SetUp.ExpectedEventsMembersToIgnore);
-                list.AddRange(new string[] { nameof(EventDataBase.Source), nameof(EventDataBase.Subject), nameof(EventDataBase.Action), nameof(EventDataBase.Type) });
+                var list = PrefixMembersToIgnore(Tester.SetUp.ExpectedEventsMembersToIgnore);
+                list.AddRange(PrefixMembersToIgnore(new string[] { nameof(EventDataBase.Source), nameof(EventDataBase.Subject), nameof(EventDataBase.Action), nameof(EventDataBase.Type) }));
                 list.AddRange(expectedEvents[i].MembersToIgnore);
 
                 var cr = ObjectComparer.Compare(exp, act, list.ToArray());
                 if (!cr.AreEqual)
                     Implementor.AssertFail($"Destination {destination}: Expected event is not equal to actual: {cr.DifferencesString}");
             }
+        }
+
+        /// <summary>
+        /// Prefix the members to ignore with the <see cref="EventData"/> and <see cref="EventData{T}"/> class names.
+        /// </summary>
+        /// <param name="membersToIgnore">the members to ignore.</param>
+        /// <returns>The prefixed members to ignore.</returns>
+        private List<string> PrefixMembersToIgnore(IEnumerable<string> membersToIgnore)
+        {
+            var list = new List<string>();
+            foreach (var m in membersToIgnore)
+            {
+                list.Add($"{nameof(EventData)}.{m}");
+                list.Add($"{nameof(EventData)}`1.{m}");
+            }
+
+            return list;
         }
 
         /// <summary>
