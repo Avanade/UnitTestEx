@@ -47,22 +47,32 @@ namespace UnitTestEx.Xunit
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
         /// <returns>The <see cref="FunctionTester{TEntryPoint}"/>.</returns>
-        protected FunctionTester<TEntryPoint> CreateFunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration = null)
+        protected FunctionTester<TEntryPoint> CreateFunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration = null)
             where TEntryPoint : FunctionsStartup, new()
             => new(Output, includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
 
         /// <summary>
         /// Provides the <b>Xunit</b> <see cref="IValidator"/> testing capability.
         /// </summary>
-        /// <param name="userName">The user name (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.Username"/> where configured).</param>
+        /// <param name="userName">The user name (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.UserName"/> where configured).</param>
         /// <returns>The <see cref="ValidationTester"/>.</returns>
-        protected ValidationTester CreateValidationTester(string? userName = null) => new(Output);
+        protected ValidationTester CreateValidationTester(string? userName = null)
+        {
+            var vt = new ValidationTester(Output);
+            vt.UseUser(userName);
+            return vt;
+        }
 
         /// <summary>
         /// Provides the <b>Xunit</b> generic testing capability.
         /// </summary>
         /// <returns>The <see cref="GenericTester"/>.</returns>
-        protected GenericTester CreateGenericTester(string? userName = null) => new(Output);
+        protected GenericTester CreateGenericTester(string? userName = null)
+        {
+            var gt = new GenericTester(Output);
+            gt.UseUser(userName);
+            return gt;
+        }
 
         /// <summary>
         /// Gets the <see cref="Internal.ObjectComparer"/>.

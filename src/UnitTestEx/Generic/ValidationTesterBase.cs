@@ -115,7 +115,7 @@ namespace UnitTestEx.Generic
             Exception? exception = null;
 
             Implementor.WriteLine("VALIDATE >");
-            Implementor.WriteLine($"Validator: {(validatorType == null ? "<function>" : validatorType)}");
+            Implementor.WriteLine($"Validator: {(validatorType ?? "<function>")}");
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
 

@@ -78,6 +78,12 @@ namespace UnitTestEx.Abstractions
         public TestSetUp SetUp { get; internal set; }
 
         /// <summary>
+        /// Indicates whether the underlying host has been instantiated.
+        /// </summary>
+        /// <remarks>The host can be reset by invoking <see cref="TesterBase{TSelf}.ResetHost(bool)"/>.</remarks>
+        public bool IsHostInstantiated { get; internal set; }
+
+        /// <summary>
         /// Gets the test user name.
         /// </summary>
         /// <remarks>This is determined as follows (uses first non <c>null</c> value): as set via the property, using the <see cref="ExecutionContext.UserName"/>, and finally <see cref="SetUp"/> <see cref="TestSetUp.DefaultUserName"/>.</remarks>
@@ -91,24 +97,28 @@ namespace UnitTestEx.Abstractions
         /// Gets the <see cref="IConfiguration"/> from the underlying host.
         /// </summary>
         /// <returns>The <see cref="IConfiguration"/>.</returns>
+        /// <remarks>Accessing the <see cref="Configuration"/> may result in the underlying host being instantiated (see <see cref="IsHostInstantiated"/>) where applicable which may result in errors unless a subsequent <see cref="TesterBase{TSelf}.ResetHost(bool)"/> is performed.</remarks>
         public abstract IConfiguration Configuration { get; }
 
         /// <summary>
         /// Gets the <see cref="SettingsBase"/> from the underlying host.
         /// </summary>
+        /// <remarks>Accessing the <see cref="Settings"/> may result in the underlying host being instantiated (see <see cref="IsHostInstantiated"/>) where applicable which may result in errors unless a subsequent <see cref="TesterBase{TSelf}.ResetHost(bool)"/> is performed.</remarks>
         public abstract SettingsBase Settings { get; }
-
-        /// <summary>
-        /// Gets the <see cref="IJsonSerializer"/>.
-        /// </summary>
-        /// <remarks>Defaults to <see cref="CoreEx.Json.JsonSerializer.Default"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="TesterBase{TSelf}.UseJsonSerializer(IJsonSerializer)"/> method.</remarks>
-        public IJsonSerializer JsonSerializer { get; internal set; }
 
         /// <summary>
         /// Gets the <see cref="IServiceProvider"/> from the underlying host.
         /// </summary>
         /// <returns>The <see cref="IServiceProvider"/>.</returns>
+        /// <remarks>Accessing the <see cref="Services"/> may result in the underlying host being instantiated (see <see cref="IsHostInstantiated"/>) where applicable which may result in errors unless a subsequent <see cref="TesterBase{TSelf}.ResetHost(bool)"/> is performed.</remarks>
         public abstract IServiceProvider Services { get; }
+
+        /// <summary>
+        /// Gets the <see cref="IJsonSerializer"/> <i>not</i> from the underlying host.
+        /// </summary>
+        /// <remarks>Defaults to <see cref="CoreEx.Json.JsonSerializer.Default"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="TesterBase{TSelf}.UseJsonSerializer(IJsonSerializer)"/> method. This does <i>not</i> use the
+        /// instance from the underlying host as a different serializer may be required or may not have been configured.</remarks>
+        public IJsonSerializer JsonSerializer { get; internal set; }
 
         /// <summary>
         /// Indicates whether the <see cref="ExpectedEventPublisher"/> has been enabled; i.e. the <see cref="IEventPublisher"/> has been explicitly replaced.

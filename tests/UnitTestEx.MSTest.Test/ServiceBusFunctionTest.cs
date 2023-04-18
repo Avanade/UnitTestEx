@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Azure.Messaging.ServiceBus;
+using CoreEx.Events;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Net;
@@ -115,6 +117,26 @@ namespace UnitTestEx.MSTest.Test
             var r = hc.GetAsync("test").Result;
             Assert.IsNotNull(r);
             Assert.AreEqual("test output", r.Content.ReadAsStringAsync().Result);
+        }
+
+        [TestMethod]
+        public void CreateServiceBusMessage()
+        {
+            using var test = FunctionTester.Create<Startup>();
+            var sbrm = test.CreateServiceBusMessage(new ServiceBusMessage() { Subject = "xxx" });
+            Assert.IsNotNull(sbrm);
+            Assert.IsNotNull(sbrm.Subject);
+            Assert.AreEqual("xxx", sbrm.Subject);
+
+            sbrm = test.CreateServiceBusMessage(new EventData { Subject = "xxx" });
+            Assert.IsNotNull(sbrm);
+            Assert.IsNotNull(sbrm.Subject);
+            Assert.AreEqual("xxx", sbrm.Subject);
+
+            sbrm = test.CreateServiceBusMessage(new EventData<int> { Subject = "xxx", Value = 88 });
+            Assert.IsNotNull(sbrm);
+            Assert.IsNotNull(sbrm.Subject);
+            Assert.AreEqual("xxx", sbrm.Subject);
         }
     }
 }

@@ -64,7 +64,7 @@ namespace UnitTestEx.Expectations
 
                 sb.AppendLine(" ->");
                 sb.Append(json);
-                _logger.LogInformation("{Event}", sb.ToString());
+                _logger.LogDebug("{Event}", sb.ToString());
             }
 
             return Task.CompletedTask;

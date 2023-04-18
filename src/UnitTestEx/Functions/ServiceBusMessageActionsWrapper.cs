@@ -47,7 +47,7 @@ namespace UnitTestEx.Functions
         /// <inheritdoc/>
         public override async Task AbandonMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object>? propertiesToModify = null, CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Service Bus message is being Abandoned.");
+            _logger.LogDebug("Service Bus message is being Abandoned.");
             await _receiver.AbandonMessageAsync(message, propertiesToModify, cancellationToken);
             Status = ServiceBusMessageActionStatus.Abandoned;
             PropertiesModified = propertiesToModify;
@@ -56,7 +56,7 @@ namespace UnitTestEx.Functions
         /// <inheritdoc/>
         public override async Task CompleteMessageAsync(ServiceBusReceivedMessage message, CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Service Bus message is being Completed.");
+            _logger.LogDebug("Service Bus message is being Completed.");
             await _receiver.CompleteMessageAsync(message, cancellationToken);
             Status = ServiceBusMessageActionStatus.Completed;
         }
@@ -64,7 +64,7 @@ namespace UnitTestEx.Functions
         /// <inheritdoc/>
         public override async Task DeadLetterMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object>? propertiesToModify = null, CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Service Bus message is being Dead Lettered.");
+            _logger.LogDebug("Service Bus message is being Dead Lettered.");
             await _receiver.DeadLetterMessageAsync(message, propertiesToModify, cancellationToken);
             Status = ServiceBusMessageActionStatus.Deadlettered;
             PropertiesModified = propertiesToModify;
@@ -73,7 +73,7 @@ namespace UnitTestEx.Functions
         /// <inheritdoc/>
         public override async Task DeadLetterMessageAsync(ServiceBusReceivedMessage message, string deadLetterReason, string? deadLetterErrorDescription = null, CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation($"Service Bus message is being Dead Lettered; Reason: {deadLetterReason}{(string.IsNullOrEmpty(deadLetterErrorDescription) ? "" : $"{Environment.NewLine}{deadLetterErrorDescription}")}");
+            _logger.LogDebug($"Service Bus message is being Dead Lettered; Reason: {deadLetterReason}{(string.IsNullOrEmpty(deadLetterErrorDescription) ? "" : $"{Environment.NewLine}{deadLetterErrorDescription}")}");
             await _receiver.DeadLetterMessageAsync(message, deadLetterReason, deadLetterErrorDescription, cancellationToken);
             Status = ServiceBusMessageActionStatus.Deadlettered;
             DeadletterReason = deadLetterReason;
@@ -82,7 +82,7 @@ namespace UnitTestEx.Functions
         /// <inheritdoc/>
         public override async Task DeferMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object>? propertiesToModify = null, CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Service Bus message is being Deferred.");
+            _logger.LogDebug("Service Bus message is being Deferred.");
             await _receiver.DeferMessageAsync(message, propertiesToModify, cancellationToken);
             Status = ServiceBusMessageActionStatus.Deferred;
             PropertiesModified = propertiesToModify;

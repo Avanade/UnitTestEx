@@ -58,6 +58,7 @@ namespace UnitTestEx.NUnit.Test
                 .UseSetUp(new TestSetUp { ExpectedEventsEnabled = true })
                 .Controller<ProductController>()
                 .ExpectEvent("/test/product/*", "test.product.*c", "*")
+                .ExpectLogContains("Received HTTP response OK")
                 .Run(c => c.Get("abc"))
                 .AssertOK()
                 .Assert(new { id = "Abc", description = "A blue carrot" });

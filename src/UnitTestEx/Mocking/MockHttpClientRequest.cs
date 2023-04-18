@@ -2,11 +2,11 @@
 
 using CoreEx.Json;
 using KellermanSoftware.CompareNetObjects;
-using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using System;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
@@ -115,8 +115,7 @@ namespace UnitTestEx.Mocking
         {
             response.Count++;
 
-            var httpResponse = new HttpResponseMessage(response.StatusCode);
-            httpResponse.RequestMessage = request;
+            var httpResponse = new HttpResponseMessage(response.StatusCode) { RequestMessage = request };
             if (response.Content != null)
                 httpResponse.Content = response.Content;
 
@@ -146,7 +145,7 @@ namespace UnitTestEx.Mocking
         /// </summary>
         private bool RequestPredicate(HttpRequestMessage request)
         {
-            if (request.Method != _method || !request.RequestUri!.OriginalString.EndsWith(_requestUri, StringComparison.InvariantCultureIgnoreCase))
+            if (request.Method != _method || !WebUtility.UrlDecode(request.RequestUri!.PathAndQuery).EndsWith(WebUtility.UrlDecode(_requestUri)))
                 return false;
 
             if (_mediaType == null)

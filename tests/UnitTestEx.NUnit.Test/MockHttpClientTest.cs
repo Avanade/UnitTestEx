@@ -30,6 +30,20 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
+        public async Task UriOnly_Encoded()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Get, "person/xyz?search=email eq \"bob@email.com\"").Respond.With(HttpStatusCode.NotFound);
+
+            var hc = mcf.GetHttpClient("XXX");
+            var res = await hc.GetAsync("person/xyz?search=email eq \"bob@email.com\"").ConfigureAwait(false);
+            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+
+            res = await hc.GetAsync("person/xyz?search=email%20eq%20%22bob@email.com%22").ConfigureAwait(false);
+            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+        }
+
+        [Test]
         public async Task UriOnly_Multi()
         {
             var mcf = MockHttpClientFactory.Create();

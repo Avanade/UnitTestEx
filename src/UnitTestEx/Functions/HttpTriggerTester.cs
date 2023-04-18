@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -27,19 +28,27 @@ namespace UnitTestEx.Functions
     /// Provides Azure Function <see cref="HttpTriggerAttribute"/> unit-testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
-    public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction>, IExceptionSuccessExpectations<HttpTriggerTester<TFunction>> where TFunction : class
+    public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction>, IExceptionSuccessExpectations<HttpTriggerTester<TFunction>>, ILoggerExpectations<HttpTriggerTester<TFunction>> where TFunction : class
     {
         private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
+        private readonly LoggerExpectations _loggerExpectations;
 
         /// <summary>
         /// Initializes a new <see cref="HttpTriggerTester{TFunction}"/> class.
         /// </summary>
         /// <param name="tester">The <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        internal HttpTriggerTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope) => _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester.Implementor);
+        internal HttpTriggerTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope)
+        {
+            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester.Implementor);
+            _loggerExpectations = new LoggerExpectations(tester.Implementor);
+        }
 
         /// <inheritdoc/>
         ExceptionSuccessExpectations IExceptionSuccessExpectations<HttpTriggerTester<TFunction>>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
+
+        /// <inheritdoc/>
+        LoggerExpectations ILoggerExpectations<HttpTriggerTester<TFunction>>.LoggerExpectations => _loggerExpectations;
 
         /// <summary>
         /// Runs the HTTP Triggered (see <see cref="HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
@@ -70,9 +79,11 @@ namespace UnitTestEx.Functions
             }).ConfigureAwait(false);
 
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            LogResponse(result, ex, ms);
+            var logs = Tester.SharedState.GetLoggerMessages();
+            LogResponse(result, ex, ms, logs);
 
             _exceptionSuccessExpectations.Assert(ex);
+            _loggerExpectations.Assert(logs);
 
             return new ActionResultAssertor(result, ex, Implementor, JsonSerializer);
         }
@@ -166,14 +177,13 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Log the response to the output.
         /// </summary>
-        private void LogResponse(IActionResult res, Exception? ex, double ms)
+        private void LogResponse(IActionResult res, Exception? ex, double ms, IEnumerable<string?>? logs)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("LOGGING >");
-            var messages = Tester.SharedState.GetLoggerMessages();
-            if (messages.Any())
+            if (logs is not null && logs.Any())
             {
-                foreach (var msg in messages)
+                foreach (var msg in logs)
                 {
                     Implementor.WriteLine(msg);
                 }

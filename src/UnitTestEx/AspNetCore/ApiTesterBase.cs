@@ -68,7 +68,7 @@ namespace UnitTestEx.AspNetCore
                             sc.AddHttpContextAccessor();
                             SharedState.HttpContextAccessor = sc.BuildServiceProvider().GetRequiredService<IHttpContextAccessor>();
 
-                            sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(LoggerProvider); });
+                            sc.AddLogging(lb => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); });
                             sc.ReplaceScoped(_ => SharedState);
                             SetUp.ConfigureServices?.Invoke(sc);
                             if (SetUp.ExpectedEventsEnabled)

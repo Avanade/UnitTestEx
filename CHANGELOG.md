@@ -2,6 +2,13 @@
 
 Represents the **NuGet** versions.
 
+## v2.2.0
+- *Fixed:* The `MockHttpClientRequest` request validation predicate has been improved to handle URL encoding.
+- *Enhancement:* The `FunctionTesterBase` has been extended to support the creation of a `ServiceBusReceivedMessage` using  `CreateServiceBusMessage(EventData)`, `CreateServiceBusMessage(ServiceBusMessage)` and `CreateServiceBusMessage(AmqpAnnotatedMessage)`.
+- *Enhancement:* Added `ExpectLogContains` expectation to confirm that the log output contains the specified text.
+- *Enhancement:* Updated all package dependencies to latest.
+- *Enhancement:* Added `.NET7.0` support to all `UnitTestEx` packages.
+
 ## v2.1.3
 - *Fixed:* The `EventExpectations` internally assigned [members to ignore](https://github.com/GregFinzer/Compare-Net-Objects/wiki/Ignoring-Members) updated to use `ClassName.MemberName` syntax to explicitly ignore.
 - *Fixed:* Added `ExpectEventValue` and `ExpectDestinationEventValue` expectations to simplify specification versus having to instantiate `EventData` with expected `Value`.
