@@ -145,7 +145,19 @@ namespace UnitTestEx.Mocking
         /// </summary>
         private bool RequestPredicate(HttpRequestMessage request)
         {
-            if (request.Method != _method || !WebUtility.UrlDecode(request.RequestUri!.PathAndQuery).EndsWith(WebUtility.UrlDecode(_requestUri)))
+            if (request.Method != _method)
+                return false;
+
+            var uri = new Uri(_requestUri, UriKind.RelativeOrAbsolute);
+            if (uri.IsAbsoluteUri)
+            {
+                if (_client.IsBaseAddressSpecified && request.RequestUri != uri)
+                    return false;
+
+                if (!_client.IsBaseAddressSpecified && !WebUtility.UrlDecode(request.RequestUri!.PathAndQuery).EndsWith(WebUtility.UrlDecode(uri.PathAndQuery)))
+                    return false;
+            }
+            else if (!WebUtility.UrlDecode(request.RequestUri!.PathAndQuery).EndsWith(WebUtility.UrlDecode(uri.OriginalString)))
                 return false;
 
             if (_mediaType == null)

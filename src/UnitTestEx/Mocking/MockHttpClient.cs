@@ -24,6 +24,7 @@ namespace UnitTestEx.Mocking
         {
             Factory = factory;
             HttpClient = new HttpClient(new MockHttpClientHandler(factory, MessageHandler.Object)) { BaseAddress = baseAddress ?? new Uri("https://unittest") };
+            IsBaseAddressSpecified = baseAddress is not null;
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Factory.HttpClientFactory.Setup(x => x.CreateClient(It.Is<string>(x => x == name))).Returns(() => HttpClient);
         }
@@ -58,6 +59,11 @@ namespace UnitTestEx.Mocking
                 r.Verify();
             }
         }
+
+        /// <summary>
+        /// Indicates whether the <see cref="HttpClient.BaseAddress"/> is specified or defaulted.
+        /// </summary>
+        internal bool IsBaseAddressSpecified { get; set; }
 
         /// <summary>
         /// Gets the mocked <see cref="HttpClient"/>.
