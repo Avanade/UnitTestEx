@@ -58,13 +58,13 @@ namespace UnitTestEx.Expectations
 
             if (_logger != null)
             {
-                var sb = new StringBuilder("Event send");
+                var sb = new StringBuilder("UnitTestEx > Event send");
                 if (!string.IsNullOrEmpty(name))
                     sb.Append($" (destination: '{name}')");
 
                 sb.AppendLine(" ->");
                 sb.Append(json);
-                _logger.LogDebug("{Event}", sb.ToString());
+                _logger.LogInformation("{Event}", sb.ToString());
             }
 
             return Task.CompletedTask;

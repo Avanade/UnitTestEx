@@ -139,7 +139,7 @@ namespace UnitTestEx.Mocking
         public IServiceCollection Replace(IServiceCollection sc) => sc.ReplaceSingleton(sp =>
         {
             Logger = sp.GetRequiredService<ILogger<MockHttpClientFactory>>();
-            Logger.LogDebug($"Replacing '{nameof(HttpClientFactory)}' service provider (DI) instance with '{nameof(MockHttpClientFactory)}'.");
+            Logger.LogInformation($"UnitTestEx > Replacing '{nameof(HttpClientFactory)}' service provider (DI) instance with '{nameof(MockHttpClientFactory)}'.");
             return HttpClientFactory.Object;
         });
 
