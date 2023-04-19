@@ -2,8 +2,8 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using UnitTestEx.Expectations;
 using UnitTestEx.Function;
-using UnitTestEx.NUnit;
 
 namespace UnitTestEx.NUnit.Test
 {
@@ -34,6 +34,7 @@ namespace UnitTestEx.NUnit.Test
             using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
+                .ExpectLogContains("C# HTTP trigger function processed a request.")
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc", test.Logger))
                 .AssertOK()
                 .Assert(new { id = "Abc", description = "A blue carrot" });

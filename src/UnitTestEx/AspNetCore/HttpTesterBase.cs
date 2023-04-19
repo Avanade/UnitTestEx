@@ -1,11 +1,14 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Azure.Core;
 using CoreEx.Http;
 using CoreEx.Json;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
@@ -27,7 +30,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Gets the '<c>unit-test-ex-request-id</c>' constant.
         /// </summary>
-        internal const string RequestIdName = "unit-test-ex-request-id";
+        public const string RequestIdName = "unit-test-ex-request-id";
 
         /// <summary>
         /// Initializes a new <see cref="HttpTesterBase"/> class.
@@ -65,6 +68,17 @@ namespace UnitTestEx.AspNetCore
         /// Gets or sets the test user name (defaults to <see cref="TesterBase.UserName"/>).
         /// </summary>
         public string? UserName { get; protected set; }
+
+        /// <summary>
+        /// Gets the unqiue request identifier.
+        /// </summary>
+        /// <remarks>This value is related to the <see cref="RequestIdName"/>.</remarks>
+        public string RequestId { get; } = Guid.NewGuid().ToString();
+
+        /// <summary>
+        /// Gets or sets the last set of logs.
+        /// </summary>
+        internal IEnumerable<string?>? LastLogs { get; set; }
 
         /// <summary>
         /// Sends with no content.
@@ -163,7 +177,7 @@ namespace UnitTestEx.AspNetCore
             var sc = new ServiceCollection();
             sc.AddExecutionContext(sp => new CoreEx.ExecutionContext { UserName = UserName ?? Owner.SetUp.DefaultUserName });
             sc.AddSingleton(JsonSerializer);
-            sc.AddLogging(c => { c.ClearProviders(); c.AddProvider(Owner.LoggerProvider); });
+            sc.AddLogging(lb => { lb.SetMinimumLevel(Owner.SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(Owner.LoggerProvider); });
             sc.AddSingleton(new HttpClient(new HttpDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress });
             sc.AddSingleton(Owner.Configuration);
             sc.AddDefaultSettings();
@@ -206,15 +220,15 @@ namespace UnitTestEx.AspNetCore
                 if (_httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync != null)
                     await _httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync(request, _httpTester.UserName, cancellationToken);
 
-                var requestId = Guid.NewGuid().ToString();
-                request.Headers.Add(RequestIdName, requestId);
+                request.Headers.Add(RequestIdName, _httpTester.RequestId);
 
                 _httpTester.LogRequest(request);
                 var sw = Stopwatch.StartNew();
                 var res = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 sw.Stop();
                 await Task.Delay(0, cancellationToken).ConfigureAwait(false);
-                _httpTester.LogResponse(requestId, res, sw);
+                _httpTester.LastLogs = _httpTester.Owner.SharedState.GetLoggerMessages(_httpTester.RequestId);
+                _httpTester.LogResponse(res, sw, _httpTester.LastLogs);
                 return res;
             }
         }
@@ -304,14 +318,13 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Log the response to the output.
         /// </summary>
-        private void LogResponse(string requestId, HttpResponseMessage res, Stopwatch sw)
+        private void LogResponse(HttpResponseMessage res, Stopwatch sw, IEnumerable<string?>? logs)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("LOGGING >");
-            var messages = Owner.SharedState.GetLoggerMessages(requestId);
-            if (messages.Any())
+            if (logs is not null && logs.Any())
             {
-                foreach (var msg in messages)
+                foreach (var msg in logs)
                 {
                     Implementor.WriteLine(msg);
                 }

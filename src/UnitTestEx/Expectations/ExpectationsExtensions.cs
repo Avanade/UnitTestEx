@@ -4,10 +4,12 @@ using CoreEx;
 using CoreEx.Abstractions;
 using CoreEx.Entities;
 using CoreEx.Events;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Net;
 using System.Text;
+using UnitTestEx.Abstractions;
 using UnitTestEx.AspNetCore;
 
 namespace UnitTestEx.Expectations
@@ -449,6 +451,7 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Expects that the execution was successful; i.e. there was no <see cref="Exception"/> thrown.
         /// </summary>
+        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
         /// <param name="tester">The <see cref="IExceptionSuccessExpectations{TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns> 
         public static TSelf ExpectSuccess<TSelf>(this IExceptionSuccessExpectations<TSelf> tester) where TSelf : IExceptionSuccessExpectations<TSelf>
@@ -460,7 +463,7 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Provides <see cref="Any"/> and <see cref="Type"/> <see cref="Exception"/> expectations.
         /// </summary>
-        public struct ExceptionExpectation<TSelf> where TSelf : IExceptionSuccessExpectations<TSelf>
+        public readonly struct ExceptionExpectation<TSelf> where TSelf : IExceptionSuccessExpectations<TSelf>
         {
             private readonly IExceptionSuccessExpectations<TSelf> _tester;
 
@@ -492,6 +495,23 @@ namespace UnitTestEx.Expectations
                 _tester.ExceptionSuccessExpectations.SetExpectException<TException>(expectedMessage);
                 return (TSelf)_tester;
             }
+        }
+
+        #endregion
+
+        #region ILoggerExpectations<TSelf>
+
+        /// <summary>
+        /// Expects that the <see cref="ILogger"/> will have logged a message that contains the specified <paramref name="texts"/>.
+        /// </summary>
+        /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
+        /// <param name="tester">The <see cref="IExceptionSuccessExpectations{TSelf}"/>.</param>
+        /// <param name="texts">The text(s) that should appear in at least one log message.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns> 
+        public static TSelf ExpectLogContains<TSelf>(this ILoggerExpectations<TSelf> tester, params string[] texts) where TSelf : ILoggerExpectations<TSelf>
+        {
+            tester.LoggerExpectations.SetExpectLogContains(texts);
+            return (TSelf)tester;
         }
 
         #endregion

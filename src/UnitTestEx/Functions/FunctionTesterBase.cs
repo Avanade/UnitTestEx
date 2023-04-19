@@ -2,8 +2,11 @@
 
 using Azure.Core.Amqp;
 using Azure.Messaging.ServiceBus;
+using CoreEx.Azure.ServiceBus;
 using CoreEx.Configuration;
+using CoreEx.Events;
 using CoreEx.Http;
+using CoreEx.Mapping.Converters;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -36,9 +39,9 @@ namespace UnitTestEx.Functions
         private static readonly object _lock = new();
         private static bool _localSettingsDone = false;
 
-        private bool? _includeUnitTestConfiguration;
-        private bool? _includeUserSecrets;
-        private IEnumerable<KeyValuePair<string, string>>? _additionalConfiguration;
+        private readonly bool? _includeUnitTestConfiguration;
+        private readonly bool? _includeUserSecrets;
+        private readonly IEnumerable<KeyValuePair<string, string?>>? _additionalConfiguration;
         private IHost? _host;
         private bool _disposed;
 
@@ -63,7 +66,7 @@ namespace UnitTestEx.Functions
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) : base(implementor)
+        protected FunctionTesterBase(TestFrameworkImplementor implementor, bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration) : base(implementor)
         {
             Logger = LoggerProvider.CreateLogger(GetType().Name);
             _includeUnitTestConfiguration = includeUnitTestConfiguration;
@@ -147,13 +150,13 @@ namespace UnitTestEx.Functions
                 var ep2 = new TEntryPoint();
                 return _host = new HostBuilder()
                     .UseEnvironment(TestSetUp.Environment)
-                    .ConfigureLogging((lb) => lb.AddProvider(LoggerProvider))
+                    .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
                     .ConfigureWebHostDefaults(c =>
                     {
                         c.ConfigureAppConfiguration((cx, cb) =>
                         {
                             cb.SetBasePath(Environment.CurrentDirectory)
-                                .AddInMemoryCollection(new KeyValuePair<string, string>[] { new KeyValuePair<string, string>("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost") })
+                                .AddInMemoryCollection(new KeyValuePair<string, string?>[] { new KeyValuePair<string, string?>("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost") })
                                 .AddJsonFile(GetLocalSettingsJson(), optional: true)
                                 .AddJsonFile("appsettings.json", optional: true)
                                 .AddJsonFile("appsettings.development.json", optional: true);
@@ -238,7 +241,7 @@ namespace UnitTestEx.Functions
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The requuest uri.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
-        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null) 
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null)
             => CreateHttpRequestInternal(httpMethod, requestUri, false, null, null, null);
 
         /// <summary>
@@ -412,8 +415,7 @@ namespace UnitTestEx.Functions
         /// <typeparam name="T">The <paramref name="value"/> <see cref="Type"/>.</typeparam>
         /// <param name="value">The value.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
-        public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value)
-            => CreateServiceBusMessageFromJson(JsonSerializer.Serialize(value));
+        public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value) => (value is EventData ed) ? CreateServiceBusMessage(ed) : CreateServiceBusMessageFromJson(JsonSerializer.Serialize(value));
 
         /// <summary>
         /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the <paramref name="value"/> as serialized JSON.
@@ -422,7 +424,7 @@ namespace UnitTestEx.Functions
         /// <param name="value">The value.</param>
         /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
-        public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value, Action<AmqpAnnotatedMessage> messageModify)
+        public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value, Action<AmqpAnnotatedMessage>? messageModify = null)
             => CreateServiceBusMessageFromJson(JsonSerializer.Serialize(value), messageModify);
 
         /// <summary>
@@ -454,21 +456,80 @@ namespace UnitTestEx.Functions
         public ServiceBusReceivedMessage CreateServiceBusMessageFromJson(string json, Action<AmqpAnnotatedMessage>? messageModify = null)
         {
             var message = new AmqpAnnotatedMessage(AmqpMessageBody.FromData(new ReadOnlyMemory<byte>[] { Encoding.UTF8.GetBytes(json ?? throw new ArgumentNullException(nameof(json))) }));
-            message.Header.DeliveryCount = 1;
-            message.Header.Durable = true;
-            message.Header.Priority = 1;
-            message.Header.TimeToLive = TimeSpan.FromSeconds(60);
             message.Properties.ContentType = MediaTypeNames.Application.Json;
             message.Properties.MessageId = new AmqpMessageId(Guid.NewGuid().ToString());
+            return CreateServiceBusMessage(message, messageModify);
+        }
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="event"/> leveraging the <see cref="EventDataToServiceBusConverter"/> to perform the underlying conversion.
+        /// </summary>
+        /// <param name="event">The <see cref="EventData"/> or <see cref="EventData{T}"/> value.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        /// <remarks>Attempts to use the configured <see cref="EventDataToServiceBusConverter"/> by leveraging the underlying host <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> where found; otherwise, will instantiate as new. As accessing
+        /// the <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> will result in the underlying host being instantiated a corresponding <see cref="ResetHost"/> will be performed to enable further configuration.</remarks>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(EventData @event) => CreateServiceBusMessage(@event, null);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="event"/> leveraging the <see cref="EventDataToServiceBusConverter"/> to perform the underlying conversion.
+        /// </summary>
+        /// <param name="event">The <see cref="EventData"/> or <see cref="EventData{T}"/> value.</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        /// <remarks>Attempts to use the configured <see cref="EventDataToServiceBusConverter"/> by leveraging the underlying host <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> where found; otherwise, will instantiate as new. As accessing
+        /// the <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> will result in the underlying host being instantiated a corresponding <see cref="ResetHost"/> will be performed to enable further configuration.</remarks>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(EventData @event, Action<AmqpAnnotatedMessage>? messageModify)
+        {
+            if (@event == null) throw new ArgumentNullException(nameof(@event));
+            var message = (Services.GetService<EventDataToServiceBusConverter>() ?? new EventDataToServiceBusConverter(Services.GetService<IEventSerializer>(), Services.GetService<IValueConverter<EventSendData, ServiceBusMessage>>())).Convert(@event).GetRawAmqpMessage();
+            ResetHost(false);
+            return CreateServiceBusMessage(message, messageModify);
+        }
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="message"/>.
+        /// </summary>
+        /// <param name="message">The <see cref="ServiceBusMessage"/>.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(ServiceBusMessage message)
+            => CreateServiceBusMessage((message ?? throw new ArgumentNullException(nameof(message))).GetRawAmqpMessage(), null);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="message"/>.
+        /// </summary>
+        /// <param name="message">The <see cref="ServiceBusMessage"/>.</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(ServiceBusMessage message, Action<AmqpAnnotatedMessage>? messageModify)
+            => CreateServiceBusMessage((message ?? throw new ArgumentNullException(nameof(message))).GetRawAmqpMessage(), messageModify);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="message"/>.
+        /// </summary>
+        /// <param name="message">The <see cref="AmqpAnnotatedMessage"/>.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(AmqpAnnotatedMessage message) => CreateServiceBusMessage(message, null);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="message"/>.
+        /// </summary>
+        /// <param name="message">The <see cref="AmqpAnnotatedMessage"/>.</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(AmqpAnnotatedMessage message, Action<AmqpAnnotatedMessage>? messageModify)
+        {
+            message.Header.DeliveryCount ??= 1;
+            message.Header.Durable ??= true;
+            message.Header.Priority ??= 1;
+            message.Header.TimeToLive ??= TimeSpan.FromSeconds(60);
 
             messageModify?.Invoke(message);
 
             var t = typeof(ServiceBusReceivedMessage);
             var c = t.GetConstructor(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance, null, new Type[] { typeof(AmqpAnnotatedMessage) }, null);
-            if (c == null)
-                throw new InvalidOperationException($"'{typeof(ServiceBusReceivedMessage).Name}' constructor that accepts Type '{typeof(AmqpAnnotatedMessage).Name}' parameter was not found.");
-
-            return (ServiceBusReceivedMessage)c.Invoke(new object?[] { message });
+            return c == null
+                ? throw new InvalidOperationException($"'{typeof(ServiceBusReceivedMessage).Name}' constructor that accepts Type '{typeof(AmqpAnnotatedMessage).Name}' parameter was not found.")
+                : (ServiceBusReceivedMessage)c.Invoke(new object?[] { message });
         }
 
         /// <summary>

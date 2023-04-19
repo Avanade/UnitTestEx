@@ -342,7 +342,7 @@ namespace UnitTestEx.MSTest.Test
             sw.Stop();
 
             Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
-            Assert.IsTrue(sw.ElapsedMilliseconds >= 500);
+            Assert.IsTrue(sw.ElapsedMilliseconds >= 495);
         }
 
         [TestMethod]

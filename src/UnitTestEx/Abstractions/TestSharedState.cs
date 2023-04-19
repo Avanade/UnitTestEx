@@ -58,7 +58,7 @@ namespace UnitTestEx.Abstractions
             if (HttpContextAccessor.HttpContext.Items.TryGetValue(AspNetCore.HttpTesterBase.RequestIdName, out var id))
                 return (string)id!;
 
-            string sid = HttpContextAccessor.HttpContext.Request.Headers.TryGetValue(AspNetCore.HttpTesterBase.RequestIdName, out var vals) ? vals.First() : string.Empty;
+            string sid = HttpContextAccessor.HttpContext.Request.Headers.TryGetValue(AspNetCore.HttpTesterBase.RequestIdName, out var vals) ? vals.First() ?? string.Empty : string.Empty;
             HttpContextAccessor.HttpContext.Items.TryAdd(AspNetCore.HttpTesterBase.RequestIdName, sid);
             return sid;
         }

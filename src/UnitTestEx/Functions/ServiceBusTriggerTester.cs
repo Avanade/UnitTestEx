@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Net.Mime;
@@ -22,13 +23,17 @@ namespace UnitTestEx.Functions
     /// Provides Azure Function <see cref="ServiceBusTriggerAttribute"/> unit-testing and integration emulation testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
-    public class ServiceBusTriggerTester<TFunction> : HostTesterBase<TFunction>, IExceptionSuccessExpectations<ServiceBusTriggerTester<TFunction>> where TFunction : class
+    public class ServiceBusTriggerTester<TFunction> : HostTesterBase<TFunction>, IExceptionSuccessExpectations<ServiceBusTriggerTester<TFunction>>, ILoggerExpectations<ServiceBusTriggerTester<TFunction>> where TFunction : class
     {
         private static readonly Semaphore _semaphore = new(1, 1);
         private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
+        private readonly LoggerExpectations _loggerExpectations;
 
         /// <inheritdoc/>
         ExceptionSuccessExpectations IExceptionSuccessExpectations<ServiceBusTriggerTester<TFunction>>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
+
+        /// <inheritdoc/>
+        LoggerExpectations ILoggerExpectations<ServiceBusTriggerTester<TFunction>>.LoggerExpectations => _loggerExpectations;
 
         /// <summary>
         /// Initializes a new <see cref="ServiceBusTriggerTester{TFunction}"/> class.
@@ -36,7 +41,10 @@ namespace UnitTestEx.Functions
         /// <param name="tester">The <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
         internal ServiceBusTriggerTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope)
-            => _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester.Implementor);
+        {
+            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester.Implementor);
+            _loggerExpectations = new LoggerExpectations(tester.Implementor);
+        }
 
         /// <summary>
         /// Runs the Service Bus Triggered (see <see cref="ServiceBusTriggerAttribute"/>) function expected as a parameter within the <paramref name="expression"/>.
@@ -72,9 +80,11 @@ namespace UnitTestEx.Functions
             }).ConfigureAwait(false);
 
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            LogOutput(ex, ms, sbv);
+            var logs = Tester.SharedState.GetLoggerMessages();
+            LogOutput(ex, ms, sbv, logs);
 
             _exceptionSuccessExpectations.Assert(ex);
+            _loggerExpectations.Assert(logs);
 
             return new VoidAssertor(ex, Implementor, JsonSerializer);
         }
@@ -137,14 +147,13 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Log the output.
         /// </summary>
-        private void LogOutput(Exception? ex, double ms, object? value)
+        private void LogOutput(Exception? ex, double ms, object? value, IEnumerable<string?>? logs)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("LOGGING >");
-            var messages = Tester.SharedState.GetLoggerMessages();
-            if (messages.Any())
+            if (logs is not null && logs.Any())
             {
-                foreach (var msg in messages)
+                foreach (var msg in logs)
                 {
                     Implementor.WriteLine(msg);
                 }

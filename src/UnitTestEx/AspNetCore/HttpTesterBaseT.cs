@@ -2,7 +2,6 @@
 
 using CoreEx.Http;
 using Microsoft.AspNetCore.TestHost;
-using Moq;
 using System;
 using System.Net.Http;
 using UnitTestEx.Abstractions;
@@ -14,11 +13,12 @@ namespace UnitTestEx.AspNetCore
     /// Provides the base HTTP testing capabilities.
     /// </summary>
     /// <typeparam name="TSelf">The <see cref="Type"/> representing itself.</typeparam>
-    public abstract class HttpTesterBase<TSelf> : HttpTesterBase, IExceptionSuccessExpectations<TSelf>, IHttpResponseExpectations<TSelf>, IEventExpectations<TSelf> where TSelf : HttpTesterBase<TSelf>
+    public abstract class HttpTesterBase<TSelf> : HttpTesterBase, IExceptionSuccessExpectations<TSelf>, IHttpResponseExpectations<TSelf>, IEventExpectations<TSelf>, ILoggerExpectations<TSelf> where TSelf : HttpTesterBase<TSelf>
     {
         private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
         private readonly HttpResponseExpectations _httpResponseExpectations;
         private readonly EventExpectations _eventExpectations;
+        private readonly LoggerExpectations _loggerExpectations;
 
         /// <summary>
         /// Initializes a new <see cref="HttpTesterBase{TSelf}"/> class.
@@ -30,6 +30,7 @@ namespace UnitTestEx.AspNetCore
             _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Owner.Implementor);
             _httpResponseExpectations = new HttpResponseExpectations(Owner);
             _eventExpectations = new EventExpectations(Owner);
+            _loggerExpectations = new LoggerExpectations(Owner.Implementor);
         }
 
         /// <inheritdoc/>
@@ -40,6 +41,9 @@ namespace UnitTestEx.AspNetCore
 
         /// <inheritdoc/>
         EventExpectations IEventExpectations<TSelf>.EventExpectations => _eventExpectations;
+
+        /// <inheritdoc/>
+        LoggerExpectations ILoggerExpectations<TSelf>.LoggerExpectations => _loggerExpectations;
 
         /// <summary>
         /// Sets (overrides) the test user name (defaults to <see cref="TesterBase.UserName"/>).
@@ -92,6 +96,7 @@ namespace UnitTestEx.AspNetCore
 
             _httpResponseExpectations.Assert(hr);
             _eventExpectations.Assert();
+            _loggerExpectations.Assert(LastLogs);
         }
     }
 }

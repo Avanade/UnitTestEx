@@ -19,6 +19,7 @@ jobs:
         dotnet-version: |
           3.1.x
           6.0.x
+          7.0.x
 
     - name: Restore dependencies
       run: dotnet restore
@@ -28,20 +29,20 @@ jobs:
 
     - name: Explicit MSTest test
       run: |
-        cp tests/UnitTestEx.Api/bin/Debug/netcoreapp3.1/UnitTestEx.Api.deps.json tests/UnitTestEx.MSTest.Test/bin/Debug/netcoreapp3.1
-        cd tests/UnitTestEx.MSTest.Test/bin/Debug/netcoreapp3.1
+        cp tests/UnitTestEx.Api/bin/Debug/net6.0/UnitTestEx.Api.deps.json tests/UnitTestEx.MSTest.Test/bin/Debug/net6.0
+        cd tests/UnitTestEx.MSTest.Test/bin/Debug/net6.0
         dotnet test UnitTestEx.MSTest.Test.dll --no-build --verbosity normal
 
     - name: Explicit NUnit test
       run: |
-        cp tests/UnitTestEx.Api/bin/Debug/netcoreapp3.1/UnitTestEx.Api.deps.json tests/UnitTestEx.NUnit.Test/bin/Debug/netcoreapp3.1
-        cd tests/UnitTestEx.NUnit.Test/bin/Debug/netcoreapp3.1
+        cp tests/UnitTestEx.Api/bin/Debug/net6.0/UnitTestEx.Api.deps.json tests/UnitTestEx.NUnit.Test/bin/Debug/net6.0
+        cd tests/UnitTestEx.NUnit.Test/bin/Debug/net6.0
         dotnet test UnitTestEx.NUnit.Test.dll --no-build --verbosity normal
 
     - name: Explicit Xunit test
       run: |
-        cp tests/UnitTestEx.Api/bin/Debug/netcoreapp3.1/UnitTestEx.Api.deps.json tests/UnitTestEx.Xunit.Test/bin/Debug/netcoreapp3.1
-        cd tests/UnitTestEx.Xunit.Test/bin/Debug/netcoreapp3.1
+        cp tests/UnitTestEx.Api/bin/Debug/net6.0/UnitTestEx.Api.deps.json tests/UnitTestEx.Xunit.Test/bin/Debug/net6.0
+        cd tests/UnitTestEx.Xunit.Test/bin/Debug/net6.0
         dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests MockHttpClientTest
         dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests PersonFunctionTest
         dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests ProductFunctionTest

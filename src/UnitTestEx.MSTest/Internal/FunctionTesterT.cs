@@ -18,7 +18,7 @@ namespace UnitTestEx.MSTest.Internal
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        internal FunctionTester(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string>>? additionalConfiguration) 
+        internal FunctionTester(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration) 
             : base(new MSTestImplementor(), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) { }
     }
 }

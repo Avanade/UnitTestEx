@@ -46,7 +46,7 @@ namespace UnitTestEx.Generic
             {
                 return _host ??= new HostBuilder()
                     .UseEnvironment("Development")
-                    .ConfigureLogging((lb) => lb.AddProvider(LoggerProvider))
+                    .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
                     .ConfigureAppConfiguration(cb =>
                     {
                         cb.SetBasePath(Environment.CurrentDirectory)

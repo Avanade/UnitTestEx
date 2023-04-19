@@ -12,6 +12,7 @@ using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Api.Models;
 using UnitTestEx.Expectations;
+using HttpRequestOptions = CoreEx.Http.HttpRequestOptions;
 
 namespace UnitTestEx.NUnit.Test
 {
@@ -23,6 +24,7 @@ namespace UnitTestEx.NUnit.Test
         {
             using var test = ApiTester.Create<Startup>();
             (await test.Controller<PersonController>()
+                .ExpectLogContains("Get using identifier 1")
                 .RunAsync(c => c.Get(1)))
                 .AssertOK()
                 .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
@@ -225,6 +227,7 @@ namespace UnitTestEx.NUnit.Test
         {
             using var test = ApiTester.Create<Startup>();
             (await test.Http()
+                .ExpectLogContains("Get using identifier 1")
                 .RunAsync(HttpMethod.Get, "Person/1" ))
                 .AssertOK()
                 .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });

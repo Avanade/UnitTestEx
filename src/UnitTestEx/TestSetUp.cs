@@ -6,6 +6,7 @@ using CoreEx.Wildcards;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -178,6 +179,11 @@ namespace UnitTestEx
         /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBase.UserName"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
         public Func<HttpRequest, string?, CancellationToken, Task>? OnBeforeHttpRequestSendAsync { get; set; }
 
+        /// <summary>
+        /// Gets or sets the minimum <see cref="LogLevel"/> when configuring the underlying host (see <see cref="ILoggingBuilder"/>).
+        /// </summary>
+        public LogLevel MinimumLogLevel { get; set; } = LogLevel.Debug;
+
         /// <inheritdoc/>
         /// <remarks>The <see cref="RegisterSetUp"/> and <see cref="RegisterAutoSetUp"/> will reference the originating unless explicitly registered (overridden) for the cloned instance.</remarks>
         public object Clone() => new TestSetUp
@@ -194,6 +200,7 @@ namespace UnitTestEx
             ExecutionContextFactory = ExecutionContextFactory,
             OnBeforeHttpRequestMessageSendAsync = OnBeforeHttpRequestMessageSendAsync,
             OnBeforeHttpRequestSendAsync = OnBeforeHttpRequestSendAsync,
+            MinimumLogLevel = MinimumLogLevel,
             _clonedFrom = this
         };
 

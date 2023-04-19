@@ -181,10 +181,7 @@ namespace UnitTestEx.AspNetCore
             else if (body != null && bodyOption == BodyOption.None)
                 bodyOption = BodyOption.Value;
 
-            var att = mce.Method.GetCustomAttributes<HttpMethodAttribute>(true)?.FirstOrDefault();
-            if (att == null)
-                throw new InvalidOperationException($"Operation {mce.Method.Name} does not have an {nameof(HttpMethodAttribute)} specified.");
-
+            var att = (mce.Method.GetCustomAttributes<HttpMethodAttribute>(true)?.FirstOrDefault()) ?? throw new InvalidOperationException($"Operation {mce.Method.Name} does not have an {nameof(HttpMethodAttribute)} specified.");
             var uri = GetRequestUri(att.Template, @params);
             return bodyOption switch
             {

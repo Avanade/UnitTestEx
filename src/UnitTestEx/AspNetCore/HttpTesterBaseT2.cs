@@ -14,12 +14,13 @@ namespace UnitTestEx.AspNetCore
     /// </summary>
     /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="Type"/> representing itself.</typeparam>
-    public abstract class HttpTesterBase<TValue, TSelf> : HttpTesterBase, IExceptionSuccessExpectations<TSelf>, IHttpResponseExpectations<TSelf>, IResponseValueExpectations<TValue, TSelf>, IEventExpectations<TSelf> where TSelf : HttpTesterBase<TValue, TSelf>
+    public abstract class HttpTesterBase<TValue, TSelf> : HttpTesterBase, IExceptionSuccessExpectations<TSelf>, IHttpResponseExpectations<TSelf>, IResponseValueExpectations<TValue, TSelf>, IEventExpectations<TSelf>, ILoggerExpectations<TSelf> where TSelf : HttpTesterBase<TValue, TSelf>
     {
         private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
         private readonly HttpResponseExpectations _httpResponseExpectations;
         private readonly ResponseValueExpectations<TSelf, TValue> _responseValueExpectations;
         private readonly EventExpectations _eventExpectations;
+        private readonly LoggerExpectations _loggerExpectations;
 
         /// <summary>
         /// Initializes a new <see cref="HttpTesterBase{TSelf}"/> class.
@@ -32,6 +33,7 @@ namespace UnitTestEx.AspNetCore
             _httpResponseExpectations = new HttpResponseExpectations(Owner);
             _responseValueExpectations = new ResponseValueExpectations<TSelf, TValue>(Owner, (TSelf)this);
             _eventExpectations = new EventExpectations(Owner);
+            _loggerExpectations = new LoggerExpectations(Owner.Implementor);
         }
 
         /// <inheritdoc/>
@@ -45,6 +47,9 @@ namespace UnitTestEx.AspNetCore
 
         /// <inheritdoc/>
         EventExpectations IEventExpectations<TSelf>.EventExpectations => _eventExpectations;
+
+        /// <inheritdoc/>
+        LoggerExpectations ILoggerExpectations<TSelf>.LoggerExpectations => _loggerExpectations;
 
         /// <summary>
         /// Sets (overrides) the test user name (defaults to <see cref="TesterBase.UserName"/>).
@@ -95,6 +100,7 @@ namespace UnitTestEx.AspNetCore
             _httpResponseExpectations.Assert(hr);
             _responseValueExpectations.Assert(HttpResponseExpectations.GetValueFromHttpResponseMessage<TValue>(res, JsonSerializer));
             _eventExpectations.Assert();
+            _loggerExpectations.Assert(LastLogs);
         }
     }
 }
