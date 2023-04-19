@@ -70,6 +70,17 @@ namespace UnitTestEx.MSTest.Test
         }
 
         [TestMethod]
+        public async Task UriAndBody_String_Single_Encoded2()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX").Request(HttpMethod.Post, "https://d365test/products/xyz?name%20is%20real").WithBody("Bananas").Respond.With(HttpStatusCode.Accepted);
+
+            var hc = mcf.GetHttpClient("XXX");
+            var res = await hc.PostAsync("products/xyz?name%20is%20real", new StringContent("Bananas")).ConfigureAwait(false);
+            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+        }
+
+        [TestMethod]
         public async Task UriAndBody_String_Multi()
         {
             var mcf = MockHttpClientFactory.Create();

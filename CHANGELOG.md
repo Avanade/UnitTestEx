@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v2.2.1
+- *Fixed:* The `MockHttpClientRequest` request Uri validation fixed.
+
 ## v2.2.0
 - *Fixed:* The `MockHttpClientRequest` request validation predicate has been improved to handle URL encoding.
 - *Enhancement:* The `FunctionTesterBase` has been extended to support the creation of a `ServiceBusReceivedMessage` using  `CreateServiceBusMessage(EventData)`, `CreateServiceBusMessage(ServiceBusMessage)` and `CreateServiceBusMessage(AmqpAnnotatedMessage)`.
