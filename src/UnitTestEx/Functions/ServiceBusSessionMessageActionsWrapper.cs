@@ -49,7 +49,7 @@ namespace UnitTestEx.Functions
         {
             _logger.LogInformation("Service Bus message is being Abandoned.");
             await _receiver.AbandonMessageAsync(message, propertiesToModify, cancellationToken);
-            Status = ServiceBusMessageActionStatus.Abandoned;
+            Status = ServiceBusMessageActionStatus.Abandon;
             PropertiesModified = propertiesToModify;
         }
 
@@ -58,7 +58,7 @@ namespace UnitTestEx.Functions
         {
             _logger.LogInformation("Service Bus message is being Completed.");
             await _receiver.CompleteMessageAsync(message, cancellationToken);
-            Status = ServiceBusMessageActionStatus.Completed;
+            Status = ServiceBusMessageActionStatus.Complete;
         }
 
         /// <inheritdoc/>
@@ -66,7 +66,7 @@ namespace UnitTestEx.Functions
         {
             _logger.LogInformation("Service Bus message is being Dead Lettered.");
             await _receiver.DeadLetterMessageAsync(message, propertiesToModify, cancellationToken);
-            Status = ServiceBusMessageActionStatus.Deadlettered;
+            Status = ServiceBusMessageActionStatus.DeadLetter;
             PropertiesModified = propertiesToModify;
         }
 
@@ -75,7 +75,7 @@ namespace UnitTestEx.Functions
         {
             _logger.LogInformation($"Service Bus message is being Dead Lettered; Reason: {deadLetterReason}{(string.IsNullOrEmpty(deadLetterErrorDescription) ? "" : $"{Environment.NewLine}{deadLetterErrorDescription}")}");
             await _receiver.DeadLetterMessageAsync(message, deadLetterReason, deadLetterErrorDescription, cancellationToken);
-            Status = ServiceBusMessageActionStatus.Deadlettered;
+            Status = ServiceBusMessageActionStatus.DeadLetter;
             DeadletterReason = deadLetterReason;
         }
 
@@ -84,7 +84,7 @@ namespace UnitTestEx.Functions
         {
             _logger.LogInformation("Service Bus message is being Deferred.");
             await _receiver.DeferMessageAsync(message, propertiesToModify, cancellationToken);
-            Status = ServiceBusMessageActionStatus.Deferred;
+            Status = ServiceBusMessageActionStatus.Defer;
             PropertiesModified = propertiesToModify;
         }
     }

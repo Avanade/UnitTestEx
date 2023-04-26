@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v2.2.2
+- *Fixed:* Extended the `FunctionTesterBase` to enable `CreateServiceBusMessageActions` and `CreateServiceBusSessionMessageActions` similar to	`CreateServiceBusMessage` to enable mocked, unit testable, assert enabled, actions.
+
 ## v2.2.1
 - *Fixed:* The `MockHttpClientRequest` request Uri validation fixed.
 

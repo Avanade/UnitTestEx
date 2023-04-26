@@ -44,25 +44,25 @@ namespace UnitTestEx.Assertors
         public ServiceBusEmulatorRunAssertor AssertNoMessageStatus() => AssertStatus(ServiceBusMessageActionStatus.None);
 
         /// <summary>
-        /// Asserts that the <see cref="ServiceBusEmulatorRunResult.Status"/> is <see cref="ServiceBusMessageActionStatus.Completed"/>.
+        /// Asserts that the <see cref="ServiceBusEmulatorRunResult.Status"/> is <see cref="ServiceBusMessageActionStatus.Complete"/>.
         /// </summary>
         /// <returns>The <see cref="ServiceBusEmulatorRunAssertor"/> to support fluent-style method-chaining.</returns>
-        public ServiceBusEmulatorRunAssertor AssertMessageCompleted() => AssertStatus(ServiceBusMessageActionStatus.Completed);
+        public ServiceBusEmulatorRunAssertor AssertMessageCompleted() => AssertStatus(ServiceBusMessageActionStatus.Complete);
 
         /// <summary>
-        /// Asserts that the <see cref="ServiceBusEmulatorRunResult.Status"/> is <see cref="ServiceBusMessageActionStatus.Deferred"/>.
+        /// Asserts that the <see cref="ServiceBusEmulatorRunResult.Status"/> is <see cref="ServiceBusMessageActionStatus.Defer"/>.
         /// </summary>
         /// <returns>The <see cref="ServiceBusEmulatorRunAssertor"/> to support fluent-style method-chaining.</returns>
-        public ServiceBusEmulatorRunAssertor AssertMessageDeferred() => AssertStatus(ServiceBusMessageActionStatus.Deferred);
+        public ServiceBusEmulatorRunAssertor AssertMessageDeferred() => AssertStatus(ServiceBusMessageActionStatus.Defer);
 
         /// <summary>
-        /// Asserts that the <see cref="ServiceBusEmulatorRunResult.Status"/> is <see cref="ServiceBusMessageActionStatus.Deadlettered"/>.
+        /// Asserts that the <see cref="ServiceBusEmulatorRunResult.Status"/> is <see cref="ServiceBusMessageActionStatus.DeadLetter"/>.
         /// </summary>
         /// <param name="expectedReason">Optional expected reason that will be validated against actual.</param>
         /// <returns>The <see cref="ServiceBusEmulatorRunAssertor"/> to support fluent-style method-chaining.</returns>
         public ServiceBusEmulatorRunAssertor AssertMessageDeadlettered(string? expectedReason = null)
         {
-            AssertStatus(ServiceBusMessageActionStatus.Deadlettered);
+            AssertStatus(ServiceBusMessageActionStatus.DeadLetter);
             if (expectedReason != null)
                 Implementor.AssertAreEqual(expectedReason, Result.DeadletterReason, "DeadletterReason value is not equal.");
 
@@ -70,9 +70,9 @@ namespace UnitTestEx.Assertors
         }
 
         /// <summary>
-        /// Asserts that the <see cref="ServiceBusEmulatorRunResult.Status"/> is <see cref="ServiceBusMessageActionStatus.Abandoned"/>.
+        /// Asserts that the <see cref="ServiceBusEmulatorRunResult.Status"/> is <see cref="ServiceBusMessageActionStatus.Abandon"/>.
         /// </summary>
         /// <returns>The <see cref="ServiceBusEmulatorRunAssertor"/> to support fluent-style method-chaining.</returns>
-        public ServiceBusEmulatorRunAssertor AssertMessageAbandoned() => AssertStatus(ServiceBusMessageActionStatus.Abandoned);
+        public ServiceBusEmulatorRunAssertor AssertMessageAbandoned() => AssertStatus(ServiceBusMessageActionStatus.Abandon);
     }
 }
