@@ -137,12 +137,12 @@ namespace UnitTestEx.Functions
                 _implementor.WriteLine($"Description: {DeadLetterErrorDescription ?? "<null>"}");
             }
 
-            _implementor.WriteLine($"Properties modified: {(PropertiesModified is null ? "None." : "")}");
+            _implementor.WriteLine($"Properties modified{(PropertiesModified is null ? ": None." : " >")}");
             if (PropertiesModified != null)
             {
                 foreach (var pm in PropertiesModified)
                 {
-                    _implementor.WriteLine($"{pm.Key}: {pm.Value ?? "<null>"}");
+                    _implementor.WriteLine($"  {pm.Key}: {pm.Value ?? "<null>"}");
                 }
             }
         }

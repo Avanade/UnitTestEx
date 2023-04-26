@@ -1,6 +1,6 @@
 ﻿<Project>
 	<PropertyGroup>
-		<Version>2.2.2</Version>
+		<Version>2.2.3</Version>
 		<LangVersion>preview</LangVersion>
 		<Authors>Avanade</Authors>
 		<Company>Avanade</Company>

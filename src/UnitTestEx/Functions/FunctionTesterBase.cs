@@ -166,15 +166,18 @@ namespace UnitTestEx.Functions
                                 cb.AddUserSecrets<TEntryPoint>();
 
                             cb.AddEnvironmentVariables();
-
-                            if ((!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (_includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value))
-                                cb.AddJsonFile("appsettings.unittest.json", optional: true);
-
-                            if (_additionalConfiguration != null)
-                                cb.AddInMemoryCollection(_additionalConfiguration);
                         });
                     })
-                    .ConfigureAppConfiguration(configurationBuilder => ep2.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(configurationBuilder)))
+                    .ConfigureAppConfiguration(cb =>
+                    {
+                        ep2.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(cb));
+
+                        if ((!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (_includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value))
+                            cb.AddJsonFile("appsettings.unittest.json", optional: true);
+
+                        if (_additionalConfiguration != null)
+                            cb.AddInMemoryCollection(_additionalConfiguration);
+                    })
                     .ConfigureServices(sc =>
                     {
                         ep2.Configure(MockIFunctionsHostBuilder(sc));

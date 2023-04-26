@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v2.2.3
+- *Fixed:* The `ServiceBusMessageActionsAssertor` logging now logs regardless of whether it is the last parameter in the method being executed.
+- *Fixed:* The loading of the `appsettings.unittest.json` has been moved after the `FunctionsStartup.ConfigureAppConfiguration` to override correctly.
+
 ## v2.2.2
 - *Fixed:* Extended the `FunctionTesterBase` to enable `CreateServiceBusMessageActions` and `CreateServiceBusSessionMessageActions` similar to	`CreateServiceBusMessage` to enable mocked, unit testable, assert enabled, actions.
 
