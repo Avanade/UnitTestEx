@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using UnitTestEx.Function;
 using UnitTestEx.Expectations;
+using UnitTestEx.Functions;
 
 namespace UnitTestEx.NUnit.Test
 {
@@ -102,6 +103,20 @@ namespace UnitTestEx.NUnit.Test
                 .AssertException<InvalidOperationException>("First name is required.");
 
             mcf.VerifyAll();
+        }
+
+        [Test]
+        public void ServiceBusMessage_AssertActions()
+        {
+            using var test = FunctionTester.Create<Startup>();
+            var msg = test.CreateServiceBusMessage(new Person { FirstName = null, LastName = "Smith" });
+            var act = test.CreateServiceBusMessageActions();
+
+            test.ServiceBusTrigger<ServiceBusFunction>()
+                .Run(f => f.Run3(msg, act, test.Logger))
+                .AssertSuccess();
+
+            act.AssertDeadLetter("Validation error", "First name is required");
         }
 
         [Test]

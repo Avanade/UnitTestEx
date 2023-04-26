@@ -63,6 +63,8 @@ namespace UnitTestEx.Functions
         public async Task<VoidAssertor> RunAsync(Expression<Func<TFunction, Task>> expression, bool validateTriggerProperties = false)
         {
             object? sbv = null;
+            ServiceBusMessageActionsAssertor? sba = null;
+            ServiceBusSessionMessageActionsAssertor? ssba = null;
             (Exception? ex, double ms) = await RunAsync(expression, typeof(ServiceBusTriggerAttribute), (p, a, v) =>
             {
                 if (a == null)
@@ -72,6 +74,14 @@ namespace UnitTestEx.Functions
                 Implementor.WriteLine("FUNCTION SERVICE BUS TRIGGER TESTER...");
 
                 sbv = v;
+                foreach (var pi in p)
+                {
+                    if (pi is ServiceBusReceivedMessage sbrm)
+                        sbv = sbrm;
+                    else if (pi is ServiceBusMessageActionsAssertor sba || pi is ServiceBusSessionMessageActionsAssertor ssba)
+                    { }
+                }
+
                 if (validateTriggerProperties)
                 {
                     var config = ServiceScope.ServiceProvider.GetRequiredService<IConfiguration>();
@@ -81,7 +91,7 @@ namespace UnitTestEx.Functions
 
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
             var logs = Tester.SharedState.GetLoggerMessages();
-            LogOutput(ex, ms, sbv, logs);
+            LogOutput(ex, ms, sbv, sba, ssba, logs);
 
             _exceptionSuccessExpectations.Assert(ex);
             _loggerExpectations.Assert(logs);
@@ -147,7 +157,7 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Log the output.
         /// </summary>
-        private void LogOutput(Exception? ex, double ms, object? value, IEnumerable<string?>? logs)
+        private void LogOutput(Exception? ex, double ms, object? value, ServiceBusMessageActionsAssertor? sba, ServiceBusSessionMessageActionsAssertor? ssba, IEnumerable<string?>? logs)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("LOGGING >");
@@ -212,6 +222,9 @@ namespace UnitTestEx.Functions
                 Implementor.WriteLine($"Exception: {ex.Message} [{ex.GetType().Name}]");
                 Implementor.WriteLine(ex.ToString());
             }
+
+            sba?.LogResult();
+            ssba?.LogResult();
 
             Implementor.WriteLine("");
             Implementor.WriteLine(new string('=', 80));

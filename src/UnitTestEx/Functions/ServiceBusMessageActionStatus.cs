@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Microsoft.Azure.WebJobs.ServiceBus;
 using System.Collections.Generic;
 
 namespace UnitTestEx.Functions
@@ -10,29 +11,34 @@ namespace UnitTestEx.Functions
     public enum ServiceBusMessageActionStatus
     {
         /// <summary>
-        /// Indicates the no action occured.
+        /// Indicates that no action occured.
         /// </summary>
         None,
 
         /// <summary>
-        /// Indicates that the <see cref="ServiceBusMessageActionsWrapper.AbandonMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, IDictionary{string, object}?, System.Threading.CancellationToken)"/> was invoked.
+        /// Indicates that the <see cref="ServiceBusMessageActions.AbandonMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, IDictionary{string, object}?, System.Threading.CancellationToken)"/> was invoked.
         /// </summary>
-        Abandoned,
+        Abandon,
 
         /// <summary>
-        /// Indicates that the <see cref="ServiceBusMessageActionsWrapper.CompleteMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, System.Threading.CancellationToken)"/> was invoked.
+        /// Indicates that the <see cref="ServiceBusMessageActions.CompleteMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, System.Threading.CancellationToken)"/> was invoked.
         /// </summary>
-        Completed,
+        Complete,
 
         /// <summary>
-        /// Indicates that the <see cref="ServiceBusMessageActionsWrapper.DeadLetterMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, IDictionary{string, object}?, System.Threading.CancellationToken)"/> or
+        /// Indicates that the <see cref="ServiceBusMessageActions.DeadLetterMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, IDictionary{string, object}?, System.Threading.CancellationToken)"/> or
         /// <see cref="ServiceBusMessageActionsWrapper.DeadLetterMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, string, string?, System.Threading.CancellationToken)"/> were invoked.
         /// </summary>
-        Deadlettered,
+        DeadLetter,
 
         /// <summary>
-        /// Indicates that the <see cref="ServiceBusMessageActionsWrapper.DeferMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, IDictionary{string, object}?, System.Threading.CancellationToken)"/> was invoked.
+        /// Indicates that the <see cref="ServiceBusMessageActions.DeferMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, IDictionary{string, object}?, System.Threading.CancellationToken)"/> was invoked.
         /// </summary>
-        Deferred
+        Defer,
+
+        /// <summary>
+        /// Indicates that the <see cref="ServiceBusMessageActions.RenewMessageLockAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, System.Threading.CancellationToken)"/> was invoked.
+        /// </summary>
+        Renew
     }
 }

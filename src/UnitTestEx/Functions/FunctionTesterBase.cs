@@ -9,6 +9,7 @@ using CoreEx.Http;
 using CoreEx.Mapping.Converters;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -531,6 +532,20 @@ namespace UnitTestEx.Functions
                 ? throw new InvalidOperationException($"'{typeof(ServiceBusReceivedMessage).Name}' constructor that accepts Type '{typeof(AmqpAnnotatedMessage).Name}' parameter was not found.")
                 : (ServiceBusReceivedMessage)c.Invoke(new object?[] { message });
         }
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusMessageActionsAssertor"/> as the <see cref="ServiceBusMessageActions"/> instance to enable test mock and assert verification.
+        /// </summary>
+        /// <returns>The <see cref="ServiceBusMessageActionsAssertor"/>.</returns>
+        public ServiceBusMessageActionsAssertor CreateServiceBusMessageActions() => new(Implementor);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusSessionMessageActionsAssertor"/> as the <see cref="ServiceBusSessionMessageActions"/> instance to enable test mock and assert verification.
+        /// </summary>
+        /// <param name="sessionLockedUntil">The sessions locked until <see cref="DateTimeOffset"/>; defaults to <see cref="DateTimeOffset.UtcNow"/> plus five minutes.</param>
+        /// <param name="sessionState">The session state <see cref="BinaryData"/>; defaults to <see cref="BinaryData.Empty"/>.</param>
+        /// <returns>The <see cref="ServiceBusSessionMessageActionsAssertor"/>.</returns>
+        public ServiceBusSessionMessageActionsAssertor CreateServiceBusSessionMessageActions(DateTimeOffset? sessionLockedUntil = default, BinaryData? sessionState = default) => new(Implementor, sessionLockedUntil, sessionState);
 
         /// <summary>
         /// Releases all resources.
