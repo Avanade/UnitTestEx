@@ -78,8 +78,10 @@ namespace UnitTestEx.Functions
                 {
                     if (pi is ServiceBusReceivedMessage sbrm)
                         sbv = sbrm;
-                    else if (pi is ServiceBusMessageActionsAssertor sba || pi is ServiceBusSessionMessageActionsAssertor ssba)
-                    { }
+                    else if (pi is ServiceBusMessageActionsAssertor psba)
+                        sba = psba;
+                    else if (pi is ServiceBusSessionMessageActionsAssertor pssba)
+                        ssba = pssba;
                 }
 
                 if (validateTriggerProperties)
