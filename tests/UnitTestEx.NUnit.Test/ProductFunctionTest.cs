@@ -1,4 +1,7 @@
-﻿using NUnit.Framework;
+﻿using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Timers;
+using Moq;
+using NUnit.Framework;
 using System;
 using System.Net;
 using System.Net.Http;
@@ -67,5 +70,14 @@ namespace UnitTestEx.NUnit.Test
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/exception"), "exception", test.Logger))
                 .AssertException<InvalidOperationException>("An unexpected exception occured.");
         }
+
+        [Test]
+        public void TimerTriggered()
+        {
+            using var test = FunctionTester.Create<Startup>();
+            test.Type<ProductFunction>()
+                .Run(f => f.DailyRun(new TimerInfo(new DailySchedule("2:00:00"), It.IsAny<ScheduleStatus>(), false)))
+                .AssertSuccess();
+        }   
     }
 }

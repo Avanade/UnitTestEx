@@ -11,7 +11,7 @@ using System.Net.Mime;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CoreEx;
-using CoreEx.WebApis;
+using CoreEx.AspNetCore.WebApis;
 
 namespace UnitTestEx.Function
 {

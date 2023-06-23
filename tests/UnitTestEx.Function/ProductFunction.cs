@@ -41,5 +41,11 @@ namespace UnitTestEx.Function
             var val = JsonConvert.DeserializeObject(str);
             return new JsonResult(val);
         }
+
+        [FunctionName("TimerTriggered")]
+        public Task DailyRun([TimerTrigger("0 0 0 */1 * *", RunOnStartup = true)] TimerInfo timer)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

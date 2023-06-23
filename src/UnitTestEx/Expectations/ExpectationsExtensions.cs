@@ -399,7 +399,7 @@ namespace UnitTestEx.Expectations
         public static ExceptionExpectation<TSelf> ExpectException<TSelf>(this IExceptionSuccessExpectations<TSelf> tester) where TSelf : IExceptionSuccessExpectations<TSelf> => new(tester);
 
         /// <summary>
-        /// Expects that an <see cref="IExceptionResult"/> <see cref="Exception"/> with the specified <paramref name="errorType"/> will be thrown during execution.
+        /// Expects that an <see cref="IExtendedException"/> <see cref="Exception"/> with the specified <paramref name="errorType"/> will be thrown during execution.
         /// </summary>
         /// <param name="tester">The <see cref="IExceptionSuccessExpectations{TSelf}"/>.</param>
         /// <param name="errorType">The error type.</param>
@@ -409,7 +409,7 @@ namespace UnitTestEx.Expectations
             => tester.SetExceptionSuccessExpectation(t => t.ExceptionSuccessExpectations.SetExpectErrorType(errorType, expectedMessage));
 
         /// <summary>
-        /// Expects that an <see cref="IExceptionResult"/> <see cref="Exception"/> with the specified <paramref name="errorType"/> will be thrown during execution.
+        /// Expects that an <see cref="IExtendedException"/> <see cref="Exception"/> with the specified <paramref name="errorType"/> will be thrown during execution.
         /// </summary>
         /// <param name="tester">The <see cref="IExceptionSuccessExpectations{TSelf}"/>.</param>
         /// <param name="errorType">The error type.</param>

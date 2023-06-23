@@ -165,7 +165,7 @@ namespace UnitTestEx.Generic
             Implementor.WriteLine(new string('=', 80));
             Implementor.WriteLine("");
 
-            exception ??= validationResult?.ToValidationException();
+            exception ??= validationResult?.ToException();
             ExceptionSuccessExpectations.Assert(exception);
             return new ValueAssertor<IValidationResult>(validationResult!, exception, Implementor, JsonSerializer);
         }

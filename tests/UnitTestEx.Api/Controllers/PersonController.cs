@@ -1,5 +1,6 @@
 ﻿using CoreEx;
-using CoreEx.Http;
+using CoreEx.AspNetCore.Http;
+using CoreEx.AspNetCore.WebApis;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Configuration;
@@ -58,7 +59,7 @@ namespace UnitTestEx.Api.Controllers
         public IActionResult Update(int id, [FromBody] Person person)
         {
             if (id == 88)
-                return new ValidationException("No can do eighty-eight.").ToResult();
+                return WebApiBase.CreateActionResultFromExtendedException(new ValidationException("No can do eighty-eight."));
 
             var msd = new ModelStateDictionary();
 
