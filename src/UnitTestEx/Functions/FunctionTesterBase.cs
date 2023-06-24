@@ -2,9 +2,11 @@
 
 using Azure.Core.Amqp;
 using Azure.Messaging.ServiceBus;
+using CoreEx.AspNetCore.Http;
 using CoreEx.Azure.ServiceBus;
 using CoreEx.Configuration;
 using CoreEx.Events;
+using CoreEx.Hosting;
 using CoreEx.Http;
 using CoreEx.Mapping.Converters;
 using Microsoft.AspNetCore.Http;
@@ -24,6 +26,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Web;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Hosting;
 using Ceh = CoreEx.Http;
@@ -33,9 +36,9 @@ namespace UnitTestEx.Functions
     /// <summary>
     /// Provides the basic Azure Function unit-testing capabilities.
     /// </summary>
-    /// <typeparam name="TEntryPoint">The <see cref="FunctionsStartup"/> <see cref="Type"/>.</typeparam>
+    /// <typeparam name="TEntryPoint">The <see cref="FunctionsStartup"/> or <see cref="IHostStartup"/> <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
-    public abstract class FunctionTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : FunctionsStartup, new() where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
+    public abstract class FunctionTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : class, new() where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
         private static readonly object _lock = new();
         private static bool _localSettingsDone = false;
@@ -148,50 +151,46 @@ namespace UnitTestEx.Functions
                 if (_host != null)
                     return _host;
 
-                var ep2 = new TEntryPoint();
+                var ep = new TEntryPoint();
+                var ep2 = ep as FunctionsStartup;
+                var ep3 = ep as IHostStartup;
+                if (ep2 is null && ep3 is null)
+                    throw new InvalidOperationException($"The {typeof(TEntryPoint).Name} must be a {typeof(FunctionsStartup).Name} or {typeof(IHostStartup).Name}.");
+
                 return _host = new HostBuilder()
                     .UseEnvironment(TestSetUp.Environment)
                     .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
-                    .ConfigureWebHostDefaults(c =>
+                    .ConfigureHostConfiguration(cb =>
                     {
-                        c.ConfigureAppConfiguration((cx, cb) =>
-                        {
-                            cb.SetBasePath(Environment.CurrentDirectory)
-                                .AddInMemoryCollection(new KeyValuePair<string, string?>[] { new KeyValuePair<string, string?>("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost") })
-                                .AddJsonFile(GetLocalSettingsJson(), optional: true)
-                                .AddJsonFile("appsettings.json", optional: true)
-                                .AddJsonFile("appsettings.development.json", optional: true);
-
-                            if ((!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (_includeUserSecrets.HasValue && _includeUserSecrets.Value))
-                                cb.AddUserSecrets<TEntryPoint>();
-
-                            cb.AddEnvironmentVariables();
-
-                            // Apply early so can be reference.
-                            if ((!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (_includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value))
-                                cb.AddJsonFile("appsettings.unittest.json", optional: true);
-
-                            if (_additionalConfiguration != null)
-                                cb.AddInMemoryCollection(_additionalConfiguration);
-                        });
-                    })
-                    .ConfigureAppConfiguration(cb =>
-                    {
-                        ep2.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(cb));
+                        cb.SetBasePath(Environment.CurrentDirectory)
+                            .AddInMemoryCollection(new KeyValuePair<string, string?>[] { new KeyValuePair<string, string?>("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost") })
+                            .AddJsonFile(GetLocalSettingsJson(), optional: true)
+                            .AddJsonFile("appsettings.json", optional: true)
+                            .AddJsonFile("appsettings.development.json", optional: true);
 
                         if ((!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (_includeUserSecrets.HasValue && _includeUserSecrets.Value))
                             cb.AddUserSecrets<TEntryPoint>();
 
-                        // Apply again near the end to ensure override.
+                        cb.AddEnvironmentVariables();
+
+                        ep3?.ConfigureHostConfiguration(cb);
+
+                        // Apply early so can be reference.
                         if ((!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (_includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value))
                             cb.AddJsonFile("appsettings.unittest.json", optional: true);
 
                         if (_additionalConfiguration != null)
                             cb.AddInMemoryCollection(_additionalConfiguration);
                     })
+                    .ConfigureAppConfiguration((hbc, cb) =>
+                    {
+                        ep2?.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(cb));
+                        ep3?.ConfigureAppConfiguration(hbc, cb);
+                    })
                     .ConfigureServices(sc =>
                     {
-                        ep2.Configure(MockIFunctionsHostBuilder(sc));
+                        ep2?.Configure(MockIFunctionsHostBuilder(sc));
+                        ep3?.ConfigureServices(sc);
                         sc.ReplaceScoped(_ => SharedState);
                         SetUp.ConfigureServices?.Invoke(sc);
                         if (SetUp.ExpectedEventsEnabled)
@@ -320,14 +319,11 @@ namespace UnitTestEx.Functions
             context.Request.Scheme = uri.Scheme;
             context.Request.Host = new HostString(uri.Host);
             context.Request.Path = uri.LocalPath;
+            context.Request.QueryString = new QueryString(uri.Query);
 
             // Extend the query string to include additional options.
-            var qs = new QueryString(uri.Query);
             if (requestOptions != null)
-                qs = requestOptions.AddToQueryString(qs);
-
-            context.Request.QueryString = qs;
-            context.Request.ApplyETag(requestOptions?.ETag);
+                context.Request.ApplyRequestOptions(requestOptions);
 
             if (hasBody)
             {

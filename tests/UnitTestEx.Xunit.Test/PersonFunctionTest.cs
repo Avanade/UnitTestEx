@@ -1,9 +1,7 @@
-using CoreEx.WebApis;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http;
 using System.Threading.Tasks;
 using UnitTestEx.Function;
-using UnitTestEx.Xunit;
 using Xunit;
 using Xunit.Abstractions;
 

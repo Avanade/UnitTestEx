@@ -2,6 +2,12 @@
 
 Represents the **NuGet** versions.
 
+## v3.0.0
+- *Enhancement:* Updated `CoreEx` dependencies to `3.0.0` as breaking changes were introduced. There are no breaking changes within `UnitTestEx` as a result; primarily related to the key `CoreEx` dependency.
+  - Given the `CoreEx` dependency, explicitly the creation of the new `CoreEx.AspNetCore`, this `UnitTextEx` version is not backwards compatible with previous versions of `CoreEx` (i.e. `2.x.x`).
+- *Enhancement:* Updated all package dependencies to latest.
+- *Fixed:* Corrected the log output to ensure they appear in sequence logged.
+
 ## v2.2.3
 - *Fixed:* The `ServiceBusMessageActionsAssertor` logging now logs regardless of whether it is the last parameter in the method being executed.
 - *Fixed:* The loading of the `appsettings.unittest.json` has been moved after the `FunctionsStartup.ConfigureAppConfiguration` to override correctly.

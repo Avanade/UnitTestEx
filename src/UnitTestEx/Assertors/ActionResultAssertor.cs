@@ -2,7 +2,7 @@
 
 using CoreEx.Entities;
 using CoreEx.Json;
-using CoreEx.WebApis;
+using CoreEx.AspNetCore.WebApis;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using System;

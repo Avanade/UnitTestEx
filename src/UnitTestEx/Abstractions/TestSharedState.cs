@@ -2,6 +2,7 @@
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +16,7 @@ namespace UnitTestEx.Abstractions
     public sealed class TestSharedState
     {
         private readonly object _lock = new();
-        private readonly ConcurrentDictionary<string, List<string?>> _logOutput = new();
+        private readonly ConcurrentDictionary<string, List<(DateTime, string?)>> _logOutput = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TestSharedState"/> class.
@@ -43,7 +44,13 @@ namespace UnitTestEx.Abstractions
             lock (_lock)
             {
                 var logs = _logOutput.GetOrAdd(id, _ => new());
-                logs.Add(message);
+
+                // Parse in the message date where possible to ensure correct sequencing; assumes date/time is first 25 characters.
+                DateTime now = DateTime.Now;
+                if (message is not null && message.Length >= 25 && DateTime.TryParse(message[0..25], out now)) { }
+
+                // Append asterisks to the message to indicate that it is not attributed to a specific request.
+                logs.Add((now, $"{message}{(string.IsNullOrEmpty(id) ? "**" : "")}"));
             }
         }
 
@@ -72,14 +79,14 @@ namespace UnitTestEx.Abstractions
         {
             lock (_lock)
             {
-                var logs = new List<string?>();
+                var logs = new List<(DateTime, string?)>();
                 if (_logOutput.TryRemove(string.Empty, out var l1) && l1 != null)
                     logs.AddRange(l1);
 
                 if (!string.IsNullOrEmpty(requestId) && _logOutput.TryRemove(requestId, out var l2) && l2 != null)
                     logs.AddRange(l2);
 
-                return logs;
+                return logs.OrderBy(x => x.Item1).Select(x => x.Item2).ToArray();
             }
         }
 

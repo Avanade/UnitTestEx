@@ -29,6 +29,16 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
+        public void QueryString_Options()
+        {
+            using var test = FunctionTester.Create<Startup>();
+            test.HttpTrigger<PersonFunction>()
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person", new CoreEx.Http.HttpRequestOptions { UrlQueryString = "name=Trevor" }), test.Logger))
+                .AssertOK()
+                .Assert("Hello, Trevor. This HTTP triggered function executed successfully.");
+        }
+
+        [Test]
         public void WithBody()
         {
             using var test = FunctionTester.Create<Startup>();

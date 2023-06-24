@@ -16,10 +16,11 @@
 
   <ItemGroup>
     <PackageReference Include="CompareNETObjects" Version="4.79.0" />
-    <PackageReference Include="CoreEx.Azure" Version="2.7.0" />
-    <PackageReference Include="CoreEx.Newtonsoft" Version="2.7.0" />
+    <PackageReference Include="CoreEx.AspNetCore" Version="3.0.0" />
+    <PackageReference Include="CoreEx.Azure" Version="3.0.0" />
+    <PackageReference Include="CoreEx.Newtonsoft" Version="3.0.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
-    <PackageReference Include="Moq" Version="4.18.2" />
+    <PackageReference Include="Moq" Version="4.18.4" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
@@ -27,11 +28,11 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.16" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.19" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net7.0'">
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="7.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="7.0.8" />
   </ItemGroup>
 
   <Import Project="..\..\Common.targets" />
