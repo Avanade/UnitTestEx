@@ -378,7 +378,7 @@ namespace UnitTestEx.NUnit.Test.Other
             e = new EventExpectations(t);
             e.Expect(null, new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "yy" });
             var ex = Assert.Throws<AssertionException>(() => e.Assert());
-            Assert.IsTrue(ex.Message.Contains("Expected.TenantId != Actual.TenantId"), ex.Message);
+            Assert.IsTrue(ex.Message.Contains("Path 'tenantId' value is not equal: \"yy\" != \"xx\""), ex.Message);
 
             e = new EventExpectations(t);
             e.Expect(null, new CoreEx.Events.EventData { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "yy" }, "TenantId");
@@ -403,7 +403,7 @@ namespace UnitTestEx.NUnit.Test.Other
             Assert.Throws<AssertionException>(() => e.Assert());
 
             e = new EventExpectations(t);
-            e.Expect(null, new CoreEx.Events.EventData<Person> { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "xx", Value = new Person { Id = 1, FirstName = "Mary", LastName = "Contrary" } }, "LastName");
+            e.Expect(null, new CoreEx.Events.EventData<Person> { Source = new Uri("mydata/xyz", UriKind.Relative), Subject = "data.abc", Action = "created", TenantId = "xx", Value = new Person { Id = 1, FirstName = "Mary", LastName = "Contrary" } }, "value.LastName");
             e.Assert();
         }
 
@@ -454,7 +454,7 @@ namespace UnitTestEx.NUnit.Test.Other
 
             public string Name { get; set; }
 
-            public CompositeKey PrimaryKey => new CompositeKey(Id);
+            public CompositeKey PrimaryKey => new(Id);
 
             public ChangeLog ChangeLog { get; set; }
 

@@ -13,7 +13,7 @@ namespace UnitTestEx.Expectations
     /// </summary>
     public sealed class EventExpectations
     {
-        private readonly Dictionary<string, List<(string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore)>> _expectedEvents = new();
+        private readonly Dictionary<string, List<(string? Source, string? Subject, string? Action, EventData? Event, string[] PathsToIgnore)>> _expectedEvents = new();
         private bool _expectNoEvents = true;
         private bool _expectEvents;
 
@@ -41,39 +41,44 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Expects that no events have been published.
         /// </summary>
-        /// <remarks>This is ignored when an expected event has been configured.</remarks>
-        public void ExpectNoEvents() => _expectNoEvents = true;
+        /// <remarks>Any previously explicitly specified expected events will be removed.</remarks>
+        public void ExpectNoEvents()
+        {
+            _expectedEvents.Clear();
+            _expectNoEvents = true;
+            _expectEvents = false;
+        }
 
         /// <summary>
         /// Expects that at least one event has been published.
         /// </summary>
+        /// <remarks>Any previously explicitly specified expected events will be removed.</remarks>
         public void ExpectEvents()
         {
             if (!Tester.IsExpectedEventPublisherEnabled)
                 throw new NotSupportedException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.ExpectedEventsEnabled)} or TesterBase.UseExpectedEvents must be used before this functionality can be executed; note that enabling will automatically replace the {nameof(IEventPublisher)} to use the {nameof(ExpectedEventPublisher)}.");
 
-            if (_expectedEvents.Count > 0)
-                throw new InvalidOperationException($"{nameof(ExpectEvents)} can not be used where one or more explicit events has already been defined.");
-
+            _expectedEvents.Clear();
+            _expectNoEvents = false;
             _expectEvents = true;
         }
 
         /// <summary>
         /// Adds the event into the dictionary.
         /// </summary>
-        private void Add(string? destination, (string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore) @event)
+        private void Add(string? destination, (string? Source, string? Subject, string? Action, EventData? Event, string[] PathsToIgnore) @event)
         {
             if (!Tester.IsExpectedEventPublisherEnabled)
                 throw new NotSupportedException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.ExpectedEventsEnabled)} or TesterBase.UseExpectedEvents must be used before this functionality can be executed; note that enabling will automatically replace the {nameof(IEventPublisher)} to use the {nameof(ExpectedEventPublisher)}.");
-
-            if (_expectEvents)
-                throw new InvalidOperationException($"An explicit {nameof(Expect)} can not be used where {nameof(ExpectEvents)} has already been defined.");
 
             var key = destination ?? ExpectedEventPublisher.NullKeyName;
             if (_expectedEvents.TryGetValue(key, out var events))
                 events.Add(@event);
             else
                 _expectedEvents.Add(key, new() { @event });
+
+            _expectNoEvents = false;
+            _expectEvents = false;
         }
 
         /// <summary>
@@ -99,9 +104,9 @@ namespace UnitTestEx.Expectations
         /// </summary>
         /// <param name="destination">The named destination (e.g. queue or topic).</param>
         /// <param name="event">The expected <paramref name="event"/>. Wildcards are supported for <see cref="EventDataBase.Subject"/> and <see cref="EventDataBase.Action"/>.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsPathsToIgnore"/>.</param>
         /// <remarks>Wildcards are supported for <see cref="EventDataBase.Subject"/>, <see cref="EventDataBase.Action"/> and <see cref="EventDataBase.Type"/>.</remarks>
-        public void Expect(string? destination, EventData @event, params string[] membersToIgnore) => Add(destination, (null, @event?.Subject, @event?.Action, @event ?? throw new ArgumentNullException(nameof(@event)), membersToIgnore));
+        public void Expect(string? destination, EventData @event, params string[] pathsToIgnore) => Add(destination, (null, @event?.Subject, @event?.Action, @event ?? throw new ArgumentNullException(nameof(@event)), pathsToIgnore));
 
         /// <summary>
         /// Expects that the corresponding <paramref name="event"/> has been published (in order specified). All properties for expected event will be compared again the actual.
@@ -109,9 +114,9 @@ namespace UnitTestEx.Expectations
         /// <param name="destination">The named destination (e.g. queue or topic).</param>
         /// <param name="source">The expected source formatted as a <see cref="Uri"/> (may contain wildcards).</param>
         /// <param name="event">The expected <paramref name="event"/>. Wildcards are supported for <see cref="EventDataBase.Subject"/> and <see cref="EventDataBase.Action"/>.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsPathsToIgnore"/>.</param>
         /// <remarks>Wildcards are supported for <see cref="EventDataBase.Subject"/>, <see cref="EventDataBase.Action"/> and <see cref="EventDataBase.Type"/>.</remarks>
-        public void Expect(string? destination, string source, EventData @event, params string[] membersToIgnore) => Add(destination, (source, @event?.Subject, @event?.Action, @event ?? throw new ArgumentNullException(nameof(@event)), membersToIgnore));
+        public void Expect(string? destination, string source, EventData @event, params string[] pathsToIgnore) => Add(destination, (source, @event?.Subject, @event?.Action, @event ?? throw new ArgumentNullException(nameof(@event)), pathsToIgnore));
 
         /// <summary>
         /// Verifies that the <see cref="ExpectedEventPublisher"/> events match the <see cref="EventExpectations"/> (in order specified).
@@ -170,7 +175,7 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Asserts the events for the destination.
         /// </summary>
-        private void AssertDestination(string? destination, List<(string? Source, string? Subject, string? Action, EventData? Event, string[] MembersToIgnore)> expectedEvents, List<string?> actualEvents)
+        private void AssertDestination(string? destination, List<(string? Source, string? Subject, string? Action, EventData? Event, string[] PathsToIgnore)> expectedEvents, List<string?> actualEvents)
         {
             if (actualEvents == null)
                 throw new ArgumentNullException(nameof(actualEvents));
@@ -202,31 +207,15 @@ namespace UnitTestEx.Expectations
                     continue;
 
                 // Compare the events.
-                var list = PrefixMembersToIgnore(Tester.SetUp.ExpectedEventsMembersToIgnore);
-                list.AddRange(PrefixMembersToIgnore(new string[] { nameof(EventDataBase.Source), nameof(EventDataBase.Subject), nameof(EventDataBase.Action), nameof(EventDataBase.Type) }));
-                list.AddRange(expectedEvents[i].MembersToIgnore);
+                var list = Tester.SetUp.ExpectedEventsPathsToIgnore;
+                list.AddRange(new string[] { nameof(EventDataBase.Source), nameof(EventDataBase.Subject), nameof(EventDataBase.Action), nameof(EventDataBase.Type) });
+                list.AddRange(expectedEvents[i].PathsToIgnore);
 
-                var cr = ObjectComparer.Compare(exp, act, list.ToArray());
-                if (!cr.AreEqual)
-                    Implementor.AssertFail($"Destination {destination}: Expected event is not equal to actual: {cr.DifferencesString}");
+                var jec = new JsonElementComparer(5);
+                var res = jec.Compare(Tester.JsonSerializer.Serialize(exp), actualEvents[i]!, list.ToArray());
+                if (res != null)
+                    Implementor.AssertFail($"Destination {destination}: Expected event is not equal to actual: {res}");
             }
-        }
-
-        /// <summary>
-        /// Prefix the members to ignore with the <see cref="EventData"/> and <see cref="EventData{T}"/> class names.
-        /// </summary>
-        /// <param name="membersToIgnore">the members to ignore.</param>
-        /// <returns>The prefixed members to ignore.</returns>
-        private List<string> PrefixMembersToIgnore(IEnumerable<string> membersToIgnore)
-        {
-            var list = new List<string>();
-            foreach (var m in membersToIgnore)
-            {
-                list.Add($"{nameof(EventData)}.{m}");
-                list.Add($"{nameof(EventData)}`1.{m}");
-            }
-
-            return list;
         }
 
         /// <summary>

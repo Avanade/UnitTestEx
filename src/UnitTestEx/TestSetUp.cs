@@ -145,7 +145,7 @@ namespace UnitTestEx
         /// Gets or sets the <see cref="Expectations.EventExpectations.Expect(string?, EventData, string[])"/> and <see cref="Expectations.EventExpectations.Expect(string?, string, EventData, string[])"/> members to ignore.
         /// </summary>
         /// <remarks>By default <see cref="EventDataBase.Id"/>, <see cref="EventDataBase.CorrelationId"/>, <see cref="EventDataBase.Timestamp"/>, <see cref="EventDataBase.ETag"/> and <see cref="EventDataBase.Key"/> are ignored.</remarks>
-        public List<string> ExpectedEventsMembersToIgnore { get; set; } = new() { nameof(EventDataBase.Id), nameof(EventDataBase.CorrelationId), nameof(EventDataBase.Timestamp), nameof(EventDataBase.ETag), nameof(EventDataBase.Key) };
+        public List<string> ExpectedEventsPathsToIgnore { get; set; } = new() { nameof(EventDataBase.Id), nameof(EventDataBase.CorrelationId), nameof(EventDataBase.Timestamp), nameof(EventDataBase.ETag), nameof(EventDataBase.Key) };
 
         /// <summary>
         /// Gets or sets the <see cref="Expectations.EventExpectations"/> <see cref="Wildcard"/> parser.
@@ -193,7 +193,7 @@ namespace UnitTestEx
             ConcurrencyErrorETag = ConcurrencyErrorETag,
             ExpectedEventsEnabled = ExpectedEventsEnabled,
             ExpectNoEvents = ExpectNoEvents,
-            ExpectedEventsMembersToIgnore = ExpectedEventsMembersToIgnore,
+            ExpectedEventsPathsToIgnore = ExpectedEventsPathsToIgnore,
             ExpectedEventsWildcard = ExpectedEventsWildcard,
             ExpectedEventsEventDataFormatter = ExpectedEventsEventDataFormatter,
             ConfigureServices = ConfigureServices,

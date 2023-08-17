@@ -2,6 +2,15 @@
 
 Represents the **NuGet** versions.
 
+## v3.1.0
+- *Enhancement:* Updated all package depenedencies to latest.
+- *Enhancement:* The `GenericTester` updated to support `IHostStartup` to enable shared host dependency injection configuration.
+- *Enhancement:* Added `IEventExpectations<TSelf>` and `ILoggerExpectations<TSelf>` support to `GenericTester` and `ValidationTester`.
+- *Enhancement:* Moved the `CreateServiceBusMessage` and related methods from `FunctionTesterBase` up the inheritance hierarchy to `TesterBase<TSelf>` to enable broader usage.
+- *Enhancement:* Added `ExpectEventFromJsonResource` and `ExpectDestinationEventFromJsonResource` expectations to simplify specification versus having to instantiate `EventData`.
+- *Enhancement:* The `JsonElementComparer` now defaults to case-insensitive comparison.
+- *Enhancement:* The event expectations comparer
+
 ## v3.0.0
 - *Enhancement:* Updated `CoreEx` dependencies to `3.0.0` as breaking changes were introduced. There are no breaking changes within `UnitTestEx` as a result; primarily related to the key `CoreEx` dependency.
   - Given the `CoreEx` dependency, explicitly the creation of the new `CoreEx.AspNetCore`, this `UnitTextEx` version is not backwards compatible with previous versions of `CoreEx` (i.e. `2.x.x`).

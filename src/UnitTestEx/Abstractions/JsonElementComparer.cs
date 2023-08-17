@@ -18,13 +18,24 @@ namespace UnitTestEx.Abstractions
         /// Initializes a new instance of the <see cref="JsonElementComparer"/> class.
         /// </summary>
         /// <param name="maxDifferences">The maximum number of differences to detect where performing a <see cref="Compare(JsonElement, JsonElement, CompareArgs)"/> or <see cref="Compare(JsonElement, JsonElement, string[])"/>.</param>
-        public JsonElementComparer(int maxDifferences = 1) => MaxDifferences = maxDifferences;
+        /// <param name="pathComparer">The <see cref="IEqualityComparer{String}"/> to use for comparing JSON paths; see <see cref="PathComparer"/>.</param>
+        public JsonElementComparer(int maxDifferences = 1, IEqualityComparer<string>? pathComparer = null)
+        {
+            MaxDifferences = maxDifferences;
+            PathComparer = pathComparer;
+        }
 
         /// <summary>
         /// Gets or sets the maximum number of differences to detect where performing a <see cref="Compare(JsonElement, JsonElement, CompareArgs)"/> or <see cref="Compare(JsonElement, JsonElement, string[])"/>.
         /// </summary>
         /// <remarks>Defaults to '<c>1</c>'.</remarks>
         public int MaxDifferences { get; set; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="IEqualityComparer{String}"/> to use for comparing JSON paths.
+        /// </summary>
+        /// <remarks>Defaults to <see cref="StringComparer.InvariantCultureIgnoreCase"/>.</remarks>
+        public IEqualityComparer<string>? PathComparer { get; set; }
 
         /// <summary>
         /// Compare two JSON strings for equality.
@@ -56,7 +67,7 @@ namespace UnitTestEx.Abstractions
         /// <returns>The resulting comparison error message; <c>null</c> indicates equality.</returns>
         public string? Compare(JsonElement left, JsonElement right, params string[] pathsToIgnore)
         {
-            var args = new CompareArgs(MaxDifferences, pathsToIgnore);
+            var args = new CompareArgs(MaxDifferences, PathComparer, pathsToIgnore);
             Compare(left, right, args);
             return args.ErrorMessage;
         }
@@ -169,7 +180,7 @@ namespace UnitTestEx.Abstractions
             if (!JsonElement.TryParseValue(ref rjr, out JsonElement? rje))
                 throw new ArgumentException("JSON is not considered valid.", nameof(y));
 
-            var args = new CompareArgs(1);
+            var args = new CompareArgs(1, PathComparer);
             Compare(lje.Value, rje.Value, args);
             return !args.MaxDifferencesFound;
         }
@@ -177,7 +188,7 @@ namespace UnitTestEx.Abstractions
         /// <inheritdoc/>
         public bool Equals(JsonElement x, JsonElement y)
         {
-            var args = new CompareArgs(1);
+            var args = new CompareArgs(1, PathComparer);
             Compare(x, y, args);
             return !args.MaxDifferencesFound;
         }
@@ -269,10 +280,12 @@ namespace UnitTestEx.Abstractions
             /// Initializes a new instance of the <see cref="CompareArgs"/> class.
             /// </summary>
             /// <param name="maxDifferences">The maximum number of differences to detect.</param>
+            /// <param name="pathComparer">The <see cref="IEqualityComparer{String}"/> to use for comparing JSON paths.</param>
             /// <param name="pathsToIgnore">The paths to ignore from the comparison.</param>
-            public CompareArgs(int maxDifferences, params string[] pathsToIgnore)
+            public CompareArgs(int maxDifferences, IEqualityComparer<string>? pathComparer, params string[] pathsToIgnore)
             {
                 MaxDifferences = maxDifferences;
+                PathComparer = pathComparer ?? StringComparer.InvariantCultureIgnoreCase;
                 var maxDepth = 0;
                 PathsToIgnore = new(CoreEx.Text.Json.JsonFilterer.CreateDictionary(pathsToIgnore, CoreEx.Json.JsonPropertyFilter.Exclude, StringComparison.Ordinal, ref maxDepth).Keys);
             }
@@ -281,6 +294,12 @@ namespace UnitTestEx.Abstractions
             /// Indicates whether to fail fast after first error; versus, report all.
             /// </summary>
             public int MaxDifferences { get; }
+
+            /// <summary>
+            /// Gets or sets the <see cref="IEqualityComparer{String}"/> to use for comparing JSON paths.
+            /// </summary>
+            /// <remarks>Defaults to <see cref="StringComparer.InvariantCultureIgnoreCase"/>.</remarks>
+            public IEqualityComparer<string> PathComparer { get; }
 
             /// <summary>
             /// Gets the current difference count.
@@ -320,7 +339,7 @@ namespace UnitTestEx.Abstractions
             public void Compare(string name, Action action)
             {
                 var path = Path == null ? name : $"{Path}.{name}";
-                if (PathsToIgnore.Contains(path))
+                if (PathsToIgnore.Contains(path, StringComparer.InvariantCultureIgnoreCase))
                     return;
 
                 _path.Push(path);

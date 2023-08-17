@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using CoreEx.Hosting;
 using CoreEx.Validation;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using System;
@@ -55,10 +56,18 @@ namespace UnitTestEx.Xunit
         /// Provides the <b>Xunit</b> <see cref="IValidator"/> testing capability.
         /// </summary>
         /// <param name="userName">The user name (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.UserName"/> where configured).</param>
-        /// <returns>The <see cref="ValidationTester"/>.</returns>
-        protected ValidationTester CreateValidationTester(string? userName = null)
+        /// <returns>The <see cref="ValidationTester{TEntryPoint}"/>.</returns>
+        protected ValidationTester<HostStartup> CreateValidationTester(string? userName = null) => CreateValidationTester<HostStartup>(userName);
+
+        /// <summary>
+        /// Provides the <b>Xunit</b> <see cref="IValidator"/> testing capability.
+        /// </summary>
+        /// <typeparam name="TEntryPoint">The <see cref="IHostStartup"/> <see cref="Type"/>.</typeparam>
+        /// <param name="userName">The user name (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.UserName"/> where configured).</param>
+        /// <returns>The <see cref="ValidationTester{TEntryPoint}"/>.</returns>
+        protected ValidationTester<TEntryPoint> CreateValidationTester<TEntryPoint>(string? userName = null) where TEntryPoint : IHostStartup, new()
         {
-            var vt = new ValidationTester(Output);
+            var vt = new ValidationTester<TEntryPoint>(Output);
             vt.UseUser(userName);
             return vt;
         }
@@ -66,10 +75,17 @@ namespace UnitTestEx.Xunit
         /// <summary>
         /// Provides the <b>Xunit</b> generic testing capability.
         /// </summary>
-        /// <returns>The <see cref="GenericTester"/>.</returns>
-        protected GenericTester CreateGenericTester(string? userName = null)
+        /// <returns>The <see cref="GenericTester{TEntryPoint}"/>.</returns>
+        protected GenericTester<HostStartup> CreateGenericTester(string? userName = null) => CreateGenericTester<HostStartup>(userName);
+
+        /// <summary>
+        /// Provides the <b>Xunit</b> generic testing capability.
+        /// </summary>
+        /// <typeparam name="TEntryPoint">The <see cref="IHostStartup"/> <see cref="Type"/>.</typeparam>
+        /// <returns>The <see cref="GenericTester{TEntryPoint}"/>.</returns>
+        protected GenericTester<TEntryPoint> CreateGenericTester<TEntryPoint>(string? userName = null) where TEntryPoint : IHostStartup, new()
         {
-            var gt = new GenericTester(Output);
+            var gt = new GenericTester<TEntryPoint>(Output);
             gt.UseUser(userName);
             return gt;
         }
