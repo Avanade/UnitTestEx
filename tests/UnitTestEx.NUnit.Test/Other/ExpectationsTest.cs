@@ -249,7 +249,7 @@ namespace UnitTestEx.NUnit.Test.Other
 
             // By expecting the properties they should be automatically excluded from the value comparison.
             e = new ResponseValueExpectations<object, Entity<Guid>>(GenericTester.Create(), new object());
-            e.SetExpectValue(_ => new Entity<Guid> { Name = "Bob" });
+            e.SetExpectValue(_ => new Entity<Guid> { Name = "Bob", ChangeLog = new ChangeLog { CreatedBy = "Anonymous", CreatedDate = DateTime.UtcNow } });
             e.SetExpectIdentifier();
             e.SetExpectETag();
             e.SetExpectChangeLogCreated();

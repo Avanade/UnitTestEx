@@ -211,8 +211,7 @@ namespace UnitTestEx.Expectations
                 list.AddRange(new string[] { nameof(EventDataBase.Source), nameof(EventDataBase.Subject), nameof(EventDataBase.Action), nameof(EventDataBase.Type) });
                 list.AddRange(expectedEvents[i].PathsToIgnore);
 
-                var jec = new JsonElementComparer(5);
-                var res = jec.Compare(Tester.JsonSerializer.Serialize(exp), actualEvents[i]!, list.ToArray());
+                var res = JsonElementComparer.Default.Compare(Tester.JsonSerializer.Serialize(exp), actualEvents[i]!, list.ToArray());
                 if (res != null)
                     Implementor.AssertFail($"Destination {destination}: Expected event is not equal to actual: {res}");
             }

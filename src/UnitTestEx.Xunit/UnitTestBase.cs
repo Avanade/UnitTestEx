@@ -93,6 +93,7 @@ namespace UnitTestEx.Xunit
         /// <summary>
         /// Gets the <see cref="Internal.ObjectComparer"/>.
         /// </summary>
+        [Obsolete($"This is being replaced by the {nameof(UnitTestEx.Abstractions.JsonElementComparer)} and usage of paths to ignore (versus members) to be more explicit.")]
         protected ObjectComparer ObjectComparer => new(new XunitTestImplementor(Output));
     }
 }

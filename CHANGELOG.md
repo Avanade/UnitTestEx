@@ -9,7 +9,7 @@ Represents the **NuGet** versions.
 - *Enhancement:* Moved the `CreateServiceBusMessage` and related methods from `FunctionTesterBase` up the inheritance hierarchy to `TesterBase<TSelf>` to enable broader usage.
 - *Enhancement:* Added `ExpectEventFromJsonResource` and `ExpectDestinationEventFromJsonResource` expectations to simplify specification versus having to instantiate `EventData`.
 - *Enhancement:* The `JsonElementComparer` now defaults to case-insensitive comparison.
-- *Enhancement:* The event expectations comparer
+- *Enhancement:* All internal usage of the `ObjectComparer` replaced with usage of the `JsonElementComparer` to break external dependency. All `MembersToIgnore` have been replaced with `PathsToIgnore` (being the fully-qualified JSON path) as this is more explicit and less error prone. The `ObjectComparer` has been flagged as `Obsolete` and will be removed in a later version.
 
 ## v3.0.0
 - *Enhancement:* Updated `CoreEx` dependencies to `3.0.0` as breaking changes were introduced. There are no breaking changes within `UnitTestEx` as a result; primarily related to the key `CoreEx` dependency.

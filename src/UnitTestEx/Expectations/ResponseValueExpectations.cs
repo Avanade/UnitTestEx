@@ -44,9 +44,9 @@ namespace UnitTestEx.Expectations
         public TesterBase Tester { get; }
 
         /// <summary>
-        /// Gets the members to ignore names list.
+        /// Gets the JSON paths to ignore list.
         /// </summary>
-        public List<string> MembersToIgnore { get; } = new();
+        public List<string> PathsToIgnore { get; } = new();
 
         /// <summary>
         /// Expect a <c>null</c> response value.
@@ -61,7 +61,7 @@ namespace UnitTestEx.Expectations
             VerifyImplements<IIdentifier>();
             _expectedId = true;
             _expectedIdValue = id;
-            MembersToIgnore.Add(nameof(IIdentifier.Id));
+            PathsToIgnore.Add(nameof(IIdentifier.Id));
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace UnitTestEx.Expectations
             VerifyImplements<IPrimaryKey>();
             _expectedPrimaryKey = true;
             _expectedPrimaryKeyValue = primaryKey;
-            MembersToIgnore.Add($"{typeof(TValue).Name}.{nameof(IPrimaryKey.PrimaryKey)}");
+            PathsToIgnore.Add(nameof(IPrimaryKey.PrimaryKey));
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace UnitTestEx.Expectations
             VerifyImplements<IETag>();
             _expectedETag = true;
             _expectedPreviousETag = previousETag;
-            MembersToIgnore.Add($"{typeof(TValue).Name}.{nameof(IETag.ETag)}");
+            PathsToIgnore.Add(nameof(IETag.ETag));
         }
 
         /// <summary>
@@ -98,7 +98,7 @@ namespace UnitTestEx.Expectations
             _expectedChangeLog ??= new ChangeLog();
             _expectedChangeLog.CreatedBy = createdby ?? Tester.UserName;
             _expectedChangeLog.CreatedDate = Cleaner.Clean(createdDateGreaterThan ?? DateTime.UtcNow.Subtract(new TimeSpan(0, 0, 1)));
-            MembersToIgnore.Add($"{typeof(TValue).Name}.{nameof(IChangeLog.ChangeLog)}");
+            PathsToIgnore.Add(nameof(IChangeLog.ChangeLog));
         }
 
         /// <summary>
@@ -112,7 +112,7 @@ namespace UnitTestEx.Expectations
             _expectedChangeLog ??= new ChangeLog();
             _expectedChangeLog.UpdatedBy = updatedBy ?? Tester.UserName;
             _expectedChangeLog.UpdatedDate = Cleaner.Clean(updatedDateGreaterThan ?? DateTime.UtcNow.Subtract(new TimeSpan(0, 0, 1)));
-            MembersToIgnore.Add($"{typeof(TValue).Name}.{nameof(IChangeLog.ChangeLog)}");
+            PathsToIgnore.Add($"{nameof(IChangeLog.ChangeLog)}");
         }
 
         /// <summary>
@@ -125,14 +125,14 @@ namespace UnitTestEx.Expectations
         }
 
         /// <summary>
-        /// Expect a response comparing the result of the specified <paramref name="expectedValueFunc"/> (and optionally any additional <paramref name="membersToIgnore"/> from the comparison).
+        /// Expect a response comparing the result of the specified <paramref name="expectedValueFunc"/> (and optionally any additional <paramref name="pathsToIgnore"/> from the comparison).
         /// </summary>
         /// <param name="expectedValueFunc">The function to generate the response value to compare.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        public void SetExpectValue(Func<object, TValue> expectedValueFunc, params string[] membersToIgnore)
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
+        public void SetExpectValue(Func<object, TValue> expectedValueFunc, params string[] pathsToIgnore)
         {
             _expectedValueFunc = expectedValueFunc;
-            MembersToIgnore.AddRange(membersToIgnore);
+            PathsToIgnore.AddRange(pathsToIgnore);
         }
 
         /// <inheritdoc/>
@@ -228,9 +228,9 @@ namespace UnitTestEx.Expectations
             if (_expectedValueFunc != null)
             {
                 var expectedValue = _expectedValueFunc(_testContext) ?? throw new InvalidOperationException("ExpectValue function must not return null.");
-                var cr = ObjectComparer.Compare(expectedValue, value, MembersToIgnore.ToArray());
-                if (!cr.AreEqual)
-                    Tester.Implementor.AssertFail($"Expected and Actual values are not equal: {cr.DifferencesString}");
+                var cr = JsonElementComparer.Default.CompareValues(expectedValue, value, Tester.JsonSerializer, PathsToIgnore.ToArray());
+                if (cr is not null)
+                    Tester.Implementor.AssertFail($"Expected and Actual values are not equal: {cr}");
             }
         }
     }

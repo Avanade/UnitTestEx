@@ -1,9 +1,11 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using UnitTestEx.MSTest.Test.Model;
 
 namespace UnitTestEx.MSTest.Test.Other
 {
     [TestClass]
+    [Obsolete($"This is being replaced by the {nameof(UnitTestEx.Abstractions.JsonElementComparer)} and usage of paths to ignore (versus members) to be more explicit.")]
     public class ObjectComparerTest
     {
         [TestMethod]

@@ -248,7 +248,7 @@ namespace UnitTestEx.Assertors
                 if (!JsonElement.TryParseValue(ref act, out JsonElement? aje))
                     Implementor.AssertFail("Actual value is not considered valid JSON.");
 
-                var jecr = new JsonElementComparer(5).Compare(eje!.Value, aje!.Value, pathsToIgnore);
+                var jecr = JsonElementComparer.Default.Compare(eje!.Value, aje!.Value, pathsToIgnore);
                 if (jecr != null)
                     Implementor.AssertFail($"Expected and Actual JSON values are not equal:{Environment.NewLine}{jecr}");
             }

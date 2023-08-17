@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,17 @@ namespace UnitTestEx.Abstractions
     /// <remarks>Influenced by <see href="https://stackoverflow.com/questions/60580743/what-is-equivalent-in-jtoken-deepequals-in-system-text-json"/>.</remarks>
     public sealed class JsonElementComparer : IEqualityComparer<JsonElement>, IEqualityComparer<string>
     {
+        private static JsonElementComparer _default = new(20);
+
+        /// <summary>
+        /// Gets or sets the default <see cref="JsonElementComparer"/> instance.
+        /// </summary>
+        public static JsonElementComparer Default
+        {
+            get => _default;
+            set => _default = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="JsonElementComparer"/> class.
         /// </summary>
@@ -36,6 +48,52 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         /// <remarks>Defaults to <see cref="StringComparer.InvariantCultureIgnoreCase"/>.</remarks>
         public IEqualityComparer<string>? PathComparer { get; set; }
+
+        /// <summary>
+        /// Compare two object values for equality; each value is JSON-serialized (uses <see cref="CoreEx.Json.JsonSerializer.Default"/>) and then compared.
+        /// </summary>
+        /// <param name="left">The left value.</param>
+        /// <param name="right">The right value.</param>
+        /// <param name="pathsToIgnore">Optional list of paths to exclude from the comparison.</param>
+        /// <returns>The resulting comparison error message; <c>null</c> indicates equality.</returns>
+        public string? CompareValues(object? left, object? right, params string[] pathsToIgnore)
+            => CompareValues(left, right, CoreEx.Json.JsonSerializer.Default, pathsToIgnore);
+
+        /// <summary>
+        /// Compare two object values for equality; each value is JSON-serialized (uses specified <paramref name="jsonSerializer"/>) and then compared.
+        /// </summary>
+        /// <param name="left">The left value.</param>
+        /// <param name="right">The right value.</param>
+        /// <param name="jsonSerializer">The <see cref="CoreEx.Json.IJsonSerializer"/>.</param>
+        /// <param name="pathsToIgnore">Optional list of paths to exclude from the comparison.</param>
+        /// <returns>The resulting comparison error message; <c>null</c> indicates equality.</returns>
+        public string? CompareValues(object? left, object? right, CoreEx.Json.IJsonSerializer jsonSerializer, params string[] pathsToIgnore)
+        {
+            if (jsonSerializer is null)
+                throw new ArgumentNullException(nameof(jsonSerializer));
+
+            return Compare(SerializeValue(jsonSerializer, left, nameof(left)), SerializeValue(jsonSerializer, right, nameof(right)), pathsToIgnore);
+        }
+
+        /// <summary>
+        /// Serialize the value to JSON.
+        /// </summary>
+        private static string SerializeValue(CoreEx.Json.IJsonSerializer jsonSerializer, object? value, string name)
+        {
+            if (value is JObject jo)
+                return jo.ToString(Newtonsoft.Json.Formatting.None);
+            else if (value is JsonElement je)
+                return je.ToString();
+
+            try
+            {
+                return jsonSerializer.Serialize(value);
+            }
+            catch (Exception ex)
+            {
+                throw new ArgumentException($"Failed to serialize value '{value?.GetType().FullName ?? "null"}' to JSON.", name, ex);
+            }
+        }
 
         /// <summary>
         /// Compare two JSON strings for equality.
@@ -339,7 +397,7 @@ namespace UnitTestEx.Abstractions
             public void Compare(string name, Action action)
             {
                 var path = Path == null ? name : $"{Path}.{name}";
-                if (PathsToIgnore.Contains(path, StringComparer.InvariantCultureIgnoreCase))
+                if (PathsToIgnore.Contains(path, PathComparer))
                     return;
 
                 _path.Push(path);

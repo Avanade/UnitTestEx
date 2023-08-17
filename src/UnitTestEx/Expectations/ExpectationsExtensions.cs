@@ -186,7 +186,7 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf IgnoreChangeLog<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.MembersToIgnore.Add(nameof(IChangeLog.ChangeLog)));
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.PathsToIgnore.Add(nameof(IChangeLog.ChangeLog)));
 
         /// <summary>
         /// Ignores the <see cref="IETag.ETag"/> property.
@@ -196,7 +196,7 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf IgnoreETag<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.MembersToIgnore.Add(nameof(IETag.ETag)));
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.PathsToIgnore.Add(nameof(IETag.ETag)));
 
         /// <summary>
         /// Ignores the <see cref="IPrimaryKey.PrimaryKey"/> property.
@@ -206,7 +206,7 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf IgnorePrimaryKey<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.MembersToIgnore.Add(nameof(IPrimaryKey.PrimaryKey)));
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.PathsToIgnore.Add(nameof(IPrimaryKey.PrimaryKey)));
 
         /// <summary>
         /// Ignores the <see cref="IIdentifier.Id"/> property.
@@ -216,7 +216,7 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf IgnoreId<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.MembersToIgnore.Add(nameof(IIdentifier.Id)));
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.PathsToIgnore.Add(nameof(IIdentifier.Id)));
 
         #endregion
 
