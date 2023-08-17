@@ -9,6 +9,7 @@ namespace UnitTestEx.MSTest
     /// <summary>
     /// Deep object comparer.
     /// </summary>
+    [Obsolete($"This is being replaced by the {nameof(UnitTestEx.Abstractions.JsonElementComparer)} and usage of paths to ignore (versus members) to be more explicit.")]
     public static class ObjectComparer
     {
         /// <summary>

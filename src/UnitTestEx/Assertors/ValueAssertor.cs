@@ -33,18 +33,18 @@ namespace UnitTestEx.Assertors
         /// Asserts that the <see cref="Result"/> matches the <paramref name="expectedValue"/>.
         /// </summary>
         /// <param name="expectedValue">The expected value.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ValueAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
-        public ValueAssertor<TValue> Assert(TValue expectedValue, params string[] membersToIgnore)
+        public ValueAssertor<TValue> Assert(TValue expectedValue, params string[] pathsToIgnore)
         {
             AssertSuccess();
             if (expectedValue is IComparable)
                 Implementor.AssertAreEqual(expectedValue, Result);
             else
             {
-                var cr = ObjectComparer.Compare(expectedValue, Result, membersToIgnore);
-                if (!cr.AreEqual)
-                    Implementor.AssertFail($"Expected and Actual values are not equal: {cr.DifferencesString}");
+                var cr = JsonElementComparer.Default.CompareValues(expectedValue, Result, JsonSerializer, pathsToIgnore);
+                if (cr is not null)
+                    Implementor.AssertFail($"Expected and Actual values are not equal: {cr}");
             }
 
             return this;
@@ -54,28 +54,28 @@ namespace UnitTestEx.Assertors
         ///  Asserts that the <see cref="Result"/> matches the <paramref name="json"/> serialized value.
         /// </summary>
         /// <param name="json">The JSON <see cref="string"/>.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ValueAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
-        public ValueAssertor<TValue> AssertFromJson(string json, params string[] membersToIgnore) => Assert(JsonSerializer.Deserialize<TValue>(json)!, membersToIgnore);
+        public ValueAssertor<TValue> AssertFromJson(string json, params string[] pathsToIgnore) => Assert(JsonSerializer.Deserialize<TValue>(json)!, pathsToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> matches the JSON serialized value from the named embedded resource.
         /// </summary>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ValueAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
-        public ValueAssertor<TValue> AssertFromJsonResource(string resourceName, params string[] membersToIgnore)
-            => Assert(Resource.GetJsonValue<TValue>(resourceName, Assembly.GetCallingAssembly(), JsonSerializer), membersToIgnore);
+        public ValueAssertor<TValue> AssertFromJsonResource(string resourceName, params string[] pathsToIgnore)
+            => Assert(Resource.GetJsonValue<TValue>(resourceName, Assembly.GetCallingAssembly(), JsonSerializer), pathsToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> matches the JSON serialized value from the named embedded resource.
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> to infer the <see cref="Assembly"/> that contains the embedded resource.</typeparam>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ValueAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
-        public ValueAssertor<TValue> AssertFromJsonResource<TAssembly>(string resourceName, params string[] membersToIgnore)
-            => Assert(Resource.GetJsonValue<TValue>(resourceName, typeof(TAssembly).Assembly, JsonSerializer), membersToIgnore);
+        public ValueAssertor<TValue> AssertFromJsonResource<TAssembly>(string resourceName, params string[] pathsToIgnore)
+            => Assert(Resource.GetJsonValue<TValue>(resourceName, typeof(TAssembly).Assembly, JsonSerializer), pathsToIgnore);
 
         /// <summary>
         /// Converts the <see cref="ValueAssertor{TValue}"/> to an <see cref="ActionResultAssertor"/>.

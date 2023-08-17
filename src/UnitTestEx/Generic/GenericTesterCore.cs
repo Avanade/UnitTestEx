@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using CoreEx.Configuration;
+using CoreEx.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -14,21 +15,27 @@ namespace UnitTestEx.Generic
     /// <summary>
     /// Provides a basic genericcore  test host.
     /// </summary>
-    /// <typeparam name="TSelf">The <see cref="GenericTesterCore{TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
-    public abstract class GenericTesterCore<TSelf> : TesterBase<TSelf>, IDisposable, Expectations.IExceptionSuccessExpectations<TSelf> where TSelf : GenericTesterCore<TSelf>
+    /// <typeparam name="TEntryPoint">The <see cref="IHostStartup"/> <see cref="Type"/>.</typeparam>
+    /// <typeparam name="TSelf">The <see cref="GenericTesterCore{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
+    public abstract class GenericTesterCore<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable, Expectations.IExceptionSuccessExpectations<TSelf>, Expectations.IEventExpectations<TSelf>, Expectations.ILoggerExpectations<TSelf>
+        where TEntryPoint : IHostStartup, new() where TSelf : GenericTesterCore<TEntryPoint, TSelf>
     {
         private IHost? _host;
         private bool _disposed;
         private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
+        private readonly EventExpectations _eventExpectations;
+        private readonly LoggerExpectations _loggerExpectations;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="GenericTesterCore{TSelf}"/> class.
+        /// Initializes a new instance of the <see cref="GenericTesterCore{TEntryPoint, TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         protected GenericTesterCore(TestFrameworkImplementor implementor) : base(implementor)
         {
             Logger = LoggerProvider.CreateLogger(GetType().Name);
             _exceptionSuccessExpectations = new(implementor);
+            _eventExpectations = new(this);
+            _loggerExpectations = new(implementor);
         }
 
         /// <summary>
@@ -44,24 +51,30 @@ namespace UnitTestEx.Generic
         {
             lock (SyncRoot)
             {
+                var ep = new TEntryPoint();
+
                 return _host ??= new HostBuilder()
-                    .UseEnvironment("Development")
+                    .UseEnvironment(TestSetUp.Environment)
                     .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
-                    .ConfigureAppConfiguration(cb =>
+                    .ConfigureHostConfiguration(ep.ConfigureHostConfiguration)
+                    .ConfigureAppConfiguration((hbc, cb) =>
                     {
                         cb.SetBasePath(Environment.CurrentDirectory)
-                          .AddEnvironmentVariables()
-                          .AddJsonFile("appsettings.unittest.json", optional: true);
+                          .AddJsonFile("appsettings.json", optional: true)
+                          .AddJsonFile($"appsettings.{TestSetUp.Environment.ToLowerInvariant()}.json", optional: true)
+                          .AddEnvironmentVariables();
+
+                        ep.ConfigureAppConfiguration(hbc, cb);
+
+                        cb.AddJsonFile("appsettings.unittest.json", optional: true);
                     })
                     .ConfigureServices(sc =>
                     {
+                        ep.ConfigureServices(sc);
                         sc.AddExecutionContext(sp => { var ec = SetUp.ExecutionContextFactory(sp); ec.UserName = UserName; return ec; });
                         sc.AddSettings<DefaultSettings>();
                         sc.ReplaceScoped(_ => SharedState);
                         SetUp.ConfigureServices?.Invoke(sc);
-                        if (SetUp.ExpectedEventsEnabled)
-                            ReplaceExpectedEventPublisher(sc);
-
                         AddConfiguredServices(sc);
                     }).Build();
             }
@@ -96,6 +109,12 @@ namespace UnitTestEx.Generic
 
         /// <inheritdoc/>
         public ExceptionSuccessExpectations ExceptionSuccessExpectations => _exceptionSuccessExpectations;
+
+        /// <inheritdoc/>
+        public EventExpectations EventExpectations => _eventExpectations;
+
+        /// <inheritdoc/>
+        public LoggerExpectations LoggerExpectations => _loggerExpectations;
 
         /// <summary>
         /// Releases all resources.

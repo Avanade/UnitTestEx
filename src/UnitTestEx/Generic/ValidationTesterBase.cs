@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using CoreEx;
+using CoreEx.Hosting;
 using CoreEx.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -14,12 +15,14 @@ namespace UnitTestEx.Generic
     /// <summary>
     /// Provides the <see cref="IValidator"/> testing capabilities.
     /// </summary>
-    public abstract class ValidationTesterBase<TSelf> : GenericTesterCore<ValidationTesterBase<TSelf>>
+    /// <typeparam name="TEntryPoint">The <see cref="IHostStartup"/> <see cref="Type"/>.</typeparam>
+    /// <typeparam name="TSelf">The <see cref="ValidationTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
+    public abstract class ValidationTesterBase<TEntryPoint, TSelf> : GenericTesterCore<TEntryPoint, ValidationTesterBase<TEntryPoint, TSelf>> where TEntryPoint : IHostStartup, new() where TSelf : ValidationTesterBase<TEntryPoint, TSelf>
     {
         private OperationType _operationType = CoreEx.OperationType.Unspecified;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ValidationTesterBase{TSelf}"/> class.
+        /// Initializes a new instance of the <see cref="ValidationTesterBase{TEntryPoint, TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         protected ValidationTesterBase(TestFrameworkImplementor implementor) : base(implementor) { }
@@ -28,11 +31,11 @@ namespace UnitTestEx.Generic
         /// Sets the <see cref="ExecutionContext.OperationType"/> to the specified <paramref name="operationType"/>.
         /// </summary>
         /// <param name="operationType">The <see cref="OperationType"/>.</param>
-        /// <returns>The <see cref="ValidationTesterBase{TSelf}"/> instance to support fluent/chaining usage.</returns>
-        public ValidationTesterBase<TSelf> OperationType(OperationType operationType)
+        /// <returns>The <see cref="ValidationTesterBase{TEntryPoint, TSelf}"/> instance to support fluent/chaining usage.</returns>
+        public TSelf OperationType(OperationType operationType)
         {
             _operationType = operationType;
-            return this;
+            return (TSelf)this;
         }
 
         /// <summary>
@@ -167,6 +170,8 @@ namespace UnitTestEx.Generic
 
             exception ??= validationResult?.ToException();
             ExceptionSuccessExpectations.Assert(exception);
+            EventExpectations.Assert();
+            LoggerExpectations.Assert(messages);
             return new ValueAssertor<IValidationResult>(validationResult!, exception, Implementor, JsonSerializer);
         }
 
@@ -254,6 +259,8 @@ namespace UnitTestEx.Generic
             Implementor.WriteLine("");
 
             ExceptionSuccessExpectations.Assert(exception);
+            EventExpectations.Assert();
+            LoggerExpectations.Assert(messages);
             return new VoidAssertor(exception, Implementor, JsonSerializer);
         }
     }

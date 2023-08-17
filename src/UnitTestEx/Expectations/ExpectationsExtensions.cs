@@ -8,8 +8,8 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
-using UnitTestEx.Abstractions;
 using UnitTestEx.AspNetCore;
 
 namespace UnitTestEx.Expectations
@@ -155,28 +155,28 @@ namespace UnitTestEx.Expectations
             => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectChangeLogUpdated(updatedBy, updatedDateGreaterThan));
 
         /// <summary>
-        /// Expect a response comparing the result of the specified <paramref name="expectedValueFunc"/> (and optionally any additional <paramref name="membersToIgnore"/> from the comparison).
+        /// Expect a response comparing the result of the specified <paramref name="expectedValueFunc"/> (and optionally any additional <paramref name="pathsToIgnore"/> from the comparison).
         /// </summary>
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
         /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <param name="expectedValueFunc">The function to generate the response value to compare.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectValue<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, Func<TSelf, TValue> expectedValueFunc, params string[] membersToIgnore) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectValue(t => expectedValueFunc((TSelf)t), membersToIgnore));
+        public static TSelf ExpectValue<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, Func<TSelf, TValue> expectedValueFunc, params string[] pathsToIgnore) where TSelf : IResponseValueExpectations<TValue, TSelf>
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectValue(t => expectedValueFunc((TSelf)t), pathsToIgnore));
 
         /// <summary>
-        /// Expect a response comparing the result of the specified <paramref name="expectedValue"/> (and optionally any additional <paramref name="membersToIgnore"/> from the comparison).
+        /// Expect a response comparing the result of the specified <paramref name="expectedValue"/> (and optionally any additional <paramref name="pathsToIgnore"/> from the comparison).
         /// </summary>
         /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
         /// <typeparam name="TSelf">The tester <see cref="Type"/>.</typeparam>
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <param name="expectedValue">The expected response value to compare.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectValue<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, TValue expectedValue, params string[] membersToIgnore) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectValue(_ => expectedValue ?? throw new ArgumentNullException(nameof(expectedValue)), membersToIgnore));
+        public static TSelf ExpectValue<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester, TValue expectedValue, params string[] pathsToIgnore) where TSelf : IResponseValueExpectations<TValue, TSelf>
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.SetExpectValue(_ => expectedValue ?? throw new ArgumentNullException(nameof(expectedValue)), pathsToIgnore));
 
         /// <summary>
         /// Ignores the <see cref="IChangeLog.ChangeLog"/> property.
@@ -186,7 +186,7 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf IgnoreChangeLog<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.MembersToIgnore.Add(nameof(IChangeLog.ChangeLog)));
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.PathsToIgnore.Add(nameof(IChangeLog.ChangeLog)));
 
         /// <summary>
         /// Ignores the <see cref="IETag.ETag"/> property.
@@ -196,7 +196,7 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf IgnoreETag<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.MembersToIgnore.Add(nameof(IETag.ETag)));
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.PathsToIgnore.Add(nameof(IETag.ETag)));
 
         /// <summary>
         /// Ignores the <see cref="IPrimaryKey.PrimaryKey"/> property.
@@ -206,7 +206,7 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf IgnorePrimaryKey<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.MembersToIgnore.Add(nameof(IPrimaryKey.PrimaryKey)));
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.PathsToIgnore.Add(nameof(IPrimaryKey.PrimaryKey)));
 
         /// <summary>
         /// Ignores the <see cref="IIdentifier.Id"/> property.
@@ -216,7 +216,7 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IResponseValueExpectations{TValue, TSelf}"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         public static TSelf IgnoreId<TValue, TSelf>(this IResponseValueExpectations<TValue, TSelf> tester) where TSelf : IResponseValueExpectations<TValue, TSelf>
-            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.MembersToIgnore.Add(nameof(IIdentifier.Id)));
+            => tester.SetResponseValueExpectation(t => t.ResponseValueExpectations.PathsToIgnore.Add(nameof(IIdentifier.Id)));
 
         #endregion
 
@@ -270,10 +270,10 @@ namespace UnitTestEx.Expectations
         /// <param name="value">The expected <see cref="EventData.Value"/>.</param>
         /// <param name="subject">The expected subject (may contain wildcards).</param>
         /// <param name="action">The expected action (may contain wildcards).</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsPathsToIgnore"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectEventValue<TSelf>(this IEventExpectations<TSelf> tester, object? value, string subject, string? action, params string[] membersToIgnore) where TSelf : IEventExpectations<TSelf>
-            => tester.SetEventExpectation(t => t.EventExpectations.Expect(null, new EventData { Subject = subject, Action = action, Value = value }, membersToIgnore));
+        public static TSelf ExpectEventValue<TSelf>(this IEventExpectations<TSelf> tester, object? value, string subject, string? action, params string[] pathsToIgnore) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.Expect(null, new EventData { Subject = subject, Action = action, Value = value }, pathsToIgnore));
 
         /// <summary>
         /// Expects that the corresponding event has been published (in order specified). The expected event <paramref name="source"/>, <paramref name="subject"/> and <paramref name="action"/> can use wildcards. All other <see cref="EventData"/> 
@@ -294,11 +294,11 @@ namespace UnitTestEx.Expectations
         /// </summary>
         /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
         /// <param name="event">The expected <paramref name="event"/>. Wildcards are supported for <see cref="EventDataBase.Subject"/> and <see cref="EventDataBase.Action"/>.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsPathsToIgnore"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         /// <remarks>Wildcards are supported for <see cref="EventDataBase.Subject"/>, <see cref="EventDataBase.Action"/> and <see cref="EventDataBase.Type"/>.</remarks>
-        public static TSelf ExpectEvent<TSelf>(this IEventExpectations<TSelf> tester, EventData @event, params string[] membersToIgnore) where TSelf : IEventExpectations<TSelf>
-            => tester.SetEventExpectation(t => t.EventExpectations.Expect(null, @event, membersToIgnore));
+        public static TSelf ExpectEvent<TSelf>(this IEventExpectations<TSelf> tester, EventData @event, params string[] pathsToIgnore) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.Expect(null, @event, pathsToIgnore));
 
         /// <summary>
         /// Expects that the corresponding <paramref name="event"/> has been published (in order specified). All properties for expected event will be compared again the actual.
@@ -306,11 +306,32 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
         /// <param name="source">The expected source formatted as a <see cref="Uri"/> (may contain wildcards).</param>
         /// <param name="event">The expected <paramref name="event"/>. Wildcards are supported for <see cref="EventDataBase.Subject"/> and <see cref="EventDataBase.Action"/>.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsPathsToIgnore"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         /// <remarks>Wildcards are supported for <see cref="EventDataBase.Subject"/>, <see cref="EventDataBase.Action"/> and <see cref="EventDataBase.Type"/>.</remarks>
-        public static TSelf ExpectEvent<TSelf>(this IEventExpectations<TSelf> tester, string source, EventData @event, params string[] membersToIgnore) where TSelf : IEventExpectations<TSelf>
-            => tester.SetEventExpectation(t => t.EventExpectations.Expect(null, source, @event, membersToIgnore));
+        public static TSelf ExpectEvent<TSelf>(this IEventExpectations<TSelf> tester, string source, EventData @event, params string[] pathsToIgnore) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.Expect(null, source, @event, pathsToIgnore));
+
+        /// <summary>
+        /// Expects that the JSON serialized <see cref="EventData"/> from the named embedded resource has been published (in order specified). All properties for expected event will be compared again the actual.
+        /// </summary>
+        /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectEventFromJsonResource<TSelf>(this IEventExpectations<TSelf> tester, string resourceName, params string[] pathsToIgnore) where TSelf : IEventExpectations<TSelf>
+            => ExpectEventFromJsonResource(tester, resourceName, Assembly.GetCallingAssembly(), pathsToIgnore);
+
+        /// <summary>
+        /// Expects that the JSON serialized <see cref="EventData"/> from the named embedded resource has been published (in order specified). All properties for expected event will be compared again the actual.
+        /// </summary>
+        /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectEventFromJsonResource<TSelf>(this IEventExpectations<TSelf> tester, string resourceName, Assembly assembly, params string[] pathsToIgnore) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.Expect(null, Resource.GetJsonValue<EventData>(resourceName, assembly ?? Assembly.GetCallingAssembly(), t.EventExpectations.Tester.JsonSerializer), pathsToIgnore));
 
         /// <summary>
         /// Expects that the corresponding <paramref name="destination"/> event has been published (in order specified). The expected event <paramref name="subject"/> and <paramref name="action"/> can use wildcards. All other <see cref="EventData"/> properties are not matched/verified.
@@ -333,10 +354,10 @@ namespace UnitTestEx.Expectations
         /// <param name="value">The expected <see cref="EventData.Value"/>.</param>
         /// <param name="subject">The expected subject (may contain wildcards).</param>
         /// <param name="action">The expected action (may contain wildcards).</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsPathsToIgnore"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
-        public static TSelf ExpectDestinationEventValue<TSelf>(this IEventExpectations<TSelf> tester, object? value, string destination, string subject, string? action, params string[] membersToIgnore) where TSelf : IEventExpectations<TSelf>
-            => tester.SetEventExpectation(t => t.EventExpectations.Expect(destination, new EventData { Subject = subject, Action = action, Value = value }, membersToIgnore));
+        public static TSelf ExpectDestinationEventValue<TSelf>(this IEventExpectations<TSelf> tester, object? value, string destination, string subject, string? action, params string[] pathsToIgnore) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.Expect(destination, new EventData { Subject = subject, Action = action, Value = value }, pathsToIgnore));
 
         /// <summary>
         /// Expects that the corresponding <paramref name="destination"/> event has been published (in order specified). The expected event <paramref name="source"/>, <paramref name="subject"/> and <paramref name="action"/> can use wildcards. All other <see cref="EventData"/> 
@@ -359,11 +380,11 @@ namespace UnitTestEx.Expectations
         /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
         /// <param name="destination">The named destination (e.g. queue or topic).</param>
         /// <param name="event">The expected <paramref name="event"/>. Wildcards are supported for <see cref="EventDataBase.Subject"/> and <see cref="EventDataBase.Action"/>.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsPathsToIgnore"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         /// <remarks>Wildcards are supported for <see cref="EventDataBase.Subject"/>, <see cref="EventDataBase.Action"/> and <see cref="EventDataBase.Type"/>.</remarks>
-        public static TSelf ExpectDestinationEvent<TSelf>(this IEventExpectations<TSelf> tester, string destination, EventData @event, params string[] membersToIgnore) where TSelf : IEventExpectations<TSelf>
-            => tester.SetEventExpectation(t => t.EventExpectations.Expect(destination, @event, membersToIgnore));
+        public static TSelf ExpectDestinationEvent<TSelf>(this IEventExpectations<TSelf> tester, string destination, EventData @event, params string[] pathsToIgnore) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.Expect(destination, @event, pathsToIgnore));
 
         /// <summary>
         /// Expects that the corresponding <paramref name="destination"/> <paramref name="event"/> has been published (in order specified). All properties for expected event will be compared again the actual.
@@ -372,11 +393,34 @@ namespace UnitTestEx.Expectations
         /// <param name="destination">The named destination (e.g. queue or topic).</param>
         /// <param name="source">The expected source formatted as a <see cref="Uri"/> (may contain wildcards).</param>
         /// <param name="event">The expected <paramref name="event"/>. Wildcards are supported for <see cref="EventDataBase.Subject"/> and <see cref="EventDataBase.Action"/>.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsMembersToIgnore"/>.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison. Defaults to <see cref="TestSetUp.ExpectedEventsPathsToIgnore"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         /// <remarks>Wildcards are supported for <see cref="EventDataBase.Subject"/>, <see cref="EventDataBase.Action"/> and <see cref="EventDataBase.Type"/>.</remarks>
-        public static TSelf ExpectDestinationEvent<TSelf>(this IEventExpectations<TSelf> tester, string destination, string source, EventData @event, params string[] membersToIgnore) where TSelf : IEventExpectations<TSelf>
-            => tester.SetEventExpectation(t => t.EventExpectations.Expect(destination, source, @event, membersToIgnore));
+        public static TSelf ExpectDestinationEvent<TSelf>(this IEventExpectations<TSelf> tester, string destination, string source, EventData @event, params string[] pathsToIgnore) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.Expect(destination, source, @event, pathsToIgnore));
+
+        /// <summary>
+        /// Expects that the JSON serialized <see cref="EventData"/> from the named embedded resource has been published (in order specified). All properties for expected event will be compared again the actual.
+        /// </summary>
+        /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
+        /// <param name="destination">The named destination (e.g. queue or topic).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectDestinationEventFromJsonResource<TSelf>(this IEventExpectations<TSelf> tester, string destination, string resourceName, params string[] pathsToIgnore) where TSelf : IEventExpectations<TSelf>
+            => ExpectDestinationEventFromJsonResource(tester, destination, resourceName, Assembly.GetCallingAssembly(), pathsToIgnore);
+
+        /// <summary>
+        /// Expects that the JSON serialized <see cref="EventData"/> from the named embedded resource has been published (in order specified). All properties for expected event will be compared again the actual.
+        /// </summary>
+        /// <param name="tester">The <see cref="IEventExpectations{TSelf}"/>.</param>
+        /// <param name="destination">The named destination (e.g. queue or topic).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource.</param>
+        /// <param name="pathsToIgnore">The paths to ignore from the comparison.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        public static TSelf ExpectDestinationEventFromJsonResource<TSelf>(this IEventExpectations<TSelf> tester, string destination, string resourceName, Assembly assembly, params string[] pathsToIgnore) where TSelf : IEventExpectations<TSelf>
+            => tester.SetEventExpectation(t => t.EventExpectations.Expect(destination, Resource.GetJsonValue<EventData>(resourceName, assembly ?? Assembly.GetCallingAssembly(), t.EventExpectations.Tester.JsonSerializer), pathsToIgnore));
 
         #endregion
 

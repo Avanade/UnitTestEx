@@ -70,9 +70,6 @@ namespace UnitTestEx.AspNetCore
 
                             sc.ReplaceScoped(_ => SharedState);
                             SetUp.ConfigureServices?.Invoke(sc);
-                            if (SetUp.ExpectedEventsEnabled)
-                                ReplaceExpectedEventPublisher(sc);
-
                             AddConfiguredServices(sc);
                         }).ConfigureLogging(lb => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); }));
             }

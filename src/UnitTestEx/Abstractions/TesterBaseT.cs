@@ -1,12 +1,21 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Azure.Core.Amqp;
+using Azure.Messaging.ServiceBus;
+using CoreEx.Azure.ServiceBus;
 using CoreEx.Events;
 using CoreEx.Json;
+using CoreEx.Mapping.Converters;
+using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Net.Mime;
+using System.Reflection;
+using System.Text;
 using UnitTestEx.Expectations;
+using UnitTestEx.Functions;
 using UnitTestEx.Mocking;
 
 namespace UnitTestEx.Abstractions
@@ -23,7 +32,7 @@ namespace UnitTestEx.Abstractions
         /// Initializes a new instance of the <see cref="TesterBase{TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        protected TesterBase(TestFrameworkImplementor implementor) : base(implementor) { }
+        protected TesterBase(TestFrameworkImplementor implementor) : base(implementor) => UseSetUp(TestSetUp.Default);
 
         /// <summary>
         /// Gets the synchronization object where syncronized access is required.
@@ -33,7 +42,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Updates (replaces) the <see cref="TesterBase.SetUp"/>.
         /// </summary>
-        /// <param name="setUp">The <see cref="TestSetUp"/>.</param>
+        /// <param name="setUp">The <see cref="TestSetUp"/></param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         /// <remarks>Also executes the <see cref="TestSetUp.ConfigureServices"/>.</remarks>
         public TSelf UseSetUp(TestSetUp setUp)
@@ -94,21 +103,11 @@ namespace UnitTestEx.Abstractions
         /// <remarks>This can also be set using <see cref="TestSetUp.ExpectedEventsEnabled"/> either via <see cref="TestSetUp.Default"/> or <see cref="UseSetUp(TestSetUp)"/>.</remarks>
         public TSelf UseExpectedEvents()
         {
-            ConfigureServices(ReplaceExpectedEventPublisher);
-            return (TSelf)this;
-        }
+            if (!IsExpectedEventPublisherEnabled)
+                ConfigureServices(sc => sc.ReplaceScoped<IEventPublisher, ExpectedEventPublisher>());
 
-        /// <summary>
-        /// Performs the <see cref="IEventPublisher"/> replacement with <see cref="ExpectedEventPublisher"/>.
-        /// </summary>
-        /// <param name="sc">The <see cref="IServiceCollection"/>.</param>
-        internal void ReplaceExpectedEventPublisher(IServiceCollection sc)
-        {
-            if (IsExpectedEventPublisherEnabled)
-                return;
-
-            sc.ReplaceScoped<IEventPublisher, ExpectedEventPublisher>();
             IsExpectedEventPublisherEnabled = true;
+            return (TSelf)this;
         }
 
         /// <summary>
@@ -309,5 +308,147 @@ namespace UnitTestEx.Abstractions
             SharedState.ResetEventStorage();
             return result();
         }
+
+        #region ServiceBus
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the <paramref name="value"/> as serialized JSON.
+        /// </summary>
+        /// <typeparam name="T">The <paramref name="value"/> <see cref="Type"/>.</typeparam>
+        /// <param name="value">The value.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value) => (value is EventData ed) ? CreateServiceBusMessage(ed) : CreateServiceBusMessageFromJson(JsonSerializer.Serialize(value));
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the <paramref name="value"/> as serialized JSON.
+        /// </summary>
+        /// <typeparam name="T">The <paramref name="value"/> <see cref="Type"/>.</typeparam>
+        /// <param name="value">The value.</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value, Action<AmqpAnnotatedMessage>? messageModify = null)
+            => CreateServiceBusMessageFromJson(JsonSerializer.Serialize(value), messageModify);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <typeparam name="TAssembly">The <see cref="Type"/> to infer <see cref="Type.Assembly"/> for the embedded resources.</typeparam>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessageFromResource<TAssembly>(string resourceName, Action<AmqpAnnotatedMessage>? messageModify = null)
+            => CreateServiceBusMessageFromResource(resourceName, messageModify, typeof(TAssembly).Assembly);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessageFromResource(string resourceName, Action<AmqpAnnotatedMessage>? messageModify = null, Assembly? assembly = null)
+            => CreateServiceBusMessageFromJson(Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly()), messageModify);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the serialized <paramref name="json"/>.
+        /// </summary>
+        /// <param name="json">The JSON body.</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessageFromJson(string json, Action<AmqpAnnotatedMessage>? messageModify = null)
+        {
+            var message = new AmqpAnnotatedMessage(AmqpMessageBody.FromData(new ReadOnlyMemory<byte>[] { Encoding.UTF8.GetBytes(json ?? throw new ArgumentNullException(nameof(json))) }));
+            message.Properties.ContentType = MediaTypeNames.Application.Json;
+            message.Properties.MessageId = new AmqpMessageId(Guid.NewGuid().ToString());
+            return CreateServiceBusMessage(message, messageModify);
+        }
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="event"/> leveraging the <see cref="EventDataToServiceBusConverter"/> to perform the underlying conversion.
+        /// </summary>
+        /// <param name="event">The <see cref="EventData"/> or <see cref="EventData{T}"/> value.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        /// <remarks>Attempts to use the configured <see cref="EventDataToServiceBusConverter"/> by leveraging the underlying host <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> where found; otherwise, will instantiate as new. As accessing
+        /// the <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> will result in the underlying host being instantiated a corresponding <see cref="ResetHost(bool)"/> will be performed to enable further configuration.</remarks>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(EventData @event) => CreateServiceBusMessage(@event, null);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="event"/> leveraging the <see cref="EventDataToServiceBusConverter"/> to perform the underlying conversion.
+        /// </summary>
+        /// <param name="event">The <see cref="EventData"/> or <see cref="EventData{T}"/> value.</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        /// <remarks>Attempts to use the configured <see cref="EventDataToServiceBusConverter"/> by leveraging the underlying host <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> where found; otherwise, will instantiate as new. As accessing
+        /// the <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> will result in the underlying host being instantiated a corresponding <see cref="ResetHost(bool)"/> will be performed to enable further configuration.</remarks>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(EventData @event, Action<AmqpAnnotatedMessage>? messageModify)
+        {
+            if (@event == null) throw new ArgumentNullException(nameof(@event));
+            var message = (Services.GetService<EventDataToServiceBusConverter>() ?? new EventDataToServiceBusConverter(Services.GetService<IEventSerializer>(), Services.GetService<IValueConverter<EventSendData, ServiceBusMessage>>())).Convert(@event).GetRawAmqpMessage();
+            ResetHost(false);
+            return CreateServiceBusMessage(message, messageModify);
+        }
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="message"/>.
+        /// </summary>
+        /// <param name="message">The <see cref="ServiceBusMessage"/>.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(ServiceBusMessage message)
+            => CreateServiceBusMessage((message ?? throw new ArgumentNullException(nameof(message))).GetRawAmqpMessage(), null);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="message"/>.
+        /// </summary>
+        /// <param name="message">The <see cref="ServiceBusMessage"/>.</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(ServiceBusMessage message, Action<AmqpAnnotatedMessage>? messageModify)
+            => CreateServiceBusMessage((message ?? throw new ArgumentNullException(nameof(message))).GetRawAmqpMessage(), messageModify);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="message"/>.
+        /// </summary>
+        /// <param name="message">The <see cref="AmqpAnnotatedMessage"/>.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(AmqpAnnotatedMessage message) => CreateServiceBusMessage(message, null);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="message"/>.
+        /// </summary>
+        /// <param name="message">The <see cref="AmqpAnnotatedMessage"/>.</param>
+        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
+        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+        public ServiceBusReceivedMessage CreateServiceBusMessage(AmqpAnnotatedMessage message, Action<AmqpAnnotatedMessage>? messageModify)
+        {
+            message.Header.DeliveryCount ??= 1;
+            message.Header.Durable ??= true;
+            message.Header.Priority ??= 1;
+            message.Header.TimeToLive ??= TimeSpan.FromSeconds(60);
+
+            messageModify?.Invoke(message);
+
+            var t = typeof(ServiceBusReceivedMessage);
+            var c = t.GetConstructor(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance, null, new Type[] { typeof(AmqpAnnotatedMessage) }, null);
+            return c == null
+                ? throw new InvalidOperationException($"'{typeof(ServiceBusReceivedMessage).Name}' constructor that accepts Type '{typeof(AmqpAnnotatedMessage).Name}' parameter was not found.")
+                : (ServiceBusReceivedMessage)c.Invoke(new object?[] { message });
+        }
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusMessageActionsAssertor"/> as the <see cref="ServiceBusMessageActions"/> instance to enable test mock and assert verification.
+        /// </summary>
+        /// <returns>The <see cref="ServiceBusMessageActionsAssertor"/>.</returns>
+        public ServiceBusMessageActionsAssertor CreateServiceBusMessageActions() => new(Implementor);
+
+        /// <summary>
+        /// Creates a <see cref="ServiceBusSessionMessageActionsAssertor"/> as the <see cref="ServiceBusSessionMessageActions"/> instance to enable test mock and assert verification.
+        /// </summary>
+        /// <param name="sessionLockedUntil">The sessions locked until <see cref="DateTimeOffset"/>; defaults to <see cref="DateTimeOffset.UtcNow"/> plus five minutes.</param>
+        /// <param name="sessionState">The session state <see cref="BinaryData"/>; defaults to <see cref="BinaryData.Empty"/>.</param>
+        /// <returns>The <see cref="ServiceBusSessionMessageActionsAssertor"/>.</returns>
+        public ServiceBusSessionMessageActionsAssertor CreateServiceBusSessionMessageActions(DateTimeOffset? sessionLockedUntil = default, BinaryData? sessionState = default) => new(Implementor, sessionLockedUntil, sessionState);
+
+
+        #endregion
     }
 }

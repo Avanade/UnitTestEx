@@ -8,6 +8,7 @@ namespace UnitTestEx.Abstractions
     /// <summary>
     /// Represents the object comparer using <see cref="CompareLogic"/> to perform.
     /// </summary>
+    [Obsolete($"This is being replaced by the {nameof(JsonElementComparer)} and usage of paths to ignore (versus members) to be more explicit.")]
     public static class ObjectComparer
     {
         private static Func<ComparisonConfig> _config = () => new ComparisonConfig

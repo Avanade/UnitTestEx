@@ -187,7 +187,7 @@ namespace UnitTestEx.Mocking
 
                             if (JsonElement.TryParseValue(ref cur, out JsonElement? cje) && JsonElement.TryParseValue(ref bur, out JsonElement? bje))
                             {
-                                var differences = new JsonElementComparer(5).Compare((JsonElement)cje, (JsonElement)bje, _membersToIgnore);
+                                var differences = JsonElementComparer.Default.Compare((JsonElement)cje, (JsonElement)bje, _membersToIgnore);
                                 if (differences != null && _traceRequestComparisons)
                                     Implementor.WriteLine($"HTTP request JsonElementComparer differences: {differences}");
 
@@ -195,16 +195,12 @@ namespace UnitTestEx.Mocking
                             }
                         }
 
-                        var cc = ObjectComparer.CreateDefaultConfig();
-                        cc.MembersToIgnore.AddRange(_membersToIgnore!);
-
-                        var cl = new CompareLogic(cc);
                         var cv = JsonSerializer.Deserialize(body, _content!.GetType());
-                        var cr = cl.Compare(_content, cv);
-                        if (!cr.AreEqual && _traceRequestComparisons)
-                            Implementor.WriteLine($"HTTP request ObjectComparer differences: {cr.DifferencesString}");
+                        var cr = JsonElementComparer.Default.CompareValues(_content, cv, JsonSerializer, _membersToIgnore);
+                        if (cr is not null && _traceRequestComparisons)
+                            Implementor.WriteLine($"HTTP request JsonElementComparer differences: {cr}");
 
-                        return cr.AreEqual;
+                        return cr is null;
                     }
                     catch
                     {
