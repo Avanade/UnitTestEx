@@ -1,13 +1,9 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Entities;
-using CoreEx.Json;
-using CoreEx.AspNetCore.WebApis;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Mime;
 using System.Reflection;
@@ -19,21 +15,15 @@ namespace UnitTestEx.Assertors
     /// <summary>
     /// Represents the <see cref="IActionResult"/> test assert helper.
     /// </summary>
-    public class ActionResultAssertor : AssertorBase<ActionResultAssertor>
+    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="result">The <see cref="IActionResult"/>.</param>
+    /// <param name="exception">The <see cref="Exception"/> (if any).</param>
+    public class ActionResultAssertor(TesterBase owner, IActionResult result, Exception? exception) : AssertorBase<ActionResultAssertor>(owner, exception)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ActionResultAssertor"/> class.
-        /// </summary>
-        /// <param name="result">The <see cref="IActionResult"/>.</param>
-        /// <param name="exception">The <see cref="Exception"/> (if any).</param>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
-        internal ActionResultAssertor(IActionResult result, Exception? exception, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(exception, implementor, jsonSerializer) => Result = result;
-
         /// <summary>
         /// Gets the <see cref="IActionResult"/>.
         /// </summary>
-        public IActionResult Result { get; }
+        public IActionResult Result { get; } = result;
 
         /// <summary>
         /// Assert the <see cref="Result"/> <see cref="Type"/>.
@@ -80,6 +70,23 @@ namespace UnitTestEx.Assertors
         }
 
         /// <summary>
+        /// Asserts that the <see cref="Result"/> has the specified <paramref name="expectedContent"/>.
+        /// </summary>
+        /// <param name="expectedContent">The expected content.</param>
+        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>The <see cref="Result"/> must be an <see cref="ObjectResult"/> or <see cref="ContentResult"/> or an assertion error will occur.</remarks>
+        public ActionResultAssertor AssertContent(string? expectedContent)
+        {
+            if (Result is ObjectResult)
+                return AssertObjectResult(expectedContent);
+            else if (Result is ContentResult)
+                return AssertContentResult(expectedContent);
+
+            Implementor.AssertFail($"Result IActionResult Type '{Result.GetType().Name}' must be either '{nameof(ObjectResult)}' or '{nameof(ContentResult)}' to assert its value.");
+            return this;
+        }
+
+        /// <summary>
         /// Asserts that the <see cref="Result"/> has the specified <c>Content</c> <paramref name="expectedValue"/>.
         /// </summary>
         /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
@@ -87,7 +94,7 @@ namespace UnitTestEx.Assertors
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
         /// <remarks>The <see cref="Result"/> must be an <see cref="ObjectResult"/>, <see cref="JsonResult"/> or <see cref="ContentResult"/> or an assertion error will occur.</remarks>
-        public ActionResultAssertor Assert<TValue>(TValue expectedValue, params string[] pathsToIgnore)
+        public ActionResultAssertor AssertValue<TValue>(TValue expectedValue, params string[] pathsToIgnore)
         {
             if (Result is ObjectResult)
                 return AssertObjectResult(expectedValue, pathsToIgnore);
@@ -107,8 +114,8 @@ namespace UnitTestEx.Assertors
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public ActionResultAssertor AssertFromJsonResource<TValue>(string resourceName, params string[] pathsToIgnore)
-            => Assert(Resource.GetJsonValue<TValue>(resourceName, Assembly.GetCallingAssembly(), JsonSerializer), pathsToIgnore);
+        public ActionResultAssertor AssertValueFromJsonResource<TValue>(string resourceName, params string[] pathsToIgnore)
+            => AssertValue(Resource.GetJsonValue<TValue>(resourceName, Assembly.GetCallingAssembly(), JsonSerializer), pathsToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> has the specified <c>Content</c> matches the JSON serialized value.
@@ -118,8 +125,8 @@ namespace UnitTestEx.Assertors
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public ActionResultAssertor AssertFromJsonResource<TAssembly, TValue>(string resourceName, params string[] pathsToIgnore) 
-            => Assert(Resource.GetJsonValue<TValue>(resourceName, typeof(TAssembly).Assembly, JsonSerializer), pathsToIgnore);
+        public ActionResultAssertor AssertValueFromJsonResource<TAssembly, TValue>(string resourceName, params string[] pathsToIgnore) 
+            => AssertValue(Resource.GetJsonValue<TValue>(resourceName, typeof(TAssembly).Assembly, JsonSerializer), pathsToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> is an <see cref="HttpStatusCode.NotFound"/>.
@@ -190,39 +197,12 @@ namespace UnitTestEx.Assertors
         public ActionResultAssertor AssertForbidden() => Assert(HttpStatusCode.Forbidden);
 
         /// <summary>
-        /// Asserts that the <see cref="Result"/> contains the expected error <paramref name="messages"/>.
-        /// </summary>
-        /// <param name="messages">The expected error messages.</param>
-        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>The field (key) is not validated; only the error message texts.</remarks>
-        public override ActionResultAssertor AssertErrors(params string[] messages)
-        {
-            var mic = new MessageItemCollection();
-            messages.ForEach(m => mic.AddError(m));
-            return AssertErrors(mic);
-        }
-
-        /// <summary>
         /// Asserts that the <see cref="Result"/> contains the specified <paramref name="errors"/>.
         /// </summary>
         /// <param name="errors">The expected errors.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
         public override ActionResultAssertor AssertErrors(params ApiError[] errors)
         {
-            var mic = new MessageItemCollection();
-            errors.ForEach(e => mic.Add(MessageItem.CreateErrorMessage(e.Field, e.Message)));
-            return AssertErrors(mic);
-        }
-
-        /// <summary>
-        /// Asserts that the <see cref="Result"/> contains the expected <paramref name="messages"/>.
-        /// </summary>
-        /// <param name="messages">The expected <see cref="MessageItemCollection"/> collection.</param>
-        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public override ActionResultAssertor AssertErrors(MessageItemCollection messages)
-        {
-            AssertSuccess();
-
             object? eval = null;
             if (Result is ObjectResult or)
                 eval = or.Value;
@@ -233,7 +213,7 @@ namespace UnitTestEx.Assertors
 
             var val = new Dictionary<string, string[]>();
             if (eval is string str)
-                val.Add(string.Empty, new string[] { str });
+                val.Add(string.Empty, [str]);
             if (eval is Dictionary<string, string[]> dis)
                 val = dis;
             else if (eval is Dictionary<string, object> dio)
@@ -245,16 +225,16 @@ namespace UnitTestEx.Assertors
                 }
             }
 
-            var act = new MessageItemCollection();
+            var act = new List<ApiError>();
             foreach (var err in val)
             {
                 foreach (var msg in err.Value)
                 {
-                    act.AddPropertyError(err.Key, msg);
+                    act.Add(new ApiError(err.Key, msg));
                 }
             }
 
-            if (messages != null && !Expectations.ExpectationsExtensions.TryAreMessagesMatched(messages, act, out var errorMessage))
+            if (!Assertor.TryAreErrorsMatched(errors, act, out var errorMessage))
                 Implementor.AssertFail(errorMessage);
 
             return this;
@@ -364,9 +344,9 @@ namespace UnitTestEx.Assertors
                 Implementor.AssertAreEqual(expectedValue, actualValue);
             else
             {
-                var cr = JsonElementComparer.Default.CompareValues(expectedValue, actualValue, JsonSerializer, pathsToIgnore);
-                if (cr is not null)
-                    Implementor.AssertFail($"Expected and Actual values are not equal: {cr}");
+                var cr = Owner.CreateJsonComparer().CompareValue(expectedValue, actualValue, pathsToIgnore);
+                if (cr.HasDifferences)
+                    Implementor.AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
             }
 
             return this;
@@ -378,8 +358,8 @@ namespace UnitTestEx.Assertors
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public ActionResultAssertor AssertFromJsonResource(string resourceName, params string[] pathsToIgnore)
-            => Assert(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), pathsToIgnore);
+        public ActionResultAssertor AssertJsonFromResource(string resourceName, params string[] pathsToIgnore)
+            => AssertValue(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), pathsToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> JSON content matches the specified <paramref name="json"/>.
@@ -407,8 +387,8 @@ namespace UnitTestEx.Assertors
             if (!JsonElement.TryParseValue(ref act, out JsonElement? aje))
                 Implementor.AssertFail("Actual value is not considered valid JSON.");
 
-            var jecr = JsonElementComparer.Default.Compare(eje!.Value, aje!.Value, pathsToIgnore);
-            if (jecr != null)
+            var jecr = Owner.CreateJsonComparer().Compare(eje!.Value, aje!.Value, pathsToIgnore);
+            if (jecr.HasDifferences)
                 Implementor.AssertFail($"Expected and Actual JSON values are not equal:{Environment.NewLine}{jecr}");
 
             return this;
@@ -442,6 +422,18 @@ namespace UnitTestEx.Assertors
         /// <returns>The result value.</returns>
         public TValue? GetValue<TValue>()
         {
+            var value = GetValueInternal<TValue>();
+            foreach (var ext in TestSetUp.Extensions)
+                ext.UpdateValueFromActionResult(Owner, Result, ref value);
+
+            return value;
+        }
+
+        /// <summary>
+        /// Gets the response value.
+        /// </summary>
+        private TValue? GetValueInternal<TValue>()
+        {
             if (Result == null)
                 return default;
             else if (Result is ObjectResult or)
@@ -456,15 +448,12 @@ namespace UnitTestEx.Assertors
                 try
                 {
                     var val = JsonSerializer.Deserialize<TValue>(cr.Content);
-                    if (val is ICollectionResult icr && Result is ValueContentResult vcr)
-                        icr.Paging = vcr.PagingResult;
-
                     return val;
                 }
                 catch (Exception ex)
                 {
                     Implementor.AssertFail($"Unable to deserialize the JSON content to Type {typeof(TValue).FullName}: {ex.Message}");
-                    return default; // Will never reach here; needed to compile.
+                    throw new InvalidOperationException($"{nameof(TestFrameworkImplementor)}.{nameof(TestFrameworkImplementor.AssertFail)} has not worked correctly; this code should never execute?!"); // Will never reach here; needed to compile.
                 }
             }
             else
@@ -477,37 +466,7 @@ namespace UnitTestEx.Assertors
         private TValue? GetValueFail<TValue>(object result)
         {
             Implementor.AssertFail($"Value Type '{typeof(TValue).FullName}' is not same as ObjectResult.Value Type '{result.GetType().FullName}'.");
-            return default; // Will never reach here; needed to compile.
-        }
-
-        /// <summary>
-        /// Asserts that the <see cref="ValueContentResult.Location"/> matches the resulting <paramref name="expectedUri"/> result.
-        /// </summary>
-        /// <param name="expectedUri">The expected <see cref="Uri"/> function.</param>
-        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public ActionResultAssertor AssertLocationHeader<TValue>(Func<TValue?, Uri> expectedUri)
-        {
-            if (Result != null && Result is ValueContentResult vcr)
-                Implementor.AssertAreEqual(expectedUri?.Invoke(GetValue<TValue>()), vcr.Location, $"Expected and Actual {nameof(ValueContentResult)}.{nameof(ValueContentResult.Location)} values are not equal.");
-            else
-                Implementor.AssertFail($"The Result must be of Type {typeof(ValueContentResult).FullName} to use AssertLocationHeader().");
-
-            return this;
-        }
-
-        /// <summary>
-        /// Asserts that the <see cref="ValueContentResult.ETag"/> matches the <paramref name="expectedETag"/>.
-        /// </summary>
-        /// <param name="expectedETag">The expected ETag value.</param>
-        /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-        public ActionResultAssertor AssertETagHeader(string expectedETag)
-        {
-            if (Result != null && Result is ValueContentResult vcr)
-                Implementor.AssertAreEqual(expectedETag, vcr.ETag, $"Expected and Actual {nameof(ValueContentResult)}.{nameof(ValueContentResult.ETag)} values are not equal.");
-            else
-                Implementor.AssertFail($"The Result must be of Type {typeof(ValueContentResult).FullName} to use AssertLocationHeader().");
-
-            return this;
+            throw new InvalidOperationException($"{nameof(TestFrameworkImplementor)}.{nameof(TestFrameworkImplementor.AssertFail)} has not worked correctly; this code should never execute?!"); // Will never reach here; needed to compile.
         }
     }
 }

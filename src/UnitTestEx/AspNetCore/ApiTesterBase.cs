@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -31,7 +30,7 @@ namespace UnitTestEx.AspNetCore
         /// Initializes a new instance of the <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        protected ApiTesterBase(TestFrameworkImplementor implementor) : base(implementor)
+        public ApiTesterBase(TestFrameworkImplementor implementor) : base(implementor)
         {
             Logger = LoggerProvider.CreateLogger(GetType().Name);
 
@@ -53,7 +52,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Gets the <see cref="WebApplicationFactory{TEntryPoint}"/>; instantiates on first access.
         /// </summary>
-        internal WebApplicationFactory<TEntryPoint> GetWebApplicationFactory()
+        protected WebApplicationFactory<TEntryPoint> GetWebApplicationFactory()
         {
             lock (SyncRoot)
             {
@@ -69,6 +68,10 @@ namespace UnitTestEx.AspNetCore
                             SharedState.HttpContextAccessor = sc.BuildServiceProvider().GetRequiredService<IHttpContextAccessor>();
 
                             sc.ReplaceScoped(_ => SharedState);
+
+                            foreach (var tec in TestSetUp.Extensions)
+                                tec.ConfigureServices(this, sc);
+
                             SetUp.ConfigureServices?.Invoke(sc);
                             AddConfiguredServices(sc);
                         }).ConfigureLogging(lb => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); }));
@@ -89,11 +92,6 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <returns>The <see cref="IConfiguration"/>.</returns>
         public override IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
-
-        /// <summary>
-        /// Gets the <see cref="SettingsBase"/> from the underlying host.
-        /// </summary>
-        public override SettingsBase Settings => Services.GetService<SettingsBase>() ?? new DefaultSettings(Configuration);
 
         /// <summary>
         /// Gets the runtime <see cref="ILogger"/>.
@@ -119,35 +117,20 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <typeparam name="TController">The API Controller <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="ControllerTester{TController}"/>.</returns>
-        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, HostExecutionWrapper(() => GetWebApplicationFactory().Server));
-
-        /// <summary>
-        /// Enables an agent (<see cref="CoreEx.Http.TypedHttpClientBase"/>) to be used to send a <see cref="HttpRequestMessage"/> to the underlying <see cref="TestServer"/>.
-        /// </summary>
-        /// <typeparam name="TAgent">The <see cref="CoreEx.Http.TypedHttpClientBase"/> <see cref="Type"/>.</typeparam>
-        /// <returns>The <see cref="AgentTester{TAgent}"/></returns>
-        public AgentTester<TAgent> Agent<TAgent>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, HostExecutionWrapper(() => GetWebApplicationFactory().Server));
-
-        /// <summary>
-        /// Enables an agent (<see cref="CoreEx.Http.TypedHttpClientBase"/>) to be used to send a <see cref="HttpRequestMessage"/> to the underlying <see cref="TestServer"/>.
-        /// </summary>
-        /// <typeparam name="TResponse">The response value <see cref="Type"/>.</typeparam>
-        /// <typeparam name="TAgent">The <see cref="CoreEx.Http.TypedHttpClientBase"/> <see cref="Type"/>.</typeparam>
-        /// <returns>The <see cref="AgentTester{TAgent}"/></returns>
-        public AgentTester<TAgent, TResponse> Agent<TAgent, TResponse>() where TAgent : CoreEx.Http.TypedHttpClientBase => new(this, HostExecutionWrapper(() => GetWebApplicationFactory().Server));
+        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, GetTestServer());
 
         /// <summary>
         /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/>.
         /// </summary>
         /// <returns>The <see cref="HttpTester"/>.</returns>
-        public HttpTester Http() => new(this, HostExecutionWrapper(() => GetWebApplicationFactory().Server));
+        public HttpTester Http() => new(this, GetTestServer());
 
         /// <summary>
         /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/> with an expected response value <see cref="Type"/>.
         /// </summary>
         /// <typeparam name="TResponse">The response value <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="HttpTester{TResponse}"/>.</returns>
-        public HttpTester<TResponse> Http<TResponse>() => new(this, HostExecutionWrapper(() => GetWebApplicationFactory().Server));
+        public HttpTester<TResponse> Http<TResponse>() => new(this, GetTestServer());
 
         /// <summary>
         /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
@@ -155,6 +138,12 @@ namespace UnitTestEx.AspNetCore
         /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
         /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
         public TypeTester<T> Type<T>() where T : class => new(this, HostExecutionWrapper(Services.CreateScope));
+
+        /// <summary>
+        /// Gets the underlying <see cref="TestServer"/>.
+        /// </summary>
+        /// <returns>The <see cref="TestServer"/>.</returns>
+        public TestServer GetTestServer() => HostExecutionWrapper(() => GetWebApplicationFactory().Server);
 
         /// <summary>
         /// Releases all resources.

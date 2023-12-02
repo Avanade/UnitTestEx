@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace UnitTestEx.Functions
 {
     /// <summary>
-    /// Represents the <see cref="ServiceBusMessageActionsWrapper"/> status.
+    /// Represents the <see cref="ServiceBusMessageActions"/> status.
     /// </summary>
     public enum ServiceBusMessageActionStatus
     {
@@ -26,8 +26,7 @@ namespace UnitTestEx.Functions
         Complete,
 
         /// <summary>
-        /// Indicates that the <see cref="ServiceBusMessageActions.DeadLetterMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, IDictionary{string, object}?, System.Threading.CancellationToken)"/> or
-        /// <see cref="ServiceBusMessageActionsWrapper.DeadLetterMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, string, string?, System.Threading.CancellationToken)"/> were invoked.
+        /// Indicates that the <see cref="ServiceBusMessageActions.DeadLetterMessageAsync(Azure.Messaging.ServiceBus.ServiceBusReceivedMessage, IDictionary{string, object}?, System.Threading.CancellationToken)"/> was invoked.
         /// </summary>
         DeadLetter,
 

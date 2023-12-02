@@ -1,12 +1,4 @@
-using System;
-using System.Collections.Generic;
-using CoreEx.Entities;
-using CoreEx.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using UnitTestEx.Api.Models;
 
 namespace UnitTestEx.Api.Controllers
 {

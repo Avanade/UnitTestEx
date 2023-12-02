@@ -10,22 +10,12 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.Net.Mime;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using CoreEx;
-using CoreEx.AspNetCore.WebApis;
+using System.Web.Http;
 
 namespace UnitTestEx.Function
 {
     public class PersonFunction
     {
-        private readonly IConfiguration _config;
-        private readonly WebApi _webApi;
-
-        public PersonFunction(IConfiguration config, WebApi webApi)
-        {
-            _config = config;
-            _webApi = webApi;
-        }
-
         [FunctionName("PersonFunction")]
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req, ILogger log)
@@ -52,7 +42,7 @@ namespace UnitTestEx.Function
             }
 
             if (name == "Damien")
-                throw new ValidationException("Name cannot be Damien.");
+                return new BadRequestErrorMessageResult("Name cannot be Damien.");
 
             if (name == "Bruce")
                 return new ContentResult { Content = "Name cannot be Bruce.", StatusCode = 400 };
@@ -78,47 +68,6 @@ namespace UnitTestEx.Function
             await Task.CompletedTask.ConfigureAwait(false);
             log.LogInformation("C# HTTP trigger function processed a request.");
             return new ContentResult { Content = JsonSerializer.Serialize(new { first = person.FirstName, last = person.LastName }), ContentType = MediaTypeNames.Application.Json, StatusCode = 200 };
-        }
-
-        [FunctionName("PersonFunctionWebApi")]
-        public async Task<IActionResult> RunWebApi(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req, ILogger log)
-        {
-            return await _webApi.GetAsync<ActionResult>(req, async _ =>
-            {
-                log.LogInformation("C# HTTP trigger function processed a request.");
-
-                string name = req.Query["name"];
-
-                string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-                var data = string.IsNullOrEmpty(requestBody) ? null : JsonSerializer.Deserialize<Namer>(requestBody);
-                name ??= data?.Name;
-
-                if (name == "Brian")
-                {
-                    var msd = new ModelStateDictionary();
-                    msd.AddModelError("name", "Name cannot be Brian.");
-                    return new BadRequestObjectResult(msd);
-                }
-
-                if (name == "Rachel")
-                {
-                    var obj = new { FirstName = "Rachel", LastName = "Smith" };
-                    return new JsonResult(obj);
-                }
-
-                if (name == "Damien")
-                    throw new ValidationException("Name cannot be Damien.");
-
-                if (name == "Bruce")
-                    return new ContentResult { Content = "Name cannot be Bruce.", StatusCode = 400 };
-
-                string responseMessage = string.IsNullOrEmpty(name)
-                    ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                    : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-                return new OkObjectResult(responseMessage);
-            });
         }
     }
 

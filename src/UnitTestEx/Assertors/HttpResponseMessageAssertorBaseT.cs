@@ -1,16 +1,12 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Entities;
-using CoreEx.Json;
 using Microsoft.Net.Http.Headers;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
-using System.Text.Json;
 using UnitTestEx.Abstractions;
 
 namespace UnitTestEx.Assertors
@@ -18,16 +14,10 @@ namespace UnitTestEx.Assertors
     /// <summary>
     /// Provdes the base <see cref="HttpResponseMessage"/> test assert helper capabilities.
     /// </summary>
-    public abstract class HttpResponseMessageAssertorBase<TSelf> : HttpResponseMessageAssertorBase where TSelf : HttpResponseMessageAssertorBase<TSelf>
+    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
+    public abstract class HttpResponseMessageAssertorBase<TSelf>(TesterBase owner, HttpResponseMessage response) : HttpResponseMessageAssertorBase(owner, response) where TSelf : HttpResponseMessageAssertorBase<TSelf>
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="HttpResponseMessageAssertorBase{TSelf}"/> class.
-        /// </summary>
-        /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
-        internal HttpResponseMessageAssertorBase(HttpResponseMessage response, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(response, implementor, jsonSerializer) { }
-
         /// <summary>
         /// Asserts that the <see cref="HttpResponseMessage.StatusCode"/> has a successful value between 200 and 299.
         /// </summary>
@@ -61,7 +51,7 @@ namespace UnitTestEx.Assertors
         public TSelf Assert(HttpStatusCode statusCode, string? content)
         {
             Assert(statusCode);
-            Implementor.AssertAreEqual(content, Response.Content?.ReadAsStringAsync().GetAwaiter().GetResult());
+            AssertContent(content);
             return (TSelf)this;
         }
 
@@ -85,6 +75,17 @@ namespace UnitTestEx.Assertors
         public TSelf AssertContentType(string expectedContentType)
         {
             Implementor.AssertAreEqual(expectedContentType, Response?.Content?.Headers?.ContentType?.MediaType);
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> has the specified <paramref name="content"/>.
+        /// </summary>
+        /// <param name="content">The expected content.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
+        public TSelf AssertContent(string? content)
+        {
+            Implementor.AssertAreEqual(content, Response.Content?.ReadAsStringAsync().GetAwaiter().GetResult());
             return (TSelf)this;
         }
 
@@ -173,9 +174,11 @@ namespace UnitTestEx.Assertors
         /// <remarks>The field (key) is not validated; only the error message texts.</remarks>
         public TSelf AssertErrors(params string[] messages)
         {
-            var mic = new MessageItemCollection();
-            messages.ForEach(m => mic.AddError(m));
-            return AssertErrors(mic);
+            var expected = new List<ApiError>();
+            foreach (var message in messages)
+                expected.Add(new ApiError(null, message));
+
+            return AssertErrors(expected.ToArray());
         }
 
         /// <summary>
@@ -185,29 +188,8 @@ namespace UnitTestEx.Assertors
         /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
         public TSelf AssertErrors(params ApiError[] errors)
         {
-            var mic = new MessageItemCollection();
-            errors.ForEach(e => mic.Add(MessageItem.CreateErrorMessage(e.Field, e.Message)));
-            return AssertErrors(mic);
-        }
-
-        /// <summary>
-        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> contains the specified <paramref name="messages"/> errors.
-        /// </summary>
-        /// <param name="messages">The expected messages.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
-        public TSelf AssertErrors(MessageItemCollection messages)
-        {
-            var val = GetValue<Dictionary<string, string[]>>() ?? new Dictionary<string, string[]>();
-            var act = new MessageItemCollection();
-            foreach (var err in val)
-            {
-                foreach (var msg in err.Value)
-                {
-                    act.AddPropertyError(err.Key, msg);
-                }
-            }
-
-            if (messages != null && !Expectations.ExpectationsExtensions.TryAreMessagesMatched(messages, act, out var errorMessage))
+            var actual = Assertor.ConvertToApiErrors(GetValue<Dictionary<string, string[]>>() ?? []);
+            if (!Assertor.TryAreErrorsMatched(errors, actual, out var errorMessage))
                 Implementor.AssertFail(errorMessage);
 
             return (TSelf)this;
@@ -220,6 +202,15 @@ namespace UnitTestEx.Assertors
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
         public TSelf AssertJsonFromResource(string resourceName, params string[] pathsToIgnore) => AssertJson(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), pathsToIgnore);
+
+        /// <summary>
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> matches the JSON serialized value.
+        /// </summary>
+        /// <typeparam name="TAssembly">The <see cref="Type"/> to infer the <see cref="Assembly"/> that contains the embedded resource.</typeparam>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
+        public TSelf AssertJsonFromResource<TAssembly>(string resourceName, params string[] pathsToIgnore) => AssertJson(Resource.GetJson(resourceName, typeof(TAssembly).Assembly), pathsToIgnore);
 
         /// <summary>
         /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> JSON content matches the specified <paramref name="json"/>.
@@ -240,17 +231,9 @@ namespace UnitTestEx.Assertors
 
             if (Response.Content?.Headers?.ContentType?.MediaType == MediaTypeNames.Application.Json)
             {
-                var exp = new Utf8JsonReader(new BinaryData(json));
-                if (!JsonElement.TryParseValue(ref exp, out JsonElement? eje))
-                    throw new ArgumentException("Expected JSON is not considered valid.", nameof(json));
-
-                var act = new Utf8JsonReader(new BinaryData(Response.Content.ReadAsStringAsync().GetAwaiter().GetResult()));
-                if (!JsonElement.TryParseValue(ref act, out JsonElement? aje))
-                    Implementor.AssertFail("Actual value is not considered valid JSON.");
-
-                var jecr = JsonElementComparer.Default.Compare(eje!.Value, aje!.Value, pathsToIgnore);
-                if (jecr != null)
-                    Implementor.AssertFail($"Expected and Actual JSON values are not equal:{Environment.NewLine}{jecr}");
+                var jc = Owner.CreateJsonComparer().Compare(json, Response.Content.ReadAsStringAsync().GetAwaiter().GetResult(), pathsToIgnore);
+                if (jc.HasDifferences)
+                    Implementor.AssertFail($"Expected and Actual JSON values are not equal:{Environment.NewLine}{jc}");
             }
             else
                 Implementor.AssertAreEqual(json, Response.Content?.ReadAsStringAsync().GetAwaiter().GetResult(), "Expected and Actual JSON values are not equal.");

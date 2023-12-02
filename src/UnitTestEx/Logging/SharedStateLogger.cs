@@ -9,17 +9,12 @@ namespace UnitTestEx.Logging
     /// <summary>
     /// Represents the <see cref="SharedStateLogger"/> provider.
     /// </summary>
+    /// <param name="sharedState">The <see cref="TestSharedState"/>.</param>
     [ProviderAlias("")]
-    public sealed class SharedStateLoggerProvider : ILoggerProvider, ISupportExternalScope
+    public sealed class SharedStateLoggerProvider(TestSharedState sharedState) : ILoggerProvider, ISupportExternalScope
     {
         private IExternalScopeProvider? _scopeProvider;
-        private readonly TestSharedState _sharedState;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SharedStateLoggerProvider"/> class.
-        /// </summary>
-        /// <param name="sharedState">The <see cref="TestSharedState"/>.</param>
-        public SharedStateLoggerProvider(TestSharedState sharedState) => _sharedState = sharedState ?? throw new ArgumentNullException(nameof(sharedState));
+        private readonly TestSharedState _sharedState = sharedState ?? throw new ArgumentNullException(nameof(sharedState));
 
         /// <summary>
         /// Creates a new instance of the <see cref="SharedStateLogger"/>.
@@ -40,17 +35,12 @@ namespace UnitTestEx.Logging
     /// <summary>
     /// Provides an <see cref="ILogger"/> that writes to the <see cref="TestSharedState"/>.
     /// </summary>
-    public class SharedStateLogger : LoggerBase
+    /// <param name="sharedState">The <see cref="TestSharedState"/>.</param>
+    /// <param name="name">The name of the logger.</param>
+    /// <param name="scopeProvider">The <see cref="IExternalScopeProvider"/>.</param>
+    public class SharedStateLogger(TestSharedState sharedState, string name, IExternalScopeProvider? scopeProvider = null) : LoggerBase(name, scopeProvider)
     {
-        private readonly TestSharedState _sharedState;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SharedStateLogger"/> class.
-        /// </summary>
-        /// <param name="sharedState">The <see cref="TestSharedState"/>.</param>
-        /// <param name="name">The name of the logger.</param>
-        /// <param name="scopeProvider">The <see cref="IExternalScopeProvider"/>.</param>
-        public SharedStateLogger(TestSharedState sharedState, string name, IExternalScopeProvider? scopeProvider = null) : base(name, scopeProvider) => _sharedState = sharedState ?? throw new ArgumentNullException(nameof(sharedState));
+        private readonly TestSharedState _sharedState = sharedState ?? throw new ArgumentNullException(nameof(sharedState));
 
         /// <inheritdoc/>
         protected override void WriteMessage(string message) => _sharedState.AddLoggerMessage(message);

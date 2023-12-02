@@ -13,24 +13,14 @@ namespace UnitTestEx.Functions
     /// <summary>
     /// Provides a <see cref="ServiceBusSessionMessageActions"/> test mock and assert verification.
     /// </summary>
-    public class ServiceBusSessionMessageActionsAssertor : ServiceBusSessionMessageActions
+    /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
+    /// <param name="sessionLockedUntil">The sessions locked until <see cref="DateTimeOffset"/>; defaults to <see cref="DateTimeOffset.UtcNow"/> plus five minutes.</param>
+    /// <param name="sessionState">The session state <see cref="BinaryData"/>; defaults to <see cref="BinaryData.Empty"/>.</param>
+    public class ServiceBusSessionMessageActionsAssertor(TestFrameworkImplementor implementor, DateTimeOffset? sessionLockedUntil = default, BinaryData? sessionState = default) : ServiceBusSessionMessageActions
     {
-        private readonly TestFrameworkImplementor _implementor;
-        private DateTimeOffset _sessionLockedUntil;
-        private BinaryData _sessionState;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceBusSessionMessageActionsAssertor"/> class.
-        /// </summary>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="sessionLockedUntil">The sessions locked until <see cref="DateTimeOffset"/>; defaults to <see cref="DateTimeOffset.UtcNow"/> plus five minutes.</param>
-        /// <param name="sessionState">The session state <see cref="BinaryData"/>; defaults to <see cref="BinaryData.Empty"/>.</param>
-        internal ServiceBusSessionMessageActionsAssertor(TestFrameworkImplementor implementor, DateTimeOffset? sessionLockedUntil = default, BinaryData? sessionState = default)
-        {
-            _implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
-            _sessionLockedUntil = sessionLockedUntil ?? DateTimeOffset.UtcNow.AddMinutes(5);
-            _sessionState = sessionState ?? BinaryData.Empty;
-        }
+        private readonly TestFrameworkImplementor _implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+        private DateTimeOffset _sessionLockedUntil = sessionLockedUntil ?? DateTimeOffset.UtcNow.AddMinutes(5);
+        private BinaryData _sessionState = sessionState ?? BinaryData.Empty;
 
         /// <summary>
         /// Gets the <see cref="ServiceBusMessageActionStatus"/>.

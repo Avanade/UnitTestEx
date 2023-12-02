@@ -1,14 +1,12 @@
-﻿using CoreEx.Hosting;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace UnitTestEx.IsolatedFunction
 {
-    public class Startup : HostStartup
+    public class Startup 
     {
-        public override void ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(IServiceCollection services)
         {
             services.AddHttpClient("XXX", hc => hc.BaseAddress = new System.Uri("https://somesys"));
-            base.ConfigureServices(services);
         }
     }
 }

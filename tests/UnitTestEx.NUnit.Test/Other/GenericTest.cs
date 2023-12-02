@@ -15,15 +15,15 @@ namespace UnitTestEx.NUnit.Test.Other
             using var test = GenericTester.Create();
             test.Run(() => 1)
                 .AssertSuccess()
-                .Assert(1);
+                .AssertValue(1);
         }
 
         [Test]
         public void Run_Exception()
         {
             using var test = GenericTester.Create();
-            test.ExpectErrorType(CoreEx.Abstractions.ErrorType.ValidationError, "Badness.")
-                .Run(() => throw new CoreEx.ValidationException("Badness."));
+            test.ExpectException("Badness.")
+                .Run(() => throw new DivideByZeroException("Badness."));
         }
 
         [Test]
@@ -33,11 +33,11 @@ namespace UnitTestEx.NUnit.Test.Other
 
             test.Run<Gin, int>(gin => gin.Pour())
                 .AssertSuccess()
-                .Assert(1);
+                .AssertValue(1);
 
             test.Run<Gin, int>(gin => gin.PourAsync())
                 .AssertSuccess()
-                .Assert(1);
+                .AssertValue(1);
 
             test.Run<Gin>(gin => gin.Shake())
                 .AssertSuccess();

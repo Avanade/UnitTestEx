@@ -2,20 +2,15 @@
 
 using Azure.Core.Amqp;
 using Azure.Messaging.ServiceBus;
-using CoreEx.Azure.ServiceBus;
-using CoreEx.Events;
-using CoreEx.Json;
-using CoreEx.Mapping.Converters;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
-using System.Collections.Generic;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text;
-using UnitTestEx.Expectations;
 using UnitTestEx.Functions;
+using UnitTestEx.Json;
 using UnitTestEx.Mocking;
 
 namespace UnitTestEx.Abstractions
@@ -26,34 +21,29 @@ namespace UnitTestEx.Abstractions
     /// <typeparam name="TSelf">The <see cref="TesterBase{TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class TesterBase<TSelf> : TesterBase where TSelf : TesterBase<TSelf>
     {
-        private readonly List<Action<IServiceCollection>> _configureServices = new();
-
         /// <summary>
         /// Initializes a new instance of the <see cref="TesterBase{TSelf}"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        protected TesterBase(TestFrameworkImplementor implementor) : base(implementor) => UseSetUp(TestSetUp.Default);
+        public TesterBase(TestFrameworkImplementor implementor) : base(implementor) => UseSetUp(TestSetUp.Default);
 
         /// <summary>
-        /// Gets the synchronization object where syncronized access is required.
-        /// </summary>
-        protected object SyncRoot { get; } = new object();
-
-        /// <summary>
-        /// Updates (replaces) the <see cref="TesterBase.SetUp"/>.
+        /// Replaces the <see cref="TesterBase.SetUp"/> by cloning the <paramref name="setUp"/> and will <see cref="ResetHost(bool)"/>.
         /// </summary>
         /// <param name="setUp">The <see cref="TestSetUp"/></param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>Also executes the <see cref="TestSetUp.ConfigureServices"/>.</remarks>
+        /// <remarks>Updates the <see cref="TesterBase.JsonSerializer"/> and <see cref="TesterBase.JsonComparerOptions"/> from the <paramref name="setUp"/>.
+        /// <para>As the host is <see cref="ResetHost(bool)">reset</see> it is recommended that the <see cref="UseSetUp(TestSetUp)"/> is performed early so as to not inadvertently override earlier configurations.</para></remarks>
         public TSelf UseSetUp(TestSetUp setUp)
         {
-            SetUp = setUp ?? throw new ArgumentNullException(nameof(setUp));
-            if (SetUp.ConfigureServices != null)
-                ConfigureServices(SetUp.ConfigureServices);
+            SetUp = setUp?.Clone() ?? throw new ArgumentNullException(nameof(setUp));
+            JsonSerializer = SetUp.JsonSerializer;
+            JsonComparerOptions = SetUp.JsonComparerOptions;
 
-            if (SetUp.ExpectedEventsEnabled)
-                UseExpectedEvents();
+            foreach (var ext in TestSetUp.Extensions)
+                ext.OnUseSetUp(this);
 
+            ResetHost(false);
             return (TSelf)this;
         }
 
@@ -86,7 +76,7 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Updates the <see cref="JsonSerializer"/> used by the <see cref="TesterBase{TSelf}"/> itself, not the underlying executing host which should be configured separately.
+        /// Updates the <see cref="TesterBase.JsonSerializer"/> used by the <see cref="TesterBase{TSelf}"/> itself, not the underlying executing host which should be configured separately.
         /// </summary>
         /// <param name="jsonSerializer">The <see cref="JsonSerializer"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -97,16 +87,14 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Replaces the <see cref="IEventPublisher"/> with the <see cref="ExpectedEventPublisher"/> to enable the likes of <see cref="Expectations.ExpectationsExtensions.ExpectEvent{TSelf}(IEventExpectations{TSelf}, EventData, string[])"/>, etc.
+        /// Updates the <see cref="TesterBase.JsonComparerOptions"/> used by the <see cref="TesterBase{TSelf}"/> itself, not the underlying executing host which should be configured separately.
         /// </summary>
+        /// <param name="options">The <see cref="JsonElementComparerOptions"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>This can also be set using <see cref="TestSetUp.ExpectedEventsEnabled"/> either via <see cref="TestSetUp.Default"/> or <see cref="UseSetUp(TestSetUp)"/>.</remarks>
-        public TSelf UseExpectedEvents()
+        /// <para>Where the <see cref="JsonElementComparerOptions.JsonSerializer"/> is <c>null</c> then the <see cref="TesterBase.JsonSerializer"/> will be used.</para>
+        public TSelf UseJsonComparerOptions(JsonElementComparerOptions options)
         {
-            if (!IsExpectedEventPublisherEnabled)
-                ConfigureServices(sc => sc.ReplaceScoped<IEventPublisher, ExpectedEventPublisher>());
-
-            IsExpectedEventPublisherEnabled = true;
+            JsonComparerOptions = options ?? throw new ArgumentNullException(nameof(options));
             return (TSelf)this;
         }
 
@@ -115,42 +103,10 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         /// <param name="resetConfiguredServices">Indicates whether to reset the previously configured services.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf ResetHost(bool resetConfiguredServices = false)
+        public new TSelf ResetHost(bool resetConfiguredServices = false)
         {
-            lock (SyncRoot)
-            {
-                IsHostInstantiated = false;
-                if (resetConfiguredServices)
-                {
-                    _configureServices.Clear();
-                    IsExpectedEventPublisherEnabled = false;
-                }
-
-                ResetHost();
-                return (TSelf)this;
-            }
-        }
-
-        /// <summary>
-        /// Resets the underlying host to instantiate a new instance.
-        /// </summary>
-        protected abstract void ResetHost();
-
-        /// <summary>
-        /// Adds the previously <see cref="ConfigureServices(Action{IServiceCollection}, bool)"/> to the <paramref name="services"/>.
-        /// </summary>
-        /// <remarks>It is recommended that this is performed within a <see cref="SyncRoot"/> to ensure thread-safety.</remarks>
-        protected void AddConfiguredServices(IServiceCollection services)
-        {
-            if (IsHostInstantiated)
-                throw new InvalidOperationException($"Underlying host has been instantiated and as such the {nameof(ConfigureServices)} operations can no longer be used.");
-
-            foreach (var configureService in _configureServices)
-            {
-                configureService(services);
-            }
-
-            IsHostInstantiated = true;
+            base.ResetHost(resetConfiguredServices);
+            return (TSelf)this;
         }
 
         /// <summary>
@@ -161,16 +117,9 @@ namespace UnitTestEx.Abstractions
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         /// <remarks>This can be called multiple times prior to the underlying host being instantiated. Internally, the <paramref name="configureServices"/> is queued and then played in order when the host is initially instantiated.
         /// Once instantiated, further calls will result in a <see cref="InvalidOperationException"/> unless a <see cref="ResetHost(bool)"/> is performed.</remarks>
-        public TSelf ConfigureServices(Action<IServiceCollection> configureServices, bool autoResetHost = true)
+        public new TSelf ConfigureServices(Action<IServiceCollection> configureServices, bool autoResetHost = true)
         {
-            lock (SyncRoot)
-            {
-                if (autoResetHost)
-                    ResetHost(false);
-
-                _configureServices.Add(configureServices);
-            }
-
+            base.ConfigureServices(configureServices, autoResetHost);
             return (TSelf)this;
         }
 
@@ -302,10 +251,10 @@ namespace UnitTestEx.Abstractions
         /// <typeparam name="T">The result <see cref="Type"/>.</typeparam>
         /// <param name="result">The function to create the result.</param>
         /// <returns>The <paramref name="result"/>.</returns>
-        internal T HostExecutionWrapper<T>(Func<T> result)
+        protected T HostExecutionWrapper<T>(Func<T> result)
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
-            SharedState.ResetEventStorage();
+            SharedState.Reset();
             return result();
         }
 
@@ -317,7 +266,7 @@ namespace UnitTestEx.Abstractions
         /// <typeparam name="T">The <paramref name="value"/> <see cref="Type"/>.</typeparam>
         /// <param name="value">The value.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
-        public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value) => (value is EventData ed) ? CreateServiceBusMessage(ed) : CreateServiceBusMessageFromJson(JsonSerializer.Serialize(value));
+        public ServiceBusReceivedMessage CreateServiceBusMessageFromValue<T>(T value) => CreateServiceBusMessageFromJson(JsonSerializer.Serialize(value));
 
         /// <summary>
         /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the <paramref name="value"/> as serialized JSON.
@@ -326,7 +275,7 @@ namespace UnitTestEx.Abstractions
         /// <param name="value">The value.</param>
         /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
-        public ServiceBusReceivedMessage CreateServiceBusMessage<T>(T value, Action<AmqpAnnotatedMessage>? messageModify = null)
+        public ServiceBusReceivedMessage CreateServiceBusMessageFromValue<T>(T value, Action<AmqpAnnotatedMessage>? messageModify = null)
             => CreateServiceBusMessageFromJson(JsonSerializer.Serialize(value), messageModify);
 
         /// <summary>
@@ -360,31 +309,6 @@ namespace UnitTestEx.Abstractions
             var message = new AmqpAnnotatedMessage(AmqpMessageBody.FromData(new ReadOnlyMemory<byte>[] { Encoding.UTF8.GetBytes(json ?? throw new ArgumentNullException(nameof(json))) }));
             message.Properties.ContentType = MediaTypeNames.Application.Json;
             message.Properties.MessageId = new AmqpMessageId(Guid.NewGuid().ToString());
-            return CreateServiceBusMessage(message, messageModify);
-        }
-
-        /// <summary>
-        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="event"/> leveraging the <see cref="EventDataToServiceBusConverter"/> to perform the underlying conversion.
-        /// </summary>
-        /// <param name="event">The <see cref="EventData"/> or <see cref="EventData{T}"/> value.</param>
-        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
-        /// <remarks>Attempts to use the configured <see cref="EventDataToServiceBusConverter"/> by leveraging the underlying host <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> where found; otherwise, will instantiate as new. As accessing
-        /// the <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> will result in the underlying host being instantiated a corresponding <see cref="ResetHost(bool)"/> will be performed to enable further configuration.</remarks>
-        public ServiceBusReceivedMessage CreateServiceBusMessage(EventData @event) => CreateServiceBusMessage(@event, null);
-
-        /// <summary>
-        /// Creates a <see cref="ServiceBusReceivedMessage"/> from the <paramref name="event"/> leveraging the <see cref="EventDataToServiceBusConverter"/> to perform the underlying conversion.
-        /// </summary>
-        /// <param name="event">The <see cref="EventData"/> or <see cref="EventData{T}"/> value.</param>
-        /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
-        /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
-        /// <remarks>Attempts to use the configured <see cref="EventDataToServiceBusConverter"/> by leveraging the underlying host <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> where found; otherwise, will instantiate as new. As accessing
-        /// the <see cref="FunctionTesterBase{TEntryPoint, TSelf}.Services"/> will result in the underlying host being instantiated a corresponding <see cref="ResetHost(bool)"/> will be performed to enable further configuration.</remarks>
-        public ServiceBusReceivedMessage CreateServiceBusMessage(EventData @event, Action<AmqpAnnotatedMessage>? messageModify)
-        {
-            if (@event == null) throw new ArgumentNullException(nameof(@event));
-            var message = (Services.GetService<EventDataToServiceBusConverter>() ?? new EventDataToServiceBusConverter(Services.GetService<IEventSerializer>(), Services.GetService<IValueConverter<EventSendData, ServiceBusMessage>>())).Convert(@event).GetRawAmqpMessage();
-            ResetHost(false);
             return CreateServiceBusMessage(message, messageModify);
         }
 
@@ -428,10 +352,10 @@ namespace UnitTestEx.Abstractions
             messageModify?.Invoke(message);
 
             var t = typeof(ServiceBusReceivedMessage);
-            var c = t.GetConstructor(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance, null, new Type[] { typeof(AmqpAnnotatedMessage) }, null);
+            var c = t.GetConstructor(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance, null, [typeof(AmqpAnnotatedMessage)], null);
             return c == null
                 ? throw new InvalidOperationException($"'{typeof(ServiceBusReceivedMessage).Name}' constructor that accepts Type '{typeof(AmqpAnnotatedMessage).Name}' parameter was not found.")
-                : (ServiceBusReceivedMessage)c.Invoke(new object?[] { message });
+                : (ServiceBusReceivedMessage)c.Invoke([message]);
         }
 
         /// <summary>
@@ -447,7 +371,6 @@ namespace UnitTestEx.Abstractions
         /// <param name="sessionState">The session state <see cref="BinaryData"/>; defaults to <see cref="BinaryData.Empty"/>.</param>
         /// <returns>The <see cref="ServiceBusSessionMessageActionsAssertor"/>.</returns>
         public ServiceBusSessionMessageActionsAssertor CreateServiceBusSessionMessageActions(DateTimeOffset? sessionLockedUntil = default, BinaryData? sessionState = default) => new(Implementor, sessionLockedUntil, sessionState);
-
 
         #endregion
     }

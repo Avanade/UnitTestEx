@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +20,7 @@ using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
 using UnitTestEx.Expectations;
 using UnitTestEx.Hosting;
+using UnitTestEx.Json;
 
 namespace UnitTestEx.Functions
 {
@@ -28,27 +28,19 @@ namespace UnitTestEx.Functions
     /// Provides Azure Function <see cref="HttpTriggerAttribute"/> unit-testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
-    public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction>, IExceptionSuccessExpectations<HttpTriggerTester<TFunction>>, ILoggerExpectations<HttpTriggerTester<TFunction>> where TFunction : class
+    public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction>, IExpectations<HttpTriggerTester<TFunction>> where TFunction : class
     {
-        private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
-        private readonly LoggerExpectations _loggerExpectations;
-
         /// <summary>
         /// Initializes a new <see cref="HttpTriggerTester{TFunction}"/> class.
         /// </summary>
-        /// <param name="tester">The <see cref="TesterBase"/>.</param>
+        /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        internal HttpTriggerTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope)
-        {
-            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester.Implementor);
-            _loggerExpectations = new LoggerExpectations(tester.Implementor);
-        }
+        public HttpTriggerTester(TesterBase owner, IServiceScope serviceScope) : base(owner, serviceScope) => ExpectationsArranger = new ExpectationsArranger<HttpTriggerTester<TFunction>>(owner, this);
 
-        /// <inheritdoc/>
-        ExceptionSuccessExpectations IExceptionSuccessExpectations<HttpTriggerTester<TFunction>>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
-
-        /// <inheritdoc/>
-        LoggerExpectations ILoggerExpectations<HttpTriggerTester<TFunction>>.LoggerExpectations => _loggerExpectations;
+        /// <summary>
+        /// Gets the <see cref="ExpectationsArranger{TSelf}"/>.
+        /// </summary>
+        public ExpectationsArranger<HttpTriggerTester<TFunction>> ExpectationsArranger { get; }
 
         /// <summary>
         /// Runs the HTTP Triggered (see <see cref="HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
@@ -79,21 +71,13 @@ namespace UnitTestEx.Functions
             }).ConfigureAwait(false);
 
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            var logs = Tester.SharedState.GetLoggerMessages();
+            var logs = Owner.SharedState.GetLoggerMessages();
             LogResponse(result, ex, ms, logs);
 
-            _exceptionSuccessExpectations.Assert(ex);
-            _loggerExpectations.Assert(logs);
+            await ExpectationsArranger.AssertAsync(logs, ex).ConfigureAwait(false);
 
-            return new ActionResultAssertor(result, ex, Implementor, JsonSerializer);
+            return new ActionResultAssertor(Owner, result, ex);
         }
-
-        /// <summary>
-        /// Asserts any expectations.
-        /// </summary>
-        /// <param name="result">The <see cref="IActionResult"/>.</param>
-        /// <param name="exception">The <see cref="Exception"/> is any.</param>
-        protected virtual void OnAssertExpectations(IActionResult result, Exception? exception) => _exceptionSuccessExpectations.Assert(exception);
 
         /// <summary>
         /// Log the request to the output.

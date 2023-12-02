@@ -9,12 +9,6 @@ namespace UnitTestEx.Xunit.Internal
     /// Provides the <b>MSUnit</b> <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> implementation.
     /// </summary>
     /// <typeparam name="TEntryPoint"></typeparam>
-    public class ApiTester<TEntryPoint> : ApiTesterBase<TEntryPoint, ApiTester<TEntryPoint>> where TEntryPoint : class
-    {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ApiTester{TEntryPoint}"/> class.
-        /// </summary>
-        /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
-        internal ApiTester(ITestOutputHelper output) : base(new Internal.XunitTestImplementor(output)) { }
-    }
+    /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
+    public class ApiTester<TEntryPoint>(ITestOutputHelper output) : ApiTesterBase<TEntryPoint, ApiTester<TEntryPoint>>(new Internal.XunitTestImplementor(output)) where TEntryPoint : class { }
 }

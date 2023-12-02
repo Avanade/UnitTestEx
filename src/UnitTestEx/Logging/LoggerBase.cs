@@ -13,25 +13,16 @@ namespace UnitTestEx.Logging
     /// <summary>
     /// Represents the base logger functionality
     /// </summary>
-    public abstract class LoggerBase : ILogger
+    /// <param name="name">The name of the logger.</param>
+    /// <param name="scopeProvider">The <see cref="IExternalScopeProvider"/>.</param>
+    public abstract class LoggerBase(string name, IExternalScopeProvider? scopeProvider = null) : ILogger
     {
-        private readonly IExternalScopeProvider _scopeProvider;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="LoggerBase"/> class.
-        /// </summary>
-        /// <param name="name">The name of the logger.</param>
-        /// <param name="scopeProvider">The <see cref="IExternalScopeProvider"/>.</param>
-        public LoggerBase(string name, IExternalScopeProvider? scopeProvider = null)
-        {
-            Name = name ?? throw new ArgumentNullException(nameof(name));
-            _scopeProvider = scopeProvider ?? new LoggerExternalScopeProvider();
-        }
+        private readonly IExternalScopeProvider _scopeProvider = scopeProvider ?? new LoggerExternalScopeProvider();
 
         /// <summary>
         /// Gets the name of the logger.
         /// </summary>
-        public string Name { get; }
+        public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
 
         /// <inheritdoc />
 #if NET7_0_OR_GREATER

@@ -13,15 +13,10 @@ namespace UnitTestEx.Functions
     /// <summary>
     /// Provides a <see cref="ServiceBusMessageActions"/> test mock and assert verification.
     /// </summary>
-    public class ServiceBusMessageActionsAssertor : ServiceBusMessageActions
+    /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
+    public class ServiceBusMessageActionsAssertor(TestFrameworkImplementor implementor) : ServiceBusMessageActions
     {
-        private readonly TestFrameworkImplementor _implementor;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ServiceBusMessageActionsAssertor"/> class.
-        /// </summary>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal ServiceBusMessageActionsAssertor(TestFrameworkImplementor implementor) => _implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+        private readonly TestFrameworkImplementor _implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
 
         /// <summary>
         /// Gets the <see cref="ServiceBusMessageActionStatus"/>.

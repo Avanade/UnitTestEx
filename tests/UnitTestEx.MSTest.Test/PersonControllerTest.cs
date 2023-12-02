@@ -21,18 +21,18 @@ namespace UnitTestEx.MSTest.Test
             (await test.Controller<PersonController>()
                 .RunAsync(c => c.Get(1)))
                 .AssertOK()
-                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+                .AssertValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
         }
 
         [TestMethod]
         public void Get_Test2()
         {
             int id = 2;
-            using var test = ApiTester.Create<Startup>().UseJsonSerializer(new CoreEx.Newtonsoft.Json.JsonSerializer());
+            using var test = ApiTester.Create<Startup>().UseJsonSerializer(new UnitTestEx.Json.Newtonsoft.JsonSerializer());
             test.Controller<PersonController>()
                 .Run(c => c.Get(id))
                 .AssertOK()
-                .Assert(new Person { Id = id, FirstName = "Jane", LastName = "Jones" });
+                .AssertValue(new Person { Id = id, FirstName = "Jane", LastName = "Jones" });
         }
 
         [TestMethod]
@@ -41,7 +41,7 @@ namespace UnitTestEx.MSTest.Test
             var p = new Person { Id = 3, FirstName = "Brad", LastName = "Davies" };
 
             using var test = ApiTester.Create<Startup>();
-            test.Controller<PersonController>().Run(c => c.Get(p.Id)).AssertOK().Assert(p);
+            test.Controller<PersonController>().Run(c => c.Get(p.Id)).AssertOK().AssertValue(p);
         }
 
         [TestMethod]
@@ -60,7 +60,7 @@ namespace UnitTestEx.MSTest.Test
             test.Controller<PersonController>()
                 .Run(c => c.GetByArgs("Mary", "Brown", new List<int> { 88, 99 }))
                 .AssertOK()
-                .Assert("Mary-Brown-88,99");
+                .AssertValue("Mary-Brown-88,99");
         }
 
         [TestMethod]
@@ -70,7 +70,7 @@ namespace UnitTestEx.MSTest.Test
             test.Controller<PersonController>()
                 .Run(c => c.GetByArgs(null, null, null))
                 .AssertOK()
-                .Assert("--");
+                .AssertValue("--");
         }
 
         [TestMethod]
@@ -80,7 +80,7 @@ namespace UnitTestEx.MSTest.Test
             test.Controller<PersonController>()
                 .Run(c => c.Update(1, new Person { FirstName = "Bob", LastName = "Smith" }))
                 .AssertOK()
-                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+                .AssertValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
         }
 
         [TestMethod]
@@ -140,7 +140,7 @@ namespace UnitTestEx.MSTest.Test
                 .Run(c => c.Get(1))
                 .ToActionResultAssertor()
                 .AssertOK()
-                .Assert(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+                .AssertValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
         }
     }
 }

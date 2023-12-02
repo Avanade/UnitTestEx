@@ -68,34 +68,14 @@ test.ReplaceHttpClientFactory(mcf)
 
 As above, there is currently no easy means to integration (in-process) test Azure functions that rely on the [Azure Service Bus](https://azure.microsoft.com/en-us/services/service-bus/). _UnitTestEx_ looks to emulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method and verifies usage of the [`ServiceBusTriggerAttribute`](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-service-bus-trigger?tabs=csharp).
 
-The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs) of invoking the function method directly passing in a `ServiceBusReceivedMessage` created using `test.CreateServiceBusMessage` (this creates a message as if coming from Service Bus).
+The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs) of invoking the function method directly passing in a `ServiceBusReceivedMessage` created using `test.CreateServiceBusMessageFromValue` (this creates a message as if coming from Service Bus).
 
 ``` csharp
 using var test = FunctionTester.Create<Startup>();
 test.ReplaceHttpClientFactory(mcf)
     .ServiceBusTrigger<ServiceBusFunction>()
-    .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
+    .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
     .AssertSuccess();
-```
-
-<br/>
-
-### Service Bus Emulation
-
-To enable in-process integration testing interacting with Azure Service Bus the [`ServiceBusTriggerTester.Emulate`](./src/UnitTestEx/Functions/ServiceBusTriggerTester.cs) method exposes the [`ServiceBusEmulatorTester`](./src/UnitTestEx/Functions/ServiceBusEmulatorTester.cs) type. This integrates directly with [Azure Service Bus](https://azure.microsoft.com/en-us/services/service-bus/) using the underlying functions configuration to determine connection string, etc. The `ServiceBus` _Queue_ or _Topic_ can be cleared (`Clear`), have test messages sent (`Send`), and then executed (`Run`).
-
-The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusEmulationTest.cs).
-
-``` csharp
-using var test = FunctionTester.Create<Startup>(includeUserSecrets: true);
-var r = test
-    .ServiceBusTrigger<ServiceBusFunction>()
-    .Simulate(nameof(ServiceBusFunction.Run2))
-    .Clear()
-    .SendValue(new Person { FirstName = "Bob", LastName = "Smith" })
-    .Run()
-    .AssertSuccess()
-    .AssertMessageCompleted();
 ```
 
 <br/>
@@ -110,28 +90,21 @@ The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTe
 using var test = FunctionTester.Create<Startup>();
 test.ReplaceHttpClientFactory(mcf)
     .Type<ServiceBusFunction>()
-    .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
+    .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
     .AssertSuccess();
 ```
 
 <br/>
 
-## Generic Type and IValidator
+## Generic Type
 
-To test a component that relies on Dependency Injection (DI) directly without the runtime expense of instantiating the underlying host (e.g. ASP.NET Core) the following exists:
-
-- `GenericTester` - enables any `Type` to be tested.
-- `ValidationTester` - inherits the `GenericTester` with a focus on `IValidator` testing.
-
-The following is an [example](./tests/UnitTestEx.NUnit.Test/Other/ValidationTest.cs).
+To test a component that relies on Dependency Injection (DI) directly without the runtime expense of instantiating the underlying host (e.g. ASP.NET Core) the `GenericTester` enables any `Type` to be tested.
 
 ``` csharp
-using var test = ValidationTester.Create();
-test.ReplaceScoped<IValidator<Person>, PersonValidator>()
-    .Run<IValidator<Person>, Person>(new Person())
-    .AssertErrors(
-        "Identifier is required.",
-        "First Name is required.");
+using var test = GenericTester.Create().ConfigureServices(services => services.AddSingleton<Gin>());
+test.Run<Gin, int>(gin => gin.Pour())
+    .AssertSuccess()
+    .AssertValue(1);
 ```
 
 <br/>
@@ -214,23 +187,9 @@ using var test = ApiTester.Create<Startup>();
 test.Controller<PersonController>()
     .ExpectStatusCode(System.Net.HttpStatusCode.BadRequest)
     .ExpectErrors(
-        "First name is requiredx.",
+        "First name is required.",
         "Last name is required.")
     .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }));
-```
-
-These also offer more tightly coupled `CoreEx` usage test verification scenarios. The following is another [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs) verifying event publishing.
-
-``` csharp
-using var test = ApiTester.Create<Startup>();
-test.ReplaceHttpClientFactory(mcf)
-    .UseExpectedEvents()
-    .Controller<ProductController>()
-    .ExpectDestinationEvent("test-queue", "/test/product/*", "test.product.*z", "*")
-    .ExpectDestinationEvent("test-queue2", "/test/*/xyz", "test.*", "*")
-    .Run(c => c.Get("xyz"))
-    .AssertOK()
-    .Assert(new { id = "Xyz", description = "Xtra yellow elephant" });
 ```
 
 <br/>
@@ -263,7 +222,8 @@ _Note:_ There may be some slight variations in how the tests are constructed per
 ## Other repos
 
 These other _Avanade_ repositories leverage _UnitTestEx_ to provide unit testing capabilities:
-- [Beef](https://github.com/Avanade/Beef) - Business Entity Execution Framework to enable industralisation of API development.
+- [_CoreEx_](https://github.com/Avanade/CoreEx) - Enriched capabilities for building business services by extending the core capabilities of .NET.
+- [_Beef_](https://github.com/Avanade/Beef) - Business Entity Execution Framework to enable industralisation of API development.
 
 <br/>
 

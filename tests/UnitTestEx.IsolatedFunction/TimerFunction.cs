@@ -12,7 +12,7 @@ namespace UnitTestEx.IsolatedFunction
         }
 
         [Function("TimerTriggerFunction")]
-        public async Task Run([TimerTrigger("0 */5 * * * *" /*, RunOnStartup = true */)] string timerInfo)
+        public async Task Run([TimerTrigger("0 */5 * * * *" /*, RunOnStartup = true */)] string _)
         {
             var hr = await _httpClient.GetAsync($"products/123").ConfigureAwait(false);
             hr.EnsureSuccessStatusCode();

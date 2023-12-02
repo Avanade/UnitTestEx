@@ -1,9 +1,9 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Http;
 using Microsoft.AspNetCore.TestHost;
 using System;
 using System.Net.Http;
+using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Expectations;
 
@@ -13,37 +13,19 @@ namespace UnitTestEx.AspNetCore
     /// Provides the base HTTP testing capabilities.
     /// </summary>
     /// <typeparam name="TSelf">The <see cref="Type"/> representing itself.</typeparam>
-    public abstract class HttpTesterBase<TSelf> : HttpTesterBase, IExceptionSuccessExpectations<TSelf>, IHttpResponseExpectations<TSelf>, IEventExpectations<TSelf>, ILoggerExpectations<TSelf> where TSelf : HttpTesterBase<TSelf>
+    public abstract class HttpTesterBase<TSelf> : HttpTesterBase, IHttpResponseMessageExpectations<TSelf> where TSelf : HttpTesterBase<TSelf>
     {
-        private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
-        private readonly HttpResponseExpectations _httpResponseExpectations;
-        private readonly EventExpectations _eventExpectations;
-        private readonly LoggerExpectations _loggerExpectations;
-
         /// <summary>
         /// Initializes a new <see cref="HttpTesterBase{TSelf}"/> class.
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="testServer">The <see cref="TestServer"/>.</param>
-        internal HttpTesterBase(TesterBase owner, TestServer testServer) : base(owner, testServer)
-        {
-            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Owner.Implementor);
-            _httpResponseExpectations = new HttpResponseExpectations(Owner);
-            _eventExpectations = new EventExpectations(Owner);
-            _loggerExpectations = new LoggerExpectations(Owner.Implementor);
-        }
+        public HttpTesterBase(TesterBase owner, TestServer testServer) : base(owner, testServer) => ExpectationsArranger = new ExpectationsArranger<TSelf>(owner, (TSelf)this);
 
-        /// <inheritdoc/>
-        ExceptionSuccessExpectations IExceptionSuccessExpectations<TSelf>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
-
-        /// <inheritdoc/>
-        HttpResponseExpectations IHttpResponseExpectations<TSelf>.HttpResponseExpectations => _httpResponseExpectations;
-
-        /// <inheritdoc/>
-        EventExpectations IEventExpectations<TSelf>.EventExpectations => _eventExpectations;
-
-        /// <inheritdoc/>
-        LoggerExpectations ILoggerExpectations<TSelf>.LoggerExpectations => _loggerExpectations;
+        /// <summary>
+        /// Gets the <see cref="ExpectationsArranger{TSelf}"/>.
+        /// </summary>
+        public ExpectationsArranger<TSelf> ExpectationsArranger { get; }
 
         /// <summary>
         /// Sets (overrides) the test user name (defaults to <see cref="TesterBase.UserName"/>).
@@ -77,26 +59,6 @@ namespace UnitTestEx.AspNetCore
         /// Perform the assertion of any expectations.
         /// </summary>
         /// <param name="res">The <see cref="HttpResponseMessage"/>/</param>
-        protected override void AssertExpectations(HttpResponseMessage res)
-        {
-            var hr = HttpResult.CreateAsync(res).GetAwaiter().GetResult();
-            try 
-            {
-                hr.ThrowOnError(true, true);
-                _exceptionSuccessExpectations.Assert(null);
-            }
-            catch (AggregateException aex)
-            {
-                _exceptionSuccessExpectations.Assert(aex.InnerException ?? aex);
-            }
-            catch (Exception ex)
-            {
-                _exceptionSuccessExpectations.Assert(ex);
-            }
-
-            _httpResponseExpectations.Assert(hr);
-            _eventExpectations.Assert();
-            _loggerExpectations.Assert(LastLogs);
-        }
+        protected override Task AssertExpectationsAsync(HttpResponseMessage res) => ExpectationsArranger.AssertAsync(ExpectationsArranger.CreateArgs(LastLogs).AddExtra(res));
     }
 }

@@ -1,7 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Json;
-using KellermanSoftware.CompareNetObjects;
 using Moq;
 using Moq.Protected;
 using System;
@@ -14,6 +12,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
+using UnitTestEx.Json;
 
 namespace UnitTestEx.Mocking
 {
@@ -28,7 +27,7 @@ namespace UnitTestEx.Mocking
         private bool _anyContent;
         private object? _content;
         private string? _mediaType;
-        private string[] _membersToIgnore = Array.Empty<string>();
+        private string[] _pathsToIgnore = [];
         private bool _traceRequestComparisons = false;
 
         /// <summary>
@@ -67,6 +66,11 @@ namespace UnitTestEx.Mocking
         /// Gets the <see cref="IJsonSerializer"/>.
         /// </summary>
         internal IJsonSerializer JsonSerializer => _client.Factory.JsonSerializer;
+
+        /// <summary>
+        /// Gets the <see cref="JsonElementComparerOptions"/>.
+        /// </summary>
+        internal JsonElementComparerOptions JsonComparerOptions => _client.Factory.JsonComparerOptions;
 
         /// <summary>
         /// Indicates that the <see cref="MockHttpClientRequest"/> mock has been completed; in that a corresponding response has been provided.
@@ -180,27 +184,14 @@ namespace UnitTestEx.Mocking
                 case MediaTypeNames.Application.Json:
                     try
                     {
-                        if (_content is string cstr)
-                        {
-                            var cur = new Utf8JsonReader(new BinaryData(cstr));
-                            var bur = new Utf8JsonReader(new BinaryData(body));
+                        var content = _content is string cstring ? cstring : JsonSerializer.Serialize(_content);
+                        var options = JsonComparerOptions.Clone();
+                        options.JsonSerializer ??= JsonSerializer;
+                        var jcr = new JsonElementComparer(options).Compare(content, body, _pathsToIgnore);
+                        if (jcr.HasDifferences && _traceRequestComparisons)
+                            Implementor.WriteLine($"HTTP request JsonElementComparer differences:{Environment.NewLine}{jcr}");
 
-                            if (JsonElement.TryParseValue(ref cur, out JsonElement? cje) && JsonElement.TryParseValue(ref bur, out JsonElement? bje))
-                            {
-                                var differences = JsonElementComparer.Default.Compare((JsonElement)cje, (JsonElement)bje, _membersToIgnore);
-                                if (differences != null && _traceRequestComparisons)
-                                    Implementor.WriteLine($"HTTP request JsonElementComparer differences: {differences}");
-
-                                return differences == null;
-                            }
-                        }
-
-                        var cv = JsonSerializer.Deserialize(body, _content!.GetType());
-                        var cr = JsonElementComparer.Default.CompareValues(_content, cv, JsonSerializer, _membersToIgnore);
-                        if (cr is not null && _traceRequestComparisons)
-                            Implementor.WriteLine($"HTTP request JsonElementComparer differences: {cr}");
-
-                        return cr is null;
+                        return jcr.AreEqual;
                     }
                     catch
                     {
@@ -279,13 +270,13 @@ namespace UnitTestEx.Mocking
         /// </summary>
         /// <typeparam name="T">The value <see cref="Type"/>.</typeparam>
         /// <param name="value">The value that will be converted to JSON.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
-        public MockHttpClientRequestBody WithJsonBody<T>(T value, params string[] membersToIgnore)
+        public MockHttpClientRequestBody WithJsonBody<T>(T value, params string[] pathsToIgnore)
         {
             _content = value;
             _mediaType = MediaTypeNames.Application.Json;
-            _membersToIgnore = membersToIgnore;
+            _pathsToIgnore = pathsToIgnore;
             return new MockHttpClientRequestBody(Rule);
         }
 
@@ -302,7 +293,7 @@ namespace UnitTestEx.Mocking
                 _ = JsonSerializer.Deserialize(json);
                 _content = json;
                 _mediaType = MediaTypeNames.Application.Json;
-                _membersToIgnore = pathsToIgnore;
+                _pathsToIgnore = pathsToIgnore;
                 return new MockHttpClientRequestBody(Rule);
             }
             catch (Exception ex)
@@ -330,7 +321,7 @@ namespace UnitTestEx.Mocking
         public MockHttpClientRequestBody WithJsonResourceBody(string resourceName, Assembly? assembly = null, params string[] pathsToIgnore)
         {
             _content = Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly());
-            _membersToIgnore = pathsToIgnore;
+            _pathsToIgnore = pathsToIgnore;
             _mediaType = MediaTypeNames.Application.Json;
             return new MockHttpClientRequestBody(Rule);
         }

@@ -11,7 +11,7 @@ namespace UnitTestEx.MSTest.Test
         [TestMethod]
         public void Test_ExpressionRuns()
         {
-            using var test = ApiTester.Create<Startup>().UseJsonSerializer(new CoreEx.Newtonsoft.Json.JsonSerializer());
+            using var test = ApiTester.Create<Startup>();
 
             var ex = Assert.ThrowsException<InvalidOperationException>(() => test.Controller<TestController>().Run(c => c.Add(2).Add(3).Get()));
             Assert.IsTrue(ex.Message.StartsWith("UnitTestEx methods that enable an expression must not include method-chaining 'c.Add(2).Add(3).Get()'"));

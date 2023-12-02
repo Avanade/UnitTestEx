@@ -9,17 +9,12 @@ namespace UnitTestEx.Logging
     /// <summary>
     /// Represents the <see cref="TestFrameworkImplementorLogger"/> provider.
     /// </summary>
+    /// <param name="testFrameworkImplementor">The <see cref="TestFrameworkImplementor"/>.</param>
     [ProviderAlias("")]
-    public sealed class TestFrameworkImplementorLoggerProvider : ILoggerProvider, ISupportExternalScope
+    public sealed class TestFrameworkImplementorLoggerProvider(TestFrameworkImplementor testFrameworkImplementor) : ILoggerProvider, ISupportExternalScope
     {
         private IExternalScopeProvider? _scopeProvider;
-        private readonly TestFrameworkImplementor _testFrameworkImplementor;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TestFrameworkImplementorLoggerProvider"/> class.
-        /// </summary>
-        /// <param name="testFrameworkImplementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        public TestFrameworkImplementorLoggerProvider(TestFrameworkImplementor testFrameworkImplementor) => _testFrameworkImplementor = testFrameworkImplementor ?? throw new ArgumentNullException(nameof(testFrameworkImplementor));
+        private readonly TestFrameworkImplementor _testFrameworkImplementor = testFrameworkImplementor ?? throw new ArgumentNullException(nameof(testFrameworkImplementor));
 
         /// <summary>
         /// Creates a new instance of the <see cref="TestFrameworkImplementorLogger"/>.
@@ -40,17 +35,12 @@ namespace UnitTestEx.Logging
     /// <summary>
     /// Provides an <see cref="ILogger"/> that writes to the <see cref="TestFrameworkImplementor"/>.
     /// </summary>
-    public class TestFrameworkImplementorLogger : LoggerBase
+    /// <param name="testFrameworkImplementor">The <see cref="TestFrameworkImplementor"/>.</param>
+    /// <param name="name">The name of the logger.</param>
+    /// <param name="scopeProvider">The <see cref="IExternalScopeProvider"/>.</param>
+    public class TestFrameworkImplementorLogger(TestFrameworkImplementor testFrameworkImplementor, string name, IExternalScopeProvider? scopeProvider = null) : LoggerBase(name, scopeProvider)
     {
-        private readonly TestFrameworkImplementor _testFrameworkImplementor;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TestFrameworkImplementorLogger"/> class.
-        /// </summary>
-        /// <param name="testFrameworkImplementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="name">The name of the logger.</param>
-        /// <param name="scopeProvider">The <see cref="IExternalScopeProvider"/>.</param>
-        public TestFrameworkImplementorLogger(TestFrameworkImplementor testFrameworkImplementor, string name, IExternalScopeProvider? scopeProvider = null) : base(name, scopeProvider) => _testFrameworkImplementor = testFrameworkImplementor ?? throw new ArgumentNullException(nameof(testFrameworkImplementor));
+        private readonly TestFrameworkImplementor _testFrameworkImplementor = testFrameworkImplementor ?? throw new ArgumentNullException(nameof(testFrameworkImplementor));
 
         /// <inheritdoc/>
         protected override void WriteMessage(string message) => _testFrameworkImplementor.WriteLine(message);

@@ -1,10 +1,10 @@
-using CoreEx.Hosting;
 using Microsoft.Extensions.Hosting;
 using UnitTestEx.IsolatedFunction;
 
+var startup = new Startup();
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
-    .ConfigureHostStartup<Startup>()
+    .ConfigureServices((hbc, sc) => startup.ConfigureServices(sc))
     .Build();
 
 host.Run();

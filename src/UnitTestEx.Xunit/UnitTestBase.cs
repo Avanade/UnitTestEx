@@ -1,10 +1,9 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Hosting;
-using CoreEx.Validation;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using UnitTestEx.Hosting;
 using UnitTestEx.Mocking;
 using UnitTestEx.Xunit.Internal;
 using Xunit.Abstractions;
@@ -14,18 +13,13 @@ namespace UnitTestEx.Xunit
     /// <summary>
     /// Provides the base test capabilities.
     /// </summary>
-    public abstract class UnitTestBase
+    /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
+    public abstract class UnitTestBase(ITestOutputHelper output)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UnitTestBase"/> class.
-        /// </summary>
-        /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
-        protected UnitTestBase(ITestOutputHelper output) => Output = output ?? throw new ArgumentNullException(nameof(output));
-
         /// <summary>
         /// Gets the <see cref="ITestOutputHelper"/>.
         /// </summary>
-        protected ITestOutputHelper Output { get; }
+        protected ITestOutputHelper Output { get; } = output ?? throw new ArgumentNullException(nameof(output));
 
         /// <summary>
         /// Provides the <b>Xunit</b> <see cref="MockHttpClientFactory"/> capability.
@@ -53,47 +47,36 @@ namespace UnitTestEx.Xunit
             => new(Output, includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
 
         /// <summary>
-        /// Provides the <b>Xunit</b> <see cref="IValidator"/> testing capability.
+        /// Provides the <b>Xunit</b> generic testing capability.
         /// </summary>
-        /// <param name="userName">The user name (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.UserName"/> where configured).</param>
-        /// <returns>The <see cref="ValidationTester{TEntryPoint}"/>.</returns>
-        protected ValidationTester<HostStartup> CreateValidationTester(string? userName = null) => CreateValidationTester<HostStartup>(userName);
-
-        /// <summary>
-        /// Provides the <b>Xunit</b> <see cref="IValidator"/> testing capability.
-        /// </summary>
-        /// <typeparam name="TEntryPoint">The <see cref="IHostStartup"/> <see cref="Type"/>.</typeparam>
-        /// <param name="userName">The user name (<c>null</c> indicates to use the existing <see cref="CoreEx.ExecutionContext.Current"/> <see cref="CoreEx.ExecutionContext.UserName"/> where configured).</param>
-        /// <returns>The <see cref="ValidationTester{TEntryPoint}"/>.</returns>
-        protected ValidationTester<TEntryPoint> CreateValidationTester<TEntryPoint>(string? userName = null) where TEntryPoint : IHostStartup, new()
-        {
-            var vt = new ValidationTester<TEntryPoint>(Output);
-            vt.UseUser(userName);
-            return vt;
-        }
+        /// <returns>The <see cref="GenericTester{TEntryPoint}"/>.</returns>
+        public GenericTester<object> CreateGenericTester() => CreateGenericTester<object>();
 
         /// <summary>
         /// Provides the <b>Xunit</b> generic testing capability.
         /// </summary>
+        /// <typeparam name="TEntryPoint">The <see cref="EntryPoint"/> <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="GenericTester{TEntryPoint}"/>.</returns>
-        protected GenericTester<HostStartup> CreateGenericTester(string? userName = null) => CreateGenericTester<HostStartup>(userName);
+        protected GenericTester<TEntryPoint> CreateGenericTester<TEntryPoint>() where TEntryPoint : class => new(Output);
 
         /// <summary>
         /// Provides the <b>Xunit</b> generic testing capability.
         /// </summary>
-        /// <typeparam name="TEntryPoint">The <see cref="IHostStartup"/> <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="GenericTester{TEntryPoint}"/>.</returns>
-        protected GenericTester<TEntryPoint> CreateGenericTester<TEntryPoint>(string? userName = null) where TEntryPoint : IHostStartup, new()
-        {
-            var gt = new GenericTester<TEntryPoint>(Output);
-            gt.UseUser(userName);
-            return gt;
-        }
+        public GenericTester<object, TValue> CreateGenericTesterFor<TValue>() => CreateGenericTesterFor<object, TValue>();
+
+        /// <summary>
+        /// Provides the <b>Xunit</b> generic testing capability.
+        /// </summary>
+        /// <typeparam name="TEntryPoint">The <see cref="EntryPoint"/> <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
+        /// <returns>The <see cref="GenericTester{TEntryPoint}"/>.</returns>
+        protected GenericTester<TEntryPoint, TValue> CreateGenericTesterFor<TEntryPoint, TValue>() where TEntryPoint : class => new(Output);
 
         /// <summary>
         /// Gets the <see cref="Internal.ObjectComparer"/>.
         /// </summary>
-        [Obsolete($"This is being replaced by the {nameof(UnitTestEx.Abstractions.JsonElementComparer)} and usage of paths to ignore (versus members) to be more explicit.")]
         protected ObjectComparer ObjectComparer => new(new XunitTestImplementor(Output));
     }
 }

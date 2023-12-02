@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using UnitTestEx.Expectations;
 
 namespace UnitTestEx.MSTest.Test.Other
@@ -12,15 +13,15 @@ namespace UnitTestEx.MSTest.Test.Other
             using var test = GenericTester.Create();
             test.Run(() => 1)
                 .AssertSuccess()
-                .Assert(1);
+                .AssertValue(1);
         }
 
         [TestMethod]
         public void Run_Exception()
         {
             using var test = GenericTester.Create();
-            test.ExpectErrorType(CoreEx.Abstractions.ErrorType.ValidationError, "Badness.")
-                .Run(() => throw new CoreEx.ValidationException("Badness."));
+            test.ExpectError("Badness.")
+                .Run(() => throw new DivideByZeroException("Badness."));
         }
     }
 }

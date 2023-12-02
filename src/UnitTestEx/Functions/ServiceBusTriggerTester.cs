@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Azure.Messaging.ServiceBus;
-using CoreEx.Json;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +15,7 @@ using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
 using UnitTestEx.Expectations;
 using UnitTestEx.Hosting;
+using UnitTestEx.Json;
 
 namespace UnitTestEx.Functions
 {
@@ -23,28 +23,21 @@ namespace UnitTestEx.Functions
     /// Provides Azure Function <see cref="ServiceBusTriggerAttribute"/> unit-testing and integration emulation testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
-    public class ServiceBusTriggerTester<TFunction> : HostTesterBase<TFunction>, IExceptionSuccessExpectations<ServiceBusTriggerTester<TFunction>>, ILoggerExpectations<ServiceBusTriggerTester<TFunction>> where TFunction : class
+    public class ServiceBusTriggerTester<TFunction> : HostTesterBase<TFunction>, IExpectations<ServiceBusTriggerTester<TFunction>> where TFunction : class
     {
         private static readonly Semaphore _semaphore = new(1, 1);
-        private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
-        private readonly LoggerExpectations _loggerExpectations;
-
-        /// <inheritdoc/>
-        ExceptionSuccessExpectations IExceptionSuccessExpectations<ServiceBusTriggerTester<TFunction>>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
-
-        /// <inheritdoc/>
-        LoggerExpectations ILoggerExpectations<ServiceBusTriggerTester<TFunction>>.LoggerExpectations => _loggerExpectations;
 
         /// <summary>
         /// Initializes a new <see cref="ServiceBusTriggerTester{TFunction}"/> class.
         /// </summary>
-        /// <param name="tester">The <see cref="TesterBase"/>.</param>
+        /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        internal ServiceBusTriggerTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope)
-        {
-            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(tester.Implementor);
-            _loggerExpectations = new LoggerExpectations(tester.Implementor);
-        }
+        public ServiceBusTriggerTester(TesterBase owner, IServiceScope serviceScope) : base(owner, serviceScope) => ExpectationsArranger = new ExpectationsArranger<ServiceBusTriggerTester<TFunction>>(owner, this);
+
+        /// <summary>
+        /// Gets the <see cref="ExpectationsArranger{TSelf}"/>.
+        /// </summary>
+        public ExpectationsArranger<ServiceBusTriggerTester<TFunction>> ExpectationsArranger { get; }
 
         /// <summary>
         /// Runs the Service Bus Triggered (see <see cref="ServiceBusTriggerAttribute"/>) function expected as a parameter within the <paramref name="expression"/>.
@@ -92,13 +85,12 @@ namespace UnitTestEx.Functions
             }).ConfigureAwait(false);
 
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            var logs = Tester.SharedState.GetLoggerMessages();
+            var logs = Owner.SharedState.GetLoggerMessages();
             LogOutput(ex, ms, sbv, sba, ssba, logs);
 
-            _exceptionSuccessExpectations.Assert(ex);
-            _loggerExpectations.Assert(logs);
+            await ExpectationsArranger.AssertAsync(logs, ex).ConfigureAwait(false);
 
-            return new VoidAssertor(ex, Implementor, JsonSerializer);
+            return new VoidAssertor(Owner, ex);
         }
 
         /// <summary>
@@ -200,7 +192,7 @@ namespace UnitTestEx.Functions
                     Implementor.WriteLine("Body:");
                     try
                     {
-                        var jt = JsonSerializer.Deserialize(sbrm.Body);
+                        var jt = JsonSerializer.Deserialize(sbrm.Body.ToString());
                         var json = JsonSerializer.Serialize(jt, JsonWriteFormat.Indented);
                         Implementor.WriteLine(json);
                     }
@@ -231,42 +223,6 @@ namespace UnitTestEx.Functions
             Implementor.WriteLine("");
             Implementor.WriteLine(new string('=', 80));
             Implementor.WriteLine("");
-        }
-
-        /// <summary>
-        /// Executes an <i>Azure Function</i> run-time emulation by performing a <see cref="ServiceBusReceiver.ReceiveMessageAsync(TimeSpan?, System.Threading.CancellationToken)"/> as specified by the underlying <see cref="ServiceBusTriggerAttribute"/>.
-        /// </summary>
-        /// <param name="methodName">The function method name. One method parameter must use the <see cref="ServiceBusTriggerAttribute"/>.</param>
-        /// <param name="emulator">The <see cref="ServiceBusEmulatorTester{TFunction}"/> function that will orchestrate the emulation.</param>
-        /// <param name="delay">Adds the specified delay before any underlying Service Bus receive operation. This may be required where tests appear to have concurreny issues; i.e. unexpected message challenges.</param>
-        /// <remarks>The <paramref name="emulator"/> execution happens within a synchronized context to ensure there is no concurrency of processing (within the host process) for the duration of the simulation test to minimize cross 
-        /// thread service bus message contamination. <para>The <see cref="ServiceBusTriggerAttribute.Connection"/> and <see cref="ServiceBusTriggerAttribute.QueueName"/> (etc.) are loaded from <see cref="IConfiguration"/> as is expected.</para></remarks>
-        public void Emulate(string methodName, Func<ServiceBusEmulatorTester<TFunction>, Task> emulator, TimeSpan? delay = null) => EmulateAsync(methodName, emulator, delay).GetAwaiter().GetResult();
-
-        /// <summary>
-        /// Executes an <i>Azure Function</i> run-time emulation by performing a <see cref="ServiceBusReceiver.ReceiveMessageAsync(TimeSpan?, System.Threading.CancellationToken)"/> as specified by the underlying <see cref="ServiceBusTriggerAttribute"/>.
-        /// </summary>
-        /// <param name="methodName">The function method name. One method parameter must use the <see cref="ServiceBusTriggerAttribute"/>.</param>
-        /// <param name="emulator">The <see cref="ServiceBusEmulatorTester{TFunction}"/> function that will orchestrate the emulation.</param>
-        /// <param name="delay">Adds the specified delay before any underlying Service Bus receive operation. This may be required where tests appear to have concurreny issues; i.e. unexpected message challenges.</param>
-        /// <remarks>The <paramref name="emulator"/> execution happens within a synchronized context to ensure there is no concurrency of processing (within the host process) for the duration of the simulation test to minimize cross 
-        /// thread service bus message contamination. <para>The <see cref="ServiceBusTriggerAttribute.Connection"/> and <see cref="ServiceBusTriggerAttribute.QueueName"/> (etc.) are loaded from <see cref="IConfiguration"/> as is expected.</para></remarks>
-        public async Task EmulateAsync(string methodName, Func<ServiceBusEmulatorTester<TFunction>, Task> emulator, TimeSpan? delay = null)
-        {
-            if (emulator == null)
-                throw new ArgumentNullException(nameof(emulator));
-
-            await using var sim = new ServiceBusEmulatorTester<TFunction>(ServiceScope, Implementor, JsonSerializer, methodName, delay);
-
-            try
-            {
-                _semaphore.WaitOne();
-                await emulator(sim).ConfigureAwait(false);
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Hosting;
 using System;
+using UnitTestEx.Hosting;
 
 namespace UnitTestEx.NUnit
 {
@@ -11,16 +11,31 @@ namespace UnitTestEx.NUnit
     public static class GenericTester
     {
         /// <summary>
-        /// Creates a new instance of the <see cref="GenericTester"/> class.
+        /// Creates a new instance of the <see cref="Internal.GenericTester{TEntryPoint}"/> class.
         /// </summary>
         /// <returns>The <see cref="Internal.GenericTester{TEntryPoint}"/>.</returns>
-        public static Internal.GenericTester<HostStartup> Create() => Create<HostStartup>();
+        public static Internal.GenericTester<object> Create() => Create<object>();
 
         /// <summary>
-        /// Creates a new instance of the <see cref="GenericTester"/> class.
+        /// Creates a new instance of the <see cref="Internal.GenericTester{TEntryPoint}"/> class.
         /// </summary>
-        /// <typeparam name="TEntryPoint">The <see cref="IHostStartup"/> <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TEntryPoint">The <see cref="EntryPoint"/> <see cref="Type"/>.</typeparam>
         /// <returns>The <see cref="Internal.GenericTester{TEntryPoint}"/>.</returns>
-        public static Internal.GenericTester<TEntryPoint> Create<TEntryPoint>() where TEntryPoint : IHostStartup, new() => new();
+        public static Internal.GenericTester<TEntryPoint> Create<TEntryPoint>() where TEntryPoint : class => new();
+
+        /// <summary>
+        /// Creates a new instance of the <typeparamref name="TValue"/> <see cref="Internal.GenericTester{TEntryPoint, TValue}"/> class.
+        /// </summary>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
+        /// <returns>The <see cref="Internal.GenericTester{TEntryPoint, TValue}"/>.</returns>
+        public static Internal.GenericTester<object, TValue> CreateFor<TValue>() => CreateFor<object, TValue>();
+
+        /// <summary>
+        /// Creates a new instance of the <typeparamref name="TValue"/> <see cref="Internal.GenericTester{TEntryPoint, TValue}"/> class.
+        /// </summary>
+        /// <typeparam name="TEntryPoint">The <see cref="EntryPoint"/> <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
+        /// <returns>The <see cref="Internal.GenericTester{TEntryPoint, TValue}"/>.</returns>
+        public static Internal.GenericTester<TEntryPoint, TValue> CreateFor<TEntryPoint, TValue>() where TEntryPoint : class => new();
     }
 }

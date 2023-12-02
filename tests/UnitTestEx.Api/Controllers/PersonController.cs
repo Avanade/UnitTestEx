@@ -1,7 +1,4 @@
-﻿using CoreEx;
-using CoreEx.AspNetCore.Http;
-using CoreEx.AspNetCore.WebApis;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -38,6 +35,8 @@ namespace UnitTestEx.Api.Controllers
                 return new ObjectResult(new Person { Id = 2, FirstName = "Jane", LastName = "Jones" });
             else if (id == 3)
                 return new ObjectResult(new Person { Id = 3, FirstName = "Brad", LastName = "Davies" });
+            else if (id == 88)
+                return BadRequest("No can do eighty-eight.");
             else
                 return new NotFoundResult();
         }
@@ -48,18 +47,14 @@ namespace UnitTestEx.Api.Controllers
             return new ObjectResult($"{firstName}-{lastName}-{string.Join(",", id)}");
         }
 
-        [HttpGet("paging")]
-        public IActionResult GetPaging()
-        {
-            var ro = Request.GetRequestOptions();
-            return new ObjectResult(ro.Paging);
-        }
-
         [HttpPost("{id}")]
         public IActionResult Update(int id, [FromBody] Person person)
         {
             if (id == 88)
-                return WebApiBase.CreateActionResultFromExtendedException(new ValidationException("No can do eighty-eight."));
+                return BadRequest("No can do eighty-eight.");
+
+            if (id == 99)
+                return new NotFoundResult();
 
             var msd = new ModelStateDictionary();
 
@@ -72,7 +67,7 @@ namespace UnitTestEx.Api.Controllers
             if (!msd.IsValid)
                 return new BadRequestObjectResult(msd);
 
-            _logger.LogInformation($"Person {id} is being updated.");
+            _logger.LogInformation("{message}", $"Person {id} is being updated.");
             person.Id = id;
             return new JsonResult(person);
         }

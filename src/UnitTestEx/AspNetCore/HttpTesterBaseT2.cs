@@ -1,9 +1,9 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Http;
 using Microsoft.AspNetCore.TestHost;
 using System;
 using System.Net.Http;
+using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Expectations;
 
@@ -14,42 +14,19 @@ namespace UnitTestEx.AspNetCore
     /// </summary>
     /// <typeparam name="TValue">The response value <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="Type"/> representing itself.</typeparam>
-    public abstract class HttpTesterBase<TValue, TSelf> : HttpTesterBase, IExceptionSuccessExpectations<TSelf>, IHttpResponseExpectations<TSelf>, IResponseValueExpectations<TValue, TSelf>, IEventExpectations<TSelf>, ILoggerExpectations<TSelf> where TSelf : HttpTesterBase<TValue, TSelf>
+    public abstract class HttpTesterBase<TValue, TSelf> : HttpTesterBase, IHttpResponseMessageExpectations<TSelf>, IValueExpectations<TValue, TSelf> where TSelf : HttpTesterBase<TValue, TSelf>
     {
-        private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
-        private readonly HttpResponseExpectations _httpResponseExpectations;
-        private readonly ResponseValueExpectations<TSelf, TValue> _responseValueExpectations;
-        private readonly EventExpectations _eventExpectations;
-        private readonly LoggerExpectations _loggerExpectations;
-
         /// <summary>
         /// Initializes a new <see cref="HttpTesterBase{TSelf}"/> class.
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="testServer">The <see cref="TestServer"/>.</param>
-        internal HttpTesterBase(TesterBase owner, TestServer testServer) : base(owner, testServer)
-        {
-            _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Implementor);
-            _httpResponseExpectations = new HttpResponseExpectations(Owner);
-            _responseValueExpectations = new ResponseValueExpectations<TSelf, TValue>(Owner, (TSelf)this);
-            _eventExpectations = new EventExpectations(Owner);
-            _loggerExpectations = new LoggerExpectations(Owner.Implementor);
-        }
+        public HttpTesterBase(TesterBase owner, TestServer testServer) : base(owner, testServer) => ExpectationsArranger = new ExpectationsArranger<TSelf>(owner, (TSelf)this);
 
-        /// <inheritdoc/>
-        ExceptionSuccessExpectations IExceptionSuccessExpectations<TSelf>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
-
-        /// <inheritdoc/>
-        HttpResponseExpectations IHttpResponseExpectations<TSelf>.HttpResponseExpectations => _httpResponseExpectations;
-
-        /// <inheritdoc/>
-        ResponseValueExpectations<TSelf, TValue> IResponseValueExpectations<TValue, TSelf>.ResponseValueExpectations => _responseValueExpectations;
-
-        /// <inheritdoc/>
-        EventExpectations IEventExpectations<TSelf>.EventExpectations => _eventExpectations;
-
-        /// <inheritdoc/>
-        LoggerExpectations ILoggerExpectations<TSelf>.LoggerExpectations => _loggerExpectations;
+        /// <summary>
+        /// Gets the <see cref="ExpectationsArranger{TSelf}"/>.
+        /// </summary>
+        public ExpectationsArranger<TSelf> ExpectationsArranger { get; }
 
         /// <summary>
         /// Sets (overrides) the test user name (defaults to <see cref="TesterBase.UserName"/>).
@@ -80,27 +57,6 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <inheritdoc/>
-        protected override void AssertExpectations(HttpResponseMessage res)
-        {
-            var hr = HttpResult.CreateAsync(res).GetAwaiter().GetResult();
-            try
-            {
-                hr.ThrowOnError(true, true);
-                _exceptionSuccessExpectations.Assert(null);
-            }
-            catch (AggregateException aex)
-            {
-                _exceptionSuccessExpectations.Assert(aex.InnerException ?? aex);
-            }
-            catch (Exception ex)
-            {
-                _exceptionSuccessExpectations.Assert(ex);
-            }
-
-            _httpResponseExpectations.Assert(hr);
-            _responseValueExpectations.Assert(HttpResponseExpectations.GetValueFromHttpResponseMessage<TValue>(res, JsonSerializer));
-            _eventExpectations.Assert();
-            _loggerExpectations.Assert(LastLogs);
-        }
+        protected override Task AssertExpectationsAsync(HttpResponseMessage res) => ExpectationsArranger.AssertAsync(ExpectationsArranger.CreateArgs(LastLogs).AddExtra(res));
     }
 }
