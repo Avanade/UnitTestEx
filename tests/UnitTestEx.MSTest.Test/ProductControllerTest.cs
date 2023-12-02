@@ -37,7 +37,7 @@ namespace UnitTestEx.MSTest.Test
                 .Controller<ProductController>()
                 .Run(c => c.Get("abc"))
                 .AssertOK()
-                .Assert(new { id = "Abc", description = "A blue carrot" });
+                .AssertValue(new { id = "Abc", description = "A blue carrot" });
         }
 
         [TestMethod]

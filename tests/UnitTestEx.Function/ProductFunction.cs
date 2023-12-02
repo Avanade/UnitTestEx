@@ -4,6 +4,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Net;
 using System.Net.Http;
@@ -21,7 +22,7 @@ namespace UnitTestEx.Function
         }
 
         [FunctionName("ProductFunction")]
-        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", Route = "product/{id}")] HttpRequest req, string id, ILogger log)
+        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", Route = "product/{id}")] HttpRequest _, string id, ILogger log)
             => await Logic(id, log).ConfigureAwait(false);
 
         private async Task<IActionResult> Logic(string id, ILogger log)
@@ -38,12 +39,13 @@ namespace UnitTestEx.Function
             result.EnsureSuccessStatusCode();
 
             var str = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
-            var val = JsonConvert.DeserializeObject(str);
-            return new JsonResult(val);
+            JObject val = JObject.Parse(str);
+          
+            return new JsonResult(new { id = val["id"].Value<string>(), description = val["description"].Value<string>() });
         }
 
         [FunctionName("TimerTriggered")]
-        public Task DailyRun([TimerTrigger("0 0 0 */1 * *", RunOnStartup = true)] TimerInfo timer)
+        public Task DailyRun([TimerTrigger("0 0 0 */1 * *", RunOnStartup = true)] TimerInfo _)
         {
             return Task.CompletedTask;
         }

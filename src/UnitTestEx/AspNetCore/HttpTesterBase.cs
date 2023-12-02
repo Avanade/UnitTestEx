@@ -1,9 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Http;
-using CoreEx.Json;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -16,7 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
-using Ceh = CoreEx.Http;
+using UnitTestEx.Json;
 
 namespace UnitTestEx.AspNetCore
 {
@@ -35,7 +32,7 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="testServer">The <see cref="TestServer"/>.</param>
-        internal HttpTesterBase(TesterBase owner, TestServer testServer)
+        public HttpTesterBase(TesterBase owner, TestServer testServer)
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
             TestServer = testServer ?? throw new ArgumentNullException(nameof(testServer));
@@ -76,22 +73,22 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Gets or sets the last set of logs.
         /// </summary>
-        internal IEnumerable<string?>? LastLogs { get; set; }
+        protected IEnumerable<string?>? LastLogs { get; set; }
 
         /// <summary>
         /// Sends with no content.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
-        /// <param name="requestOptions">The <see cref="Ceh.HttpRequestOptions"/>.</param>
-        /// <param name="args">The <see cref="Ceh.IHttpArg"/> array.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
+        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, Action<HttpRequestMessage>? requestModifier)
         {
-            var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, requestOptions, args).ConfigureAwait(false);
+            using var client = CreateHttpClient();
+            var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, requestModifier).ConfigureAwait(false);
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            AssertExpectations(res);
-            return new HttpResponseMessageAssertor(res, Implementor, JsonSerializer);
+            await AssertExpectationsAsync(res).ConfigureAwait(false);
+            return new HttpResponseMessageAssertor(Owner, res);
         }
 
         /// <summary>
@@ -101,18 +98,18 @@ namespace UnitTestEx.AspNetCore
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <param name="content">The content.</param>
         /// <param name="contentType">The content type.</param>
-        /// <param name="requestOptions">The <see cref="Ceh.HttpRequestOptions"/>.</param>
-        /// <param name="args">The <see cref="Ceh.IHttpArg"/> array.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, string? content, string? contentType, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
+        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
         {
             if (content != null && httpMethod == HttpMethod.Get)
                 Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
-            var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, content, contentType, requestOptions, args).ConfigureAwait(false);
+            using var client = CreateHttpClient();
+            var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, content, contentType, requestModifier).ConfigureAwait(false);
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            AssertExpectations(res);
-            return new HttpResponseMessageAssertor(res, Implementor, JsonSerializer);
+            await AssertExpectationsAsync(res).ConfigureAwait(false);
+            return new HttpResponseMessageAssertor(Owner, res);
         }
 
         /// <summary>
@@ -121,96 +118,34 @@ namespace UnitTestEx.AspNetCore
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <param name="value">The value to be JSON serialized.</param>
-        /// <param name="requestOptions">The <see cref="Ceh.HttpRequestOptions"/>.</param>
-        /// <param name="args">The <see cref="Ceh.IHttpArg"/> array.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, object? value, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
+        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
         {
             if (value != null && httpMethod == HttpMethod.Get)
                 Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
-            var res = await new TypedHttpClient(this).SendAsync(httpMethod, requestUri, value, requestOptions, args).ConfigureAwait(false);
+            using var client = CreateHttpClient();
+            var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, value, requestModifier).ConfigureAwait(false);
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            AssertExpectations(res);
-            return new HttpResponseMessageAssertor(res, Implementor, JsonSerializer);
-        }
-
-        /// <summary>
-        /// Sends using the <paramref name="func"/>.
-        /// </summary>
-        /// <param name="func">The function to execute the HTTP request.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-        protected Task<HttpResponseMessageAssertor> RunAsync<TAgent>(Func<TAgent, Task<HttpResult>> func) where TAgent : TypedHttpClientBase
-            => RunWrapperAsync<TAgent, HttpResponseMessageAssertor>(async a => new HttpResponseMessageAssertor((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)).Response, Implementor, JsonSerializer));
-
-        /// <summary>
-        /// Sends using the <paramref name="func"/>.
-        /// </summary>
-        /// <param name="func">The function to execute the HTTP request.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-        protected Task<HttpResponseMessageAssertor> RunAsync<TAgent>(Func<TAgent, Task<HttpResponseMessage>> func) where TAgent : TypedHttpClientBase
-            => RunWrapperAsync<TAgent, HttpResponseMessageAssertor>(async a => new HttpResponseMessageAssertor((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)), Implementor, JsonSerializer));
-
-        /// <summary>
-        /// Sends using the <paramref name="func"/>.
-        /// </summary>
-        /// <param name="func">The function to execute the HTTP request.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-        protected Task<HttpResponseMessageAssertor<TValue>> RunAsync<TAgent, TValue>(Func<TAgent, Task<HttpResult<TValue>>> func) where TAgent : TypedHttpClientBase
-            => RunWrapperAsync<TAgent, HttpResponseMessageAssertor<TValue>>(async a => new HttpResponseMessageAssertor<TValue>((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)).Response, Implementor, JsonSerializer));
-
-        /// <summary>
-        /// Sends using the <paramref name="func"/>.
-        /// </summary>
-        /// <param name="func">The function to execute the HTTP request.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-        protected Task<HttpResponseMessageAssertor<TValue>> RunAsync<TAgent, TValue>(Func<TAgent, Task<HttpResponseMessage>> func) where TAgent : TypedHttpClientBase
-            => RunWrapperAsync<TAgent, HttpResponseMessageAssertor<TValue>>(async a => new HttpResponseMessageAssertor<TValue>((await (func ?? throw new ArgumentNullException(nameof(func))).Invoke(a).ConfigureAwait(false)), Implementor, JsonSerializer));
-
-        /// <summary>
-        /// Wraps and runs the function.
-        /// </summary>
-        private async Task<TAssertor> RunWrapperAsync<TAgent, TAssertor>(Func<TAgent, Task<TAssertor>> func) where TAgent : TypedHttpClientBase where TAssertor : HttpResponseMessageAssertorBase
-        {
-            var sc = new ServiceCollection();
-            sc.AddExecutionContext(sp => new CoreEx.ExecutionContext { UserName = UserName ?? Owner.SetUp.DefaultUserName });
-            sc.AddSingleton(JsonSerializer);
-            sc.AddLogging(lb => { lb.SetMinimumLevel(Owner.SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(Owner.LoggerProvider); });
-            sc.AddSingleton(new HttpClient(new HttpDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress });
-            sc.AddSingleton(Owner.Configuration);
-            sc.AddDefaultSettings();
-            sc.AddSingleton(Owner.SharedState);
-            sc.AddScoped<TAgent>();
-
-            using var scope = sc.BuildServiceProvider().CreateScope();
-            var agent = scope.ServiceProvider.GetRequiredService<TAgent>();
-
-            var resp = await func(agent).ConfigureAwait(false);
-
-            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            AssertExpectations(resp.Response);
-
-            scope.Dispose();
-            return resp;
+            await AssertExpectationsAsync(res).ConfigureAwait(false);
+            return new HttpResponseMessageAssertor(Owner, res);
         }
 
         /// <summary>
         /// Creates an <see cref="HttpClient"/> for the <see cref="TestServer"/> that logs the request and response to the test output.
         /// </summary>
         /// <returns>The <see cref="HttpClient"/>.</returns>
-        protected HttpClient CreateHttpClient() => new(new HttpDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress };
+        public HttpClient CreateHttpClient() => new(new HttpDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress };
 
         /// <summary>
-        /// Orchestrates the HTTP request send.
+        /// Orchestrates the HTTP request send including logging and <see cref="TestSetUp.OnBeforeHttpRequestMessageSendAsync"/>.
         /// </summary>
-        private class HttpDelegatingHandler : DelegatingHandler
+        /// <param name="httpTester">The <see cref="HttpTesterBase"/>.</param>
+        /// <param name="innerHandler">The inner <see cref="HttpMessageHandler"/>.</param>
+        public class HttpDelegatingHandler(HttpTesterBase httpTester, HttpMessageHandler innerHandler) : DelegatingHandler(innerHandler)
         {
-            private readonly HttpTesterBase _httpTester;
-
-            /// <summary>
-            /// Initialize a new instance of the class.
-            /// </summary>
-            public HttpDelegatingHandler(HttpTesterBase httpTester, HttpMessageHandler innerHandler) : base(innerHandler) => _httpTester = httpTester;
+            private readonly HttpTesterBase _httpTester = httpTester;
 
             /// <inheritdoc/>
             protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -224,6 +159,7 @@ namespace UnitTestEx.AspNetCore
                 var sw = Stopwatch.StartNew();
                 var res = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 sw.Stop();
+
                 await Task.Delay(0, cancellationToken).ConfigureAwait(false);
                 _httpTester.LastLogs = _httpTester.Owner.SharedState.GetLoggerMessages(_httpTester.RequestId);
                 _httpTester.LogResponse(res, sw, _httpTester.LastLogs);
@@ -234,33 +170,50 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Provides the requisite <see cref="HttpClient"/> sending capabilities.
         /// </summary>
-        private class TypedHttpClient : Ceh.TypedHttpClientBase
+        /// <param name="client">The <see cref="HttpClient"/>.</param>
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        public class TypedHttpClient(HttpClient client, IJsonSerializer jsonSerializer)
         {
-            /// <summary>
-            /// Initialize a new instance of the class.
-            /// </summary>
-            public TypedHttpClient(HttpTesterBase httpTester) : base(httpTester.CreateHttpClient(), httpTester.JsonSerializer) { }
+            private readonly HttpClient _client = client ?? throw new ArgumentNullException(nameof(client));
+            private readonly IJsonSerializer _jsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
 
             /// <summary>
             /// Sends with no content.
             /// </summary>
-            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
-                => await SendAsync(await CreateRequestAsync(method, requestUri ?? "", requestOptions, args).ConfigureAwait(false), default).ConfigureAwait(false);
+            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, Action<HttpRequestMessage>? requestModifier)
+                => await SendAsync(CreateRequest(method, requestUri ?? "", null, requestModifier), default).ConfigureAwait(false);
 
             /// <summary>
             /// Sends with content.
             /// </summary>
-            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, string? content, string? contentType, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
-                => await SendAsync(await CreateContentRequestAsync(method, requestUri ?? "", new StringContent(content ?? string.Empty, Encoding.UTF8, contentType ?? MediaTypeNames.Text.Plain), requestOptions, args).ConfigureAwait(false), default).ConfigureAwait(false);
+            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
+                => await SendAsync(CreateRequest(method, requestUri ?? "", new StringContent(content ?? string.Empty, Encoding.UTF8, contentType ?? MediaTypeNames.Text.Plain), requestModifier), default).ConfigureAwait(false);
 
             /// <summary>
             /// Sends with JSON value.
             /// </summary>
-            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, object? value, Ceh.HttpRequestOptions? requestOptions, params Ceh.IHttpArg[] args)
-                => await SendAsync(await CreateJsonRequestAsync(method, requestUri ?? "", value, requestOptions, args).ConfigureAwait(false), default).ConfigureAwait(false);
+            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
+                => await SendAsync(CreateRequest(method, requestUri ?? "", new StringContent(_jsonSerializer.Serialize(value), Encoding.UTF8, MediaTypeNames.Application.Json), requestModifier), default).ConfigureAwait(false);
 
             /// <inheritdoc/>
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Client.SendAsync(request, cancellationToken);
+            private Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => _client.SendAsync(request, cancellationToken);
+
+            /// <summary>
+            /// Create the request.
+            /// </summary>
+            private static HttpRequestMessage CreateRequest(HttpMethod method, string requestUri, HttpContent? content, Action<HttpRequestMessage>? requestModifier)
+            {
+                var uri = new Uri(requestUri, UriKind.RelativeOrAbsolute);
+                var ub = new UriBuilder(uri.IsAbsoluteUri ? uri : new Uri(new Uri("https://unittestex"), requestUri));
+
+                var request = new HttpRequestMessage(method, ub.Uri);
+                if (content != null)
+                    request.Content = content;
+
+                requestModifier?.Invoke(request);
+
+                return request;
+            }
         }
 
         /// <summary>
@@ -339,8 +292,8 @@ namespace UnitTestEx.AspNetCore
             Implementor.WriteLine($"Elapsed (ms): {(sw == null ? "none" : sw.Elapsed.TotalMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture))}");
 
             var hdrs = res.Headers?.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-            Implementor.WriteLine($"Headers: {(hdrs == null || !hdrs.Any() ? "none" : "")}");
-            if (hdrs != null && hdrs.Any())
+            Implementor.WriteLine($"Headers: {(hdrs == null || hdrs.Length == 0 ? "none" : "")}");
+            if (hdrs != null && hdrs.Length > 0)
             {
                 foreach (var hdr in hdrs)
                 {
@@ -377,6 +330,6 @@ namespace UnitTestEx.AspNetCore
         /// Perform the assertion of any expectations.
         /// </summary>
         /// <param name="res">The <see cref="HttpResponseMessage"/>/</param>
-        protected abstract void AssertExpectations(HttpResponseMessage res);
+        protected abstract Task AssertExpectationsAsync(HttpResponseMessage res);
     }
 }

@@ -1,8 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Configuration;
-using CoreEx.Events;
-using CoreEx.Wildcards;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,10 +8,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Functions;
+using UnitTestEx.Json;
 
 namespace UnitTestEx
 {
@@ -31,6 +30,22 @@ namespace UnitTestEx
         private int _setUpCount;
         private Func<int, object?, CancellationToken, Task<bool>>? _setUpFunc;
         private Func<int, object?, CancellationToken, Task<(bool, string?)>>? _autoSetUpFunc;
+
+        #region Static
+
+        /// <summary>
+        /// Static constructor.
+        /// </summary>
+        /// <remarks>Wires up the <see cref="OneOffTestSetUpAttribute.SetUp()"/> invocation whenever an <see cref="Assembly"/> is <see cref="AppDomain.AssemblyLoad">loaded.</see></remarks>
+        static TestSetUp()
+        {
+            // Wire up for any assemblies already loaded.
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                OneOffTestSetUpAttribute.SetUp(assembly);
+
+            // Wire up for any future assembly loading.
+            AppDomain.CurrentDomain.AssemblyLoad += (_, e) => OneOffTestSetUpAttribute.SetUp(e.LoadedAssembly);
+        }
 
         /// <summary>
         /// Gets or sets the default <see cref="TestSetUp"/>.
@@ -60,6 +75,13 @@ namespace UnitTestEx
         public static int TaskDelayMilliseconds { get; set; } = 1;
 
         /// <summary>
+        /// Gets the <see cref="TesterExtensionsConfig"/> collection.
+        /// </summary>
+        /// <remarks>These are statically defined extension opportunities that allow additional capabilities to be included within the testing as if implemented natively, minimizing the need to inherit/override, etc. It is intended that
+        /// the extensions would be registered as a one-off set up (see <see cref="OneOffTestSetUpBase"/>).</remarks>
+        public static List<TesterExtensionsConfig> Extensions { get; } = [];
+
+        /// <summary>
         /// Builds and gets a new <see cref="IConfiguration"/> from the: '<c>appsettings.unittest.json</c>', environment variables (using optional <paramref name="environmentVariablePrefix"/>), and command-line arguments.
         /// </summary>
         /// <param name="environmentVariablePrefix">The prefix that the environment variables must start with (will automatically add a trailing underscore where not supplied).</param>
@@ -79,14 +101,6 @@ namespace UnitTestEx
             cb.AddCommandLine(System.Environment.GetCommandLineArgs());
             return cb.Build();
         }
-
-        /// <summary>
-        /// Gets the <see cref="DefaultSettings"/> using the <see cref="GetConfiguration(string?)"/>.
-        /// </summary>
-        /// <param name="environmentVariablePrefix">The prefix that the environment variables must start with (will automatically add a trailing underscore where not supplied).</param>
-        /// <returns>The <see cref="DefaultSettings"/>.</returns>
-        /// <remarks>The is built outside of any host and therefore host specific configuration is not available.</remarks>
-        public static DefaultSettings GetSettings(string? environmentVariablePrefix = null) => new(GetConfiguration(environmentVariablePrefix));
 
         /// <summary>
         /// Gets the <see cref="AutoSetUpFunc"/> result output from the beginning of the internal queue.
@@ -111,6 +125,23 @@ namespace UnitTestEx
             }
         }
 
+        #endregion
+
+        /// <summary>
+        /// Gets or sets the <see cref="IJsonSerializer"/>.
+        /// </summary>
+        public IJsonSerializer JsonSerializer { get; set; } = Json.JsonSerializer.Default;
+
+        /// <summary>
+        /// Gets or sets the <see cref="JsonElementComparerOptions"/>.
+        /// </summary>
+        public JsonElementComparerOptions JsonComparerOptions { get; set; } = JsonElementComparerOptions.Default;
+
+        /// <summary>
+        /// Gets the dictionary for additional properties related to test set up.
+        /// </summary>
+        public Dictionary<string, object?> Properties { get; private set; } = [];
+
         /// <summary>
         /// Gets or sets the default user name.
         /// </summary>
@@ -123,49 +154,15 @@ namespace UnitTestEx
         public Func<object, string>? UserNameConverter { get; set; }
 
         /// <summary>
-        /// Defines an <see cref="CoreEx.Entities.IETag.ETag"/> value that <i>should</i> result in a concurrency error.
+        /// Defines an <b>ETag</b> value that <i>should</i> result in a concurrency error.
         /// </summary>
         /// <remarks>Defaults to '<c>ZZZZZZZZZZZZ</c>'.</remarks>
         public string ConcurrencyErrorETag { get; set; } = "ZZZZZZZZZZZZ";
 
         /// <summary>
-        /// Indicates whether the <b>ExpectedEvents</b> functionality is enabled via the <see cref="UnitTestEx.Expectations"/> namespace.
-        /// </summary>
-        /// <remarks>Where enabled the <see cref="IEventSender"/> will be automatically replaced by the <see cref="Expectations.ExpectedEventPublisher"/> that is used by the <see cref="Expectations.EventExpectations.Assert"/> to verify that the
-        /// expected events were sent. Therefore, the events will <b>not</b> be sent to any external eventing/messaging system as a result.</remarks>
-        public bool ExpectedEventsEnabled { get; set; } = false;
-
-        /// <summary>
-        /// Indicates whether to verify that no events are published as the default behaviour. Defaults to <c>true</c>.
-        /// </summary>
-        /// <remarks>This is dependent on <see cref="ExpectedEventsEnabled"/>, please read for more information.</remarks>
-        public bool ExpectNoEvents { get; set; } = true;
-
-        /// <summary>
-        /// Gets or sets the <see cref="Expectations.EventExpectations.Expect(string?, EventData, string[])"/> and <see cref="Expectations.EventExpectations.Expect(string?, string, EventData, string[])"/> members to ignore.
-        /// </summary>
-        /// <remarks>By default <see cref="EventDataBase.Id"/>, <see cref="EventDataBase.CorrelationId"/>, <see cref="EventDataBase.Timestamp"/>, <see cref="EventDataBase.ETag"/> and <see cref="EventDataBase.Key"/> are ignored.</remarks>
-        public List<string> ExpectedEventsPathsToIgnore { get; set; } = new() { nameof(EventDataBase.Id), nameof(EventDataBase.CorrelationId), nameof(EventDataBase.Timestamp), nameof(EventDataBase.ETag), nameof(EventDataBase.Key) };
-
-        /// <summary>
-        /// Gets or sets the <see cref="Expectations.EventExpectations"/> <see cref="Wildcard"/> parser.
-        /// </summary>
-        public Wildcard ExpectedEventsWildcard { get; set; } = new Wildcard(WildcardSelection.MultiAll);
-
-        /// <summary>
-        /// Gets or sets the <see cref="Expectations.EventExpectations"/> <see cref="EventDataFormatter"/> to determine the <see cref="EventDataFormatter.SubjectSeparatorCharacter"/> and <see cref="EventDataFormatter.TypeSeparatorCharacter"/>.
-        /// </summary>
-        public EventDataFormatter ExpectedEventsEventDataFormatter { get; set; } = new EventDataFormatter();
-
-        /// <summary>
         /// Gets or sets the <see cref="Action"/> that enables the <see cref="IServiceCollection"/> to be updated before each execution.
         /// </summary>
         public Action<IServiceCollection>? ConfigureServices { get; set; }
-
-        /// <summary>
-        /// Gets or sets the <see cref="CoreEx.ExecutionContext"/> factory to create a new instance outside of the host.
-        /// </summary>
-        public Func<IServiceProvider, CoreEx.ExecutionContext> ExecutionContextFactory { get; set; } = _ => new CoreEx.ExecutionContext();
 
         /// <summary>
         /// Gets or sets the function that enables the <see cref="HttpRequestMessage"/> to be updated before each send for the <see cref="AspNetCore.ApiTesterBase{TEntryPoint, TSelf}"/>.
@@ -186,18 +183,21 @@ namespace UnitTestEx
 
         /// <inheritdoc/>
         /// <remarks>The <see cref="RegisterSetUp"/> and <see cref="RegisterAutoSetUp"/> will reference the originating unless explicitly registered (overridden) for the cloned instance.</remarks>
-        public object Clone() => new TestSetUp
+        object ICloneable.Clone() => Clone();
+
+        /// <summary>
+        /// Creates a new instance that is a copy of the current instance.
+        /// </summary>
+        /// <remarks>The <see cref="RegisterSetUp"/> and <see cref="RegisterAutoSetUp"/> will reference the originating unless explicitly registered (overridden) for the cloned instance.</remarks>
+        public TestSetUp Clone() => new()
         {
+            JsonSerializer = JsonSerializer,
+            JsonComparerOptions = JsonComparerOptions,
+            Properties = new Dictionary<string, object?>(Properties),
             DefaultUserName = DefaultUserName,
             UserNameConverter = UserNameConverter,
             ConcurrencyErrorETag = ConcurrencyErrorETag,
-            ExpectedEventsEnabled = ExpectedEventsEnabled,
-            ExpectNoEvents = ExpectNoEvents,
-            ExpectedEventsPathsToIgnore = ExpectedEventsPathsToIgnore,
-            ExpectedEventsWildcard = ExpectedEventsWildcard,
-            ExpectedEventsEventDataFormatter = ExpectedEventsEventDataFormatter,
             ConfigureServices = ConfigureServices,
-            ExecutionContextFactory = ExecutionContextFactory,
             OnBeforeHttpRequestMessageSendAsync = OnBeforeHttpRequestMessageSendAsync,
             OnBeforeHttpRequestSendAsync = OnBeforeHttpRequestSendAsync,
             MinimumLogLevel = MinimumLogLevel,

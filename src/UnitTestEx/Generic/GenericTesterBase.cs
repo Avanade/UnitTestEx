@@ -1,43 +1,25 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx;
-using CoreEx.Hosting;
-using Microsoft.Azure.Amqp.Framing;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
+using UnitTestEx.Hosting;
+using UnitTestEx.Json;
 
 namespace UnitTestEx.Generic
 {
     /// <summary>
     /// Provides generic testing capabilities.
     /// </summary>
-    /// <typeparam name="TEntryPoint">The <see cref="IHostStartup"/> <see cref="Type"/>.</typeparam>
+    /// <typeparam name="TEntryPoint">The <see cref="EntryPoint"/> <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="GenericTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
-    public abstract class GenericTesterBase<TEntryPoint, TSelf> : GenericTesterCore<TEntryPoint, GenericTesterBase<TEntryPoint, TSelf>> where TEntryPoint : IHostStartup, new() where TSelf : GenericTesterBase<TEntryPoint, TSelf>
+    /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
+    public abstract class GenericTesterBase<TEntryPoint, TSelf>(TestFrameworkImplementor implementor) 
+        : GenericTesterCore<TEntryPoint, GenericTesterBase<TEntryPoint, TSelf>>(implementor) where TEntryPoint : class where TSelf : GenericTesterBase<TEntryPoint, TSelf>
     {
-        private OperationType _operationType = CoreEx.OperationType.Unspecified;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="GenericTesterBase{TEntryPoint, TSelf}"/> class.
-        /// </summary>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        protected GenericTesterBase(TestFrameworkImplementor implementor) : base(implementor) { }
-
-        /// <summary>
-        /// Sets the <see cref="ExecutionContext.OperationType"/> to the specified <paramref name="operationType"/>.
-        /// </summary>
-        /// <param name="operationType">The <see cref="OperationType"/>.</param>
-        /// <returns>The <see cref="GenericTesterBase{TEntryPoint, TSelf}"/> instance to support fluent/chaining usage.</returns>
-        public TSelf OperationType(OperationType operationType)
-        {
-            _operationType = operationType;
-            return (TSelf)this;
-        }
-
         /// <summary>
         /// Executes the <paramref name="action"/> that performs the logic.
         /// </summary>
@@ -109,9 +91,6 @@ namespace UnitTestEx.Generic
             Implementor.WriteLine("GENERIC TESTER...");
             Implementor.WriteLine("");
 
-            var ec = Services.GetRequiredService<ExecutionContext>();
-            ec.OperationType = _operationType;
-
             Exception? exception = null;
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -158,10 +137,9 @@ namespace UnitTestEx.Generic
             Implementor.WriteLine(new string('=', 80));
             Implementor.WriteLine("");
 
-            ExceptionSuccessExpectations.Assert(exception);
-            EventExpectations.Assert();
-            LoggerExpectations.Assert(messages);
-            return new VoidAssertor(exception, Implementor, JsonSerializer);
+            await ExpectationsArranger.AssertAsync(messages, exception).ConfigureAwait(false);
+
+            return new VoidAssertor(this, exception);
         }
 
         /// <summary>
@@ -241,9 +219,6 @@ namespace UnitTestEx.Generic
             Implementor.WriteLine("GENERIC TESTER...");
             Implementor.WriteLine("");
 
-            var ec = Services.GetRequiredService<ExecutionContext>();
-            ec.OperationType = _operationType;
-
             Exception? exception = null;
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -289,7 +264,7 @@ namespace UnitTestEx.Generic
                 Implementor.WriteLine($"Result: Success");
                 try
                 {
-                    Implementor.WriteLine($"Value: {JsonSerializer.Serialize(value, CoreEx.Json.JsonWriteFormat.Indented)}");
+                    Implementor.WriteLine($"Value: {JsonSerializer.Serialize(value, JsonWriteFormat.Indented)}");
                 }
                 catch (Exception ex)
                 {
@@ -301,10 +276,9 @@ namespace UnitTestEx.Generic
             Implementor.WriteLine(new string('=', 80));
             Implementor.WriteLine("");
 
-            ExceptionSuccessExpectations.Assert(exception);
-            EventExpectations.Assert();
-            LoggerExpectations.Assert(messages);
-            return new ValueAssertor<TValue>(value, exception, Implementor, JsonSerializer);
+            await ExpectationsArranger.AssertAsync(messages, exception).ConfigureAwait(false);
+
+            return new ValueAssertor<TValue>(this, value, exception);
         }
     }
 }

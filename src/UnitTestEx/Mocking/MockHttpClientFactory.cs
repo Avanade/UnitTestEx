@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -8,29 +7,21 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using UnitTestEx.Abstractions;
+using UnitTestEx.Json;
 
 namespace UnitTestEx.Mocking
 {
     /// <summary>
     /// Provides the <see cref="IHttpClientFactory"/> mocking.
     /// </summary>
-    public class MockHttpClientFactory
+    public class MockHttpClientFactory(TestFrameworkImplementor implementor)
     {
-        private readonly Dictionary<string, MockHttpClient> _mockClients = new();
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MockHttpClientFactory"/> class.
-        /// </summary>
-        public MockHttpClientFactory(TestFrameworkImplementor implementor)
-        {
-            Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
-            JsonSerializer = CoreEx.Json.JsonSerializer.Default;
-        }
+        private readonly Dictionary<string, MockHttpClient> _mockClients = [];
 
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
-        internal TestFrameworkImplementor Implementor { get; }
+        internal TestFrameworkImplementor Implementor { get; } = implementor ?? throw new ArgumentNullException(nameof(implementor));
 
         /// <summary>
         /// Gets or sets the <see cref="ILogger"/>.
@@ -45,8 +36,15 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Gets the <see cref="IJsonSerializer"/>.
         /// </summary>
-        /// <remarks>Defaults to <see cref="CoreEx.Json.JsonSerializer.Default"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="UseJsonSerializer(IJsonSerializer)"/> method.</remarks>
-        public IJsonSerializer JsonSerializer { get; private set; }
+        /// <remarks>Defaults to <see cref="TestSetUp.Default"/> <see cref="TestSetUp.JsonSerializer"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="UseJsonSerializer(IJsonSerializer)"/> method.</remarks>
+        public IJsonSerializer JsonSerializer { get; private set; } = Json.JsonSerializer.Default;
+
+        /// <summary>
+        /// Gets the <see cref="JsonElementComparerOptions"/>.
+        /// </summary>
+        /// <remarks>Defaults to <see cref="TestSetUp.Default"/> <see cref="TestSetUp.JsonComparerOptions"/>.
+        /// <para>Where the <see cref="JsonElementComparerOptions.JsonSerializer"/> is <c>null</c> then the <see cref="JsonSerializer"/> will be used.</para></remarks>
+        public JsonElementComparerOptions JsonComparerOptions { get; private set; } = JsonElementComparerOptions.Default;
 
         /// <summary>
         /// Updates the <see cref="JsonSerializer"/> used by the <see cref="MockHttpClientFactory"/> internally.
@@ -56,6 +54,17 @@ namespace UnitTestEx.Mocking
         public MockHttpClientFactory UseJsonSerializer(IJsonSerializer jsonSerializer)
         {
             JsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
+            return this;
+        }
+
+        /// <summary>
+        /// Updates the <see cref="JsonElementComparerOptions"/> used to perform the JSON request comparisons.
+        /// </summary>
+        /// <param name="options">The <see cref="JsonElementComparerOptions"/>.</param>
+        /// <returns>The current instance to support fluent-style method-chaining.</returns>
+        public MockHttpClientFactory UseJsonComparerOptions(JsonElementComparerOptions options)
+        {
+            JsonComparerOptions = options ?? throw new ArgumentNullException(nameof(options));
             return this;
         }
 

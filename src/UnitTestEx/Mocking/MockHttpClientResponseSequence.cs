@@ -3,7 +3,7 @@
 namespace UnitTestEx.Mocking
 {
     /// <summary>
-    /// 
+    /// Mocks the <see cref="MockHttpClientResponse"/> within a sequence.
     /// </summary>
     public class MockHttpClientResponseSequence
     {

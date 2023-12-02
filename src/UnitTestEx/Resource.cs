@@ -1,10 +1,10 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Json;
 using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using UnitTestEx.Json;
 
 namespace UnitTestEx
 {
@@ -50,7 +50,7 @@ namespace UnitTestEx
         /// <typeparam name="T">The value <see cref="Type"/>.</typeparam>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>; defaults to <see cref="CoreEx.Json.JsonSerializer.Default"/>.</param>
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>; defaults to <see cref="JsonSerializer.Default"/>.</param>
         /// <returns>The deserialized value.</returns>
         public static T GetJsonValue<T>(string resourceName, Assembly? assembly = null, IJsonSerializer? jsonSerializer = null)
         {

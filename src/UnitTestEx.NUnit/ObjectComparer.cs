@@ -1,15 +1,15 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using KellermanSoftware.CompareNetObjects;
 using System;
+using UnitTestEx.Json;
 using UnitTestEx.NUnit.Internal;
 
 namespace UnitTestEx.NUnit
 {
     /// <summary>
-    /// Deep object comparer.
+    /// Deep object comparer using <see cref="JsonElementComparer"/>.
     /// </summary>
-    [Obsolete($"This is being replaced by the {nameof(UnitTestEx.Abstractions.JsonElementComparer)} and usage of paths to ignore (versus members) to be more explicit.")]
+    /// <remarks>The <see cref="TestSetUp.Default"/> <see cref="TestSetUp.JsonComparerOptions"/> and <see cref="TestSetUp.JsonSerializer"/> are used where not explicitly provided.</remarks>
     public static class ObjectComparer
     {
         /// <summary>
@@ -17,24 +17,39 @@ namespace UnitTestEx.NUnit
         /// </summary>
         /// <param name="expected">The expected value.</param>
         /// <param name="actual">The actual value.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        public static void Assert(object? expected, object? actual, params string[] membersToIgnore)
-        {
-            var cr = Abstractions.ObjectComparer.Compare(expected, actual, membersToIgnore);
-            new NUnitTestImplementor().AssertAreEqual(true, cr.AreEqual, cr.DifferencesString);
-        }
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
+        public static void Assert(object? expected, object? actual, params string[] pathsToIgnore) => Assert(null, expected, actual, pathsToIgnore);
 
         /// <summary>
         /// Compares two objects of the same <see cref="Type"/> to each other.
         /// </summary>
-        /// <param name="comparisonConfig">The action to enable additional <see cref="ComparisonConfig"/> configuration.</param>
+        /// <param name="options">The <see cref="JsonElementComparerOptions"/>.</param>
         /// <param name="expected">The expected value.</param>
         /// <param name="actual">The actual value.</param>
-        /// <param name="membersToIgnore">The members to ignore from the comparison.</param>
-        public static void Assert(Action<ComparisonConfig> comparisonConfig, object? expected, object? actual, params string[] membersToIgnore)
+        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
+        public static void Assert(JsonElementComparerOptions? options, object? expected, object? actual, params string[] pathsToIgnore)
         {
-            var cr = Abstractions.ObjectComparer.Compare(comparisonConfig, expected, actual, membersToIgnore);
-            new NUnitTestImplementor().AssertAreEqual(true, cr.AreEqual, cr.DifferencesString);
+            if (expected is null && actual is null)
+                return;
+
+            if (expected is null)
+            {
+                new NUnitTestImplementor().AssertFail($"Expected and Actual values are not equal: NULL != value.");
+                return;
+            }
+
+            if (expected is null)
+            {
+                new NUnitTestImplementor().AssertFail($"Expected and Actual values are not equal: value != NULL.");
+                return;
+            }
+
+            var o = (options ?? TestSetUp.Default.JsonComparerOptions).Clone();
+            o.JsonSerializer ??= TestSetUp.Default.JsonSerializer;
+
+            var cr = new JsonElementComparer(o).CompareValue(expected, actual, pathsToIgnore);
+            if (cr.HasDifferences)
+                new NUnitTestImplementor().AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
         }
     }
 }

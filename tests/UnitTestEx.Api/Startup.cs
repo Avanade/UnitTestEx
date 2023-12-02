@@ -20,9 +20,6 @@ namespace UnitTestEx.Api
         {
             services.AddControllers().AddNewtonsoftJson();
             services.AddHttpClient("XXX", hc => hc.BaseAddress = new System.Uri("https://somesys"));
-            services.AddNullEventPublisher();
-            services.AddNullEventSender();
-            services.AddExecutionContext();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

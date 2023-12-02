@@ -40,7 +40,7 @@ namespace UnitTestEx.NUnit.Test
                 .ExpectLogContains("C# HTTP trigger function processed a request.")
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc", test.Logger))
                 .AssertOK()
-                .Assert(new { id = "Abc", description = "A blue carrot" });
+                .AssertValue(new { id = "Abc", description = "A blue carrot" });
         }
 
         [Test]
@@ -56,7 +56,7 @@ namespace UnitTestEx.NUnit.Test
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc", test.Logger))
                 .ToActionResultAssertor()
                     .AssertOK()
-                    .Assert(new { id = "Abc", description = "A blue carrot" });
+                    .AssertValue(new { id = "Abc", description = "A blue carrot" });
         }
 
         [Test]

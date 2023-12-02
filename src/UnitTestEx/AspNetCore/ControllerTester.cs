@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.TestHost;
@@ -15,7 +14,6 @@ using System.Reflection;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
-using Ceh = CoreEx.Http;
 
 namespace UnitTestEx.AspNetCore
 {
@@ -23,7 +21,9 @@ namespace UnitTestEx.AspNetCore
     /// Enables the testing of a <see cref="ControllerBase"/> operation.
     /// </summary>
     /// <typeparam name="TController">The <see cref="ControllerBase"/> <see cref="Type"/>.</typeparam>
-    public class ControllerTester<TController> : HttpTesterBase<ControllerTester<TController>> where TController : ControllerBase
+    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="testServer">The <see cref="TestServer"/>.</param>
+    public class ControllerTester<TController>(TesterBase owner, TestServer testServer) : HttpTesterBase<ControllerTester<TController>>(owner, testServer) where TController : ControllerBase
     {
         /// <summary>
         /// Provides the HTTP request body option.
@@ -36,42 +36,35 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <summary>
-        /// Initializes a new <see cref="ControllerTester{TController}"/> class.
-        /// </summary>
-        /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
-        /// <param name="testServer">The <see cref="TestServer"/>.</param>
-        internal ControllerTester(TesterBase owner, TestServer testServer) : base(owner, testServer) { }
-
-        /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
         /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
-        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression, Ceh.HttpRequestOptions? requestOptions = null)
-            => RunAsync(expression, requestOptions).GetAwaiter().GetResult();
+        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression, Action<HttpRequestMessage>? requestModifier = null)
+            => RunAsync(expression, requestModifier).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
         /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
-        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
         /// <param name="value">The optional body value where not explicitly passed via the <paramref name="expression"/>.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression, object? value, Ceh.HttpRequestOptions? requestOptions = null)
-            => RunAsync(expression, value, requestOptions).GetAwaiter().GetResult();
+        public HttpResponseMessageAssertor Run<TResult>(Expression<Func<TController, TResult>> expression, object? value, Action<HttpRequestMessage>? requestModifier = null)
+            => RunAsync(expression, value, requestModifier).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
         /// </summary>
         /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
-        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public Task<HttpResponseMessageAssertor> RunAsync<TResult>(Expression<Func<TController, TResult>> expression, Ceh.HttpRequestOptions? requestOptions = null)
-            => RunInternalAsync(expression, BodyOption.None, null, MediaTypeNames.Application.Json, requestOptions);
+        public Task<HttpResponseMessageAssertor> RunAsync<TResult>(Expression<Func<TController, TResult>> expression, Action<HttpRequestMessage>? requestModifier = null)
+            => RunInternalAsync(expression, BodyOption.None, null, MediaTypeNames.Application.Json, requestModifier);
 
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
@@ -79,10 +72,10 @@ namespace UnitTestEx.AspNetCore
         /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="value">The body value to serialized as JSON.</param>
-        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public Task<HttpResponseMessageAssertor> RunAsync<TResult>(Expression<Func<TController, TResult>> expression, object? value, Ceh.HttpRequestOptions? requestOptions = null)
-            => RunInternalAsync(expression, BodyOption.Value, value, MediaTypeNames.Application.Json, requestOptions);
+        public Task<HttpResponseMessageAssertor> RunAsync<TResult>(Expression<Func<TController, TResult>> expression, object? value, Action<HttpRequestMessage>? requestModifier = null)
+            => RunInternalAsync(expression, BodyOption.Value, value, MediaTypeNames.Application.Json, requestModifier);
 
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
@@ -91,9 +84,10 @@ namespace UnitTestEx.AspNetCore
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="content">The body content.</param>
         /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor RunContent<TResult>(Expression<Func<TController, TResult>> expression, string? content, string? contentType = MediaTypeNames.Text.Plain)
-            => RunContentAsync(expression, content, contentType).GetAwaiter().GetResult();
+        public HttpResponseMessageAssertor RunContent<TResult>(Expression<Func<TController, TResult>> expression, string? content, string? contentType = MediaTypeNames.Text.Plain, Action<HttpRequestMessage>? requestModifier = null)
+            => RunContentAsync(expression, content, contentType, requestModifier).GetAwaiter().GetResult();
 
         /// <summary>
         /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
@@ -102,47 +96,17 @@ namespace UnitTestEx.AspNetCore
         /// <param name="expression">The controller operation invocation expression.</param>
         /// <param name="content">The body content.</param>
         /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
-        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor RunContent<TResult>(Expression<Func<TController, TResult>> expression, string? content, Ceh.HttpRequestOptions? requestOptions = null, string? contentType = MediaTypeNames.Text.Plain)
-            => RunContentAsync(expression, content, requestOptions, contentType).GetAwaiter().GetResult();
-
-        /// <summary>
-        /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
-        /// </summary>
-        /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
-        /// <param name="expression">The controller operation invocation expression.</param>
-        /// <param name="content">The body content.</param>
-        /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
-        /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public Task<HttpResponseMessageAssertor> RunContentAsync<TResult>(Expression<Func<TController, TResult>> expression, string? content, string? contentType = MediaTypeNames.Text.Plain)
-            => RunInternalAsync(expression, BodyOption.Content, content, contentType ?? MediaTypeNames.Text.Plain, null);
-
-        /// <summary>
-        /// Runs the controller using an <see cref="HttpRequestMessage"/> inferring the <see cref="HttpMethod"/>, operation name and request from the <paramref name="expression"/>.
-        /// </summary>
-        /// <typeparam name="TResult">The result value <see cref="Type"/>.</typeparam>
-        /// <param name="expression">The controller operation invocation expression.</param>
-        /// <param name="content">The body content.</param>
-        /// <param name="contentType">The body content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
-        /// <param name="requestOptions">The optional <see cref="Ceh.HttpRequestOptions"/>.</param>
-        /// <returns>A <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public Task<HttpResponseMessageAssertor> RunContentAsync<TResult>(Expression<Func<TController, TResult>> expression, string? content, Ceh.HttpRequestOptions? requestOptions = null, string? contentType = MediaTypeNames.Text.Plain)
-            => RunInternalAsync(expression, BodyOption.Content, content, contentType ?? MediaTypeNames.Text.Plain, requestOptions);
+        public Task<HttpResponseMessageAssertor> RunContentAsync<TResult>(Expression<Func<TController, TResult>> expression, string? content, string? contentType = MediaTypeNames.Text.Plain, Action<HttpRequestMessage>? requestModifier = null)
+            => RunInternalAsync(expression, BodyOption.Content, content, contentType ?? MediaTypeNames.Text.Plain, requestModifier);
 
         /// <summary>
         /// Runs the controller using the passed parameters.
         /// </summary>
-        private async Task<HttpResponseMessageAssertor> RunInternalAsync<TResult>(Expression<Func<TController, TResult>> expression, BodyOption bodyOption, object? value, string? contentType, Ceh.HttpRequestOptions? requestOptions = null)
+        private async Task<HttpResponseMessageAssertor> RunInternalAsync<TResult>(Expression<Func<TController, TResult>> expression, BodyOption bodyOption, object? value, string? contentType, Action<HttpRequestMessage>? requestModifier)
         {
             var mce = Hosting.HostTesterBase<object>.MethodCallExpressionValidate(expression);
-
-            // HttpRequestOptions is not *really* valid as a value; move as likely a placement error on behalf of the consuming developer.
-            if (value is Ceh.HttpRequestOptions ro && requestOptions == null)
-            {
-                value = null;
-                requestOptions = ro;
-            }
 
             // Attempts similar logic to: https://docs.microsoft.com/en-us/aspnet/web-api/overview/formats-and-model-binding/parameter-binding-in-aspnet-web-api
             var pis = mce.Method.GetParameters();
@@ -164,7 +128,7 @@ namespace UnitTestEx.AspNetCore
                     body = val;
                 else
                 {
-                    if (par.GetCustomAttribute<System.Web.Http.FromUriAttribute>() == null && par.GetCustomAttribute<FromQueryAttribute>() == null && par.ParameterType.IsClass && par.ParameterType != typeof(string))
+                    if (par.GetCustomAttribute<FromQueryAttribute>() == null && par.ParameterType.IsClass && par.ParameterType != typeof(string))
                         body = val;
                     else
                         @params.Add((par.Name, val));
@@ -185,9 +149,9 @@ namespace UnitTestEx.AspNetCore
             var uri = GetRequestUri(att.Template, @params);
             return bodyOption switch
             {
-                BodyOption.Content => await SendAsync(new HttpMethod(att.HttpMethods.First()), uri, (string?)body, contentType, requestOptions).ConfigureAwait(false),
-                BodyOption.Value => await SendAsync(new HttpMethod(att.HttpMethods.First()), uri, body, requestOptions).ConfigureAwait(false),
-                _ => await SendAsync(new HttpMethod(att.HttpMethods.First()), uri, requestOptions).ConfigureAwait(false)
+                BodyOption.Content => await SendAsync(new HttpMethod(att.HttpMethods.First()), uri, (string?)body, contentType, requestModifier).ConfigureAwait(false),
+                BodyOption.Value => await SendAsync(new HttpMethod(att.HttpMethods.First()), uri, body, requestModifier).ConfigureAwait(false),
+                _ => await SendAsync(new HttpMethod(att.HttpMethods.First()), uri, requestModifier).ConfigureAwait(false)
             };
         }
 
@@ -214,7 +178,7 @@ namespace UnitTestEx.AspNetCore
                 List<string>? list = null;
                 if (Value != null && Value is not string && Value is IEnumerable el)
                 {
-                    list = new List<string>();
+                    list = [];
                     foreach (var item in el)
                     {
                         var iv = GetParamValueAsString(item);

@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Http;
 using System.Net.Http.Formatting;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace UnitTestEx.Function
@@ -26,7 +28,7 @@ namespace UnitTestEx.Function
             if (p.FirstName == null)
                 throw new InvalidOperationException("First name is required.");
 
-            var resp = await _httpClient.PostAsync($"person", p, new JsonMediaTypeFormatter()).ConfigureAwait(false);
+            var resp = await _httpClient.PostAsJsonAsync($"person", p, new JsonSerializerOptions(JsonSerializerDefaults.Web)).ConfigureAwait(false);
 
             resp.EnsureSuccessStatusCode();
         }
@@ -40,7 +42,7 @@ namespace UnitTestEx.Function
             if (p.FirstName == null)
                 throw new InvalidOperationException("First name is required.");
 
-            var resp = await _httpClient.PostAsync($"person", p, new JsonMediaTypeFormatter()).ConfigureAwait(false);
+            var resp = await _httpClient.PostAsJsonAsync($"person", p, new JsonSerializerOptions(JsonSerializerDefaults.Web)).ConfigureAwait(false);
 
             resp.EnsureSuccessStatusCode();
         }
@@ -61,7 +63,7 @@ namespace UnitTestEx.Function
             if (p.FirstName == "zerodivision")
                 throw new DivideByZeroException("Divide by zero is not a thing.");
 
-            var resp = await _httpClient.PostAsync($"person", p, new JsonMediaTypeFormatter()).ConfigureAwait(false);
+            var resp = await _httpClient.PostAsJsonAsync($"person", p, new JsonSerializerOptions(JsonSerializerDefaults.Web)).ConfigureAwait(false);
 
             resp.EnsureSuccessStatusCode();
 
@@ -69,7 +71,7 @@ namespace UnitTestEx.Function
         }
 
         [FunctionName("ServiceBusFunction4")]
-        public Task Run4([ServiceBusTrigger("%Run4QueueName%", Connection = "ServiceBusConnectionString")] Person p, string subject, ILogger log)
+        public static Task Run4([ServiceBusTrigger("%Run4QueueName%", Connection = "ServiceBusConnectionString")] Person p, string subject, ILogger log)
         {
             log.LogInformation($"C# ServiceBus queue trigger function processed {subject} message: {p.FirstName} {p.LastName}");
 
@@ -80,7 +82,7 @@ namespace UnitTestEx.Function
         }
 
         [FunctionName("ServiceBusSessionFunction5")]
-        public Task Run5([ServiceBusTrigger("unittestexsess", Connection = "ServiceBusConnectionString", IsSessionsEnabled = true)] ServiceBusReceivedMessage message, ServiceBusMessageActions messageActions, ILogger log)
+        public static Task Run5([ServiceBusTrigger("unittestexsess", Connection = "ServiceBusConnectionString", IsSessionsEnabled = true)] ServiceBusReceivedMessage _)
         {
             return Task.CompletedTask;
         }

@@ -6,7 +6,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using UnitTestEx.Expectations;
 
 namespace UnitTestEx.Abstractions
 {
@@ -27,11 +26,6 @@ namespace UnitTestEx.Abstractions
         /// Gets the <see cref="HttpContextAccessor"/>.
         /// </summary>
         public IHttpContextAccessor? HttpContextAccessor { get; set; }
-
-        /// <summary>
-        /// Gets or sets the <see cref="ExpectedEventPublisher"/>.
-        /// </summary>
-        public ExpectedEventPublisher? ExpectedEventPublisher { get; set; }
 
         /// <summary>
         /// Adds the <see cref="ILogger"/> log message.
@@ -91,12 +85,18 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
+        /// Gets the state extension data that can be used for addition state information (where applicable).
+        /// </summary>
+        public ConcurrentDictionary<string, object?> StateData { get; } = new ConcurrentDictionary<string, object?>();
+
+        /// <summary>
         /// Resets the <see cref="TestSharedState"/>.
         /// </summary>
-        public void ResetEventStorage()
+        /// <remarks>Clears existing <see cref="GetLoggerMessages">logger messages</see> and <see cref="StateData"/>.</remarks>
+        public void Reset()
         {
-            ExpectedEventPublisher = null;
             _logOutput.Clear();
+            StateData.Clear();
         }
     }
 }

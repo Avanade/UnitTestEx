@@ -5,7 +5,6 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using UnitTestEx;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Expectations;
@@ -55,13 +54,11 @@ namespace UnitTestEx.NUnit.Test
 
             using var test = ApiTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
-                .UseSetUp(new TestSetUp { ExpectedEventsEnabled = true })
                 .Controller<ProductController>()
-                .ExpectEvent("/test/product/*", "test.product.*c", "*")
                 .ExpectLogContains("Received HTTP response OK")
                 .Run(c => c.Get("abc"))
                 .AssertOK()
-                .Assert(new { id = "Abc", description = "A blue carrot" });
+                .AssertValue(new { id = "Abc", description = "A blue carrot" });
         }
 
         [Test]
@@ -73,13 +70,10 @@ namespace UnitTestEx.NUnit.Test
 
             using var test = ApiTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
-                .UseExpectedEvents()
                 .Controller<ProductController>()
-                .ExpectDestinationEvent("test-queue", "/test/product/*", "test.product.*z", "*")
-                .ExpectDestinationEvent("test-queue2", "/test/*/xyz", "test.*", "*")
                 .Run(c => c.Get("xyz"))
                 .AssertOK()
-                .Assert(new { id = "Xyz", description = "Xtra yellow elephant" });
+                .AssertValue(new { id = "Xyz", description = "Xtra yellow elephant" });
         }
 
         [Test]
@@ -120,7 +114,7 @@ namespace UnitTestEx.NUnit.Test
                 .Controller<ProductController>()
                 .Run(c => c.Get())
                 .AssertOK()
-                .Assert(new { id = "Def", description = "Default" });
+                .AssertValue(new { id = "Def", description = "Default" });
         }
     }
 }

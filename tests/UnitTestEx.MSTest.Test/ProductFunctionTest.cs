@@ -35,7 +35,7 @@ namespace UnitTestEx.MSTest.Test
                 .HttpTrigger<ProductFunction>()
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc", test.Logger))
                 .AssertOK()
-                .Assert(new { id = "Abc", description = "A blue carrot" });
+                .AssertValue(new { id = "Abc", description = "A blue carrot" });
         }
 
         [TestMethod]
@@ -51,7 +51,7 @@ namespace UnitTestEx.MSTest.Test
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc", test.Logger))
                 .ToActionResultAssertor()
                     .AssertOK()
-                    .Assert(new { id = "Abc", description = "A blue carrot" });
+                    .AssertValue(new { id = "Abc", description = "A blue carrot" });
         }
 
         [TestMethod]

@@ -10,9 +10,10 @@ namespace UnitTestEx.Xunit.Internal
     /// <summary>
     /// Provides the <b>Xunit</b> <see cref="Abstractions.TestFrameworkImplementor"/> implementation.
     /// </summary>
-    public sealed class XunitTestImplementor : Abstractions.TestFrameworkImplementor
+    /// <param name="testOutputHelper">The <see cref="ITestOutputHelper"/>.</param>
+    public sealed class XunitTestImplementor(ITestOutputHelper testOutputHelper) : Abstractions.TestFrameworkImplementor
     {
-        private readonly ITestOutputHelper _output;
+        private readonly ITestOutputHelper _output = testOutputHelper ?? throw new ArgumentNullException(nameof(testOutputHelper));
 
         /// <summary>
         /// Creates a <see cref="XunitTestImplementor"/> using the <paramref name="testOutputHelper"/>.
@@ -20,12 +21,6 @@ namespace UnitTestEx.Xunit.Internal
         /// <param name="testOutputHelper">The <see cref="ITestOutputHelper"/>.</param>
         /// <returns>The <see cref="XunitTestImplementor"/>.</returns>
         public static XunitTestImplementor Create(ITestOutputHelper testOutputHelper) => new(testOutputHelper);
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="XunitTestImplementor"/> class.
-        /// </summary>
-        /// <param name="testOutputHelper">The <see cref="ITestOutputHelper"/>.</param>
-        public XunitTestImplementor(ITestOutputHelper testOutputHelper) => _output = testOutputHelper ?? throw new ArgumentNullException(nameof(testOutputHelper));
 
         /// <inheritdoc/>
         public override void AssertFail(string? message) => throw new XunitException(message);

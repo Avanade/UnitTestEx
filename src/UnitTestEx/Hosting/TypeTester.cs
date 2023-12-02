@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Json;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Diagnostics;
@@ -9,6 +8,7 @@ using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
 using UnitTestEx.Expectations;
+using UnitTestEx.Json;
 
 namespace UnitTestEx.Hosting
 {
@@ -16,19 +16,19 @@ namespace UnitTestEx.Hosting
     /// Provides the generic <see cref="Type"/> unit-testing capabilities.
     /// </summary>
     /// <typeparam name="T">The <see cref="Type"/> (must be a <c>class</c>).</typeparam>
-    public class TypeTester<T> : HostTesterBase<T>, IExceptionSuccessExpectations<TypeTester<T>> where T : class
+    public class TypeTester<T> : HostTesterBase<T>, IExpectations<TypeTester<T>> where T : class
     {
-        private readonly ExceptionSuccessExpectations _exceptionSuccessExpectations;
-
         /// <summary>
         /// Initializes a new <see cref="TypeTester{TFunction}"/> class.
         /// </summary>
-        /// <param name="tester">The owning <see cref="TesterBase"/>.</param>
+        /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        internal TypeTester(TesterBase tester, IServiceScope serviceScope) : base(tester, serviceScope) => _exceptionSuccessExpectations = new ExceptionSuccessExpectations(Implementor);
+        public TypeTester(TesterBase owner, IServiceScope serviceScope) : base(owner, serviceScope) => ExpectationsArranger = new ExpectationsArranger<TypeTester<T>>(owner, this);
 
-        /// <inheritdoc/>
-        ExceptionSuccessExpectations IExceptionSuccessExpectations<TypeTester<T>>.ExceptionSuccessExpectations => _exceptionSuccessExpectations;
+        /// <summary>
+        /// Gets the <see cref="ExpectationsArranger{TSelf}"/>.
+        /// </summary>
+        public ExpectationsArranger<TypeTester<T>> ExpectationsArranger { get; }
 
         /// <summary>
         /// Runs the synchronous method with no result.
@@ -83,8 +83,10 @@ namespace UnitTestEx.Hosting
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
             LogResult(ex, sw.Elapsed.TotalMilliseconds);
             LogTrailer();
-            _exceptionSuccessExpectations.Assert(ex);
-            return new VoidAssertor(ex, Implementor, JsonSerializer);
+
+            await ExpectationsArranger.AssertAsync(null, ex).ConfigureAwait(false);
+
+            return new VoidAssertor(Owner, ex);
         }
 
         /// <summary>
@@ -143,8 +145,10 @@ namespace UnitTestEx.Hosting
             }
 
             LogTrailer();
-            _exceptionSuccessExpectations.Assert(ex);
-            return new ValueAssertor<TValue>(result, ex, Implementor, JsonSerializer);
+
+            await ExpectationsArranger.AssertAsync(null, ex).ConfigureAwait(false);
+
+            return new ValueAssertor<TValue>(Owner, result, ex);
         }
 
         /// <summary>

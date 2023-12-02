@@ -1,45 +1,42 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Json;
 using System;
 using System.Net.Http;
 using System.Net.Mime;
 using UnitTestEx.Abstractions;
+using UnitTestEx.Json;
 
 namespace UnitTestEx.Assertors
 {
     /// <summary>
     /// Provdes the base <see cref="HttpResponseMessage"/> test assert helper capabilities.
     /// </summary>
-    public abstract class HttpResponseMessageAssertorBase
+    /// <remarks>
+    /// Initializes a new instance of the <see cref="HttpResponseMessageAssertorBase{TSelf}"/> class.
+    /// </remarks>
+    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
+    public abstract class HttpResponseMessageAssertorBase(TesterBase owner, HttpResponseMessage response)
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="HttpResponseMessageAssertorBase{TSelf}"/> class.
+        /// Gets the owning <see cref="TesterBase"/>.
         /// </summary>
-        /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
-        internal HttpResponseMessageAssertorBase(HttpResponseMessage response, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer)
-        {
-            Response = response;
-            Implementor = implementor;
-            JsonSerializer = jsonSerializer;
-        }
+        public TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
 
         /// <summary>
         /// Gets the <see cref="HttpResponseMessage"/>.
         /// </summary>
-        public HttpResponseMessage Response { get; }
+        public HttpResponseMessage Response { get; } = response;
 
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
-        protected internal TestFrameworkImplementor Implementor { get; }
+        protected internal TestFrameworkImplementor Implementor => Owner.Implementor;
 
         /// <summary>
         /// Gets the <see cref="IJsonSerializer"/>.
         /// </summary>
-        public IJsonSerializer JsonSerializer { get; }
+        public IJsonSerializer JsonSerializer => Owner.JsonSerializer;
 
         /// <summary>
         /// Gets the response content as the deserialized JSON value.
@@ -53,7 +50,12 @@ namespace UnitTestEx.Assertors
             if (Response.Content == null)
                 return default!;
 
-            return Expectations.HttpResponseExpectations.GetValueFromHttpResponseMessage<T>(Response, JsonSerializer);
+            var value = JsonSerializer.Deserialize<T>(Response.Content.ReadAsStringAsync().GetAwaiter().GetResult()!);
+
+            foreach (var ext in TestSetUp.Extensions)
+                ext.UpdateValueFromHttpResponseMessage(Owner, Response, ref value);
+
+            return value;
         }
 
         /// <summary>

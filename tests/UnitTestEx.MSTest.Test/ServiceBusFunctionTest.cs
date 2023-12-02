@@ -1,11 +1,12 @@
 ﻿using Azure.Messaging.ServiceBus;
-using CoreEx.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using UnitTestEx.Function;
+using UnitTestEx.Json;
 
 namespace UnitTestEx.MSTest.Test
 {
@@ -31,7 +32,7 @@ namespace UnitTestEx.MSTest.Test
         [TestMethod]
         public void Object_HttpClientError()
         {
-            var mcf = MockHttpClientFactory.Create();
+            var mcf = MockHttpClientFactory.Create().UseJsonComparerOptions(new JsonElementComparerOptions { NullComparison = JsonElementComparison.Semantic });
             mcf.CreateClient("XXX", new Uri("https://somesys"))
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = (string)null }).Respond.With(HttpStatusCode.InternalServerError);
 
@@ -68,7 +69,7 @@ namespace UnitTestEx.MSTest.Test
             using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
-                .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
+                .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
                 .AssertSuccess();
 
             mcf.VerifyAll();
@@ -77,14 +78,14 @@ namespace UnitTestEx.MSTest.Test
         [TestMethod]
         public void ServiceBusMessage_HttpClientError()
         {
-            var mcf = MockHttpClientFactory.Create();
+            var mcf = MockHttpClientFactory.Create().UseJsonSerializer(new Json.JsonSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
             mcf.CreateClient("XXX", new Uri("https://somesys"))
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = (string)null }).Respond.With(HttpStatusCode.InternalServerError);
 
             using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
-                .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = "Bob", LastName = (string)null }), test.Logger))
+                .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = (string)null }), test.Logger))
                 .AssertException<HttpRequestException>("Response status code does not indicate success: 500 (Internal Server Error).");
 
             mcf.VerifyAll();
@@ -98,7 +99,7 @@ namespace UnitTestEx.MSTest.Test
             using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
-                .Run(f => f.Run2(test.CreateServiceBusMessage(new Person { FirstName = null, LastName = "Smith" }), test.Logger))
+                .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = null, LastName = "Smith" }), test.Logger))
                 .AssertException<InvalidOperationException>("First name is required.");
 
             mcf.VerifyAll();
@@ -124,16 +125,6 @@ namespace UnitTestEx.MSTest.Test
         {
             using var test = FunctionTester.Create<Startup>();
             var sbrm = test.CreateServiceBusMessage(new ServiceBusMessage() { Subject = "xxx" });
-            Assert.IsNotNull(sbrm);
-            Assert.IsNotNull(sbrm.Subject);
-            Assert.AreEqual("xxx", sbrm.Subject);
-
-            sbrm = test.CreateServiceBusMessage(new EventData { Subject = "xxx" });
-            Assert.IsNotNull(sbrm);
-            Assert.IsNotNull(sbrm.Subject);
-            Assert.AreEqual("xxx", sbrm.Subject);
-
-            sbrm = test.CreateServiceBusMessage(new EventData<int> { Subject = "xxx", Value = 88 });
             Assert.IsNotNull(sbrm);
             Assert.IsNotNull(sbrm.Subject);
             Assert.AreEqual("xxx", sbrm.Subject);

@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Json;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Diagnostics;
@@ -9,6 +8,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
+using UnitTestEx.Json;
 
 namespace UnitTestEx.Hosting
 {
@@ -16,38 +16,29 @@ namespace UnitTestEx.Hosting
     /// Provides the base host unit-testing capabilities.
     /// </summary>
     /// <typeparam name="THost">The host <see cref="Type"/>.</typeparam>
-    public class HostTesterBase<THost> where THost : class
+    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
+    public class HostTesterBase<THost>(TesterBase owner, IServiceScope serviceScope) where THost : class
     {
-        /// <summary>
-        /// Initializes a new <see cref="HostTesterBase{TFunction}"/> class.
-        /// </summary>
-        /// <param name="tester">The <see cref="TesterBase"/>.</param>
-        /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        protected HostTesterBase(TesterBase tester, IServiceScope serviceScope)
-        {
-            Tester = tester ?? throw new ArgumentNullException(nameof(tester));
-            ServiceScope = serviceScope ?? throw new ArgumentNullException(nameof(serviceScope));
-        }
-
         /// <summary>
         /// Gets the owning <see cref="TesterBase"/>.
         /// </summary>
-        protected TesterBase Tester { get; }
+        protected TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
 
         /// <summary>
         /// Gets the <see cref="IServiceScope"/>.
         /// </summary>
-        protected IServiceScope ServiceScope { get; }
+        protected IServiceScope ServiceScope { get; } = serviceScope ?? throw new ArgumentNullException(nameof(serviceScope));
 
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
-        protected TestFrameworkImplementor Implementor => Tester.Implementor;
+        protected TestFrameworkImplementor Implementor => Owner.Implementor;
 
         /// <summary>
         /// Gets or sets the <see cref="IJsonSerializer"/>.
         /// </summary>
-        protected IJsonSerializer JsonSerializer => Tester.JsonSerializer;
+        protected IJsonSerializer JsonSerializer => Owner.JsonSerializer;
 
         /// <summary>
         /// Create (instantiate) the <typeparamref name="THost"/> using the <see cref="ServiceScope"/> to provide the constructor based dependency injection (DI) values.

@@ -12,7 +12,7 @@ namespace UnitTestEx.Mocking
     /// </summary>
     public class MockHttpClient
     {
-        private readonly List<MockHttpClientRequest> _requests = new();
+        private readonly List<MockHttpClientRequest> _requests = [];
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MockHttpClient"/> class.

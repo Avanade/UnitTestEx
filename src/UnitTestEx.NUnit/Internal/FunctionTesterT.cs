@@ -10,15 +10,9 @@ namespace UnitTestEx.NUnit.Internal
     /// Provides the <b>NUnit</b> <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> implementation.
     /// </summary>
     /// <typeparam name="TEntryPoint"></typeparam>
-    public class FunctionTester<TEntryPoint> : FunctionTesterBase<TEntryPoint, FunctionTester<TEntryPoint>> where TEntryPoint : FunctionsStartup, new()
-    {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ApiTester{TEntryPoint}"/> class.
-        /// </summary>
-        /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
-        /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
-        /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        internal FunctionTester(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration) 
-            : base(new NUnitTestImplementor(), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) { }
-    }
+    /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
+    /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
+    /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
+    public class FunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration)
+        : FunctionTesterBase<TEntryPoint, FunctionTester<TEntryPoint>>(new NUnitTestImplementor(), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) where TEntryPoint : FunctionsStartup, new() { }
 }

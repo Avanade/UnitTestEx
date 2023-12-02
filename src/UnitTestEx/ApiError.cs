@@ -3,29 +3,20 @@
 namespace UnitTestEx
 {
     /// <summary>
-    /// Represents an <b>API</b> error being <see cref="Field"/> and <see cref="Message"/>.
+    /// Represents an <b>API-style</b> error being <see cref="Field"/> and <see cref="Message"/>.
     /// </summary>
-    public class ApiError
+    /// <param name="field">The optional field/property name.</param>
+    /// <param name="message">The error message.</param>
+    public class ApiError(string? field, string message)
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="ApiError"/> class.
+        /// Gets the optional field/property name.
         /// </summary>
-        /// <param name="field">The field name.</param>
-        /// <param name="message">The error message.</param>
-        public ApiError(string? field, string message)
-        {
-            Field = field;
-            Message = message;
-        }
-
-        /// <summary>
-        /// Gets the field name.
-        /// </summary>
-        public string? Field { get; }
+        public string? Field { get; } = field;
 
         /// <summary>
         /// Gets the error message.
         /// </summary>
-        public string Message { get; }
+        public string Message { get; } = message;
     }
 }

@@ -2,6 +2,19 @@
 
 Represents the **NuGet** versions.
 
+## v4.0.0
+All internal dependecies to `CoreEx` have been removed. This is intended to further generalize the capabilities of `UnitTestEx`; but more importantly, break the circular dependency reference between the two repositories. New `CoreEx.UnitTesting*` packages have been created to extend the `UnitTestEx` capabilities for `CoreEx`.
+ - *Enhancement:* All typed value assertions have been named `AssertValue` for consistency; otherwise, `AssertContent` for a simple string comparison.
+ - *Enhancement:* All JSON-related assertions have been named `AssertJson*` for consistency.
+ - *Enhancement:* The `CreateServiceBusMessage` methods that accept a generic `T` value have been renamed to `CreateServiceBusMessageFromValue`.
+ - *Enhancement:* The `Expectations` capabilities have been greatly improved to support new expectations to be added/extended.
+ - *Enhancement:* A new `GenericTester` that explicitly supports a `TValue` has been added; use new `GenericTester.CreateFor<TValue>` to instantiate/use.
+ - *Enhancement:* Removed `KellermanSoftware.CompareNetObjects` dependency; all comparisons use internal `JsonElementComparer` which has proper/improved support for fully qualified paths, including optional array indexers. The related `JsonElementComparerOptions` provides a means to control the comparison behaviour. 
+ - *Enhancement:* The `ObjectComparer` has been reinstated and now leverages the `JsonElementComparer` internally.
+ - *Enhancement:* Updated to only support `.NET6.0` and above; added `.NET8.0` support.
+
+The enhancements have been made in a manner to maximize backwards compatibility with previous versions of `UnitTestEx` where possible; however, some breaking changes were unfortunately unavoidable (and made to improve overall). There may be an opportunity for the consuming developer to add extension methods to support the previous naming conventions if desired; note that the next `CoreEx` version (`v3.6.0`) will implement extensions in new `CoreEx.UnitTesting` packages to support existing behaviors (where applicable).
+
 ## v3.1.0
 - *Enhancement:* Updated all package depenedencies to latest.
 - *Enhancement:* The `GenericTester` updated to support `IHostStartup` to enable shared host dependency injection configuration.

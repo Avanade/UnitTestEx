@@ -1,12 +1,8 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using CoreEx.Json;
 using Microsoft.Net.Http.Headers;
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
-using System.Reflection;
-using System.Text;
 using UnitTestEx.Abstractions;
 
 namespace UnitTestEx.Assertors
@@ -14,7 +10,9 @@ namespace UnitTestEx.Assertors
     /// <summary>
     /// Represents the <see cref="HttpResponseMessage"/> test assert helper with a specified response <typeparamref name="TValue"/> <see cref="Type"/>.
     /// </summary>
-    public class HttpResponseMessageAssertor<TValue> : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor<TValue>>
+    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
+    public class HttpResponseMessageAssertor<TValue>(TesterBase owner, HttpResponseMessage response) : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor<TValue>>(owner, response)
     {
         private TValue? _value;
         private bool _valueIsDeserialized;
@@ -22,19 +20,10 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Initializes a new instance of the <see cref="HttpResponseMessageAssertor"/> class.
         /// </summary>
-        /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
-        internal HttpResponseMessageAssertor(HttpResponseMessage response, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(response, implementor, jsonSerializer) { }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="HttpResponseMessageAssertor"/> class.
-        /// </summary>
+        /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="value">The value already deserialized.</param>
         /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
-        internal HttpResponseMessageAssertor(TValue value, HttpResponseMessage response, TestFrameworkImplementor implementor, IJsonSerializer jsonSerializer) : base(response, implementor, jsonSerializer)
+        public HttpResponseMessageAssertor(TesterBase owner, TValue value, HttpResponseMessage response) : this(owner, response)
         {
             _value = value;
             _valueIsDeserialized = true;
@@ -75,30 +64,13 @@ namespace UnitTestEx.Assertors
         /// <param name="expectedValue">The expected value.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor<TValue> Assert(TValue? expectedValue, params string[] pathsToIgnore)
+        public HttpResponseMessageAssertor<TValue> AssertValue(TValue? expectedValue, params string[] pathsToIgnore)
         {
-            var cr = JsonElementComparer.Default.CompareValues(expectedValue, Value, JsonSerializer, pathsToIgnore);
+            var cr = Owner.CreateJsonComparer().CompareValue(expectedValue, Value, pathsToIgnore);
             if (cr is not null)
-                Implementor.AssertFail($"Expected and Actual values are not equal: {cr}");
+                Implementor.AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
 
             return this;
         }
-
-        /// <summary>
-        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> matches the JSON serialized value.
-        /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
-        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor<TValue> AssertFromJsonResource(string resourceName, params string[] pathsToIgnore) => Assert(Resource.GetJsonValue<TValue>(resourceName, Assembly.GetCallingAssembly(), JsonSerializer), pathsToIgnore);
-
-        /// <summary>
-        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> matches the JSON serialized value.
-        /// </summary>
-        /// <typeparam name="TAssembly">The <see cref="Type"/> to infer the <see cref="Assembly"/> that contains the embedded resource.</typeparam>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
-        /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
-        /// <returns>The <see cref="HttpResponseMessageAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
-        public HttpResponseMessageAssertor<TValue> AssertFromJsonResource<TAssembly>(string resourceName, params string[] pathsToIgnore) => Assert(Resource.GetJsonValue<TValue>(resourceName, typeof(TAssembly).Assembly, JsonSerializer), pathsToIgnore);
     }
 }

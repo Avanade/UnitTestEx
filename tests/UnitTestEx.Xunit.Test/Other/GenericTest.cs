@@ -14,15 +14,15 @@ namespace UnitTestEx.Xunit.Test.Other
             using var test = CreateGenericTester();
             test.Run(() => 1)
                 .AssertSuccess()
-                .Assert(1);
+                .AssertValue(1);
         }
 
         [Fact]
         public void Run_Exception()
         {
             using var test = CreateGenericTester();
-            test.ExpectErrorType(CoreEx.Abstractions.ErrorType.ValidationError, "Badness.")
-                .Run(() => throw new CoreEx.ValidationException("Badness."));
+            test.ExpectError("Badness.")
+                .Run(() => throw new System.ArithmeticException("Badness."));
         }
     }
 }
