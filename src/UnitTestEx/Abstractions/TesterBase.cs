@@ -115,14 +115,14 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Gets the <see cref="IJsonSerializer"/> <i>not</i> from the underlying host.
         /// </summary>
-        /// <remarks>Defaults to <see cref="TestSetUp.JsonSerializer"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="TesterBase{TSelf}.UseJsonSerializer(IJsonSerializer)"/> method. This does <i>not</i> use the
+        /// <remarks>Defaults to <see cref="TestSetUp.JsonSerializer"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="TesterBase{TSelf}.UseJsonSerializer"/> method. This does <i>not</i> use the
         /// instance from the underlying host as a different serializer may be required or may not have been configured.</remarks>
         public IJsonSerializer JsonSerializer { get; internal set; }
 
         /// <summary>
         /// Gets the <see cref="JsonElementComparerOptions"/> <i>not</i> from the underlying host.
         /// </summary>
-        /// <remarks>Defaults to <see cref="TestSetUp.JsonSerializer"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="TesterBase{TSelf}.UseJsonSerializer(IJsonSerializer)"/> method. This does <i>not</i> use the
+        /// <remarks>Defaults to <see cref="TestSetUp.JsonSerializer"/>. To change the <see cref="IJsonSerializer"/> use the <see cref="TesterBase{TSelf}.UseJsonSerializer"/> method. This does <i>not</i> use the
         /// instance from the underlying host as a different serializer may be required or may not have been configured.</remarks>
         public JsonElementComparerOptions JsonComparerOptions { get; internal set; }
 
