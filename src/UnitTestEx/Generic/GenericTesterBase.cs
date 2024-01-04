@@ -82,8 +82,7 @@ namespace UnitTestEx.Generic
         /// <returns>The resulting <see cref="VoidAssertor"/>.</returns>
         public async Task<VoidAssertor> RunAsync(Func<Task> function)
         {
-            if (function == null)
-                throw new ArgumentNullException(nameof(function));
+            ArgumentNullException.ThrowIfNull(function);
 
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
@@ -210,8 +209,7 @@ namespace UnitTestEx.Generic
         /// <returns>The resulting <see cref="ValueAssertor{TValue}"/>.</returns>
         public async Task<ValueAssertor<TValue>> RunAsync<TValue>(Func<Task<TValue>> function)
         {
-            if (function == null)
-                throw new ArgumentNullException(nameof(function));
+            ArgumentNullException.ThrowIfNull(function);
 
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 

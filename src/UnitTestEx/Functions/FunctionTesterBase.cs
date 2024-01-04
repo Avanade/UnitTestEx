@@ -30,6 +30,7 @@ namespace UnitTestEx.Functions
     public abstract class FunctionTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : class where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
         private static readonly object _lock = new();
+        private static readonly JsonSerializerOptions _localSettingsJsonSerializerOptions = new() { ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
         private static bool _localSettingsDone = false;
 
         private readonly bool? _includeUnitTestConfiguration;
@@ -106,7 +107,7 @@ namespace UnitTestEx.Functions
                     return tfi.Name;
 
                 var json = File.ReadAllText(fi.FullName);
-                var je = (JsonElement)System.Text.Json.JsonSerializer.Deserialize<dynamic>(json, new JsonSerializerOptions { ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+                var je = (JsonElement)System.Text.Json.JsonSerializer.Deserialize<dynamic>(json, _localSettingsJsonSerializerOptions);
                 if (je.TryGetProperty("Values", out var jv))
                 {
                     using var fs = tfi.OpenWrite();
@@ -151,9 +152,6 @@ namespace UnitTestEx.Functions
                             .AddJsonFile("appsettings.json", optional: true)
                             .AddJsonFile($"appsettings.{TestSetUp.Environment.ToLowerInvariant()}.json", optional: true);
 
-                        if ((!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (_includeUserSecrets.HasValue && _includeUserSecrets.Value))
-                            cb.AddUserSecrets<TEntryPoint>();
-
                         ep3?.ConfigureHostConfiguration(cb);
                     })
                     .ConfigureAppConfiguration((hbc, cb) =>
@@ -161,14 +159,16 @@ namespace UnitTestEx.Functions
                         ep2?.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(cb));
                         ep3?.ConfigureAppConfiguration(hbc, cb);
 
-                        cb.AddEnvironmentVariables();
-
-                        // Apply early so can be reference.
+                        if ((!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (_includeUserSecrets.HasValue && _includeUserSecrets.Value))
+                            cb.AddUserSecrets<TEntryPoint>();
+                        
                         if ((!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (_includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value))
                             cb.AddJsonFile("appsettings.unittest.json", optional: true);
 
                         if (_additionalConfiguration != null)
                             cb.AddInMemoryCollection(_additionalConfiguration);
+
+                        cb.AddEnvironmentVariables();
                     })
                     .ConfigureServices(sc =>
                     {
