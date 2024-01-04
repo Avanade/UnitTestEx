@@ -154,9 +154,14 @@ namespace UnitTestEx.Functions
                         if ((!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (_includeUserSecrets.HasValue && _includeUserSecrets.Value))
                             cb.AddUserSecrets<TEntryPoint>();
 
-                        cb.AddEnvironmentVariables();
-
                         ep3?.ConfigureHostConfiguration(cb);
+                    })
+                    .ConfigureAppConfiguration((hbc, cb) =>
+                    {
+                        ep2?.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(cb));
+                        ep3?.ConfigureAppConfiguration(hbc, cb);
+
+                        cb.AddEnvironmentVariables();
 
                         // Apply early so can be reference.
                         if ((!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (_includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value))
@@ -164,11 +169,6 @@ namespace UnitTestEx.Functions
 
                         if (_additionalConfiguration != null)
                             cb.AddInMemoryCollection(_additionalConfiguration);
-                    })
-                    .ConfigureAppConfiguration((hbc, cb) =>
-                    {
-                        ep2?.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(cb));
-                        ep3?.ConfigureAppConfiguration(hbc, cb);
                     })
                     .ConfigureServices(sc =>
                     {
