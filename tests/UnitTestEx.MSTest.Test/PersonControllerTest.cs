@@ -15,6 +15,13 @@ namespace UnitTestEx.MSTest.Test
     public class PersonControllerTest
     {
         [TestMethod]
+        public void VerifyNewtonsoftJsonSerializer()
+        {
+            using var test = ApiTester.Create<Startup>();
+            Assert.IsInstanceOfType(TestSetUp.Default.JsonSerializer, typeof(NewtonsoftJsonSerializer));
+        }
+
+        [TestMethod]
         public async Task Get_Test1()
         {
             using var test = ApiTester.Create<Startup>();
@@ -28,7 +35,7 @@ namespace UnitTestEx.MSTest.Test
         public void Get_Test2()
         {
             int id = 2;
-            using var test = ApiTester.Create<Startup>().UseJsonSerializer(new UnitTestEx.Json.Newtonsoft.JsonSerializer());
+            using var test = ApiTester.Create<Startup>().UseJsonSerializer(new NewtonsoftJsonSerializer());
             test.Controller<PersonController>()
                 .Run(c => c.Get(id))
                 .AssertOK()
