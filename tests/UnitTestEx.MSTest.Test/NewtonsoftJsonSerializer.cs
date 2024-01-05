@@ -1,17 +1,19 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+#nullable enable
+
 using System;
 using System.Collections.Generic;
 using System.IO;
+using UnitTestEx.Json;
 using Nsj = Newtonsoft.Json;
 
-namespace UnitTestEx.Json.Newtonsoft
+namespace UnitTestEx.MSTest.Test
 {
     /// <summary>
     /// Provides the <see cref="Nsj.JsonSerializer"/> encapsulated implementation.
     /// </summary>
-    /// <param name="settings">The <see cref="Nsj.JsonSerializerSettings"/>. Defaults to <see cref="DefaultSettings"/>.</param>
-    public class JsonSerializer(Nsj.JsonSerializerSettings? settings = null) : IJsonSerializer
+    public class NewtonsoftJsonSerializer : IJsonSerializer
     {
         /// <summary>
         /// Gets or sets the default <see cref="Nsj.JsonSerializerSettings"/>.
@@ -25,13 +27,24 @@ namespace UnitTestEx.Json.Newtonsoft
             ContractResolver = new Nsj.Serialization.CamelCasePropertyNamesContractResolver(),
         };
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NewtonsoftJsonSerializer"/> class.
+        /// </summary>
+        public NewtonsoftJsonSerializer() => Settings = DefaultSettings;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NewtonsoftJsonSerializer"/> class.
+        /// </summary>
+        /// <param name="settings">The <see cref="Nsj.JsonSerializerSettings"/>. Defaults to <see cref="DefaultSettings"/>.</param>
+        public NewtonsoftJsonSerializer(Nsj.JsonSerializerSettings? settings = null) => Settings = settings ?? DefaultSettings;
+
         /// <inheritdoc/>
         object IJsonSerializer.Options => Settings;
 
         /// <summary>
         /// Gets the <see cref="Nsj.JsonSerializerSettings"/>.
         /// </summary>
-        public Nsj.JsonSerializerSettings Settings { get; } = settings ?? DefaultSettings;
+        public Nsj.JsonSerializerSettings Settings { get; } 
 
         /// <inheritdoc/>
         public object? Deserialize(string json) => Deserialize<dynamic>(json);
@@ -94,3 +107,5 @@ namespace UnitTestEx.Json.Newtonsoft
         }
     }
 }
+
+#nullable restore

@@ -55,17 +55,18 @@ namespace UnitTestEx.Generic
                 return _host ??= new HostBuilder()
                     .UseEnvironment(TestSetUp.Environment)
                     .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
-                    .ConfigureHostConfiguration(ep.ConfigureHostConfiguration)
+                    .ConfigureHostConfiguration(cb =>
+                    {
+                        cb.SetBasePath(Environment.CurrentDirectory);
+                        ep.ConfigureHostConfiguration(cb);
+                        cb.AddJsonFile("appsettings.json", optional: true)
+                          .AddJsonFile($"appsettings.{TestSetUp.Environment.ToLowerInvariant()}.json", optional: true);
+                    })
                     .ConfigureAppConfiguration((hbc, cb) =>
                     {
-                        cb.SetBasePath(Environment.CurrentDirectory)
-                          .AddJsonFile("appsettings.json", optional: true)
-                          .AddJsonFile($"appsettings.{TestSetUp.Environment.ToLowerInvariant()}.json", optional: true)
-                          .AddEnvironmentVariables();
-
                         ep.ConfigureAppConfiguration(hbc, cb);
-
-                        cb.AddJsonFile("appsettings.unittest.json", optional: true);
+                        cb.AddJsonFile("appsettings.unittest.json", optional: true)
+                          .AddEnvironmentVariables();
                     })
                     .ConfigureServices(sc =>
                     {

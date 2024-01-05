@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v4.0.1
+- *Fixed:* The `FunctionTesterBase` was updated to correctly load the configuration in the order similar to that performed by the Azure Functions runtime fabric.
+- *Fixed:* Removed all dependencies to `Newtonsoft.Json`; a developer will need to explicitly add this dependency and `IJsonSerializer` implementation where applicable.
+
 ## v4.0.0
 All internal dependecies to `CoreEx` have been removed. This is intended to further generalize the capabilities of `UnitTestEx`; but more importantly, break the circular dependency reference between the two repositories. New `CoreEx.UnitTesting*` packages have been created to extend the `UnitTestEx` capabilities for `CoreEx`.
  - *Enhancement:* All typed value assertions have been named `AssertValue` for consistency; otherwise, `AssertContent` for a simple string comparison.

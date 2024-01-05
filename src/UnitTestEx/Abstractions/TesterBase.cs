@@ -32,14 +32,13 @@ namespace UnitTestEx.Abstractions
 
                 var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(fi.FullName));
                 if (json.RootElement.TryGetProperty("DefaultJsonSerializer", out var je) && je.ValueKind == System.Text.Json.JsonValueKind.String)
-                {
-                    if (string.Compare(je.GetString(), "System.Text.Json", StringComparison.InvariantCultureIgnoreCase) == 0)
-                        TestSetUp.Default.JsonSerializer = Json.JsonSerializer.Default = new Json.JsonSerializer();
-                    else if (string.Compare(je.GetString(), "Newtonsoft.Json", StringComparison.InvariantCultureIgnoreCase) == 0)
-                        TestSetUp.Default.JsonSerializer = Json.JsonSerializer.Default = new Json.Newtonsoft.JsonSerializer();
-                }
+                    TestSetUp.Default.JsonSerializer = (IJsonSerializer)Activator.CreateInstance(Type.GetType(je.GetString()!)!)!;
             }
-            catch { } // Swallow and carry on; none of this logic should impact execution.
+            catch (Exception ex)
+            {
+                // Swallow and carry on; none of this logic should impact execution.
+                System.Diagnostics.Debug.WriteLine($"UnitTestEx attempted to read, then load (if specified) the 'DefaultJsonSerializer' from, 'appsettings.unittest.json': {ex}.");
+            }
         }
 
         /// <summary>
