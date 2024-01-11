@@ -23,10 +23,10 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
 
             res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         }
 
         [Test]
@@ -37,10 +37,10 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.GetAsync("person/xyz?search=email eq \"bob@email.com\"").ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
 
             res = await hc.GetAsync("person/xyz?search=email%20eq%20%22bob@email.com%22").ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         }
 
         [Test]
@@ -53,10 +53,10 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
 
             res = await hc.GetAsync("products/abc").ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.NoContent, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
         }
 
         [Test]
@@ -67,7 +67,7 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsync("products/xyz", new StringContent("Bananas")).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
         }
 
         [Test]
@@ -80,10 +80,10 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsync("products/xyz", new StringContent("Bananas")).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
 
             res = await hc.PostAsync("products/xyz", new StringContent("Apples")).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.NoContent, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
         }
 
         [Test]
@@ -105,7 +105,7 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
         }
 
         [Test]
@@ -118,10 +118,10 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
 
             res = await hc.PostAsync("products/xyz", new StringContent("{ \"firstName\": \"Jenny\", \"lastName\": \"Browne\" }", Encoding.UTF8, MediaTypeNames.Application.Json)).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.OK, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         }
 
         [Test]
@@ -134,8 +134,8 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            Assert.That(await res.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
         }
 
         [Test]
@@ -148,8 +148,8 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            Assert.That(await res.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
         }
 
         [Test]
@@ -162,8 +162,8 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            Assert.That(await res.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
         }
 
         [Test]
@@ -181,7 +181,7 @@ namespace UnitTestEx.NUnit.Test
             }
             catch (MockHttpClientException mhcex)
             {
-                Assert.AreEqual("The request was invoked 0 times; expected AtLeastOnce. Request: <XXX> POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
+                Assert.That(mhcex.Message, Is.EqualTo("The request was invoked 0 times; expected AtLeastOnce. Request: <XXX> POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)"));
             }
         }
 
@@ -200,14 +200,14 @@ namespace UnitTestEx.NUnit.Test
             {
                 var hc = mcf.GetHttpClient("XXX");
                 var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-                Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+                Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
 
                 mcf.VerifyAll();
                 Assert.Fail();
             }
             catch (MockHttpClientException mhcex)
             {
-                Assert.AreEqual("The request was invoked 0 times; expected AtLeastOnce. Request: <XXX> POST https://d365test/products/abc {\"firstName\":\"David\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
+                Assert.That(mhcex.Message, Is.EqualTo("The request was invoked 0 times; expected AtLeastOnce. Request: <XXX> POST https://d365test/products/abc {\"firstName\":\"David\",\"lastName\":\"Jane\"} (application/json)"));
             }
         }
 
@@ -223,18 +223,18 @@ namespace UnitTestEx.NUnit.Test
             {
                 var hc = mcf.GetHttpClient("XXX");
                 var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-                Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+                Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
                 res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-                Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+                Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
                 res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-                Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+                Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
 
                 mcf.VerifyAll();
                 Assert.Fail();
             }
             catch (MockHttpClientException mhcex)
             {
-                Assert.AreEqual("The request was invoked 3 times; expected Exactly(2). Request: <XXX> POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)", mhcex.Message);
+                Assert.That(mhcex.Message, Is.EqualTo("The request was invoked 3 times; expected Exactly(2). Request: <XXX> POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)"));
             }
         }
 
@@ -262,9 +262,9 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
-            Assert.IsNotNull(res.RequestMessage);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            Assert.That(await res.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
+            Assert.That(res.RequestMessage, Is.Not.Null);
 
             Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
         }
@@ -282,10 +282,10 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
 
             res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.OK, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         }
 
         [Test]
@@ -301,10 +301,10 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.NotModified, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotModified));
 
             res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         }
 
         [Test]
@@ -319,8 +319,8 @@ namespace UnitTestEx.NUnit.Test
             var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             sw.Stop();
 
-            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
-            Assert.IsTrue(sw.ElapsedMilliseconds >= 495);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+            Assert.That(sw.ElapsedMilliseconds, Is.GreaterThanOrEqualTo(495));
         }
 
         [Test]
@@ -339,14 +339,14 @@ namespace UnitTestEx.NUnit.Test
             var sw = Stopwatch.StartNew();
             var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             sw.Stop();
-            Assert.AreEqual(HttpStatusCode.NotModified, res.StatusCode);
-            Assert.IsTrue(sw.ElapsedMilliseconds >= 245);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotModified));
+            Assert.That(sw.ElapsedMilliseconds, Is.GreaterThanOrEqualTo(245));
 
             sw.Restart();
             res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             sw.Stop();
-            Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
-            Assert.IsTrue(sw.ElapsedMilliseconds >= 95);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+            Assert.That(sw.ElapsedMilliseconds, Is.GreaterThanOrEqualTo(95));
         }
 
         [Test]
@@ -359,8 +359,8 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsXmlAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.AreEqual("<person><first>Bob</first><last>Jane</last></person>", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            Assert.That(await res.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("<person><first>Bob</first><last>Jane</last></person>"));
         }
 
         [Test]
@@ -373,8 +373,8 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient("XXX");
             var res = await hc.PostAsync("testing", new StringContent("--my--custom--format--", Encoding.UTF8, "application/custom-format")).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.AreEqual("--ok--", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            Assert.That(await res.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("--ok--"));
         }
 
         [Test]
@@ -387,9 +387,9 @@ namespace UnitTestEx.NUnit.Test
 
             var hc = mcf.GetHttpClient();
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
-            Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
-            Assert.IsNotNull(res.RequestMessage);
+            Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            Assert.That(await res.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
+            Assert.That(res.RequestMessage, Is.Not.Null);
 
             Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
         }

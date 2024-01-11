@@ -359,18 +359,40 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Creates a <see cref="ServiceBusMessageActionsAssertor"/> as the <see cref="ServiceBusMessageActions"/> instance to enable test mock and assert verification.
+        /// Creates a <see cref="WebJobsServiceBusMessageActionsAssertor"/> as the <see cref="ServiceBusMessageActions"/> instance to enable test mock and assert verification.
         /// </summary>
-        /// <returns>The <see cref="ServiceBusMessageActionsAssertor"/>.</returns>
-        public ServiceBusMessageActionsAssertor CreateServiceBusMessageActions() => new(Implementor);
+        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/>.</returns>
+        [Obsolete("Please use either CreateWebJobsServiceBusMessageActions (existing behavior) or CreateWorkerServiceBusMessageActions as required. This method will be deprecated in a future release.", false)]
+        public WebJobsServiceBusMessageActionsAssertor CreateServiceBusMessageActions() => new(Implementor);
 
         /// <summary>
-        /// Creates a <see cref="ServiceBusSessionMessageActionsAssertor"/> as the <see cref="ServiceBusSessionMessageActions"/> instance to enable test mock and assert verification.
+        /// Creates a <see cref="WebJobsServiceBusMessageActionsAssertor"/> as the <see cref="ServiceBusMessageActions"/> instance to enable test mock and assert verification.
+        /// </summary>
+        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/>.</returns>
+        public WebJobsServiceBusMessageActionsAssertor CreateWebJobsServiceBusMessageActions() => new(Implementor);
+
+        /// <summary>
+        /// Creates a <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/> as the <see cref="ServiceBusSessionMessageActions"/> instance to enable test mock and assert verification.
         /// </summary>
         /// <param name="sessionLockedUntil">The sessions locked until <see cref="DateTimeOffset"/>; defaults to <see cref="DateTimeOffset.UtcNow"/> plus five minutes.</param>
         /// <param name="sessionState">The session state <see cref="BinaryData"/>; defaults to <see cref="BinaryData.Empty"/>.</param>
-        /// <returns>The <see cref="ServiceBusSessionMessageActionsAssertor"/>.</returns>
-        public ServiceBusSessionMessageActionsAssertor CreateServiceBusSessionMessageActions(DateTimeOffset? sessionLockedUntil = default, BinaryData? sessionState = default) => new(Implementor, sessionLockedUntil, sessionState);
+        /// <returns>The <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/>.</returns>
+        [Obsolete("Please use CreateServiceBusSessionMessageActions (existing behavior). This method will be deprecated in a future release.", false)]
+        public WebJobsServiceBusSessionMessageActionsAssertor CreateServiceBusSessionMessageActions(DateTimeOffset? sessionLockedUntil = default, BinaryData? sessionState = default) => new(Implementor, sessionLockedUntil, sessionState);
+
+        /// <summary>
+        /// Creates a <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/> as the <see cref="ServiceBusSessionMessageActions"/> instance to enable test mock and assert verification.
+        /// </summary>
+        /// <param name="sessionLockedUntil">The sessions locked until <see cref="DateTimeOffset"/>; defaults to <see cref="DateTimeOffset.UtcNow"/> plus five minutes.</param>
+        /// <param name="sessionState">The session state <see cref="BinaryData"/>; defaults to <see cref="BinaryData.Empty"/>.</param>
+        /// <returns>The <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/>.</returns>
+        public WebJobsServiceBusSessionMessageActionsAssertor CreateWebJobsServiceBusSessionMessageActions(DateTimeOffset? sessionLockedUntil = default, BinaryData? sessionState = default) => new(Implementor, sessionLockedUntil, sessionState);
+
+        /// <summary>
+        /// Creates a <see cref="WorkerServiceBusMessageActionsAssertor"/> as the <see cref="Microsoft.Azure.Functions.Worker.ServiceBusMessageActions"/> instance to enable test mock and assert verification.
+        /// </summary>
+        /// <returns>The <see cref="WorkerServiceBusMessageActionsAssertor"/>.</returns>
+        public WorkerServiceBusMessageActionsAssertor CreateWorkerServiceBusMessageActions() => new(Implementor);
 
         #endregion
     }

@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using UnitTestEx.Hosting;
@@ -35,15 +34,15 @@ namespace UnitTestEx.Xunit
         protected ApiTester<TEntryPoint> CreateApiTester<TEntryPoint>() where TEntryPoint : class => new(Output);
 
         /// <summary>
-        /// Provides the <b>Xunit</b> API testing capability.
+        /// Provides the <b>Xunit</b> Functions testing capability.
         /// </summary>
-        /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TEntryPoint">The Function startup <see cref="Type"/>.</typeparam>
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
         /// <returns>The <see cref="FunctionTester{TEntryPoint}"/>.</returns>
         protected FunctionTester<TEntryPoint> CreateFunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration = null)
-            where TEntryPoint : FunctionsStartup, new()
+            where TEntryPoint : class, new()
             => new(Output, includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
 
         /// <summary>

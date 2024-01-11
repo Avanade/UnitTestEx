@@ -87,8 +87,8 @@ namespace UnitTestEx.NUnit.Test
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
             var r = hc.GetAsync("test").Result;
-            Assert.IsNotNull(r);
-            Assert.AreEqual("test output", r.Content.ReadAsStringAsync().Result);
+            Assert.That(r, Is.Not.Null);
+            Assert.That(r.Content.ReadAsStringAsync().Result, Is.EqualTo("test output"));
         }
 
         [Test]
@@ -96,10 +96,10 @@ namespace UnitTestEx.NUnit.Test
         {
             using var test = ApiTester.Create<Startup>();
             var cv = test.Configuration.GetValue<string>("SpecialKey");
-            Assert.AreEqual("VerySpecialValue", cv);
+            Assert.That(cv, Is.EqualTo("VerySpecialValue"));
             
             cv = test.Configuration.GetValue<string>("OtherKey");
-            Assert.AreEqual("OtherValue", cv);
+            Assert.That(cv, Is.EqualTo("OtherValue"));
         }
 
         [Test]

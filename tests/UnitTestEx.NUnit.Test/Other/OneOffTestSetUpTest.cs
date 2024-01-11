@@ -15,7 +15,7 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void SetUp_SetDefaultUserName()
         {
-            Assert.AreEqual("Luke", TestSetUp.Default.DefaultUserName);
+            Assert.That(TestSetUp.Default.DefaultUserName, Is.EqualTo("Luke"));
         }
 
         [Test]
@@ -23,7 +23,7 @@ namespace UnitTestEx.NUnit.Test.Other
         {
             using var test = ApiTester.Create<UnitTestEx.Api.Startup>();
             var bs = test.Services.GetService<BlahService>();
-            Assert.IsNotNull(bs);
+            Assert.That(bs, Is.Not.Null);
         }
 
         [Test]
@@ -31,7 +31,7 @@ namespace UnitTestEx.NUnit.Test.Other
         {
             using var test = FunctionTester.Create<Function.Startup>();
             var bs = test.Services.GetService<BlahService>();
-            Assert.IsNotNull(bs);
+            Assert.That(bs, Is.Not.Null);
         }
 
         [Test]
@@ -39,7 +39,7 @@ namespace UnitTestEx.NUnit.Test.Other
         {
             using var test = GenericTester.Create();
             var bs = test.Services.GetService<BlahService>();
-            Assert.IsNotNull(bs);
+            Assert.That(bs, Is.Not.Null);
         }
     }
 

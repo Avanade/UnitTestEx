@@ -2,6 +2,14 @@
 
 Represents the **NuGet** versions.
 
+## v4.1.0
+- *Enhancement:* Removed the `FunctionsStartup` constraint for `TEntryPoint` to enable more generic usage.
+- *Enhancement:* Enable `Microsoft.Azure.Functions.Worker.HttpTriggerAttribute` (new [_isolated_](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide) function support), in addition to existing `Microsoft.Azure.WebJobs.HttpTriggerAttribute` (existing [_in-process_](https://learn.microsoft.com/en-us/azure/azure-functions/functions-dotnet-class-library) function support), within `HttpTriggerTester`.
+- *Enhancement:* Enable `Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute` (new [_isolated_](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide) function support), in addition to existing `Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute` (existing [_in-process_](https://learn.microsoft.com/en-us/azure/azure-functions/functions-dotnet-class-library) function support), within `ServiceBusTriggerTester`.
+  - Additionally, `CreateServiceBusMessageActions` is being renamed to `CreateWebJobsServiceBusMessageActions`; a new `CreateWorkerServiceBusMessageActions` has been introduced to support _isolated_ `Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute` testing.
+- *Enhancement*: Upgraded `NUnit` dependency to `4.0.1`; all unit tests now leverage the `NUnit` constraint model testing approach.
+  - **Note**: Also, as a result it is recommended prior to upgrading to `v4.1.0`, where using `NUnit`, that all existing unit tests are updated to use the new constraint model testing approach; see [migration guide](https://docs.nunit.org/articles/nunit/release-notes/Nunit4.0-MigrationGuide.html) for details.
+
 ## v4.0.1
 - *Fixed:* The `FunctionTesterBase` was updated to correctly load the configuration in the order similar to that performed by the Azure Functions runtime fabric.
 - *Fixed:* Removed all dependencies to `Newtonsoft.Json`; a developer will need to explicitly add this dependency and `IJsonSerializer` implementation where applicable.

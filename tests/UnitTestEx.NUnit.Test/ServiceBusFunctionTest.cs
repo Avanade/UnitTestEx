@@ -110,7 +110,7 @@ namespace UnitTestEx.NUnit.Test
         {
             using var test = FunctionTester.Create<Startup>();
             var msg = test.CreateServiceBusMessageFromValue(new Person { FirstName = null, LastName = "Smith" });
-            var act = test.CreateServiceBusMessageActions();
+            var act = test.CreateWebJobsServiceBusMessageActions();
 
             test.ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run3(msg, act, test.Logger))
@@ -130,8 +130,8 @@ namespace UnitTestEx.NUnit.Test
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
             var r = hc.GetAsync("test").Result;
-            Assert.IsNotNull(r);
-            Assert.AreEqual("test output", r.Content.ReadAsStringAsync().Result);
+            Assert.That(r, Is.Not.Null);
+            Assert.That(r.Content.ReadAsStringAsync().Result, Is.EqualTo("test output"));
         }
 
         [Test]
@@ -139,7 +139,7 @@ namespace UnitTestEx.NUnit.Test
         {
             using var test = FunctionTester.Create<Startup>();
             var cv = test.Configuration.GetValue<string>("SpecialKey");
-            Assert.AreEqual("VerySpecialValue", cv);
+            Assert.That(cv, Is.EqualTo("VerySpecialValue"));
         }
     }
 }

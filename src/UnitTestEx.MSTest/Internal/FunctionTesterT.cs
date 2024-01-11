@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using System.Collections.Generic;
 using UnitTestEx.Functions;
 
@@ -14,5 +13,5 @@ namespace UnitTestEx.MSTest.Internal
     /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
     /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
     public class FunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration)
-        : FunctionTesterBase<TEntryPoint, FunctionTester<TEntryPoint>>(new MSTestImplementor(), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) where TEntryPoint : FunctionsStartup, new() { }
+        : FunctionTesterBase<TEntryPoint, FunctionTester<TEntryPoint>>(new MSTestImplementor(), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) where TEntryPoint : class, new() { }
 }
