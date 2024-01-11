@@ -8,7 +8,7 @@
 
 _UnitTestEx_ provides [.NET testing](https://docs.microsoft.com/en-us/dotnet/core/testing/) extensions to the most popular testing frameworks: [MSTest](https://github.com/Microsoft/testfx-docs), [NUnit](https://nunit.org/) and [Xunit](https://xunit.net/).
 
-The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style testing of the following whereby the capabilities look to adhere to the AAA pattern of unit testing; Arrange, Act and Assert.
+The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style testing of the following whereby the capabilities look to adhere to the _AAA_ pattern of unit testing; Arrange, Act and Assert.
 
 - [API Controller](#API-Controller)
 - [HTTP-triggered Azure Function](#HTTP-triggered-Azure-Function)
@@ -32,7 +32,7 @@ The included [change log](CHANGELOG.md) details all key changes per published ve
 
 ## API Controller
 
-This leverages the [`WebApplicationFactory`](https://docs.microsoft.com/en-us/aspnet/core/test/integration-tests) (WAF) as a means to host a test server in process to invoke APIs directly using HTTP requests. This has the benefit of validating the HTTP pipeline and all Dependency Injection (DI) configuration within. External system interactions can be mocked accordingly.
+Leverages the [`WebApplicationFactory`](https://docs.microsoft.com/en-us/aspnet/core/test/integration-tests) (WAF) as a means to host a test server in process to invoke APIs directly using HTTP requests. This has the benefit of validating the HTTP pipeline and all Dependency Injection (DI) configuration within. External system interactions can be mocked accordingly.
 
 _UnitTestEx_ encapsulates the `WebApplicationFactory` providing a simple means to arrange the input, execute (act), and assert the response. The following is an [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs).
 
@@ -62,13 +62,15 @@ test.ReplaceHttpClientFactory(mcf)
     .Assert(new { id = "Abc", description = "A blue carrot" });
 ```
 
+Both the [_Isolated worker model_](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide) and [_In-process model_](https://learn.microsoft.com/en-us/azure/azure-functions/functions-dotnet-class-library) are supported.
+
 <br/>
 
 ## Service Bus-trigger Azure Function
 
 As above, there is currently no easy means to integration (in-process) test Azure functions that rely on the [Azure Service Bus](https://azure.microsoft.com/en-us/services/service-bus/). _UnitTestEx_ looks to emulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method and verifies usage of the [`ServiceBusTriggerAttribute`](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-service-bus-trigger?tabs=csharp).
 
-The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs) of invoking the function method directly passing in a `ServiceBusReceivedMessage` created using `test.CreateServiceBusMessageFromValue` (this creates a message as if coming from Service Bus).
+The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs) of invoking the function method directly passing in a `ServiceBusReceivedMessage` created using `test.CreateServiceBusMessageFromValue` (this creates a message as if coming from Azure Service Bus).
 
 ``` csharp
 using var test = FunctionTester.Create<Startup>();
@@ -77,6 +79,8 @@ test.ReplaceHttpClientFactory(mcf)
     .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
     .AssertSuccess();
 ```
+
+Both the [_Isolated worker model_](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide) and [_In-process model_](https://learn.microsoft.com/en-us/azure/azure-functions/functions-dotnet-class-library) are supported.
 
 <br/>
 
