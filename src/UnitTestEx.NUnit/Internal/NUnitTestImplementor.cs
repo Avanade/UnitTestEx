@@ -9,6 +9,8 @@ namespace UnitTestEx.NUnit.Internal
     /// </summary>
     public sealed class NUnitTestImplementor : Abstractions.TestFrameworkImplementor
     {
+        private const string _notSpecifiedText = "Not specified.";
+
         /// <summary>
         /// Creates a <see cref="NUnitTestImplementor"/> .
         /// </summary>
@@ -16,13 +18,13 @@ namespace UnitTestEx.NUnit.Internal
         public static NUnitTestImplementor Create() => new();
 
         /// <inheritdoc/>
-        public override void AssertFail(string? message) => Assert.Fail(message);
+        public override void AssertFail(string? message) => Assert.Fail(message ?? _notSpecifiedText);
 
         /// <inheritdoc/>
-        public override void AssertAreEqual<T>(T? expected, T? actual, string? message = null) where T : default => Assert.AreEqual(expected, actual, message, [expected, actual]);
+        public override void AssertAreEqual<T>(T? expected, T? actual, string? message = null) where T : default => Assert.That(actual, Is.EqualTo(expected), message);
 
         /// <inheritdoc/>
-        public override void AssertInconclusive(string? message) => Assert.Inconclusive(message);
+        public override void AssertInconclusive(string? message) => Assert.Inconclusive(message ?? _notSpecifiedText);
 
         /// <inheritdoc/>
         public override void WriteLine(string? message) => TestContext.Out.WriteLine(message);

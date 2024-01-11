@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -25,7 +24,7 @@ using UnitTestEx.Json;
 namespace UnitTestEx.Functions
 {
     /// <summary>
-    /// Provides Azure Function <see cref="HttpTriggerAttribute"/> unit-testing capabilities.
+    /// Provides Azure Function <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute"/> unit-testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
     public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction>, IExpectations<HttpTriggerTester<TFunction>> where TFunction : class
@@ -43,31 +42,32 @@ namespace UnitTestEx.Functions
         public ExpectationsArranger<HttpTriggerTester<TFunction>> ExpectationsArranger { get; }
 
         /// <summary>
-        /// Runs the HTTP Triggered (see <see cref="HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
+        /// Runs the HTTP Triggered (see <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
         /// </summary>
         /// <param name="expression">The function operation invocation expression.</param>
         /// <returns>An <see cref="ActionResultAssertor"/>.</returns>
         public ActionResultAssertor Run(Expression<Func<TFunction, Task<IActionResult>>> expression) => RunAsync(expression).GetAwaiter().GetResult();
 
         /// <summary>
-        /// Runs the HTTP Triggered (see <see cref="HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
+        /// Runs the HTTP Triggered (see <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
         /// </summary>
         /// <param name="expression">The function operation invocation expression.</param>
         /// <returns>An <see cref="ActionResultAssertor"/>.</returns>
         public async Task<ActionResultAssertor> RunAsync(Expression<Func<TFunction, Task<IActionResult>>> expression)
         {
-            (IActionResult result, Exception? ex, double ms) = await RunAsync(expression, typeof(HttpTriggerAttribute), (p, a, v) =>
+            (IActionResult result, Exception? ex, double ms) = await RunAsync(expression, [typeof(Microsoft.Azure.WebJobs.HttpTriggerAttribute), typeof(Microsoft.Azure.Functions.Worker.HttpTriggerAttribute)], (p, a, v) =>
             {
-                if (a == null)
-                    throw new InvalidOperationException($"The function method must have a parameter using the {nameof(HttpTriggerAttribute)}.");
-
                 var requestVal = v;
                 var httpRequest = v as HttpRequest;
                 LogRequest(httpRequest, requestVal);
 
-                var httpTriggerAttribute = (HttpTriggerAttribute)a;
-                if (httpRequest != null && !httpTriggerAttribute.Methods.Contains(httpRequest.Method, StringComparer.OrdinalIgnoreCase))
-                    throw new InvalidOperationException($"The function {nameof(HttpTriggerAttribute)} supports {nameof(HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid.");
+                var httpTriggerAttribute = a as Microsoft.Azure.WebJobs.HttpTriggerAttribute;
+                if (httpRequest != null && httpTriggerAttribute is not null && !httpTriggerAttribute.Methods.Contains(httpRequest.Method, StringComparer.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"The function {nameof(Microsoft.Azure.WebJobs.HttpTriggerAttribute)} supports {nameof(Microsoft.Azure.WebJobs.HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid.");
+
+                var httpTriggerAttribute2 = a as Microsoft.Azure.Functions.Worker.HttpTriggerAttribute;
+                if (httpRequest != null && httpTriggerAttribute2 is not null && httpTriggerAttribute2.Methods is not null && !httpTriggerAttribute2.Methods!.Contains(httpRequest.Method, StringComparer.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"The function {nameof(Microsoft.Azure.Functions.Worker.HttpTriggerAttribute)} supports {nameof(Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute2.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid.");
             }).ConfigureAwait(false);
 
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);

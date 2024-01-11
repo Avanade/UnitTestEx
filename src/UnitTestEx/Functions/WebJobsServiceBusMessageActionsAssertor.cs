@@ -14,7 +14,7 @@ namespace UnitTestEx.Functions
     /// Provides a <see cref="ServiceBusMessageActions"/> test mock and assert verification.
     /// </summary>
     /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-    public class ServiceBusMessageActionsAssertor(TestFrameworkImplementor implementor) : ServiceBusMessageActions
+    public class WebJobsServiceBusMessageActionsAssertor(TestFrameworkImplementor implementor) : ServiceBusMessageActions
     {
         private readonly TestFrameworkImplementor _implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
 
@@ -115,7 +115,7 @@ namespace UnitTestEx.Functions
         }
 
         /// <summary>
-        /// Logs the result of the <see cref="ServiceBusMessageActionsAssertor"/>.
+        /// Logs the result of the <see cref="WebJobsServiceBusMessageActionsAssertor"/>.
         /// </summary>
         internal void LogResult()
         {
@@ -145,7 +145,7 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Assert the status.
         /// </summary>
-        private ServiceBusMessageActionsAssertor AssertStatus(ServiceBusMessageActionStatus status)
+        private WebJobsServiceBusMessageActionsAssertor AssertStatus(ServiceBusMessageActionStatus status)
         {
             if (!Status.Equals(status))
                 _implementor.AssertAreEqual(status, Status, "ServiceBusMessageActions status is not equal.");
@@ -156,28 +156,28 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Asserts that the <see cref="AbandonMessageAsync(ServiceBusReceivedMessage, IDictionary{string, object}?, CancellationToken)"/> was invoked.
         /// </summary>
-        /// <returns>The <see cref="ServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public ServiceBusMessageActionsAssertor AssertAbandon() => AssertStatus(ServiceBusMessageActionStatus.Abandon);
+        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusMessageActionsAssertor AssertAbandon() => AssertStatus(ServiceBusMessageActionStatus.Abandon);
 
         /// <summary>
         /// Asserts that the <see cref="CompleteMessageAsync(ServiceBusReceivedMessage, CancellationToken)"/> was invoked.
         /// </summary>
-        /// <returns>The <see cref="ServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public ServiceBusMessageActionsAssertor AssertComplete() => AssertStatus(ServiceBusMessageActionStatus.Complete);
+        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusMessageActionsAssertor AssertComplete() => AssertStatus(ServiceBusMessageActionStatus.Complete);
 
         /// <summary>
         /// Asserts that the <see cref="DeferMessageAsync(ServiceBusReceivedMessage, IDictionary{string, object}?, CancellationToken)"/> was invoked.
         /// </summary>
-        /// <returns>The <see cref="ServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public ServiceBusMessageActionsAssertor AssertDefer() => AssertStatus(ServiceBusMessageActionStatus.Defer);
+        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusMessageActionsAssertor AssertDefer() => AssertStatus(ServiceBusMessageActionStatus.Defer);
 
         /// <summary>
         /// Asserts that the one of the <see cref="DeadLetterMessageAsync(ServiceBusReceivedMessage, string, string?, CancellationToken)"/> methods was invoked.
         /// </summary>
         /// <param name="reasonContains">Asserts that the resulting <see cref="DeadLetterReason"/> contains the specified content.</param>
         /// <param name="errorDescriptionContains">Asserts that the resulting <see cref="DeadLetterErrorDescription"/> contains the specified content.</param>
-        /// <returns>The <see cref="ServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public ServiceBusMessageActionsAssertor AssertDeadLetter(string? reasonContains = default, string? errorDescriptionContains = default)
+        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusMessageActionsAssertor AssertDeadLetter(string? reasonContains = default, string? errorDescriptionContains = default)
         {
             AssertStatus(ServiceBusMessageActionStatus.DeadLetter);
             if (!string.IsNullOrEmpty(reasonContains))
@@ -198,8 +198,8 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Asserts that the <see cref="RenewMessageLockAsync(ServiceBusReceivedMessage, CancellationToken)"/> was invoked at least once or <paramref name="count"/> specified.
         /// </summary>
-        /// <returns>The <see cref="ServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public ServiceBusMessageActionsAssertor AssertRenew(int? count = default)
+        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusMessageActionsAssertor AssertRenew(int? count = default)
         {
             if (count.HasValue)
                 _implementor.AssertAreEqual(count.Value, RenewCount, $"{nameof(RenewCount)} is not equal.");
@@ -212,7 +212,7 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Asserts that <i>no</i> methods (with the exception of <see cref="RenewMessageLockAsync(ServiceBusReceivedMessage, CancellationToken)"/>) were invoked.
         /// </summary>
-        /// <returns>The <see cref="ServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public ServiceBusMessageActionsAssertor AssertNone() => AssertStatus(ServiceBusMessageActionStatus.None);
+        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusMessageActionsAssertor AssertNone() => AssertStatus(ServiceBusMessageActionStatus.None);
     }
 }

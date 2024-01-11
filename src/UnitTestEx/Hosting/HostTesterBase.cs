@@ -49,10 +49,10 @@ namespace UnitTestEx.Hosting
         /// Orchestrates the execution of a method as described by the <paramref name="expression"/> returning no result.
         /// </summary>
         /// <param name="expression">The method execution expression.</param>
-        /// <param name="paramAttributeType">The optional parameter <see cref="Attribute"/> <see cref="Type"/> to find.</param>
+        /// <param name="paramAttributeTypes">The optional parameter <see cref="Attribute"/> <see cref="Type"/>(s) to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting exception if any and elapsed milliseconds.</returns>
-        protected async Task<(Exception? Exception, double ElapsedMilliseconds)> RunAsync(Expression<Func<THost, Task>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected async Task<(Exception? Exception, double ElapsedMilliseconds)> RunAsync(Expression<Func<THost, Task>> expression, Type[]? paramAttributeTypes, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
@@ -68,9 +68,15 @@ namespace UnitTestEx.Hosting
                 var le = Expression.Lambda<Func<object>>(ue);
                 @params[i] = le.Compile().Invoke();
 
-                if (paramAttribute == null && paramAttributeType != null)
+                if (paramAttribute == null && paramAttributeTypes != null)
                 {
-                    paramAttribute = (Attribute?)pis[i].GetCustomAttributes(paramAttributeType, false).FirstOrDefault()!;
+                    for (int j = 0; j < paramAttributeTypes.Length; j++)
+                    {
+                        paramAttribute = (Attribute?)pis[i].GetCustomAttributes(paramAttributeTypes[j], false).FirstOrDefault()!;
+                        if (paramAttribute != null)
+                            break;
+                    }
+
                     paramValue = @params[i];
                 }
             }
@@ -103,10 +109,10 @@ namespace UnitTestEx.Hosting
         /// </summary>
         /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
         /// <param name="expression">The method execution expression.</param>
-        /// <param name="paramAttributeType">The optional parameter <see cref="Attribute"/> <see cref="Type"/> to find.</param>
+        /// <param name="paramAttributeTypes">The optional parameter <see cref="Attribute"/> <see cref="Type"/> array to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
-        protected async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<THost, Task<TValue>>> expression, Type? paramAttributeType, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<THost, Task<TValue>>> expression, Type[]? paramAttributeTypes, Action<object?[], Attribute?, object?>? onBeforeRun)
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
@@ -122,9 +128,15 @@ namespace UnitTestEx.Hosting
                 var le = Expression.Lambda<Func<object>>(ue);
                 @params[i] = le.Compile().Invoke();
 
-                if (paramAttribute == null && paramAttributeType != null)
+                if (paramAttribute == null && paramAttributeTypes != null)
                 {
-                    paramAttribute = (Attribute?)pis[i].GetCustomAttributes(paramAttributeType, false).FirstOrDefault()!;
+                    for (int j = 0; j < paramAttributeTypes.Length; j++)
+                    {
+                        paramAttribute = (Attribute?)pis[i].GetCustomAttributes(paramAttributeTypes[j], false).FirstOrDefault()!;
+                        if (paramAttribute != null)
+                            break;
+                    }
+
                     paramValue = @params[i];
                 }
             }

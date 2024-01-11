@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using UnitTestEx.MSTest.Internal;
@@ -21,7 +20,7 @@ namespace UnitTestEx.MSTest
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
         /// <returns>The <see cref="ApiTester{TEntryPoint}"/>.</returns>
         public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration = null)
-            where TEntryPoint : FunctionsStartup, new() 
+            where TEntryPoint : class, new() 
             => new(includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
     }
 }

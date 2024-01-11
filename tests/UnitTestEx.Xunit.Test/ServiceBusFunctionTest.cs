@@ -3,6 +3,7 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading.Tasks;
 using UnitTestEx.Function;
 using UnitTestEx.Json;
 using Xunit;
@@ -107,7 +108,7 @@ namespace UnitTestEx.Xunit.Test
         }
 
         [Fact]
-        public void ServiceProvider()
+        public async Task ServiceProvider()
         {
             var mcf = CreateMockHttpClientFactory();
             mcf.CreateClient("XXX", new Uri("https://somesys")).Request(HttpMethod.Get, "test").Respond.With("test output");
@@ -116,9 +117,9 @@ namespace UnitTestEx.Xunit.Test
             var hc = test.ReplaceHttpClientFactory(mcf)
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
-            var r = hc.GetAsync("test").Result;
+            var r = await hc.GetAsync("test");
             Assert.NotNull(r);
-            Assert.Equal("test output", r.Content.ReadAsStringAsync().Result);
+            Assert.Equal("test output", await r.Content.ReadAsStringAsync());
         }
     }
 }

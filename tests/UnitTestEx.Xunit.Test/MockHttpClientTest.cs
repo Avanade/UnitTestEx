@@ -23,10 +23,10 @@ namespace UnitTestEx.Xunit.Test
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Get, "products/xyz").Respond.With(HttpStatusCode.NotFound);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            var res = await hc.GetAsync("products/xyz");
             Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
 
-            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            res = await hc.GetAsync("products/xyz");
             Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
         }
 
@@ -39,10 +39,10 @@ namespace UnitTestEx.Xunit.Test
             mc.Request(HttpMethod.Get, "products/abc").Respond.With(HttpStatusCode.NoContent);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            var res = await hc.GetAsync("products/xyz");
             Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
 
-            res = await hc.GetAsync("products/abc").ConfigureAwait(false);
+            res = await hc.GetAsync("products/abc");
             Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
         }
 
@@ -53,7 +53,7 @@ namespace UnitTestEx.Xunit.Test
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Post, "products/xyz").WithBody("Bananas").Respond.With(HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsync("products/xyz", new StringContent("Bananas")).ConfigureAwait(false);
+            var res = await hc.PostAsync("products/xyz", new StringContent("Bananas"));
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
         }
 
@@ -66,22 +66,22 @@ namespace UnitTestEx.Xunit.Test
             mc.Request(HttpMethod.Post, "products/xyz").WithBody("Apples").Respond.With(HttpStatusCode.NoContent);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsync("products/xyz", new StringContent("Bananas")).ConfigureAwait(false);
+            var res = await hc.PostAsync("products/xyz", new StringContent("Bananas"));
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
 
-            res = await hc.PostAsync("products/xyz", new StringContent("Apples")).ConfigureAwait(false);
+            res = await hc.PostAsync("products/xyz", new StringContent("Apples"));
             Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
         }
 
         [Fact]
-        public void UriAndBody_Invalid()
+        public async Task UriAndBody_Invalid()
         {
             var mcf = CreateMockHttpClientFactory();
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Post, "products/xyz").WithBody("Bananas").Respond.With(HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
 
-            Assert.ThrowsAsync<MockHttpClientException>(() => hc.PostAsync("products/xyz", new StringContent("Apples")));
+            await Assert.ThrowsAsync<MockHttpClientException>(() => hc.PostAsync("products/xyz", new StringContent("Apples")));
         }
 
         [Fact]
@@ -91,7 +91,7 @@ namespace UnitTestEx.Xunit.Test
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" }).Respond.With(HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
         }
 
@@ -104,10 +104,10 @@ namespace UnitTestEx.Xunit.Test
             mc.Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Jenny", LastName = "Browne" }).Respond.With(HttpStatusCode.OK);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
 
-            res = await hc.PostAsync("products/xyz", new StringContent("{ \"firstName\": \"Jenny\", \"lastName\": \"Browne\" }", Encoding.UTF8, MediaTypeNames.Application.Json)).ConfigureAwait(false);
+            res = await hc.PostAsync("products/xyz", new StringContent("{ \"firstName\": \"Jenny\", \"lastName\": \"Browne\" }", Encoding.UTF8, MediaTypeNames.Application.Json));
             Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         }
 
@@ -120,9 +120,9 @@ namespace UnitTestEx.Xunit.Test
                 .Respond.WithJson(new Person2 { First = "Bob", Last = "Jane" }, HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.Equal("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.Equal("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync());
         }
 
         [Fact]
@@ -134,9 +134,9 @@ namespace UnitTestEx.Xunit.Test
                 .Respond.WithJson("{\"first\":\"Bob\",\"last\":\"Jane\"}", HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.Equal("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.Equal("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync());
         }
 
         [Fact]
@@ -148,9 +148,9 @@ namespace UnitTestEx.Xunit.Test
                 .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.Equal("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.Equal("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync());
         }
 
         [Fact]
@@ -186,7 +186,7 @@ namespace UnitTestEx.Xunit.Test
             try
             {
                 var hc = mcf.GetHttpClient("XXX");
-                var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
                 Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
 
                 mcf.VerifyAll();
@@ -209,11 +209,11 @@ namespace UnitTestEx.Xunit.Test
             try
             {
                 var hc = mcf.GetHttpClient("XXX");
-                var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
                 Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
-                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
                 Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
-                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
                 Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
 
                 mcf.VerifyAll();
@@ -234,7 +234,7 @@ namespace UnitTestEx.Xunit.Test
                 .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
 
             mcf.VerifyAll();
         }
@@ -248,9 +248,9 @@ namespace UnitTestEx.Xunit.Test
                 .Respond.WithJson("{\"first\":\"Bob\",\"last\":\"Jane\"}", HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.Equal("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.Equal("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync());
 
             await Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
         }
@@ -267,10 +267,10 @@ namespace UnitTestEx.Xunit.Test
             });
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
 
-            res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
             Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         }
 
@@ -287,10 +287,10 @@ namespace UnitTestEx.Xunit.Test
             });
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            var res = await hc.GetAsync("products/xyz");
             Assert.Equal(HttpStatusCode.NotModified, res.StatusCode);
 
-            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            res = await hc.GetAsync("products/xyz");
             Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
         }
 
@@ -303,7 +303,7 @@ namespace UnitTestEx.Xunit.Test
             var hc = mcf.GetHttpClient("XXX");
 
             var sw = Stopwatch.StartNew();
-            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            var res = await hc.GetAsync("products/xyz");
             sw.Stop();
 
             Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
@@ -324,13 +324,13 @@ namespace UnitTestEx.Xunit.Test
             var hc = mcf.GetHttpClient("XXX");
 
             var sw = Stopwatch.StartNew();
-            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            var res = await hc.GetAsync("products/xyz");
             sw.Stop();
             Assert.Equal(HttpStatusCode.NotModified, res.StatusCode);
             Assert.True(sw.ElapsedMilliseconds >= 245, $"Actual elapsed milliseconds {sw.ElapsedMilliseconds}.");
 
             sw.Restart();
-            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            res = await hc.GetAsync("products/xyz");
             sw.Stop();
             Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
             Assert.True(sw.ElapsedMilliseconds >= 95, $"Actual elapsed milliseconds {sw.ElapsedMilliseconds}.");
@@ -345,9 +345,9 @@ namespace UnitTestEx.Xunit.Test
                 .Respond.With(new StringContent("<person><first>Bob</first><last>Jane</last></person>", Encoding.UTF8, MediaTypeNames.Application.Xml), HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsXmlAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+            var res = await hc.PostAsXmlAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" });
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.Equal("<person><first>Bob</first><last>Jane</last></person>", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.Equal("<person><first>Bob</first><last>Jane</last></person>", await res.Content.ReadAsStringAsync());
         }
 
         [Fact]
@@ -359,9 +359,9 @@ namespace UnitTestEx.Xunit.Test
                 .Respond.With(new StringContent("--ok--", Encoding.UTF8, "application/custom-format"), HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
-            var res = await hc.PostAsync("testing", new StringContent("--my--custom--format--", Encoding.UTF8, "application/custom-format")).ConfigureAwait(false);
+            var res = await hc.PostAsync("testing", new StringContent("--my--custom--format--", Encoding.UTF8, "application/custom-format"));
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
-            Assert.Equal("--ok--", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            Assert.Equal("--ok--", await res.Content.ReadAsStringAsync());
         }
     }
 }
