@@ -2,8 +2,10 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
@@ -81,10 +83,11 @@ namespace UnitTestEx.Hosting
             }
 
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            LogResult(ex, sw.Elapsed.TotalMilliseconds);
+            var logs = Owner.SharedState.GetLoggerMessages();
+            LogResult(ex, sw.Elapsed.TotalMilliseconds, logs);
             LogTrailer();
 
-            await ExpectationsArranger.AssertAsync(null, ex).ConfigureAwait(false);
+            await ExpectationsArranger.AssertAsync(logs, ex).ConfigureAwait(false);
 
             return new VoidAssertor(Owner, ex);
         }
@@ -128,7 +131,8 @@ namespace UnitTestEx.Hosting
             }
 
             await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            LogResult(ex, sw.Elapsed.TotalMilliseconds);
+            var logs = Owner.SharedState.GetLoggerMessages();
+            LogResult(ex, sw.Elapsed.TotalMilliseconds, logs);
 
             if (ex == null)
             {
@@ -146,7 +150,7 @@ namespace UnitTestEx.Hosting
 
             LogTrailer();
 
-            await ExpectationsArranger.AssertAsync(null, ex).ConfigureAwait(false);
+            await ExpectationsArranger.AssertValueAsync(logs, result, ex).ConfigureAwait(false);
 
             return new ValueAssertor<TValue>(Owner, result, ex);
         }
@@ -159,15 +163,25 @@ namespace UnitTestEx.Hosting
             Implementor.WriteLine("");
             Implementor.WriteLine("TYPE TESTER...");
             Implementor.WriteLine($"Type: {typeof(T).Name} [{typeof(T).FullName}]");
-            Implementor.WriteLine("");
-            Implementor.WriteLine("LOGGING >");
         }
 
         /// <summary>
         /// Log the elapsed execution time.
         /// </summary>
-        private void LogResult(Exception? ex, double ms)
+        private void LogResult(Exception? ex, double ms, IEnumerable<string?>? logs)
         {
+            Implementor.WriteLine("");
+            Implementor.WriteLine("LOGGING >");
+            if (logs is not null && logs.Any())
+            {
+                foreach (var msg in logs)
+                {
+                    Implementor.WriteLine(msg);
+                }
+            }
+            else
+                Implementor.WriteLine("None.");
+
             Implementor.WriteLine("");
             Implementor.WriteLine("RESULT >");
             Implementor.WriteLine($"Elapsed (ms): {ms}");

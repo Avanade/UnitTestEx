@@ -15,10 +15,12 @@ namespace UnitTestEx.Function
     public class ProductFunction
     {
         private readonly HttpClient _httpClient;
+        private readonly ILogger<ProductFunction> _logger;
 
-        public ProductFunction(IHttpClientFactory clientFactory)
+        public ProductFunction(IHttpClientFactory clientFactory, ILogger<ProductFunction> logger)
         {
             _httpClient = clientFactory.CreateClient("XXX");
+            _logger = logger;
         }
 
         [FunctionName("ProductFunction")]
@@ -45,8 +47,10 @@ namespace UnitTestEx.Function
         }
 
         [FunctionName("TimerTriggered")]
-        public Task DailyRun([TimerTrigger("0 0 0 */1 * *", RunOnStartup = true)] TimerInfo _)
+        public Task DailyRun([TimerTrigger("0 0 0 */1 * *", RunOnStartup = true)] TimerInfo _, ILogger otherLogger)
         {
+            _logger.LogInformation("C# Timer trigger function executed (DI).");
+            otherLogger.LogInformation("C# Timer trigger function executed (method).");
             return Task.CompletedTask;
         }
     }

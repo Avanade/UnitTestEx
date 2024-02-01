@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v4.1.1
+- *Fixed:* The `TypeTester` was not correctly capturing and outputting any of the logging, and also (as a result) the `ExpectLogContains` was not functioning as expected.
+
 ## v4.1.0
 - *Enhancement:* Removed the `FunctionsStartup` constraint for `TEntryPoint` to enable more generic usage.
 - *Enhancement:* Enable `Microsoft.Azure.Functions.Worker.HttpTriggerAttribute` (new [_isolated_](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide) function support), in addition to existing `Microsoft.Azure.WebJobs.HttpTriggerAttribute` (existing [_in-process_](https://learn.microsoft.com/en-us/azure/azure-functions/functions-dotnet-class-library) function support), within `HttpTriggerTester`.
