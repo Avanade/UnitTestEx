@@ -76,7 +76,9 @@ namespace UnitTestEx.NUnit.Test
         {
             using var test = FunctionTester.Create<Startup>();
             test.Type<ProductFunction>()
-                .Run(f => f.DailyRun(new TimerInfo(new DailySchedule("2:00:00"), It.IsAny<ScheduleStatus>(), false)))
+                .ExpectLogContains("(DI)")
+                .ExpectLogContains("(method)")
+                .Run(f => f.DailyRun(new TimerInfo(new DailySchedule("2:00:00"), It.IsAny<ScheduleStatus>(), false), test.Logger))
                 .AssertSuccess();
         }   
     }
