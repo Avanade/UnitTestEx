@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v4.1.2
+- *Fixed*: The `AssertLocationHeader` has been corrected to also support the specification of the `Uri` as a string. Additionally, contains support has been added with `AssertLocationHeaderContains`.
+
 ## v4.1.1
 - *Fixed:* The `TypeTester` was not correctly capturing and outputting any of the logging, and also (as a result) the `ExpectLogContains` was not functioning as expected.
 
