@@ -31,11 +31,8 @@ namespace UnitTestEx
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
         public static IServiceCollection ReplaceSingleton<TService>(this IServiceCollection services, Func<IServiceProvider, TService> implementationFactory) where TService : class
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (implementationFactory == null)
-                throw new ArgumentNullException(nameof(implementationFactory));
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(implementationFactory);
 
             services.Remove<TService>();
             return services.AddSingleton(implementationFactory);
@@ -59,8 +56,7 @@ namespace UnitTestEx
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
         public static IServiceCollection ReplaceSingleton<TService, TImplementation>(this IServiceCollection services) where TService : class where TImplementation : class, TService
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+            ArgumentNullException.ThrowIfNull(services);
 
             services.Remove<TService>();
             return services.AddSingleton<TService, TImplementation>();
@@ -79,11 +75,8 @@ namespace UnitTestEx
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
         public static IServiceCollection ReplaceScoped<TService>(this IServiceCollection services, Func<IServiceProvider, TService> implementationFactory) where TService : class
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (implementationFactory == null)
-                throw new ArgumentNullException(nameof(implementationFactory));
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(implementationFactory);
 
             services.Remove<TService>();
             return services.AddScoped(implementationFactory);
@@ -107,8 +100,7 @@ namespace UnitTestEx
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
         public static IServiceCollection ReplaceScoped<TService, TImplementation>(this IServiceCollection services) where TService : class where TImplementation : class, TService
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+            ArgumentNullException.ThrowIfNull(services);
 
             services.Remove<TService>();
             return services.AddScoped<TService, TImplementation>();
@@ -127,11 +119,8 @@ namespace UnitTestEx
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
         public static IServiceCollection ReplaceTransient<TService>(this IServiceCollection services, Func<IServiceProvider, TService> implementationFactory) where TService : class
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
-
-            if (implementationFactory == null)
-                throw new ArgumentNullException(nameof(implementationFactory));
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(implementationFactory);
 
             services.Remove<TService>();
             return services.AddTransient(implementationFactory);
@@ -155,8 +144,7 @@ namespace UnitTestEx
         /// <remarks>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</remarks>
         public static IServiceCollection ReplaceTransient<TService, TImplementation>(this IServiceCollection services) where TService : class where TImplementation : class, TService
         {
-            if (services == null)
-                throw new ArgumentNullException(nameof(services));
+            ArgumentNullException.ThrowIfNull(services);
 
             services.Remove<TService>();
             return services.AddTransient<TService, TImplementation>();

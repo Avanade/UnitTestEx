@@ -69,6 +69,26 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
+        /// Gets the optional <see cref="IServiceProvider"/>.
+        /// </summary>
+        /// <remarks>This is set automatically when the <see cref="Replace(IServiceCollection)"/> is performed.</remarks>
+        public IServiceProvider? ServiceProvider { get; private set; }
+
+        /// <summary>
+        /// Sets the optional <see cref="ServiceProvider"/>; once set this cannot be changed.
+        /// </summary>
+        /// <param name="serviceProvider">The <see cref="IServiceProvider"/>.</param>
+        /// <returns>The current instance to support fluent-style method-chaining.</returns>
+        public MockHttpClientFactory UseServiceProvider(IServiceProvider? serviceProvider)
+        {
+            if (ServiceProvider is not null)
+                throw new InvalidOperationException($"{nameof(ServiceProvider)} has already been assigned; once set it cannot be changed.");
+
+            ServiceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            return this;
+        }
+
+        /// <summary>
         /// Creates the <see cref="MockHttpClient"/> with the specified logical <paramref name="name"/>.
         /// </summary>
         /// <param name="name">The logical name of the client.</param>
@@ -92,7 +112,7 @@ namespace UnitTestEx.Mocking
         /// Creates the <see cref="MockHttpClient"/> with the specified logical <paramref name="name"/>.
         /// </summary>
         /// <param name="name">The logical name of the client.</param>
-        /// <param name="baseAddress">The base address of Uniform Resource Identifier (URI) of the Internet resource used when sending requests; defaults to '<c>https://unittest</c>' where not specified.</param>
+        /// <param name="baseAddress">The base address of Uniform Resource Identifier (URI) of the Internet resource used when sending requests; defaults to <see cref="MockHttpClient.DefaultBaseAddress"/> where not specified.</param>
         /// <returns>The <see cref="MockHttpClient"/>.</returns>
         /// <remarks>Only a single client can be created per logical name.</remarks>
         public MockHttpClient CreateClient(string name, string? baseAddress = null)
@@ -127,7 +147,7 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Creates the default (unnamed) <see cref="MockHttpClient"/>.
         /// </summary>
-        /// <param name="baseAddress">The base address of Uniform Resource Identifier (URI) of the Internet resource used when sending requests; defaults to '<c>https://unittest</c>' where not specified.</param>
+        /// <param name="baseAddress">The base address of Uniform Resource Identifier (URI) of the Internet resource used when sending requests; defaults to <see cref="MockHttpClient.DefaultBaseAddress"/> where not specified.</param>
         /// <returns>The <see cref="MockHttpClient"/>.</returns>
         /// <remarks>Only a single default client can be created.</remarks>
         public MockHttpClient CreateDefaultClient(string? baseAddress = null)
@@ -147,23 +167,24 @@ namespace UnitTestEx.Mocking
         /// <returns>The <see cref="IServiceCollection"/> to support fluent-style method-chaining.</returns>
         public IServiceCollection Replace(IServiceCollection sc) => sc.ReplaceSingleton(sp =>
         {
+            UseServiceProvider(sp);
             Logger = sp.GetRequiredService<ILogger<MockHttpClientFactory>>();
-            Logger.LogInformation($"UnitTestEx > Replacing '{nameof(HttpClientFactory)}' service provider (DI) instance with '{nameof(MockHttpClientFactory)}'.");
+            Logger.LogDebug($"UnitTestEx > Replacing '{nameof(HttpClientFactory)}' service provider (DI) instance with '{nameof(MockHttpClientFactory)}'.");
             return HttpClientFactory.Object;
         });
 
         /// <summary>
-        /// Gets the logically named mocked <see cref="HttpClient"/>.
+        /// Gets the logically <i>named</i> mocked <see cref="HttpClient"/>.
         /// </summary>
         /// <param name="name">The logical name of the client.</param>
         /// <returns>The <see cref="HttpClient"/> where it exists; otherwise; <c>null</c>.</returns>
-        public HttpClient? GetHttpClient(string name) => _mockClients.GetValueOrDefault(name ?? throw new ArgumentNullException(nameof(name)))?.HttpClient;
+        public HttpClient? GetHttpClient(string name) => _mockClients.GetValueOrDefault(name ?? throw new ArgumentNullException(nameof(name)))?.GetHttpClient();
 
         /// <summary>
         /// Gets the default (unnamed) mocked <see cref="HttpClient"/>.
         /// </summary>
         /// <returns>The default <see cref="HttpClient"/> where it exists; otherwise; <c>null</c>.</returns>
-        public HttpClient? GetHttpClient() => _mockClients.GetValueOrDefault(string.Empty)?.HttpClient;
+        public HttpClient? GetHttpClient() => _mockClients.GetValueOrDefault(string.Empty)?.GetHttpClient();
 
         /// <summary>
         /// Verifies that all verifiable <see cref="Mock"/> expectations have been met for all <see cref="MockHttpClient"/> instances; being all requests have been invoked.
