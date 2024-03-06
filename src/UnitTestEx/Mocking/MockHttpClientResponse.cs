@@ -196,8 +196,7 @@ namespace UnitTestEx.Mocking
             if (_rule == null)
                 throw new InvalidOperationException("A WithSequence can not be issued within the context of a parent WithSequence.");
 
-            if (sequence == null)
-                throw new ArgumentNullException(nameof(sequence));
+            ArgumentNullException.ThrowIfNull(sequence);
 
             _rule.Responses ??= [];
 

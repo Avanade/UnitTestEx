@@ -8,9 +8,10 @@ namespace UnitTestEx.Json
     /// <summary>
     /// Provides the <see cref="Stj.JsonSerializer"/> encapsulated implementation.
     /// </summary>
-    /// <param name="options">The <see cref="Stj.JsonSerializerOptions"/>. Defaults to <see cref="DefaultOptions"/>.</param>
-    public class JsonSerializer(Stj.JsonSerializerOptions? options = null) : IJsonSerializer
+    public class JsonSerializer : IJsonSerializer
     {
+        private static IJsonSerializer? _default;
+
         /// <summary>
         /// Gets or sets the default <see cref="Stj.JsonSerializerOptions"/>.
         /// </summary>
@@ -23,7 +24,21 @@ namespace UnitTestEx.Json
         /// <summary>
         /// Gets or sets the default <see cref="IJsonSerializer"/>.
         /// </summary>
-        public static IJsonSerializer Default { get; set; } = new JsonSerializer();
+        public static IJsonSerializer Default
+        {
+            get => _default ??= new JsonSerializer();
+            set => _default = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="JsonSerializer"/> class.
+        /// </summary>
+        /// <param name="options">The <see cref="Stj.JsonSerializerOptions"/>. Defaults to <see cref="DefaultOptions"/>.</param>
+        public JsonSerializer(Stj.JsonSerializerOptions? options = null)
+        {
+            Options = options ?? DefaultOptions;
+            IndentedOptions = new Stj.JsonSerializerOptions(Options) { WriteIndented = true };
+        }
 
         /// <inheritdoc/>
         object IJsonSerializer.Options => Options;
@@ -31,7 +46,12 @@ namespace UnitTestEx.Json
         /// <summary>
         /// Gets the <see cref="Stj.JsonSerializerOptions"/>.
         /// </summary>
-        public Stj.JsonSerializerOptions Options { get; } = options ?? DefaultOptions;
+        public Stj.JsonSerializerOptions Options { get; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="Stj.JsonSerializerOptions"/> with <see cref="Stj.JsonSerializerOptions.WriteIndented"/> = <c>true</c>.
+        /// </summary>
+        public Stj.JsonSerializerOptions? IndentedOptions { get; }
 
         /// <inheritdoc/>
         public object? Deserialize(string json) => Stj.JsonSerializer.Deserialize<dynamic>(json, Options);
@@ -43,6 +63,6 @@ namespace UnitTestEx.Json
         public T? Deserialize<T>(string json) => Stj.JsonSerializer.Deserialize<T>(json, Options)!;
 
         /// <inheritdoc/>
-        public string Serialize<T>(T value, JsonWriteFormat? format = null) => Stj.JsonSerializer.Serialize(value, format == null ? Options : new Stj.JsonSerializerOptions(Options) { WriteIndented = format.Value == JsonWriteFormat.Indented });
+        public string Serialize<T>(T value, JsonWriteFormat? format = null) => Stj.JsonSerializer.Serialize(value, format == null || format.Value == JsonWriteFormat.None ? Options : IndentedOptions);
     }
 }
