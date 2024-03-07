@@ -14,7 +14,7 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Provides the <see cref="IHttpClientFactory"/> mocking.
     /// </summary>
-    public class MockHttpClientFactory(TestFrameworkImplementor implementor)
+    public sealed class MockHttpClientFactory(TestFrameworkImplementor implementor) : IDisposable
     {
         private readonly Dictionary<string, MockHttpClient> _mockClients = [];
 
@@ -72,19 +72,19 @@ namespace UnitTestEx.Mocking
         /// Gets the optional <see cref="IServiceProvider"/>.
         /// </summary>
         /// <remarks>This is set automatically when the <see cref="Replace(IServiceCollection)"/> is performed.</remarks>
-        public IServiceProvider? ServiceProvider { get; private set; }
+        public IServiceProvider? Services { get; private set; }
 
         /// <summary>
-        /// Sets the optional <see cref="ServiceProvider"/>; once set this cannot be changed.
+        /// Sets the optional <see cref="Services"/>; once set this cannot be changed.
         /// </summary>
         /// <param name="serviceProvider">The <see cref="IServiceProvider"/>.</param>
         /// <returns>The current instance to support fluent-style method-chaining.</returns>
         public MockHttpClientFactory UseServiceProvider(IServiceProvider? serviceProvider)
         {
-            if (ServiceProvider is not null)
-                throw new InvalidOperationException($"{nameof(ServiceProvider)} has already been assigned; once set it cannot be changed.");
+            if (Services is not null)
+                throw new InvalidOperationException($"{nameof(Services)} has already been assigned; once set it cannot be changed.");
 
-            ServiceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            Services = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             return this;
         }
 
@@ -196,6 +196,15 @@ namespace UnitTestEx.Mocking
             foreach (var mc in _mockClients)
             {
                 mc.Value.Verify();
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Dispose()
+        {
+            foreach (var mc in _mockClients)
+            {
+                mc.Value.Dispose();
             }
         }
     }

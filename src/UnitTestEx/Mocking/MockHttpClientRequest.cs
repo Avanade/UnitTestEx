@@ -18,7 +18,7 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Provides the <see cref="HttpRequestMessage"/> configuration for mocking.
     /// </summary>
-    public class MockHttpClientRequest
+    public sealed class MockHttpClientRequest
     {
         private readonly MockHttpClient _client;
         private readonly HttpMethod _method;

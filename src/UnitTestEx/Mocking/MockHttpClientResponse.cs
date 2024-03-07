@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -16,7 +15,7 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Provides the <see cref="HttpResponseMessage"/> configuration for mocking.
     /// </summary>
-    public class MockHttpClientResponse
+    public sealed class MockHttpClientResponse
     {
         private readonly MockHttpClientRequest _clientRequest;
         private readonly MockHttpClientRequestRule? _rule;

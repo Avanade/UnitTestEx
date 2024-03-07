@@ -14,7 +14,7 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Provides the <see cref="System.Net.Http.HttpClient"/> (more specifically <see cref="HttpMessageHandler"/>) mocking.
     /// </summary>
-    public class MockHttpClient
+    public sealed class MockHttpClient : IDisposable
     {
         /// <summary>
         /// Gets the default <see cref="HttpClient.BaseAddress"/> being '<c>https://unittest</c>'.
@@ -23,7 +23,8 @@ namespace UnitTestEx.Mocking
 
         private readonly Uri? _baseAddress;
         private readonly List<MockHttpClientRequest> _requests = [];
-        private readonly Lazy<HttpClient> _httpClient;
+        private readonly object _lock = new();
+        private HttpClient? _httpClient;
         private bool _noMocking;
         private bool _useHttpMessageHandlers;
         private Type[] _excludeTypes = [];
@@ -42,7 +43,6 @@ namespace UnitTestEx.Mocking
             _baseAddress = baseAddress;
             IsBaseAddressSpecified = baseAddress is not null;
             Factory.HttpClientFactory.Setup(x => x.CreateClient(It.Is<string>(x => x == name))).Returns(GetHttpClient);
-            _httpClient = new(CreateHttpClient);
         }
 
         /// <summary>
@@ -69,7 +69,17 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Gets the mocked <see cref="HttpClient"/>.
         /// </summary>
-        internal HttpClient GetHttpClient() => _httpClient.Value;
+        /// <remarks>This will cache the <see cref="HttpClient"/> and reuse; the <see cref="Reset"/> can be used to clear and dispose.</remarks>
+        public HttpClient GetHttpClient()
+        {
+            if (_httpClient is not null)
+                return _httpClient;
+
+            lock (_lock)
+            {
+                return _httpClient ??= CreateHttpClient();
+            }
+        }
 
         /// <summary>
         /// Create the <see cref="HttpClient"/>.
@@ -78,9 +88,9 @@ namespace UnitTestEx.Mocking
         { 
             // Get the factory options where applicable.
             HttpClientFactoryOptions? options = null;
-            if (Factory.ServiceProvider is not null)
+            if (Factory.Services is not null)
             {
-                var om = Factory.ServiceProvider.GetRequiredService<IOptionsMonitor<HttpClientFactoryOptions>>();
+                var om = Factory.Services.GetRequiredService<IOptionsMonitor<HttpClientFactoryOptions>>();
                 options = om?.Get(Name);
             }
             else if (_noMocking)
@@ -93,7 +103,7 @@ namespace UnitTestEx.Mocking
             HttpClient httpClient;
             if (_useHttpMessageHandlers && options is not null)
             {
-                var builder = new MockHttpMessageHandlerBuilder(Name, Factory.ServiceProvider!, _noMocking ? new HttpClientHandler() : new MockHttpClientHandler(Factory, MessageHandler.Object), _excludeTypes);
+                var builder = new MockHttpMessageHandlerBuilder(Name, Factory.Services!, _noMocking ? new HttpClientHandler() : new MockHttpClientHandler(Factory, MessageHandler.Object), _excludeTypes);
 
                 for (int i = 0; i < options.HttpMessageHandlerBuilderActions.Count; i++)
                 {
@@ -126,21 +136,21 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Indicates that the <see cref="HttpMessageHandler"/> and <see cref="GetHttpClient()"/> configurations are to be used.
+        /// Specifies that the <see cref="HttpMessageHandler"/> and <see cref="GetHttpClient()"/> configurations are to be used.
         /// </summary>
         /// <returns>The <see cref="MockHttpClient"/> to support fluent-style method-chaining.</returns>
         /// <remarks>This is a combination of both <see cref="WithHttpClientConfigurations"/> and <see cref="WithHttpMessageHandlers(Type[])"/>.</remarks>
         public MockHttpClient WithConfigurations(params Type[] excludeTypes) => WithHttpClientConfigurations().WithHttpMessageHandlers(excludeTypes);
 
         /// <summary>
-        /// Indicates that the <see cref="HttpMessageHandler"/> and <see cref="GetHttpClient()"/> configurations are <b>not</b> to be used.
+        /// Specifies that the <see cref="HttpMessageHandler"/> and <see cref="GetHttpClient()"/> configurations are <b>not</b> to be used.
         /// </summary>
         /// <returns>The <see cref="MockHttpClient"/> to support fluent-style method-chaining.</returns>
         /// <remarks>The is a combination of both <see cref="WithoutHttpClientConfigurations"/> and <see cref="WithoutHttpMessageHandlers"/>.</remarks>
         public MockHttpClient WithoutConfigurations() => WithoutHttpClientConfigurations().WithoutHttpMessageHandlers();
 
         /// <summary>
-        /// Indicates that the <see cref="HttpMessageHandler"/> configurations for the <see cref="GetHttpClient()"/> are to be used.
+        /// Specifies that the <see cref="HttpMessageHandler"/> configurations for the <see cref="GetHttpClient()"/> are to be used.
         /// </summary>
         /// <param name="excludeTypes">The <see cref="HttpMessageHandler"/> types to be excluded.</param>
         /// <returns>The <see cref="MockHttpClient"/> to support fluent-style method-chaining.</returns>
@@ -156,7 +166,7 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Indicates that the <see cref="HttpMessageHandler"/> configurations for the <see cref="GetHttpClient()"/> are <b>not</b> to be used.
+        /// Specifies that the <see cref="HttpMessageHandler"/> configurations for the <see cref="GetHttpClient()"/> are <b>not</b> to be used.
         /// </summary>
         /// <returns>The <see cref="MockHttpClient"/> to support fluent-style method-chaining.</returns>
         public MockHttpClient WithoutHttpMessageHandlers()
@@ -170,7 +180,7 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Indicates that the configurations for the <see cref="GetHttpClient()"/> aer to be used.
+        /// Specifies that the configurations for the <see cref="GetHttpClient()"/> aer to be used.
         /// </summary>
         /// <returns>The <see cref="MockHttpClient"/> to support fluent-style method-chaining.</returns>
         /// <remarks>By default the <see cref="GetHttpClient()"/> configurations are not invoked.</remarks>
@@ -184,7 +194,7 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Indicates that the configurations for the <see cref="GetHttpClient()"/> are <b>not</b> to be used.
+        /// Specifies that the configurations for the <see cref="GetHttpClient()"/> are <b>not</b> to be used.
         /// </summary>
         /// <returns>The <see cref="MockHttpClient"/> to support fluent-style method-chaining.</returns>
         public MockHttpClient WithoutHttpClientConfigurations()
@@ -197,12 +207,14 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Indicates that the <see cref="GetHttpClient()"/> is to be instantiated with <b>no</b> mocking; i.e. will result in an actual/real HTTP request.
+        /// Specifies that the resulting <see cref="HttpClient"/> from the <see cref="GetHttpClient()"/> is to be instantiated with <b>no</b> mocking; i.e. will result in an actual/real HTTP request.
         /// </summary>
         /// <param name="excludeTypes">The <see cref="HttpMessageHandler"/> types to be excluded.</param>
         /// <remarks>Once set this is immutable.
-        /// <para><i>Note:</i> although this implies that the existing <see cref="GetHttpClient()"/> and related .NET native <see cref="IHttpClientFactory"/> implementation is being leveraged, this is not the case. This is still using the <see cref="MockHttpClientFactory"/>
-        /// and related internal <see cref="HttpMessageHandlerBuilder"/> implementation. Although, best efforts have been made to achieve like-for-like behavior, some edge cases may not be accounted for; please raise an issue to identify for correction (where possible).</para></remarks>
+        /// <para>As this results in no mocking, no specific usage tracking is then performed and as such the associated <see cref="Verify"/> will never assert anything but success.</para>
+        /// <para><i>Note:</i> although this may imply that the native <see cref="HttpClient"/> and related <see cref="IHttpClientFactory"/> implementation is being leveraged, this is not the case. This is still using the <see cref="MockHttpClientFactory"/>
+        /// to enable the <paramref name="excludeTypes"/> behavior leveraging the internal <see cref="HttpMessageHandlerBuilder"/> implementation. Best efforts have been made to achieve native-like functionality; however, some edge cases may not have been 
+        /// accounted for.</para></remarks>
         public void WithoutMocking(params Type[] excludeTypes)
         {
             if (_requests.Count > 0)
@@ -245,6 +257,21 @@ namespace UnitTestEx.Mocking
                 r.Verify();
             }
         }
+
+        /// <summary>
+        /// Disposes and removes the cached <see cref="HttpClient"/>.
+        /// </summary>
+        public void Reset()
+        {
+            lock (_lock)
+            {
+                _httpClient?.Dispose();
+                _httpClient = null;
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Dispose() => Reset();
 
         /// <summary>
         /// Provides an internal/mocked <see cref="HttpMessageHandlerBuilder"/>

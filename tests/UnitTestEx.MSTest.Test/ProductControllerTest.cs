@@ -100,7 +100,7 @@ namespace UnitTestEx.MSTest.Test
         [TestMethod]
         public void MockHttpClientFactory_NoMocking_Exclude()
         {
-            var mcf = MockHttpClientFactory.Create();
+            using var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX").WithoutMocking(typeof(Startup.MessageProcessingHandler));
 
             Startup.MessageProcessingHandler.WasExecuted = false;

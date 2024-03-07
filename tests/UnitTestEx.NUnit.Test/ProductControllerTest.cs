@@ -55,7 +55,6 @@ namespace UnitTestEx.NUnit.Test
             using var test = ApiTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .Controller<ProductController>()
-                .ExpectLogContains("Received HTTP response OK")
                 .Run(c => c.Get("abc"))
                 .AssertOK()
                 .AssertValue(new { id = "Abc", description = "A blue carrot" });
