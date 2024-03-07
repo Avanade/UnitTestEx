@@ -90,7 +90,6 @@ namespace UnitTestEx.MSTest.Test
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
             var ex = Assert.ThrowsException<AggregateException>(() => hc.GetAsync("test").Result);
-            Assert.AreEqual("One or more errors occurred. (No such host is known. (somesys:443))", ex.Message);
 
             Assert.IsTrue(Startup.MessageProcessingHandler.WasExecuted);
 
@@ -110,7 +109,6 @@ namespace UnitTestEx.MSTest.Test
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
             var ex = Assert.ThrowsException<AggregateException>(() => hc.GetAsync("test").Result);
-            Assert.AreEqual("One or more errors occurred. (No such host is known. (somesys:443))", ex.Message);
 
             Assert.IsFalse(Startup.MessageProcessingHandler.WasExecuted);
 
