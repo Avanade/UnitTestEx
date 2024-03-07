@@ -453,5 +453,22 @@ namespace UnitTestEx.MSTest.Test
             var ex = Assert.ThrowsException<MockHttpClientException>(() => mcf.VerifyAll());
             Assert.AreEqual("There were 3 response(s) configured for the Sequence and only 2 response(s) invoked. Request: <XXX> GET https://d365test/ 'No content' ", ex.Message);
         }
+
+        [TestMethod]
+        public async Task WithoutMocking()
+        {
+            // https://www.bing.com/search?q=unittestex
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateDefaultClient(new Uri("https://www.bing.com/")).WithoutMocking();
+
+            var hc = mcf.GetHttpClient();
+            var res = await hc.GetAsync("search?q=unittestex").ConfigureAwait(false);
+
+            Assert.IsNotNull(res);
+            Assert.AreEqual(HttpStatusCode.OK, res.StatusCode);
+
+            var content = await res.Content.ReadAsStringAsync();
+            Assert.IsTrue(content.Contains("https://github.com/Avanade/unittestex", StringComparison.OrdinalIgnoreCase));
+         }
     }
 }

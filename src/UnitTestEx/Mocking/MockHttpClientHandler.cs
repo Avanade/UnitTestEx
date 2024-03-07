@@ -25,10 +25,11 @@ namespace UnitTestEx.Mocking
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var logger = _factory.Logger ?? _factory.Implementor.CreateLoggerProvider().CreateLogger(nameof(MockHttpClientFactory));
-            logger.LogInformation($"UnitTestEx > Sending HTTP request {request.Method} {request.RequestUri} {LogContent(request.Content)}");
+            logger.LogDebug($"UnitTestEx > Sending HTTP request {request.Method} {request.RequestUri} {LogContent(request.Content)}");
 
             var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false) ?? throw new MockHttpClientException($"No corresponding MockHttpClient response found for HTTP request {request.Method} {request.RequestUri} {LogContent(request.Content)}");
-            logger.LogInformation($"UnitTestEx > Received HTTP response {response.StatusCode} ({(int)response.StatusCode}) {LogContent(response.Content)}");
+
+            logger.LogDebug($"UnitTestEx > Received HTTP response {response.StatusCode} ({(int)response.StatusCode}) {LogContent(response.Content)}");
             return response;
         }
 

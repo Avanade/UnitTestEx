@@ -8,7 +8,6 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
@@ -19,7 +18,7 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Provides the <see cref="HttpRequestMessage"/> configuration for mocking.
     /// </summary>
-    public class MockHttpClientRequest
+    public sealed class MockHttpClientRequest
     {
         private readonly MockHttpClient _client;
         private readonly HttpMethod _method;
@@ -210,7 +209,11 @@ namespace UnitTestEx.Mocking
         }
 
         /// <inheritdoc/>
-        public override string ToString() => $"<{_client.Name}> {_method} {(_client.HttpClient.BaseAddress == null ? _requestUri : new Uri(_client.HttpClient.BaseAddress, _requestUri))} {ContentToString()} {(_mediaType == null ? string.Empty : $"({_mediaType})")}";
+        public override string ToString()
+        {
+            var hc = _client.GetHttpClient();
+            return $"<{_client.Name}> {_method} {(hc.BaseAddress == null ? _requestUri : new Uri(hc.BaseAddress!, _requestUri))} {ContentToString()} {(_mediaType == null ? string.Empty : $"({_mediaType})")}";
+        }
 
         /// <summary>
         /// Convert the content to a string.

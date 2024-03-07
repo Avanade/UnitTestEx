@@ -132,7 +132,46 @@ test.ReplaceHttpClientFactory(mcf)
     .Assert(new { id = "Abc", description = "A blue carrot" });
 ```
 
-</br>
+<br/>
+
+### HTTP Client configurations
+
+Any configuration specified as part of the registering the `HttpClient` services from a Dependency Injection (DI) perspective is ignored by default when creating an `HttpClient` using the `MockHttpClientFactory`. This default behavior is intended to potentially minimize any side-effect behavior that may occur that is not intended for the unit testing. For example, a `DelegatingHandler` may be configured that requests a token from an identity provider which is not needed for the unit test, or may fail due to lack of access from the unit testing environment.
+
+``` csharp
+// Startup service (DI) configuration.
+services.AddHttpClient("XXX", hc => hc.BaseAddress = new System.Uri("https://somesys")) // This is HttpClient configuration.
+    .AddHttpMessageHandler(_ => new MessageProcessingHandler()) // This is HttpMessageHandler configuration.
+    .ConfigureHttpClient(hc => hc.DefaultRequestVersion = new Version(1, 2)); // This is further HttpClient configuration.
+```
+
+However, where the configuration is required then the `MockHttpClient` can be configured _explicitly_ to include the configuration; the following methods enable:
+
+Method | Description
+- | -
+`WithConfigurations` | Indicates that the `HttpMessageHandler` and `HttpClient` configurations are to be used. *
+`WithoutConfigurations` | Indicates that the `HttpMessageHandler` and `HttpClient` configurations are _not_ to be used (this is the default state).
+`WithHttpMessageHandlers` | Indicates that the `HttpMessageHandler` configurations are to be used. *
+`WithoutHttpMessageHandlers` | Indicates that the `HttpMessageHandler` configurations are _not_ to be used.
+`WithHttpClientConfigurations` | Indicates that the `HttpClient` configurations are to be used.
+`WithoutHttpClientConfigurations` | Indicates that the `HttpClient` configurations are to be used.
+-- | --
+`WithoutMocking` | Indicates that the underlying `HttpClient` is **not** to be mocked; i.e. will result in an actual/real HTTP request to the specified endpoint. This is useful to achieve a level of testing where both mocked and real requests are required. Note that an `HttpClient` cannot support both, these would need to be tested separately.
+
+_Note:_ `*` above denotes that an array of `DelegatingHandler` types to be excluded can be specified; with the remainder being included within the order specified.
+
+``` csharp
+// Mock with configurations.
+var mcf = MockHttpClientFactory.Create();
+mcf.CreateClient("XXX").WithConfigurations()
+    .Request(HttpMethod.Get, "products/xyz").Respond.With(HttpStatusCode.NotFound);
+
+// No mocking, real request.
+var mcf = MockHttpClientFactory.Create();
+mcf.CreateClient("XXX").WithoutMocking();
+```
+
+<br/>
 
 ### Times
 

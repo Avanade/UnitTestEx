@@ -40,8 +40,7 @@ namespace UnitTestEx.Logging
             if (!IsEnabled(logLevel))
                 return;
 
-            if (formatter == null)
-                throw new ArgumentNullException(nameof(formatter));
+            ArgumentNullException.ThrowIfNull(formatter);
 
             var sb = new StringBuilder();
             sb.Append($"{DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fffff", DateTimeFormatInfo.InvariantInfo)} {GetLogLevel(logLevel)}: {formatter(state, exception)} [{Name}]");

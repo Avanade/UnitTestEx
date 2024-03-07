@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v4.2.0
+- *Enhancement:* Any configuration specified as part of registering the `HttpClient` services from a Dependency Injection (DI) perspective is ignored by default when creating an `HttpClient` using the `MockHttpClientFactory`. This default behavior is intended to potentially minimize any side-effect behavior that may occur that is not intended for the unit testing. See [`README`](./README.md#http-client-configurations) for more details on capabilities introduced; highlights are:
+  - New `MockHttpClient.WithConfigurations` method indicates that the `HttpMessageHandler` and `HttpClient` configurations are to be used.
+  - New `MockHttpClient.WithoutMocking` method indicates that the underlying `HttpClient` is **not** to be mocked; i.e. will result in an actual/real HTTP request to the specified endpoint. This will allow the mixing of real and mocked HTTP requests within the same test.
+
 ## v4.1.2
 - *Fixed*: The `AssertLocationHeader` has been corrected to also support the specification of the `Uri` as a string. Additionally, contains support has been added with `AssertLocationHeaderContains`.
 

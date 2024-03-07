@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
 using UnitTestEx.Json;
+using UnitTestEx.Mocking;
 
 namespace UnitTestEx.AspNetCore
 {
@@ -204,7 +205,7 @@ namespace UnitTestEx.AspNetCore
             private static HttpRequestMessage CreateRequest(HttpMethod method, string requestUri, HttpContent? content, Action<HttpRequestMessage>? requestModifier)
             {
                 var uri = new Uri(requestUri, UriKind.RelativeOrAbsolute);
-                var ub = new UriBuilder(uri.IsAbsoluteUri ? uri : new Uri(new Uri("https://unittestex"), requestUri));
+                var ub = new UriBuilder(uri.IsAbsoluteUri ? uri : new Uri(MockHttpClient.DefaultBaseAddress, requestUri));
 
                 var request = new HttpRequestMessage(method, ub.Uri);
                 if (content != null)
