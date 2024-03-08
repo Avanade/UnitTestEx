@@ -148,7 +148,7 @@ services.AddHttpClient("XXX", hc => hc.BaseAddress = new System.Uri("https://som
 However, where the configuration is required then the `MockHttpClient` can be configured _explicitly_ to include the configuration; the following methods enable:
 
 Method | Description
-- | -
+-|-
 `WithConfigurations` | Indicates that the `HttpMessageHandler` and `HttpClient` configurations are to be used. *
 `WithoutConfigurations` | Indicates that the `HttpMessageHandler` and `HttpClient` configurations are _not_ to be used (this is the default state).
 `WithHttpMessageHandlers` | Indicates that the `HttpMessageHandler` configurations are to be used. *
