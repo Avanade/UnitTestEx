@@ -1,0 +1,79 @@
+{
+  "title": "JSON Schema for UnitTestEx HTTP request/response mocking (https://github.com/Avanade/unittestex).",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "array",
+  "definitions": {
+    "MockRequest": {
+      "type": "object",
+      "title": "The mocked HTTP request configuration.",
+      "properties": {
+        "method": {
+          "type": "string",
+          "title": "The HTTP Request Method; defaults to 'GET'."
+        },
+        "uri": {
+          "type": "string",
+          "title": "The HTTP Request URI (path and query)."
+        },
+        "body": {
+          "type": "string",
+          "title": "The HTTP Request Body (content)."
+        },
+        "media": {
+          "type": "string",
+          "title": "The HTTP Request Body (content) media type.",
+          "description": "Defaults to 'application/json' where the Body contains JSON; otherwise, 'text/plain'."
+        },
+        "ignore": {
+          "type": "array",
+          "title": "The HTTP Request Body JSON paths to ignore from the comparison.",
+          "description": "This is only applied where the 'media' is 'application/json'.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "response": {
+          "title": "The mocked HTTP response (singular) configuration",
+          "description": "The 'response' and 'sequence' are mutually exclusive.",
+          "$ref": "#/definitions/MockResponse"
+        },
+        "sequence": {
+          "type": "array",
+          "title": "The mocked HTTP responses array (sequence) configuration.",
+          "description": "The 'response' and 'sequence' are mutually exclusive.",
+          "items": {
+            "$ref": "#/definitions/MockResponse"
+          }
+        }
+      },
+      "not": {
+        "anyOf": [
+          { "required": [ "response", "sequence" ] }
+        ]
+      }
+    },
+    "MockResponse": {
+      "title": "The mocked HTTP response configuration.",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "integer",
+          "title": "The HTTP Response status code.",
+          "description": "Defaults to 200-OK where there is a corresponding Body; otherwise, 204-No content."
+        },
+        "body": {
+          "type": "string",
+          "title": "The HTTP Response body (content)."
+        },
+        "media": {
+          "type": "string",
+          "title": "The HTTP Request Body (content) media type.",
+          "description": "Defaults to 'application/json' where the Body contains JSON; otherwise, 'text/plain'."
+        }
+      }
+    }
+  },
+  "items": {
+    "$ref": "#/definitions/MockRequest"
+  }
+}

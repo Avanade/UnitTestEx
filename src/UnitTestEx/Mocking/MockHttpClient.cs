@@ -7,7 +7,12 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Mime;
+using System.Reflection;
+using System.Text.Json;
 
 namespace UnitTestEx.Mocking
 {
@@ -229,15 +234,15 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Creates a new <see cref="MockHttpClientRequest"/> for the <see cref="GetHttpClient()"/>.
         /// </summary>
-        /// <param name="method">The <see cref="HttpMethod"/>.</param>
+        /// <param name="method">The <see cref="HttpMethod"/>. Defaults to <see cref="HttpMethod.Get"/>.</param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <returns>The <see cref="MockHttpClientRequest"/>.</returns>
-        public MockHttpClientRequest Request(HttpMethod method, string requestUri)
+        public MockHttpClientRequest Request(HttpMethod? method = null, string? requestUri = null)
         {
             if (_noMocking)
                 throw new InvalidOperationException($"{nameof(Request)} is not supported where {nameof(WithoutMocking)} has been specified.");
 
-            var r = new MockHttpClientRequest(this, method, requestUri);
+            var r = new MockHttpClientRequest(this, method ?? HttpMethod.Get, requestUri);
             _requests.Add(r);
             return r;
         }
@@ -293,6 +298,152 @@ namespace UnitTestEx.Mocking
 
             /// <inheritdoc/>
             public override HttpMessageHandler Build() => CreateHandlerPipeline(PrimaryHandler, AdditionalHandlers.Where(x => !_excludeTypes.Contains(x.GetType())));
+        }
+
+        /// <summary>
+        /// Adds mocked request(s) from the embedded resource formatted as either YAML or JSON.
+        /// </summary>
+        /// <typeparam name="TAssembly">The <see cref="Type"/> used to infer <see cref="Assembly"/> that contains the embedded resource.</typeparam>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <returns></returns>
+        public MockHttpClient WithRequestsFromResource<TAssembly>(string resourceName) => WithRequestsFromResource(resourceName, typeof(TAssembly).Assembly);
+
+        /// <summary>
+        /// Adds mocked request(s) from the embedded resource formatted as either YAML or JSON.
+        /// </summary>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
+        /// <returns>The <see cref="MockHttpClient"/> to support fluent-style method-chaining.</returns>
+        public MockHttpClient WithRequestsFromResource(string resourceName, Assembly? assembly = null)
+        {
+            ArgumentNullException.ThrowIfNull(resourceName, nameof(resourceName));
+
+            bool isYaml = false;
+            if (resourceName.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase) || resourceName.EndsWith(".yml", StringComparison.OrdinalIgnoreCase))
+                isYaml = true;
+            else if (!resourceName.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && !resourceName.EndsWith(".jsn", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Only YAML or JSON embedded resources are supported; the extension must be one of the following: .yaml, .yml, .json, .jsn", nameof(resourceName));
+
+            using var sr = Resource.GetStream(resourceName, assembly ?? Assembly.GetCallingAssembly());
+            var reqs = isYaml ? Resource.DeserializeYaml<List<MockConfigRequest>>(sr) : Resource.DeserializeJson<List<MockConfigRequest>>(sr);
+
+            if (reqs is not null)
+            {
+                foreach (var req in reqs)
+                {
+                    req.Add(this);
+                }
+            }
+
+            return this;
+        }
+
+        /// <summary>
+        /// The mocked config contract for a Request.
+        /// </summary>
+        private class MockConfigRequest
+        {
+            public string? Method { get; set; }
+            public string? Uri { get; set; }
+            public string? Body { get; set; }
+            public string? Media { get; set; }
+            public string[]? Ignore { get; set; }
+            public MockConfigResponse? Response { get; set; }
+            public List<MockConfigResponse>? Sequence { get; set; }
+
+            /// <summary>
+            /// Adds the request and response to the client.
+            /// </summary>
+            public void Add(MockHttpClient client)
+            {
+                var req = client.Request(string.IsNullOrEmpty(Method) ? HttpMethod.Get : new HttpMethod(Method.ToUpperInvariant()), Uri).WithPathsToIgnore(Ignore ?? []);
+                MockHttpClientResponse mres;
+
+                if (Body is not null)
+                {
+                    if (Body == "^")
+                        mres = req.WithAnyBody().Respond;
+                    else
+                    {
+                        if (string.IsNullOrEmpty(Media))
+                        {
+                            try
+                            {
+                                _ = JsonDocument.Parse(Body);
+                                Media = MediaTypeNames.Application.Json;
+                            }
+                            catch
+                            {
+                                Media = MediaTypeNames.Text.Plain;
+                            }
+                        }
+                        
+                        mres = req.WithBody(Body, Media).Respond;
+                    }
+                }
+                else
+                    mres = req.Respond;
+
+                if (Response is not null && Sequence is not null)
+                    throw new InvalidOperationException($"A mocked request can not contain both a {nameof(Response)} and a {nameof(Sequence)} as they are mutually exclusive.");
+
+                // One-to-one response.
+                if (Sequence is null)
+                {
+                    (Response ?? new()).Add(mres);
+                    return;
+                }
+
+                // A sequence of responses.
+                mres.WithSequence(seq =>
+                {
+                    foreach (var res in Sequence)
+                    {
+                        (res ?? new()).Add(seq.Respond());
+                    }
+                });
+
+            }
+        }
+
+        /// <summary>
+        /// The mocked config contract for a Response.
+        /// </summary>
+        private class MockConfigResponse
+        {
+            public HttpStatusCode? Status { get; set; }
+            public string? Body { get; set; }
+            public string? Media { get; set; }
+
+            /// <summary>
+            /// Adds the response.
+            /// </summary>
+            public void Add(MockHttpClientResponse res)
+            {
+                if (string.IsNullOrEmpty(Body))
+                {
+                    res.With(Status ?? HttpStatusCode.NoContent);
+                    return;
+                }
+
+                var content = new StringContent(Body);
+                if (string.IsNullOrEmpty(Media))
+                {
+                    try
+                    {
+                        _ = JsonDocument.Parse(Body);
+                        content.Headers.ContentType = MediaTypeHeaderValue.Parse(MediaTypeNames.Application.Json);
+                    }
+                    catch
+                    {
+                        content.Headers.ContentType = MediaTypeHeaderValue.Parse(MediaTypeNames.Text.Plain);
+                    }
+                }
+                else
+                    content.Headers.ContentType = MediaTypeHeaderValue.Parse(Media);
+
+                res.With(content, Status ?? HttpStatusCode.OK);
+            }
         }
     }
 }

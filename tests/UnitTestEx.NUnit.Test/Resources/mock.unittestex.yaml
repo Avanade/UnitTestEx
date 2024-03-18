@@ -1,0 +1,16 @@
+- method: post
+  uri: products/xyz
+  body: ^
+  response:
+    status: 202
+    body: |
+      {"product":"xyz","quantity":1}
+
+- method: get
+  uri: people/123
+  response:
+    body: |
+      {
+        "first":"Bob",
+        "last":"Jane"
+      }

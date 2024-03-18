@@ -1,0 +1,13 @@
+- method: get
+  uri: people/123
+  sequence: 
+    - body: |
+        {
+          "first":"Bob",
+          "last":"Jane"
+        }
+    - body: |
+        {
+          "first":"Sarah",
+          "last":"Johns"
+        }

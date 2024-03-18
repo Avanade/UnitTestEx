@@ -219,6 +219,60 @@ mc.Request(HttpMethod.Get, "products/kjl").Respond.WithSequence(s =>
 
 <br/>
 
+### YAML/JSON configuration
+
+The Request/Response configuration can also be specified within an embedded resource using YAML/JSON as required. The [`mock.unittestex.json`](./src/UnitTestEx/Schema/mock.unittestex.json) JSON schema defines content; where the file is named `*.unittestex.yaml` or `*.unittestex.json` then the schema-based intellisense and validation will occur within the likes of Visual Studio.
+
+To reference the YAML/JSON from a unit test the following is required:
+
+``` csharp
+var mcf = MockHttpClientFactory.Create();
+mcf.CreateClient("XXX", new Uri("https://unit-test")).WithRequestsFromResource("my.mock.unittestex.yaml");
+```
+
+The following represents a YAML example for one-to-one request/responses:
+
+``` yaml
+- method: post
+  uri: products/xyz
+  body: ^
+  response:
+    status: 202
+    body: |
+      {"product":"xyz","quantity":1}
+
+- method: get
+  uri: people/123
+  response:
+    body: |
+      {
+        "first":"Bob",
+        "last":"Jane"
+      }
+```
+
+The following represents a YAML example for a request/response with sequences:
+
+``` yaml
+- method: get
+  uri: people/123
+  sequence: 
+    - body: |
+        {
+          "first":"Bob",
+          "last":"Jane"
+        }
+    - body: |
+        {
+          "first":"Sarah",
+          "last":"Johns"
+        }
+```
+
+_Note:_ Not all scenarios are currently available using YAML/JSON configuration.
+
+<br/>
+
 ## Expectations
 
 By default _UnitTestEx_ provides out-of-the-box `Assert*` capabilities that are applied after execution to verify the test results. However, by adding the `UnitTestEx.Expectations` namespace in a test additional `Expect*` capabilities will be enabled (where applicable). These allow expectations to be defined prior to the execution which are automatically asserted on execution. 

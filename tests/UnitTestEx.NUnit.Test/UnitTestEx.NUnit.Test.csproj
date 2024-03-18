@@ -8,7 +8,9 @@
   <ItemGroup>
     <None Remove="appsettings.unittest.json" />
     <None Remove="Resources\FunctionTest-ValidJsonResource.json" />
+    <None Remove="Resources\mock.unittestex.yaml" />
     <None Remove="Resources\MockHttpClientTest-UriAndBody_WithJsonResponse3.json" />
+    <None Remove="Resources\sequence.unittestex.yaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +21,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\FunctionTest-ValidJsonResource.json" />
+    <EmbeddedResource Include="Resources\sequence.unittestex.yaml" />
+    <EmbeddedResource Include="Resources\mock.unittestex.yaml" />
     <EmbeddedResource Include="Resources\MockHttpClientTest-UriAndBody_WithJsonResponse3.json" />
   </ItemGroup>
 

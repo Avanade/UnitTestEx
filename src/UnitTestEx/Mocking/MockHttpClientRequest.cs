@@ -22,7 +22,7 @@ namespace UnitTestEx.Mocking
     {
         private readonly MockHttpClient _client;
         private readonly HttpMethod _method;
-        private readonly string _requestUri;
+        private readonly string? _requestUri;
         private bool _anyContent;
         private object? _content;
         private string? _mediaType;
@@ -40,11 +40,11 @@ namespace UnitTestEx.Mocking
         /// <param name="client">The <see cref="MockHttpClient"/>.</param>
         /// <param name="method">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
-        internal MockHttpClientRequest(MockHttpClient client, HttpMethod method, string requestUri)
+        internal MockHttpClientRequest(MockHttpClient client, HttpMethod method, string? requestUri)
         {
             _client = client;
             _method = method ?? throw new ArgumentNullException(nameof(method));
-            _requestUri = requestUri ?? throw new ArgumentNullException(nameof(requestUri));
+            _requestUri = requestUri;
 
             Rule = new MockHttpClientRequestRule();
             Rule.Response = new MockHttpClientResponse(this, Rule);
@@ -151,7 +151,7 @@ namespace UnitTestEx.Mocking
             if (request.Method != _method)
                 return false;
 
-            var uri = new Uri(_requestUri, UriKind.RelativeOrAbsolute);
+            var uri = new Uri(_requestUri ?? string.Empty, UriKind.RelativeOrAbsolute);
             if (uri.IsAbsoluteUri)
             {
                 if (_client.IsBaseAddressSpecified && request.RequestUri != uri)
@@ -327,6 +327,15 @@ namespace UnitTestEx.Mocking
             _pathsToIgnore = pathsToIgnore;
             _mediaType = MediaTypeNames.Application.Json;
             return new MockHttpClientRequestBody(Rule);
+        }
+
+        /// <summary>
+        /// Sets the JSON paths to ignore from the comparison.
+        /// </summary>
+        internal MockHttpClientRequest WithPathsToIgnore(params string[] pathsToIgnore)
+        {
+            _pathsToIgnore = pathsToIgnore;
+            return this;
         }
 
         /// <summary>
