@@ -5,6 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnitTestEx.Json;
+using YamlDotNet.Core.Events;
+using YamlDotNet.Serialization;
+using Stj = System.Text.Json;
 
 namespace UnitTestEx
 {
@@ -77,6 +80,105 @@ namespace UnitTestEx
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"JSON resource '{resourceName}' does not contain valid JSON: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets (determines) the <see cref="StreamContentType"/> from the <paramref name="fileName"/> extension.
+        /// </summary>
+        /// <param name="fileName">The file name.</param>
+        /// <returns>The corresponding <see cref="StreamContentType"/>.</returns>
+        public static StreamContentType GetContentType(string fileName) => new FileInfo(fileName).Extension.ToLowerInvariant() switch
+        {
+            ".yaml" => StreamContentType.Yaml,
+            ".yml" => StreamContentType.Yaml,
+            ".json" => StreamContentType.Json,
+            ".jsn" => StreamContentType.Json,
+            _ => StreamContentType.Unknown
+        };
+
+        /// <summary>
+        /// Defines the supported <see cref="Stream"/> content types.
+        /// </summary>
+        public enum StreamContentType
+        {
+            /// <summary>
+            /// Specifies that the content type is unknown.
+            /// </summary>
+            Unknown,
+
+            /// <summary>
+            /// Specifies that the content type is YAML.
+            /// </summary>
+            Yaml,
+
+            /// <summary>
+            /// Specifies that the content type is JSON.
+            /// </summary>
+            Json
+        }
+
+        /// <summary>
+        /// Converts the <paramref name="yaml"/> <see cref="TextReader"/> content into <typeparamref name="T"/>.
+        /// </summary>
+        /// <param name="yaml">The YAML <see cref="TextReader"/>.</param>
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        /// <returns>The value.</returns>
+        public static T? DeserializeYaml<T>(this TextReader yaml, IJsonSerializer? jsonSerializer = null)
+        {
+            var yml = new DeserializerBuilder().WithNodeTypeResolver(new YamlNodeTypeResolver()).Build().Deserialize(yaml);
+
+#pragma warning disable IDE0063 // Use simple 'using' statement; cannot as need to be more explicit with managing the close and dispose.
+            using (var ms = new MemoryStream())
+            {
+                using (var sw = new StreamWriter(ms))
+                {
+                    sw.Write(new SerializerBuilder().JsonCompatible().Build().Serialize(yml!));
+                    sw.Flush();
+
+                    ms.Position = 0;
+                    using var sr = new StreamReader(ms);
+                    return sr.DeserializeJson<T>(jsonSerializer);
+                }
+            }
+#pragma warning restore IDE0063
+        }
+
+        /// <summary>
+        /// Converts the <paramref name="json"/> <see cref="TextReader"/> content into <typeparamref name="T"/>.
+        /// </summary>
+        /// <param name="json">The YAML <see cref="TextReader"/>.</param>
+        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
+        /// <returns>The value.</returns>
+        public static T? DeserializeJson<T>(this TextReader json, IJsonSerializer? jsonSerializer = null) => (jsonSerializer ?? JsonSerializer.Default).Deserialize<T>(json.ReadToEnd());
+
+        private class YamlNodeTypeResolver : INodeTypeResolver
+        {
+            private static readonly string[] boolValues = ["true", "false"];
+
+            /// <inheritdoc/>
+            bool INodeTypeResolver.Resolve(NodeEvent? nodeEvent, ref Type currentType)
+            {
+                if (nodeEvent is Scalar scalar && scalar.Style == YamlDotNet.Core.ScalarStyle.Plain)
+                {
+                    if (decimal.TryParse(scalar.Value, out _))
+                    {
+                        if (scalar.Value.Length > 1 && scalar.Value.StartsWith('0')) // Valid JSON does not support a number that starts with a zero.
+                            currentType = typeof(string);
+                        else
+                            currentType = typeof(decimal);
+
+                        return true;
+                    }
+
+                    if (boolValues.Contains(scalar.Value))
+                    {
+                        currentType = typeof(bool);
+                        return true;
+                    }
+                }
+
+                return false;
             }
         }
     }

@@ -393,5 +393,53 @@ namespace UnitTestEx.NUnit.Test
 
             Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
         }
+
+        [Test]
+        public async Task WithYamlRequests()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX").WithRequestsFromResource("mock.unittestex.yaml");
+
+            var hc = mcf.GetHttpClient("XXX");
+            var res = await hc.PostAsJsonAsync("products/xyz", new { DoesNotMatter = true });
+            Assert.Multiple(async () =>
+            {
+                Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+                ObjectComparer.JsonAssert("{\"product\":\"xyz\",\"quantity\":1}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            });
+
+            res = await hc.GetAsync("people/123");
+            Assert.Multiple(async () =>
+            {
+                Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                ObjectComparer.JsonAssert("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            });
+
+            mcf.VerifyAll();
+        }
+
+        [Test]
+        public async Task WithYamlSequence()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            mcf.CreateClient("XXX").WithRequestsFromResource("sequence.unittestex.yaml");
+
+            var hc = mcf.GetHttpClient("XXX");
+            var res = await hc.GetAsync("people/123");
+            Assert.Multiple(async () =>
+            {
+                Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                ObjectComparer.JsonAssert("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            });
+
+            res = await hc.GetAsync("people/123");
+            Assert.Multiple(async () =>
+            {
+                Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                ObjectComparer.JsonAssert("{\"first\":\"Sarah\",\"last\":\"Johns\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+            });
+
+            mcf.VerifyAll();
+        }
     }
 }

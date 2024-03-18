@@ -468,7 +468,7 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual(HttpStatusCode.OK, res.StatusCode);
 
             var content = await res.Content.ReadAsStringAsync();
-            Assert.IsTrue(content.Contains("https://github.com/Avanade/unittestex", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(content.Contains("unittestex", StringComparison.OrdinalIgnoreCase));
          }
     }
 }

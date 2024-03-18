@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v4.3.0
+- *Enhancement:* A new `MockHttpClient.WithRequestsFromResource` method enables the specification of the Request/Response configuration from a YAML/JSON embedded resource. The [`mock.unittestex.json`](./src/UnitTestEx/Schema/mock.unittestex.json) JSON schema defines content.
+
 ## v4.2.0
 - *Enhancement:* Any configuration specified as part of registering the `HttpClient` services from a Dependency Injection (DI) perspective is ignored by default when creating an `HttpClient` using the `MockHttpClientFactory`. This default behavior is intended to potentially minimize any side-effect behavior that may occur that is not intended for the unit testing. See [`README`](./README.md#http-client-configurations) for more details on capabilities introduced; highlights are:
   - New `MockHttpClient.WithConfigurations` method indicates that the `HttpMessageHandler` and `HttpClient` configurations are to be used.
