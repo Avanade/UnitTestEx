@@ -2,6 +2,7 @@
 
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Reflection;
 using UnitTestEx.Abstractions;
@@ -49,7 +50,11 @@ namespace UnitTestEx.Assertors
         /// <param name="json">The JSON <see cref="string"/>.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ValueAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
+#if NET7_0_OR_GREATER
+        public ValueAssertor<TValue> AssertJson([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore) => AssertValue(JsonSerializer.Deserialize<TValue>(json)!, pathsToIgnore);
+#else
         public ValueAssertor<TValue> AssertJson(string json, params string[] pathsToIgnore) => AssertValue(JsonSerializer.Deserialize<TValue>(json)!, pathsToIgnore);
+#endif
 
         /// <summary>
         /// Asserts that the <see cref="Result"/> matches the JSON serialized value from the named embedded resource.

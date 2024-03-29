@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -290,7 +291,11 @@ namespace UnitTestEx.Json
         }
 
         /// <inheritdoc/>
+#if NET7_0_OR_GREATER
+        public int GetHashCode([StringSyntax(StringSyntaxAttribute.Json)] string json)
+#else
         public int GetHashCode(string json)
+#endif
         {
             if (json == null)
                 return 0;

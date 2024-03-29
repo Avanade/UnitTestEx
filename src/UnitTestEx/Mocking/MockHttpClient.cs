@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -237,7 +238,11 @@ namespace UnitTestEx.Mocking
         /// <param name="method">The <see cref="HttpMethod"/>. Defaults to <see cref="HttpMethod.Get"/>.</param>
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <returns>The <see cref="MockHttpClientRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public MockHttpClientRequest Request(HttpMethod? method = null, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri = null)
+#else
         public MockHttpClientRequest Request(HttpMethod? method = null, string? requestUri = null)
+#endif
         {
             if (_noMocking)
                 throw new InvalidOperationException($"{nameof(Request)} is not supported where {nameof(WithoutMocking)} has been specified.");

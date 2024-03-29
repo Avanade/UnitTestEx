@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Mime;
 using System.Reflection;
@@ -367,7 +368,11 @@ namespace UnitTestEx.Assertors
         /// <param name="json">The expected JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
+#if NET7_0_OR_GREATER
+        public ActionResultAssertor AssertJson([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore)
+#else
         public ActionResultAssertor AssertJson(string json, params string[] pathsToIgnore)
+#endif
         {
             if (string.IsNullOrEmpty(json))
                 throw new ArgumentNullException(nameof(json));

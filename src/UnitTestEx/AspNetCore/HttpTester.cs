@@ -2,6 +2,7 @@
 
 using Microsoft.AspNetCore.TestHost;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Threading.Tasks;
@@ -24,7 +25,11 @@ namespace UnitTestEx.AspNetCore
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpResponseMessageAssertor Run(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, Action<HttpRequestMessage>? requestModifier = null)
+#else
         public HttpResponseMessageAssertor Run(HttpMethod httpMethod, string? requestUri, Action<HttpRequestMessage>? requestModifier = null)
+#endif
             => RunAsync(httpMethod, requestUri, requestModifier).GetAwaiter().GetResult();
 
         /// <summary>
@@ -36,7 +41,11 @@ namespace UnitTestEx.AspNetCore
         /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpResponseMessageAssertor Run(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? body, string? contentType = MediaTypeNames.Text.Plain, Action<HttpRequestMessage>? requestModifier = null)
+#else
         public HttpResponseMessageAssertor Run(HttpMethod httpMethod, string? requestUri, string? body, string? contentType = MediaTypeNames.Text.Plain, Action<HttpRequestMessage>? requestModifier = null)
+#endif
             => RunAsync(httpMethod, requestUri, body, contentType, requestModifier).GetAwaiter().GetResult();
 
         /// <summary>
@@ -47,7 +56,11 @@ namespace UnitTestEx.AspNetCore
         /// <param name="value">The request body value.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpResponseMessageAssertor Run<T>(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, T? value, Action<HttpRequestMessage>? requestModifier = null)
+#else
         public HttpResponseMessageAssertor Run<T>(HttpMethod httpMethod, string? requestUri, T? value, Action<HttpRequestMessage>? requestModifier = null)
+#endif
             => SendAsync(httpMethod, requestUri, value, requestModifier).GetAwaiter().GetResult();
 
         /// <summary>
@@ -57,7 +70,11 @@ namespace UnitTestEx.AspNetCore
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+#if NET7_0_OR_GREATER
+        public Task<HttpResponseMessageAssertor> RunAsync(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, Action<HttpRequestMessage>? requestModifier = null)
+#else
         public Task<HttpResponseMessageAssertor> RunAsync(HttpMethod httpMethod, string? requestUri, Action<HttpRequestMessage>? requestModifier = null)
+#endif
             => SendAsync(httpMethod, requestUri, requestModifier);
 
         /// <summary>
@@ -69,7 +86,11 @@ namespace UnitTestEx.AspNetCore
         /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+#if NET7_0_OR_GREATER
+        public Task<HttpResponseMessageAssertor> RunAsync(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? body, string? contentType = MediaTypeNames.Text.Plain, Action<HttpRequestMessage>? requestModifier = null)
+#else
         public Task<HttpResponseMessageAssertor> RunAsync(HttpMethod httpMethod, string? requestUri, string? body, string? contentType = MediaTypeNames.Text.Plain, Action<HttpRequestMessage>? requestModifier = null)
+#endif
             => SendAsync(httpMethod, requestUri, body, contentType, requestModifier);
 
         /// <summary>
@@ -80,7 +101,11 @@ namespace UnitTestEx.AspNetCore
         /// <param name="value">The request body value.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>An <see cref="HttpResponseMessageAssertor"/>.</returns>
+#if NET7_0_OR_GREATER
+        public Task<HttpResponseMessageAssertor> RunAsync<T>(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, T? value, Action<HttpRequestMessage>? requestModifier = null)
+#else
         public Task<HttpResponseMessageAssertor> RunAsync<T>(HttpMethod httpMethod, string? requestUri, T? value, Action<HttpRequestMessage>? requestModifier = null)
+#endif
             => SendAsync(httpMethod, requestUri, value, requestModifier);
     }
 }

@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text;
@@ -304,7 +305,11 @@ namespace UnitTestEx.Abstractions
         /// <param name="json">The JSON body.</param>
         /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
+#if NET7_0_OR_GREATER
+        public ServiceBusReceivedMessage CreateServiceBusMessageFromJson([StringSyntax(StringSyntaxAttribute.Json)] string json, Action<AmqpAnnotatedMessage>? messageModify = null)
+#else
         public ServiceBusReceivedMessage CreateServiceBusMessageFromJson(string json, Action<AmqpAnnotatedMessage>? messageModify = null)
+#endif
         {
             var message = new AmqpAnnotatedMessage(AmqpMessageBody.FromData(new ReadOnlyMemory<byte>[] { Encoding.UTF8.GetBytes(json ?? throw new ArgumentNullException(nameof(json))) }));
             message.Properties.ContentType = MediaTypeNames.Application.Json;
@@ -394,6 +399,6 @@ namespace UnitTestEx.Abstractions
         /// <returns>The <see cref="WorkerServiceBusMessageActionsAssertor"/>.</returns>
         public WorkerServiceBusMessageActionsAssertor CreateWorkerServiceBusMessageActions() => new(Implementor);
 
-        #endregion
+#endregion
     }
 }
