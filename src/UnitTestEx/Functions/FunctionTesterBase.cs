@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Http;
 using System.Net.Mime;
@@ -234,7 +235,11 @@ namespace UnitTestEx.Functions
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
         /// <param name="requestUri">The requuest uri.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri)
+#else
         public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri)
+#endif
             => CreateHttpRequest(httpMethod, requestUri, null, MediaTypeNames.Text.Plain, null);
 
         /// <summary>
@@ -244,7 +249,11 @@ namespace UnitTestEx.Functions
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="body">The optional body content.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? body)
+#else
         public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, string? body)
+#endif
             => CreateHttpRequest(httpMethod, requestUri, body, null, null);
 
         /// <summary>
@@ -255,7 +264,11 @@ namespace UnitTestEx.Functions
         /// <param name="body">The optional body content.</param>
         /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? body, string? contentType)
+#else
         public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, string? body, string? contentType)
+#endif
             => CreateHttpRequest(httpMethod, requestUri, body, contentType, null);
 
         /// <summary>
@@ -265,7 +278,11 @@ namespace UnitTestEx.Functions
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, Action<HttpRequest>? requestModifier = null)
+#else
         public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, Action<HttpRequest>? requestModifier = null)
+#endif
             => CreateHttpRequest(httpMethod, requestUri, null, MediaTypeNames.Text.Plain, requestModifier);
 
         /// <summary>
@@ -276,7 +293,11 @@ namespace UnitTestEx.Functions
         /// <param name="body">The optional body content.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? body, Action<HttpRequest>? requestModifier = null)
+#else
         public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, string? body, Action<HttpRequest>? requestModifier = null)
+#endif
             => CreateHttpRequest(httpMethod, requestUri, body, null, requestModifier);
 
         /// <summary>
@@ -288,7 +309,11 @@ namespace UnitTestEx.Functions
         /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri = null, string? body = null, string? contentType = null, Action<HttpRequest>? requestModifier = null)
+#else
         public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, string? body = null, string? contentType = null, Action<HttpRequest>? requestModifier = null)
+#endif
         {
             if (httpMethod == HttpMethod.Get && body != null)
                 LoggerProvider.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
@@ -328,7 +353,11 @@ namespace UnitTestEx.Functions
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="value">The value to JSON serialize.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, object? value)
+#else
         public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, string? requestUri, object? value)
+#endif
             => CreateJsonHttpRequest(httpMethod, requestUri, value, null);
 
         /// <summary>
@@ -339,7 +368,11 @@ namespace UnitTestEx.Functions
         /// <param name="value">The value to JSON serialize.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, object? value, Action<HttpRequest>? requestModifier = null)
+#else
         public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, string? requestUri, object? value, Action<HttpRequest>? requestModifier = null)
+#endif
         {
             if (httpMethod == HttpMethod.Get)
                 LoggerProvider.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
@@ -358,7 +391,11 @@ namespace UnitTestEx.Functions
         /// <param name="requestUri">The requuest uri.</param>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string resourceName)
+#else
         public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, string? requestUri, string resourceName)
+#endif
             => CreateJsonHttpRequestFromResource<TAssembly>(httpMethod, requestUri, resourceName, null);
 
         /// <summary>
@@ -370,7 +407,11 @@ namespace UnitTestEx.Functions
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string resourceName, Action<HttpRequest>? requestModifier = null)
+#else
         public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, string? requestUri, string resourceName, Action<HttpRequest>? requestModifier = null)
+#endif
             => CreateJsonHttpRequestFromResource(httpMethod, requestUri, resourceName, typeof(TAssembly).Assembly, requestModifier);
 
         /// <summary>
@@ -381,7 +422,11 @@ namespace UnitTestEx.Functions
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string resourceName, Assembly assembly)
+#else
         public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly assembly)
+#endif
             => CreateJsonHttpRequestFromResource(httpMethod, requestUri, resourceName, assembly, null);
 
         /// <summary>
@@ -393,7 +438,11 @@ namespace UnitTestEx.Functions
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string resourceName, Assembly assembly, Action<HttpRequest>? requestModifier = null)
+#else
         public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly assembly, Action<HttpRequest>? requestModifier = null)
+#endif
         {
             if (httpMethod == HttpMethod.Get)
                 LoggerProvider.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");

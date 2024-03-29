@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v4.3.1
+- *Fixed*: Added `StringSyntaxAttribute` support to improve intellisense for JSON and URI specification.
+
 ## v4.3.0
 - *Enhancement:* A new `MockHttpClient.WithRequestsFromResource` method enables the specification of the Request/Response configuration from a YAML/JSON embedded resource. The [`mock.unittestex.json`](./src/UnitTestEx/Schema/mock.unittestex.json) JSON schema defines content.
 

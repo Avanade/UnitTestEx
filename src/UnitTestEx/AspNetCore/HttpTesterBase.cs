@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
@@ -83,7 +84,11 @@ namespace UnitTestEx.AspNetCore
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
+#if NET7_0_OR_GREATER
+        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, Action<HttpRequestMessage>? requestModifier)
+#else
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, Action<HttpRequestMessage>? requestModifier)
+#endif
         {
             using var client = CreateHttpClient();
             var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, requestModifier).ConfigureAwait(false);
@@ -101,7 +106,11 @@ namespace UnitTestEx.AspNetCore
         /// <param name="contentType">The content type.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
+#if NET7_0_OR_GREATER
+        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
+#else
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
+#endif
         {
             if (content != null && httpMethod == HttpMethod.Get)
                 Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
@@ -121,7 +130,11 @@ namespace UnitTestEx.AspNetCore
         /// <param name="value">The value to be JSON serialized.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
+#if NET7_0_OR_GREATER
+        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
+#else
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
+#endif
         {
             if (value != null && httpMethod == HttpMethod.Get)
                 Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
@@ -181,19 +194,31 @@ namespace UnitTestEx.AspNetCore
             /// <summary>
             /// Sends with no content.
             /// </summary>
+#if NET7_0_OR_GREATER
+            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, Action<HttpRequestMessage>? requestModifier)
+#else
             public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, Action<HttpRequestMessage>? requestModifier)
+#endif
                 => await SendAsync(CreateRequest(method, requestUri ?? "", null, requestModifier), default).ConfigureAwait(false);
 
             /// <summary>
             /// Sends with content.
             /// </summary>
+#if NET7_0_OR_GREATER
+            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
+#else
             public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
+#endif
                 => await SendAsync(CreateRequest(method, requestUri ?? "", new StringContent(content ?? string.Empty, Encoding.UTF8, contentType ?? MediaTypeNames.Text.Plain), requestModifier), default).ConfigureAwait(false);
 
             /// <summary>
             /// Sends with JSON value.
             /// </summary>
+#if NET7_0_OR_GREATER
+            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
+#else
             public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
+#endif
                 => await SendAsync(CreateRequest(method, requestUri ?? "", new StringContent(_jsonSerializer.Serialize(value), Encoding.UTF8, MediaTypeNames.Application.Json), requestModifier), default).ConfigureAwait(false);
 
             /// <inheritdoc/>
