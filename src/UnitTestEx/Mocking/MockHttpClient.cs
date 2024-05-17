@@ -35,6 +35,7 @@ namespace UnitTestEx.Mocking
         private bool _useHttpMessageHandlers;
         private Type[] _excludeTypes = [];
         private bool _useHttpClientConfigurations;
+        private bool _traceRequestComparisons;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MockHttpClient"/> class.
@@ -249,7 +250,27 @@ namespace UnitTestEx.Mocking
 
             var r = new MockHttpClientRequest(this, method ?? HttpMethod.Get, requestUri);
             _requests.Add(r);
+            if (_traceRequestComparisons)
+                r.TraceRequestComparisons();
+
             return r;
+        }
+
+        /// <summary>
+        /// Indicates whether the request content comparison differences should be trace logged to aid in debugging/troubleshooting.
+        /// </summary>
+        /// <returns>The <see cref="MockHttpClient"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>By default the request content comparison differences are not traced. Where tracing is requested all existing and new <see cref="Request(HttpMethod?, string?)"/> configurations
+        /// will be traced.</remarks>
+        public MockHttpClient TraceRequestComparisons()
+        {
+            _traceRequestComparisons = true;
+            foreach (var r in _requests)
+            {
+                r.TraceRequestComparisons();
+            }
+
+            return this;
         }
 
         /// <summary>
