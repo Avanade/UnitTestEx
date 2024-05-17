@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v4.3.2
+- *Fixed*: Added `TraceRequestComparisons` support to `MockHttpClient` to enable tracing for all requests.
+
 ## v4.3.1
 - *Fixed*: Added `StringSyntaxAttribute` support to improve intellisense for JSON and URI specification.
 

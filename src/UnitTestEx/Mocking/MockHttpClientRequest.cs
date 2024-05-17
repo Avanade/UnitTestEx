@@ -189,7 +189,7 @@ namespace UnitTestEx.Mocking
                         options.JsonSerializer ??= JsonSerializer;
                         var jcr = new JsonElementComparer(options).Compare(content, body, _pathsToIgnore);
                         if (jcr.HasDifferences && _traceRequestComparisons)
-                            Implementor.WriteLine($"HTTP request JsonElementComparer differences:{Environment.NewLine}{jcr}");
+                            Implementor.WriteLine($"UnitTestEx > Mismatched HTTP request {request.Method} {request.RequestUri} mocked vs actual trace comparison differences:{Environment.NewLine}{jcr}");
 
                         return jcr.AreEqual;
                     }
