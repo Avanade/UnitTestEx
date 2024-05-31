@@ -271,6 +271,16 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
+        public void Http_Update_Http3_AsJson()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Http<Person>()
+                .ExpectStatusCode(System.Net.HttpStatusCode.OK)
+                .ExpectJson("{ \"id\": 1, \"firstName\": \"Bob\", \"lastName\": \"Smith\" }")
+                .Run(HttpMethod.Post, "Person/1", new Person { FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
         public void Http_Update_Http4()
         {
             using var test = ApiTester.Create<Startup>();
