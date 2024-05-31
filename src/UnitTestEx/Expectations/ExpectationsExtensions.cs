@@ -2,8 +2,10 @@
 
 using Microsoft.Extensions.Logging;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using UnitTestEx.Json;
 
 namespace UnitTestEx.Expectations
@@ -199,6 +201,39 @@ namespace UnitTestEx.Expectations
             return (TSelf)expectations;
         }
 
-        #endregion
+        /// <summary>
+        /// Expects that the resultant value will be equal (uses <see cref="JsonElementComparer"/>) to the specified <paramref name="json"/>.
+        /// </summary>
+        /// <typeparam name="TSelf">The expectations <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
+        /// <param name="expectations">The <see cref="IValueExpectations{TValue, TSelf}"/>.</param>
+        /// <param name="json">The JSON <see cref="string"/>.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns> 
+#if NET7_0_OR_GREATER
+        public static TSelf ExpectJson<TSelf, TValue>(this IValueExpectations<TValue, TSelf> expectations, [StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore) where TSelf : IValueExpectations<TValue, TSelf>
+#else
+        public static TSelf ExpectJson<TSelf, TValue>(this IValueExpectations<TValue, TSelf> expectations, string json, params string[] pathsToIgnore) where TSelf : IValueExpectations<TValue, TSelf>
+#endif
+        {
+            expectations.ExpectationsArranger.GetOrAdd(() => new ValueExpectations<TSelf>(expectations.ExpectationsArranger.Owner, (TSelf)expectations)).SetExpectJson(t => json);
+            expectations.ExpectationsArranger.PathsToIgnore.AddRange(pathsToIgnore);
+            return (TSelf)expectations;
+        }
+
+        /// <summary>
+        /// Expects that the resultant value will be equal (uses <see cref="JsonElementComparer"/>) to the JSON from the named embedded resource.
+        /// </summary>
+        /// <typeparam name="TSelf">The expectations <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
+        /// <param name="expectations">The <see cref="IValueExpectations{TValue, TSelf}"/>.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="pathsToIgnore">The JSON paths to ignore.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
+        /// <remarks>Uses <see cref="Resource.GetJson(string, Assembly?)"/> to load the embedded resource within the <see cref="Assembly.GetCallingAssembly"/>.</remarks>
+        public static TSelf ExpectJsonFromResource<TSelf, TValue>(this IValueExpectations<TValue, TSelf> expectations, string resourceName, params string[] pathsToIgnore) where TSelf : IValueExpectations<TValue, TSelf>
+            => ExpectJson(expectations, Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), pathsToIgnore);
+
+#endregion
     }
 }

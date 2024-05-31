@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v4.4.0
+- *Enhancement:* Added `ExpectJson` and `ExpectJsonFromResource` to `IValueExpectations` to enable value comparison against the specified (expected) JSON.
+
 ## v4.3.2
 - *Fixed*: Added `TraceRequestComparisons` support to `MockHttpClient` to enable tracing for all requests.
 
