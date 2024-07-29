@@ -312,7 +312,7 @@ namespace UnitTestEx.Mocking
             private readonly Type[] _excludeTypes = excludeTypes;
 
             /// <inheritdoc/>
-            public override IList<DelegatingHandler> AdditionalHandlers { get; } = new List<DelegatingHandler>();
+            public override IList<DelegatingHandler> AdditionalHandlers { get; } = [];
 
             public override IServiceProvider Services { get; } = services;
 

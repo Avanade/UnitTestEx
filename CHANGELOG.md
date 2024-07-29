@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v4.4.1
+- *Fixed:* Updated all package depenedencies to latest.
+
 ## v4.4.0
 - *Enhancement:* Added `ExpectJson` and `ExpectJsonFromResource` to `IValueExpectations` to enable value comparison against the specified (expected) JSON.
 
