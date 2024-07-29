@@ -177,7 +177,7 @@ namespace UnitTestEx.NUnit.Test
                     .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }));
             });
 
-            Assert.That(ex.Message.Contains("Error: First name is requiredx."), Is.True);
+            Assert.That(ex.Message, Does.Contain("Error: First name is requiredx."));
         }
 
         [Test]
