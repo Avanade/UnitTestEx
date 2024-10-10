@@ -3,7 +3,7 @@ using UnitTestEx.IsolatedFunction;
 
 var startup = new Startup();
 var host = new HostBuilder()
-    .ConfigureFunctionsWorkerDefaults()
+    .ConfigureFunctionsWebApplication()
     .ConfigureServices((hbc, sc) => startup.ConfigureServices(sc))
     .Build();
 

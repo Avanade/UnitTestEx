@@ -148,7 +148,7 @@ namespace UnitTestEx.Functions
                     .ConfigureHostConfiguration(cb =>
                     {
                         cb.SetBasePath(Environment.CurrentDirectory)
-                            .AddInMemoryCollection(new KeyValuePair<string, string?>[] { new("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost") })
+                            .AddInMemoryCollection([new("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost")])
                             .AddJsonFile(GetLocalSettingsJson(), optional: true)
                             .AddJsonFile("appsettings.json", optional: true)
                             .AddJsonFile($"appsettings.{TestSetUp.Environment.ToLowerInvariant()}.json", optional: true);
@@ -162,14 +162,14 @@ namespace UnitTestEx.Functions
 
                         if ((!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (_includeUserSecrets.HasValue && _includeUserSecrets.Value))
                             cb.AddUserSecrets<TEntryPoint>();
-                        
+
+                        cb.AddEnvironmentVariables();
+
                         if ((!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (_includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value))
                             cb.AddJsonFile("appsettings.unittest.json", optional: true);
 
                         if (_additionalConfiguration != null)
                             cb.AddInMemoryCollection(_additionalConfiguration);
-
-                        cb.AddEnvironmentVariables();
                     })
                     .ConfigureServices(sc =>
                     {

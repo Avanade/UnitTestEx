@@ -147,7 +147,7 @@ namespace UnitTestEx.NUnit.Test
         public void Configuration_Overrride()
         {
             // Demonstrates how to override the configuration settings for a test.
-            using var test = FunctionTester.Create<Startup>(additionalConfiguration: new Dictionary<string, string>(new KeyValuePair<string, string>[] { new("SpecialKey", "NotSoSpecial") }));
+            using var test = FunctionTester.Create<Startup>(additionalConfiguration: [new("SpecialKey", "NotSoSpecial")]);
             var cv = test.Configuration.GetValue<string>("SpecialKey");
             Assert.That(cv, Is.EqualTo("NotSoSpecial"));
         }
