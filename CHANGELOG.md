@@ -3,7 +3,7 @@
 Represents the **NuGet** versions.
 
 ## v4.4.2
-- *Fixed*: Updated all package depenedencies to latest; resolve [Microsoft Security Advisory CVE-2024-43485](https://github.com/advisories/GHSA-8g4q-xg66-9fp4).
+- *Fixed*: Updated `System.Text.Json` package depenedency to latest; resolve [Microsoft Security Advisory CVE-2024-43485](https://github.com/advisories/GHSA-8g4q-xg66-9fp4).
 
 ## v4.4.1
 - *Fixed:* Updated all package depenedencies to latest.
