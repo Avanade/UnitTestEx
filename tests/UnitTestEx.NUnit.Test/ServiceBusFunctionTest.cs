@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
@@ -140,6 +141,15 @@ namespace UnitTestEx.NUnit.Test
             using var test = FunctionTester.Create<Startup>();
             var cv = test.Configuration.GetValue<string>("SpecialKey");
             Assert.That(cv, Is.EqualTo("VerySpecialValue"));
+        }
+
+        [Test]
+        public void Configuration_Overrride()
+        {
+            // Demonstrates how to override the configuration settings for a test.
+            using var test = FunctionTester.Create<Startup>(additionalConfiguration: new Dictionary<string, string>(new KeyValuePair<string, string>[] { new("SpecialKey", "NotSoSpecial") }));
+            var cv = test.Configuration.GetValue<string>("SpecialKey");
+            Assert.That(cv, Is.EqualTo("NotSoSpecial"));
         }
     }
 }
