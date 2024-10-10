@@ -1,6 +1,6 @@
 ﻿<Project>
 	<PropertyGroup>
-		<Version>4.4.1</Version>
+		<Version>4.4.2</Version>
 		<LangVersion>preview</LangVersion>
 		<Authors>Avanade</Authors>
 		<Company>Avanade</Company>
@@ -20,14 +20,15 @@
 		<RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
 		<Nullable>enable</Nullable>
 		<EnableNETAnalyzers>true</EnableNETAnalyzers>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<IncludeSymbols>true</IncludeSymbols>
 		<EmbedAllSources>true</EmbedAllSources>
-        <IsPackable>true</IsPackable>
+    <IsPackable>true</IsPackable>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
-	</PropertyGroup>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
 
 	<ItemGroup>
 		<None Include="..\..\images\Logo256x256.png" Link="Logo256x256.png">
