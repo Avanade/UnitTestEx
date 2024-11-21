@@ -11,12 +11,6 @@ namespace UnitTestEx.NUnit.Internal
     {
         private const string _notSpecifiedText = "Not specified.";
 
-        /// <summary>
-        /// Creates a <see cref="NUnitTestImplementor"/> .
-        /// </summary>
-        /// <returns>The <see cref="NUnitTestImplementor"/>.</returns>
-        public static NUnitTestImplementor Create() => new();
-
         /// <inheritdoc/>
         public override void AssertFail(string? message) => Assert.Fail(message ?? _notSpecifiedText);
 

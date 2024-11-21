@@ -1,12 +1,12 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
-using UnitTestEx.MSTest.Internal;
+using UnitTestEx.AspNetCore;
 
-namespace UnitTestEx.MSTest
+namespace UnitTestEx
 {
     /// <summary>
-    /// Provides the <b>MSTest</b> API testing capability.
+    /// Provides the API testing capability.
     /// </summary>
     public static class ApiTester
     {

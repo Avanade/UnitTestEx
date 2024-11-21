@@ -16,7 +16,7 @@ using UnitTestEx.Expectations;
 using UnitTestEx.Hosting;
 using UnitTestEx.Json;
 
-namespace UnitTestEx.Functions
+namespace UnitTestEx.Azure.Functions
 {
     /// <summary>
     /// Provides Azure Function <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute"/> unit-testing and integration emulation testing capabilities.
@@ -92,7 +92,7 @@ namespace UnitTestEx.Functions
                 }
             }).ConfigureAwait(false);
 
-            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+            await Task.Delay(UnitTestEx.TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
             var logs = Owner.SharedState.GetLoggerMessages();
             LogOutput(ex, ms, sbv, sba, ssba, wsba, logs);
 

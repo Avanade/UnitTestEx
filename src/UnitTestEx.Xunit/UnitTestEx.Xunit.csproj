@@ -9,11 +9,6 @@
 	  <PackageTags>unittestex api function unit test unittest xunit</PackageTags>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="xunit" Version="2.9.0" />
   </ItemGroup>

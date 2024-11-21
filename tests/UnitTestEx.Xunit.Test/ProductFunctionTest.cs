@@ -15,11 +15,11 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void Notfound()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Get, "products/xyz").Respond.With(HttpStatusCode.NotFound);
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/xyz"), "xyz", test.Logger))
@@ -29,11 +29,11 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void Success()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc", test.Logger))
@@ -44,11 +44,11 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void Success2()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .Type<ProductFunction>()
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc", test.Logger))
@@ -60,9 +60,9 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void Exception()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/exception"), "exception", test.Logger))

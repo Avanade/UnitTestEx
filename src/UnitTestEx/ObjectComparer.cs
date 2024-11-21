@@ -1,10 +1,11 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
+using System.Diagnostics.CodeAnalysis;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Json;
-using UnitTestEx.NUnit.Internal;
 
-namespace UnitTestEx.NUnit
+namespace UnitTestEx
 {
     /// <summary>
     /// Deep object comparer using <see cref="JsonElementComparer"/>.
@@ -34,13 +35,13 @@ namespace UnitTestEx.NUnit
 
             if (expected is null)
             {
-                new NUnitTestImplementor().AssertFail($"Expected and Actual values are not equal: NULL != value.");
+                TestFrameworkImplementor.Create().AssertFail($"Expected and Actual values are not equal: NULL != value.");
                 return;
             }
 
-            if (actual is null)
+            if (expected is null)
             {
-                new NUnitTestImplementor().AssertFail($"Expected and Actual values are not equal: value != NULL.");
+                TestFrameworkImplementor.Create().AssertFail($"Expected and Actual values are not equal: value != NULL.");
                 return;
             }
 
@@ -49,7 +50,7 @@ namespace UnitTestEx.NUnit
 
             var cr = new JsonElementComparer(o).CompareValue(expected, actual, pathsToIgnore);
             if (cr.HasDifferences)
-                new NUnitTestImplementor().AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
+                TestFrameworkImplementor.Create().AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
         }
 
         /// <summary>
@@ -58,8 +59,12 @@ namespace UnitTestEx.NUnit
         /// <param name="expected">The expected JSON.</param>
         /// <param name="actual">The actual JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
+#if NET7_0_OR_GREATER
+        public static void JsonAssert([StringSyntax(StringSyntaxAttribute.Json)] string? expected, [StringSyntax(StringSyntaxAttribute.Json)] string? actual, params string[] pathsToIgnore) => JsonAssert(null, expected, actual, pathsToIgnore);
+#else
         public static void JsonAssert(string? expected, string? actual, params string[] pathsToIgnore) => JsonAssert(null, expected, actual, pathsToIgnore);
-        
+#endif
+
         /// <summary>
         /// Compares two JSON strings to each other.
         /// </summary>
@@ -67,20 +72,24 @@ namespace UnitTestEx.NUnit
         /// <param name="expected">The expected JSON.</param>
         /// <param name="actual">The actual JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
+#if NET7_0_OR_GREATER
+        public static void JsonAssert(JsonElementComparerOptions? options, [StringSyntax(StringSyntaxAttribute.Json)] string? expected, [StringSyntax(StringSyntaxAttribute.Json)] string? actual, params string[] pathsToIgnore)
+#else
         public static void JsonAssert(JsonElementComparerOptions? options, string? expected, string? actual, params string[] pathsToIgnore)
+#endif
         {
             if (expected is null && actual is null)
                 return;
 
             if (expected is null)
             {
-                new NUnitTestImplementor().AssertFail($"Expected and Actual values are not equal: NULL != value.");
+                TestFrameworkImplementor.Create().AssertFail($"Expected and Actual values are not equal: NULL != value.");
                 return;
             }
 
             if (actual is null)
             {
-                new NUnitTestImplementor().AssertFail($"Expected and Actual values are not equal: value != NULL.");
+                TestFrameworkImplementor.Create().AssertFail($"Expected and Actual values are not equal: value != NULL.");
                 return;
             }
 
@@ -89,7 +98,7 @@ namespace UnitTestEx.NUnit
 
             var cr = new JsonElementComparer(o).Compare(expected, actual, pathsToIgnore);
             if (cr.HasDifferences)
-                new NUnitTestImplementor().AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
+                TestFrameworkImplementor.Create().AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
         }
     }
 }

@@ -11,7 +11,7 @@ namespace UnitTestEx.Xunit.Test.Other
         [Fact]
         public void Run_Success()
         {
-            using var test = CreateGenericTester();
+            using var test = GenericTester.Create();
             test.Run(() => 1)
                 .AssertSuccess()
                 .AssertValue(1);
@@ -20,7 +20,7 @@ namespace UnitTestEx.Xunit.Test.Other
         [Fact]
         public void Run_Exception()
         {
-            using var test = CreateGenericTester();
+            using var test = GenericTester.Create();
             test.ExpectError("Badness.")
                 .Run(() => throw new System.ArithmeticException("Badness."));
         }

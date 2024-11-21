@@ -13,6 +13,8 @@ namespace UnitTestEx.Xunit.Internal
     /// <param name="testOutputHelper">The <see cref="ITestOutputHelper"/>.</param>
     public sealed class XunitTestImplementor(ITestOutputHelper testOutputHelper) : Abstractions.TestFrameworkImplementor
     {
+        private const string _notSpecifiedText = "Not specified.";
+
         private readonly ITestOutputHelper _output = testOutputHelper ?? throw new ArgumentNullException(nameof(testOutputHelper));
 
         /// <summary>
@@ -23,7 +25,7 @@ namespace UnitTestEx.Xunit.Internal
         public static XunitTestImplementor Create(ITestOutputHelper testOutputHelper) => new(testOutputHelper);
 
         /// <inheritdoc/>
-        public override void AssertFail(string? message) => throw new XunitException(message);
+        public override void AssertFail(string? message) => throw new XunitException(message ?? _notSpecifiedText);
 
         /// <inheritdoc/>
         public override void AssertAreEqual<T>(T? expected, T? actual, string? message = null) where T : default => Assert.Equal(expected, actual);

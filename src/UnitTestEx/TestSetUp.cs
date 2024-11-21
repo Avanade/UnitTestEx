@@ -7,12 +7,13 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
-using UnitTestEx.Functions;
 using UnitTestEx.Json;
 
 namespace UnitTestEx
@@ -39,6 +40,10 @@ namespace UnitTestEx
         /// <remarks>Wires up the <see cref="OneOffTestSetUpAttribute.SetUp()"/> invocation whenever an <see cref="Assembly"/> is <see cref="AppDomain.AssemblyLoad">loaded.</see></remarks>
         static TestSetUp()
         {
+            // Load dependent UnitTestEx assemblies as they may not have been loaded yet!
+            foreach (var fi in new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory).EnumerateFiles("*.dll").Where(f => f.Name.StartsWith("UnitTestEx.")))
+                Assembly.LoadFrom(fi.FullName);
+
             // Wire up for any assemblies already loaded.
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
                 OneOffTestSetUpAttribute.SetUp(assembly);
@@ -48,19 +53,14 @@ namespace UnitTestEx
         }
 
         /// <summary>
+        /// Forces the underlying static set up on first access.
+        /// </summary>
+        internal static void Force() { }
+
+        /// <summary>
         /// Gets or sets the default <see cref="TestSetUp"/>.
         /// </summary>
         public static TestSetUp Default { get; set; } = new TestSetUp();
-
-        /// <summary>
-        /// Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file when the <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> host starts; defaults to <c>true</c>.
-        /// </summary>
-        public static bool FunctionTesterIncludeUnitTestConfiguration { get; set; } = true;
-
-        /// <summary>
-        /// Indicates whether to include user secrets configuration when the <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> host starts; defaults to <c>false</c>.
-        /// </summary>
-        public static bool FunctionTesterIncludeUserSecrets { get; set; }
 
         /// <summary>
         /// Gets or sets the environment used for loading the likes of configuration files.
@@ -96,7 +96,7 @@ namespace UnitTestEx
             if (environmentVariablePrefix == null)
                 cb.AddEnvironmentVariables();
             else
-                cb.AddEnvironmentVariables(environmentVariablePrefix.EndsWith("_", StringComparison.InvariantCulture) ? environmentVariablePrefix : environmentVariablePrefix + "_");
+                cb.AddEnvironmentVariables(environmentVariablePrefix.EndsWith('_') ? environmentVariablePrefix : environmentVariablePrefix + "_");
 
             cb.AddCommandLine(System.Environment.GetCommandLineArgs());
             return cb.Build();
@@ -165,13 +165,13 @@ namespace UnitTestEx
         public Action<IServiceCollection>? ConfigureServices { get; set; }
 
         /// <summary>
-        /// Gets or sets the function that enables the <see cref="HttpRequestMessage"/> to be updated before each send for the <see cref="AspNetCore.ApiTesterBase{TEntryPoint, TSelf}"/>.
+        /// Gets or sets the function that enables the <see cref="HttpRequestMessage"/> to be updated before each send.
         /// </summary>
         /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBase.UserName"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
         public Func<HttpRequestMessage, string?, CancellationToken, Task>? OnBeforeHttpRequestMessageSendAsync { get; set; }
 
         /// <summary>
-        /// Gets or sets the function that enables the <see cref="HttpRequestMessage"/> to be updated before each send for the <see cref="Functions.HttpTriggerTester{TFunction}"/>.
+        /// Gets or sets the function that enables the <see cref="HttpRequest"/> to be updated before each send.
         /// </summary>
         /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBase.UserName"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
         public Func<HttpRequest, string?, CancellationToken, Task>? OnBeforeHttpRequestSendAsync { get; set; }

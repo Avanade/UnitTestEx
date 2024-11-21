@@ -19,7 +19,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriOnly_Single()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Get, "products/xyz").Respond.With(HttpStatusCode.NotFound);
 
             var hc = mcf.GetHttpClient("XXX");
@@ -33,7 +33,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriOnly_Multi()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
             mc.Request(HttpMethod.Get, "products/xyz").Respond.With(HttpStatusCode.NotFound);
             mc.Request(HttpMethod.Get, "products/abc").Respond.With(HttpStatusCode.NoContent);
@@ -49,7 +49,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndBody_String_Single()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Post, "products/xyz").WithBody("Bananas").Respond.With(HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
@@ -60,7 +60,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndBody_String_Multi()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
             mc.Request(HttpMethod.Post, "products/xyz").WithBody("Bananas").Respond.With(HttpStatusCode.Accepted);
             mc.Request(HttpMethod.Post, "products/xyz").WithBody("Apples").Respond.With(HttpStatusCode.NoContent);
@@ -76,7 +76,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndBody_Invalid()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Post, "products/xyz").WithBody("Bananas").Respond.With(HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
@@ -87,7 +87,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndBody_Json_Single()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" }).Respond.With(HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
@@ -98,7 +98,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndBody_Json_Multi()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
             mc.Request(HttpMethod.Post, "products/xyz").WithJsonBody("{ \"firstName\": \"Bob\", \"lastName\": \"Jane\" }").Respond.With(HttpStatusCode.Accepted);
             mc.Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Jenny", LastName = "Browne" }).Respond.With(HttpStatusCode.OK);
@@ -114,7 +114,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndBody_WithJsonResponse()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
                 .Respond.WithJson(new Person2 { First = "Bob", Last = "Jane" }, HttpStatusCode.Accepted);
@@ -128,7 +128,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndBody_WithJsonResponse2()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
                 .Respond.WithJson("{\"first\":\"Bob\",\"last\":\"Jane\"}", HttpStatusCode.Accepted);
@@ -142,7 +142,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndBody_WithJsonResponse3()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
                 .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
@@ -156,7 +156,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void VerifyMock_NotExecuted()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
                 .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
@@ -175,7 +175,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task VerifyMock_NotExecuted_Multi()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
             mc.Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
                 .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
@@ -201,7 +201,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task VerifyMock_NotExecuted_Times()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
             mc.Request(HttpMethod.Post, "products/xyz").Times(Times.Exactly(2)).WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
                 .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
@@ -228,7 +228,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task VerifyMock_Executed()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
                 .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
@@ -242,7 +242,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndAnyBody()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Post, "products/xyz").WithAnyBody()
                 .Respond.WithJson("{\"first\":\"Bob\",\"last\":\"Jane\"}", HttpStatusCode.Accepted);
@@ -258,7 +258,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task MockSequence_Body()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
             mc.Request(HttpMethod.Post, "products/xyz").WithAnyBody().Respond.WithSequence(s =>
             {
@@ -278,7 +278,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task MockSequence()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
             mc.Request(HttpMethod.Get, "products/xyz").Respond.WithSequence(s =>
             {
@@ -297,7 +297,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task MockDelay()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Get, "products/xyz").Respond.Delay(500).With(HttpStatusCode.NotFound);
 
             var hc = mcf.GetHttpClient("XXX");
@@ -313,7 +313,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task MockSequenceDelay()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
             mc.Request(HttpMethod.Get, "products/xyz").Respond.WithSequence(s =>
             {
@@ -339,7 +339,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndBody_WithXmlRequest()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Post, "products/xyz").WithBody("<Person xmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns=\"http://schemas.datacontract.org/2004/07/UnitTestEx.Xunit.Test.Model\"><FirstName>Bob</FirstName><LastName>Jane</LastName></Person>", MediaTypeNames.Application.Xml)
                 .Respond.With(new StringContent("<person><first>Bob</first><last>Jane</last></person>", Encoding.UTF8, MediaTypeNames.Application.Xml), HttpStatusCode.Accepted);
@@ -353,7 +353,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task UriAndBody_WithAnyTypeRequest()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Post, "testing").WithBody("--my--custom--format--", "application/custom-format")
                 .Respond.With(new StringContent("--ok--", Encoding.UTF8, "application/custom-format"), HttpStatusCode.Accepted);

@@ -8,15 +8,19 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 
-namespace UnitTestEx.Functions
+namespace UnitTestEx.Azure.Functions
 {
     /// <summary>
-    /// Provides a <see cref="ServiceBusMessageActions"/> test mock and assert verification.
+    /// Provides a <see cref="ServiceBusSessionMessageActions"/> test mock and assert verification.
     /// </summary>
     /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-    public class WebJobsServiceBusMessageActionsAssertor(TestFrameworkImplementor implementor) : ServiceBusMessageActions
+    /// <param name="sessionLockedUntil">The sessions locked until <see cref="DateTimeOffset"/>; defaults to <see cref="DateTimeOffset.UtcNow"/> plus five minutes.</param>
+    /// <param name="sessionState">The session state <see cref="BinaryData"/>; defaults to <see cref="BinaryData.Empty"/>.</param>
+    public class WebJobsServiceBusSessionMessageActionsAssertor(TestFrameworkImplementor implementor, DateTimeOffset? sessionLockedUntil = default, BinaryData? sessionState = default) : ServiceBusSessionMessageActions
     {
         private readonly TestFrameworkImplementor _implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+        private DateTimeOffset _sessionLockedUntil = sessionLockedUntil ?? DateTimeOffset.UtcNow.AddMinutes(5);
+        private BinaryData _sessionState = sessionState ?? BinaryData.Empty;
 
         /// <summary>
         /// Gets the <see cref="ServiceBusMessageActionStatus"/>.
@@ -42,6 +46,11 @@ namespace UnitTestEx.Functions
         /// Gets the <see cref="RenewMessageLockAsync(ServiceBusReceivedMessage, CancellationToken)"/> count.
         /// </summary>
         public int RenewCount { get; private set; }
+
+        /// <summary>
+        /// Indicates whether the <see cref="ReleaseSession"/> was invoked.
+        /// </summary>
+        public bool SessionReleased { get; private set; }
 
         /// <inheritdoc/>
         public override Task AbandonMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object>? propertiesToModify = default, CancellationToken cancellationToken = default)
@@ -102,6 +111,29 @@ namespace UnitTestEx.Functions
             return Task.CompletedTask;
         }
 
+        /// <inheritdoc/>
+        public override Task<BinaryData> GetSessionStateAsync(CancellationToken cancellationToken = default) => Task.FromResult(_sessionState);
+
+        /// <inheritdoc/>
+        public override Task SetSessionStateAsync(BinaryData sessionState, CancellationToken cancellationToken = default)
+        {
+            _sessionState = sessionState;
+            return Task.CompletedTask;
+        }
+
+        /// <inheritdoc/>
+        public override Task RenewSessionLockAsync(CancellationToken cancellationToken = default)
+        {
+            _sessionLockedUntil = DateTimeOffset.UtcNow.AddMinutes(5);
+            return Task.CompletedTask;
+        }
+
+        /// <inheritdoc/>
+        public override DateTimeOffset SessionLockedUntil => _sessionLockedUntil;
+
+        /// <inheritdoc/>
+        public override void ReleaseSession() => SessionReleased = true;
+
         /// <summary>
         /// Verifies action is a valid operation.
         /// </summary>
@@ -115,12 +147,12 @@ namespace UnitTestEx.Functions
         }
 
         /// <summary>
-        /// Logs the result of the <see cref="WebJobsServiceBusMessageActionsAssertor"/>.
+        /// Logs the result of the <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/>.
         /// </summary>
         internal void LogResult()
         {
             _implementor.WriteLine("");
-            _implementor.WriteLine("MESSAGE ACTIONS >");
+            _implementor.WriteLine("SESSION MESSAGE ACTIONS >");
             _implementor.WriteLine($"Action: {Status}");
 
             if (RenewCount > 0)
@@ -132,12 +164,12 @@ namespace UnitTestEx.Functions
                 _implementor.WriteLine($"Description: {DeadLetterErrorDescription ?? "<null>"}");
             }
 
-            _implementor.WriteLine($"Properties modified{(PropertiesModified is null ? ": None." : " >")}");
+            _implementor.WriteLine($"Properties modified: {(PropertiesModified is null ? "None." : "")}");
             if (PropertiesModified != null)
             {
                 foreach (var pm in PropertiesModified)
                 {
-                    _implementor.WriteLine($"  {pm.Key}: {pm.Value ?? "<null>"}");
+                    _implementor.WriteLine($"{pm.Key}: {pm.Value ?? "<null>"}");
                 }
             }
         }
@@ -145,7 +177,7 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Assert the status.
         /// </summary>
-        private WebJobsServiceBusMessageActionsAssertor AssertStatus(ServiceBusMessageActionStatus status)
+        private WebJobsServiceBusSessionMessageActionsAssertor AssertStatus(ServiceBusMessageActionStatus status)
         {
             if (!Status.Equals(status))
                 _implementor.AssertAreEqual(status, Status, "ServiceBusMessageActions status is not equal.");
@@ -156,28 +188,28 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Asserts that the <see cref="AbandonMessageAsync(ServiceBusReceivedMessage, IDictionary{string, object}?, CancellationToken)"/> was invoked.
         /// </summary>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public WebJobsServiceBusMessageActionsAssertor AssertAbandon() => AssertStatus(ServiceBusMessageActionStatus.Abandon);
+        /// <returns>The <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusSessionMessageActionsAssertor AssertAbandon() => AssertStatus(ServiceBusMessageActionStatus.Abandon);
 
         /// <summary>
         /// Asserts that the <see cref="CompleteMessageAsync(ServiceBusReceivedMessage, CancellationToken)"/> was invoked.
         /// </summary>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public WebJobsServiceBusMessageActionsAssertor AssertComplete() => AssertStatus(ServiceBusMessageActionStatus.Complete);
+        /// <returns>The <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusSessionMessageActionsAssertor AssertComplete() => AssertStatus(ServiceBusMessageActionStatus.Complete);
 
         /// <summary>
         /// Asserts that the <see cref="DeferMessageAsync(ServiceBusReceivedMessage, IDictionary{string, object}?, CancellationToken)"/> was invoked.
         /// </summary>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public WebJobsServiceBusMessageActionsAssertor AssertDefer() => AssertStatus(ServiceBusMessageActionStatus.Defer);
+        /// <returns>The <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusSessionMessageActionsAssertor AssertDefer() => AssertStatus(ServiceBusMessageActionStatus.Defer);
 
         /// <summary>
         /// Asserts that the one of the <see cref="DeadLetterMessageAsync(ServiceBusReceivedMessage, string, string?, CancellationToken)"/> methods was invoked.
         /// </summary>
         /// <param name="reasonContains">Asserts that the resulting <see cref="DeadLetterReason"/> contains the specified content.</param>
         /// <param name="errorDescriptionContains">Asserts that the resulting <see cref="DeadLetterErrorDescription"/> contains the specified content.</param>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public WebJobsServiceBusMessageActionsAssertor AssertDeadLetter(string? reasonContains = default, string? errorDescriptionContains = default)
+        /// <returns>The <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusSessionMessageActionsAssertor AssertDeadLetter(string? reasonContains = default, string? errorDescriptionContains = default)
         {
             AssertStatus(ServiceBusMessageActionStatus.DeadLetter);
             if (!string.IsNullOrEmpty(reasonContains))
@@ -198,8 +230,8 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Asserts that the <see cref="RenewMessageLockAsync(ServiceBusReceivedMessage, CancellationToken)"/> was invoked at least once or <paramref name="count"/> specified.
         /// </summary>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public WebJobsServiceBusMessageActionsAssertor AssertRenew(int? count = default)
+        /// <returns>The <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusSessionMessageActionsAssertor AssertRenew(int? count = default)
         {
             if (count.HasValue)
                 _implementor.AssertAreEqual(count.Value, RenewCount, $"{nameof(RenewCount)} is not equal.");
@@ -212,7 +244,7 @@ namespace UnitTestEx.Functions
         /// <summary>
         /// Asserts that <i>no</i> methods (with the exception of <see cref="RenewMessageLockAsync(ServiceBusReceivedMessage, CancellationToken)"/>) were invoked.
         /// </summary>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
-        public WebJobsServiceBusMessageActionsAssertor AssertNone() => AssertStatus(ServiceBusMessageActionStatus.None);
+        /// <returns>The <see cref="WebJobsServiceBusSessionMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        public WebJobsServiceBusSessionMessageActionsAssertor AssertNone() => AssertStatus(ServiceBusMessageActionStatus.None);
     }
 }

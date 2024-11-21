@@ -21,7 +21,7 @@ using UnitTestEx.Expectations;
 using UnitTestEx.Hosting;
 using UnitTestEx.Json;
 
-namespace UnitTestEx.Functions
+namespace UnitTestEx.Azure.Functions
 {
     /// <summary>
     /// Provides Azure Function <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute"/> unit-testing capabilities.
@@ -70,7 +70,7 @@ namespace UnitTestEx.Functions
                     throw new InvalidOperationException($"The function {nameof(Microsoft.Azure.Functions.Worker.HttpTriggerAttribute)} supports {nameof(Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute2.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid.");
             }).ConfigureAwait(false);
 
-            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+            await Task.Delay(UnitTestEx.TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
             var logs = Owner.SharedState.GetLoggerMessages();
             LogResponse(result, ex, ms, logs);
 

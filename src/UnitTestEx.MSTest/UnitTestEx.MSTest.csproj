@@ -9,11 +9,6 @@
 	  <PackageTags>unittestex api function unit test unittest mstest</PackageTags>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="MSTest.TestFramework" Version="3.5.0" />
   </ItemGroup>
