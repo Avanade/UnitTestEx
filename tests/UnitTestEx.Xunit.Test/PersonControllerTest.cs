@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Api.Models;
-using UnitTestEx.Xunit;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -16,7 +15,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task Get_Test1()
         {
-            using var test = CreateApiTester<Startup>();
+            using var test = ApiTester.Create<Startup>();
             (await test.Controller<PersonController>()
                 .RunAsync(c => c.Get(1)))
                 .AssertOK()
@@ -27,7 +26,7 @@ namespace UnitTestEx.Xunit.Test
         public void Get_Test2()
         {
             int id = 2;
-            using var test = CreateApiTester<Startup>();
+            using var test = ApiTester.Create<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Get(id))
                 .AssertOK()
@@ -39,14 +38,14 @@ namespace UnitTestEx.Xunit.Test
         {
             var p = new Person { Id = 3, FirstName = "Brad", LastName = "Davies" };
 
-            using var test = CreateApiTester<Startup>();
+            using var test = ApiTester.Create<Startup>();
             test.Controller<PersonController>().Run(c => c.Get(p.Id)).AssertOK().AssertValue(p);
         }
 
         [Fact]
         public void Get_Test4()
         {
-            using var test = CreateApiTester<Startup>();
+            using var test = ApiTester.Create<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Get(4))
                 .AssertNotFound();
@@ -55,7 +54,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void GetByArgs_Test1()
         {
-            using var test = CreateApiTester<Startup>();
+            using var test = ApiTester.Create<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.GetByArgs("Mary", "Brown", new List<int> { 88, 99 }))
                 .AssertOK()
@@ -65,7 +64,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void GetByArgs_Test2()
         {
-            using var test = CreateApiTester<Startup>();
+            using var test = ApiTester.Create<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.GetByArgs(null, null, null))
                 .AssertOK()
@@ -75,7 +74,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void Update_Test1()
         {
-            using var test = CreateApiTester<Startup>();
+            using var test = ApiTester.Create<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Update(1, new Person { FirstName = "Bob", LastName = "Smith" }))
                 .AssertOK()
@@ -85,7 +84,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void Update_Test2()
         {
-            using var test = CreateApiTester<Startup>();
+            using var test = ApiTester.Create<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }))
                 .AssertBadRequest()
@@ -97,7 +96,7 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void Update_Test3()
         {
-            using var test = CreateApiTester<Startup>();
+            using var test = ApiTester.Create<Startup>();
             test.Controller<PersonController>()
                 .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }))
                 .AssertBadRequest()

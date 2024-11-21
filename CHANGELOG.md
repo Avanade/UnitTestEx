@@ -2,6 +2,18 @@
 
 Represents the **NuGet** versions.
 
+## v5.0.0
+- *Enhancement:* `UnitTestEx` package updated to include only standard .NET core capabilities; new packages created to house specific as follows:
+  - `UnitTestEx.Azure.Functions` created to house Azure Functions specific capabilities;
+  - `UnitTestEx.Azure.ServiceBus` created to house Azure Service Bus specific capabilities;
+  - This allows for more focused testing capabilities and provides a common pattern for ongoing extensibility; whilst also looking to limit cross package dependency challenges.
+  - Existing usage will require references to the new packages as required. There should be limited need to update existing tests to use beyond the requirement for the root `UnitTestEx` namespace. The updated default within `UnitTestEx` is to expose the key capabilities from the root namespace. For example, `using UnitTestEx.NUnit`, should be replaced with `using UnitTestEx`.
+- *Enhancement:* Updated `UnitTestEx.Xunit` to align with `UnitTestEx.NUnit` and `UnitTestEx.MSTest` for consistency; the following `UnitTestBase` methods have been removed and should be replaced with:
+  - `CreateMockHttpClientFactory()` replaced with `MockHttpClientFactory.Create()`;
+  - `CreateGenericTester()` replaced with `GenericTester.Create()`;
+  - `CreateApiTester<TStartup>()` replaced with `ApiTester.Create<TStartup>()`;
+  - `CreateFunctionTester<TStartup>()` replaced with `FunctionTester.Create<TStartup>()`.
+
 ## v4.4.2
 - *Fixed*: Updated `System.Text.Json` package depenedency to latest; resolve [Microsoft Security Advisory CVE-2024-43485](https://github.com/advisories/GHSA-8g4q-xg66-9fp4).
 

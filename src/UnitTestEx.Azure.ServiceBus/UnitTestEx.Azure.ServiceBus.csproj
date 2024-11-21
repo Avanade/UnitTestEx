@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+    <RootNamespace>UnitTestEx</RootNamespace>
+    <Product>UnitTestEx</Product>
+    <Title>UnitTestEx Azure Functions Test Extensions.</Title>
+    <Description>UnitTestEx Azure ServiceBus Test Extensions.</Description>
+    <PackageTags>unittestex azure messaging servicebus unit test unittest</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.18.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UnitTestEx\UnitTestEx.csproj" />
+  </ItemGroup>
+
+  <Import Project="..\..\Common.targets" />
+
+</Project>

@@ -21,7 +21,7 @@ using System.Threading;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Hosting;
 
-namespace UnitTestEx.Functions
+namespace UnitTestEx.Azure.Functions
 {
     /// <summary>
     /// Provides the basic Azure Function unit-testing capabilities.
@@ -143,7 +143,7 @@ namespace UnitTestEx.Functions
                 var ep3 = new EntryPoint(ep);
 
                 return _host = new HostBuilder()
-                    .UseEnvironment(TestSetUp.Environment)
+                    .UseEnvironment(UnitTestEx.TestSetUp.Environment)
                     .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
                     .ConfigureHostConfiguration(cb =>
                     {
@@ -151,7 +151,7 @@ namespace UnitTestEx.Functions
                             .AddInMemoryCollection([new("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost")])
                             .AddJsonFile(GetLocalSettingsJson(), optional: true)
                             .AddJsonFile("appsettings.json", optional: true)
-                            .AddJsonFile($"appsettings.{TestSetUp.Environment.ToLowerInvariant()}.json", optional: true);
+                            .AddJsonFile($"appsettings.{UnitTestEx.TestSetUp.Environment.ToLowerInvariant()}.json", optional: true);
 
                         ep3?.ConfigureHostConfiguration(cb);
                     })
@@ -160,12 +160,12 @@ namespace UnitTestEx.Functions
                         ep2?.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(cb));
                         ep3?.ConfigureAppConfiguration(hbc, cb);
 
-                        if ((!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets) || (_includeUserSecrets.HasValue && _includeUserSecrets.Value))
+                        if (!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets || _includeUserSecrets.HasValue && _includeUserSecrets.Value)
                             cb.AddUserSecrets<TEntryPoint>();
 
                         cb.AddEnvironmentVariables();
 
-                        if ((!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration) || (_includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value))
+                        if (!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration || _includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value)
                             cb.AddJsonFile("appsettings.unittest.json", optional: true);
 
                         if (_additionalConfiguration != null)
@@ -177,7 +177,7 @@ namespace UnitTestEx.Functions
                         ep3?.ConfigureServices(sc);
                         sc.ReplaceScoped(_ => SharedState);
 
-                        foreach (var tec in TestSetUp.Extensions)
+                        foreach (var tec in UnitTestEx.TestSetUp.Extensions)
                             tec.ConfigureServices(this, sc);
 
                         SetUp.ConfigureServices?.Invoke(sc);

@@ -42,7 +42,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\UnitTestEx.Azure.Functions\UnitTestEx.Azure.Functions.csproj" />
+    <ProjectReference Include="..\..\src\UnitTestEx.Azure.ServiceBus\UnitTestEx.Azure.ServiceBus.csproj" />
     <ProjectReference Include="..\..\src\UnitTestEx.NUnit\UnitTestEx.NUnit.csproj" />
+    <ProjectReference Include="..\..\src\UnitTestEx\UnitTestEx.csproj" />
     <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" />
     <ProjectReference Include="..\UnitTestEx.Function\UnitTestEx.Function.csproj" />
     <ProjectReference Include="..\UnitTestEx.IsolatedFunction\UnitTestEx.IsolatedFunction.csproj" />

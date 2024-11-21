@@ -1,11 +1,11 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using UnitTestEx.MSTest.Internal;
+using UnitTestEx.Abstractions;
 
-namespace UnitTestEx.MSTest
+namespace UnitTestEx
 {
     /// <summary>
-    /// Provides the <b>MSTest</b> <see cref="Mocking.MockHttpClientFactory"/> implementation.
+    /// Provides the <b>NUnit</b> <see cref="Mocking.MockHttpClientFactory"/> implementation.
     /// </summary>
     public static class MockHttpClientFactory
     {
@@ -13,6 +13,6 @@ namespace UnitTestEx.MSTest
         /// Creates the <see cref="Mocking.MockHttpClientFactory"/>.
         /// </summary>
         /// <returns>The <see cref="Mocking.MockHttpClientFactory"/>.</returns>
-        public static Mocking.MockHttpClientFactory Create() => new(new MSTestImplementor());
+        public static Mocking.MockHttpClientFactory Create() => new(TestFrameworkImplementor.Create());
     }
 }

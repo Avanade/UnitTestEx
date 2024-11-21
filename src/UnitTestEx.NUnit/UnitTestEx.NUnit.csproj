@@ -9,11 +9,6 @@
 	  <PackageTags>unittestex api function unit test unittest nunit</PackageTags>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="NUnit" Version="4.1.0" />
   </ItemGroup>

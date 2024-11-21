@@ -10,14 +10,10 @@ namespace UnitTestEx.MSTest.Internal
     /// </summary>
     public sealed class MSTestImplementor : Abstractions.TestFrameworkImplementor
     {
-        /// <summary>
-        /// Creates a <see cref="MSTestImplementor"/>.
-        /// </summary>
-        /// <returns>The <see cref="MSTestImplementor"/>.</returns>
-        public static MSTestImplementor Create() => new();
+        private const string _notSpecifiedText = "Not specified.";
 
         /// <inheritdoc/>
-        public override void AssertFail(string? message) => Assert.Fail(message);
+        public override void AssertFail(string? message) => Assert.Fail(message ?? _notSpecifiedText);
 
         /// <inheritdoc/>
         public override void AssertAreEqual<T>(T? expected, T? actual, string? message = null) where T : default => Assert.AreEqual(expected, actual, message, [expected, actual]);

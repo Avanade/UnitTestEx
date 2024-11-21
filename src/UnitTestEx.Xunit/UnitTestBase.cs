@@ -1,81 +1,55 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
-using System.Collections.Generic;
-using UnitTestEx.Hosting;
-using UnitTestEx.Mocking;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Xunit.Internal;
 using Xunit.Abstractions;
 
 namespace UnitTestEx.Xunit
 {
     /// <summary>
-    /// Provides the base test capabilities.
+    /// Provides the base <b>Xunit</b> capabilities.
     /// </summary>
-    /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
-    public abstract class UnitTestBase(ITestOutputHelper output)
+    /// <remarks>Primarily configures the required <see cref="TestFrameworkImplementor.SetLocalCreateFactory(Func{TestFrameworkImplementor})"/> for the <see cref="XunitTestImplementor"/>.</remarks>
+    public abstract class UnitTestBase : IDisposable
     {
+        private bool _disposed;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UnitTestBase"/> class.
+        /// </summary>
+        /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
+        protected UnitTestBase(ITestOutputHelper output)
+        {
+            Output = output ?? throw new ArgumentNullException(nameof(output));
+            TestFrameworkImplementor.SetLocalCreateFactory(() => new XunitTestImplementor(output));
+        }
+
         /// <summary>
         /// Gets the <see cref="ITestOutputHelper"/>.
         /// </summary>
-        protected ITestOutputHelper Output { get; } = output ?? throw new ArgumentNullException(nameof(output));
+        protected ITestOutputHelper Output { get; }
 
         /// <summary>
-        /// Provides the <b>Xunit</b> <see cref="MockHttpClientFactory"/> capability.
+        /// Dispose of all resources.
         /// </summary>
-        /// <returns>The <see cref="MockHttpClientFactory"/>.</returns>
-        protected MockHttpClientFactory CreateMockHttpClientFactory() => new(new XunitTestImplementor(Output));
+        /// <param name="disposing">Indicates whether from the <see cref="Dispose()"/>.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                    TestFrameworkImplementor.ResetLocalCreateFactory();
 
-        /// <summary>
-        /// Provides the <b>Xunit</b> API testing capability.
-        /// </summary>
-        /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
-        /// <returns>The <see cref="ApiTester{TEntryPoint}"/>.</returns>
-        protected ApiTester<TEntryPoint> CreateApiTester<TEntryPoint>() where TEntryPoint : class => new(Output);
+                _disposed = true;
+            }
+        }
 
-        /// <summary>
-        /// Provides the <b>Xunit</b> Functions testing capability.
-        /// </summary>
-        /// <typeparam name="TEntryPoint">The Function startup <see cref="Type"/>.</typeparam>
-        /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
-        /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
-        /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
-        /// <returns>The <see cref="FunctionTester{TEntryPoint}"/>.</returns>
-        protected FunctionTester<TEntryPoint> CreateFunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration = null)
-            where TEntryPoint : class, new()
-            => new(Output, includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
-
-        /// <summary>
-        /// Provides the <b>Xunit</b> generic testing capability.
-        /// </summary>
-        /// <returns>The <see cref="GenericTester{TEntryPoint}"/>.</returns>
-        public GenericTester<object> CreateGenericTester() => CreateGenericTester<object>();
-
-        /// <summary>
-        /// Provides the <b>Xunit</b> generic testing capability.
-        /// </summary>
-        /// <typeparam name="TEntryPoint">The <see cref="EntryPoint"/> <see cref="Type"/>.</typeparam>
-        /// <returns>The <see cref="GenericTester{TEntryPoint}"/>.</returns>
-        protected GenericTester<TEntryPoint> CreateGenericTester<TEntryPoint>() where TEntryPoint : class => new(Output);
-
-        /// <summary>
-        /// Provides the <b>Xunit</b> generic testing capability.
-        /// </summary>
-        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
-        /// <returns>The <see cref="GenericTester{TEntryPoint}"/>.</returns>
-        public GenericTester<object, TValue> CreateGenericTesterFor<TValue>() => CreateGenericTesterFor<object, TValue>();
-
-        /// <summary>
-        /// Provides the <b>Xunit</b> generic testing capability.
-        /// </summary>
-        /// <typeparam name="TEntryPoint">The <see cref="EntryPoint"/> <see cref="Type"/>.</typeparam>
-        /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
-        /// <returns>The <see cref="GenericTester{TEntryPoint}"/>.</returns>
-        protected GenericTester<TEntryPoint, TValue> CreateGenericTesterFor<TEntryPoint, TValue>() where TEntryPoint : class => new(Output);
-
-        /// <summary>
-        /// Gets the <see cref="Internal.ObjectComparer"/>.
-        /// </summary>
-        protected ObjectComparer ObjectComparer => new(new XunitTestImplementor(Output));
+        /// <inheritdoc/>
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
     }
 }

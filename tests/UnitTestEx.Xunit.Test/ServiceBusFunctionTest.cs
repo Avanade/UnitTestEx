@@ -18,11 +18,11 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void Object_Success()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://somesys"))
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = "Bob", LastName = "Smith" }, test.Logger))
@@ -34,11 +34,11 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void Object_HttpClientError()
         {
-            var mcf = CreateMockHttpClientFactory().UseJsonComparerOptions(new JsonElementComparerOptions { NullComparison = JsonElementComparison.Semantic });
+            var mcf = MockHttpClientFactory.Create().UseJsonComparerOptions(new JsonElementComparerOptions { NullComparison = JsonElementComparison.Semantic });
             mcf.CreateClient("XXX", new Uri("https://somesys"))
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = (string)null }).Respond.With(HttpStatusCode.InternalServerError);
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             var r = test.ReplaceHttpClientFactory(mcf)
                 .Type<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = "Bob", LastName = (string)null }, test.Logger))
@@ -50,9 +50,9 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void Object_ThrowsException()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run(new Person { FirstName = null, LastName = "Smith" }, test.Logger))
@@ -64,11 +64,11 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void ServiceBusMessage_Success()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://somesys"))
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = "Smith" }).Respond.With(HttpStatusCode.OK);
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
@@ -80,11 +80,11 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void ServiceBusMessage_HttpClientError()
         {
-            var mcf = CreateMockHttpClientFactory().UseJsonSerializer(new Json.JsonSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            var mcf = MockHttpClientFactory.Create().UseJsonSerializer(new Json.JsonSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
             mcf.CreateClient("XXX", new Uri("https://somesys"))
                 .Request(HttpMethod.Post, "person").WithJsonBody(new { firstName = "Bob", lastName = (string)null }).Respond.With(HttpStatusCode.InternalServerError);
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = (string)null }), test.Logger))
@@ -96,9 +96,9 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void ServiceBusMessage_ThrowsException()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             test.ReplaceHttpClientFactory(mcf)
                 .ServiceBusTrigger<ServiceBusFunction>()
                 .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = null, LastName = "Smith" }), test.Logger))
@@ -110,10 +110,10 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task ServiceProvider()
         {
-            var mcf = CreateMockHttpClientFactory();
+            var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://somesys")).Request(HttpMethod.Get, "test").Respond.With("test output");
 
-            using var test = CreateFunctionTester<Startup>();
+            using var test = FunctionTester.Create<Startup>();
             var hc = test.ReplaceHttpClientFactory(mcf)
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
