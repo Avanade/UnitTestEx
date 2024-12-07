@@ -320,7 +320,7 @@ namespace UnitTestEx.Azure.Functions
 
             var context = new DefaultHttpContext();
 
-            var uri = new Uri(requestUri!, UriKind.RelativeOrAbsolute);
+            var uri = requestUri is null ? new Uri("http://functiontest") : new Uri(requestUri, UriKind.RelativeOrAbsolute);
             if (!uri.IsAbsoluteUri)
                 uri = new Uri($"http://functiontest{(requestUri != null && requestUri.StartsWith('/') ? requestUri : $"/{requestUri}")}");
 

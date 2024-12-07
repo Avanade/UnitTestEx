@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v5.1.0
+- *Enhancement:* Where an `HttpRequest` is used for an Azure Functions `HttpTriggerTester` the passed `HttpRequest.PathAndQuery` is checked against that defined by the corresponding `HttpTriggerAttribute.Route` and will result in an error where different. The `HttpTrigger.WithRouteChecK` and `WithNoRouteCheck` methods control the path and query checking as needed.
+
 ## v5.0.0
 - *Enhancement:* `UnitTestEx` package updated to include only standard .NET core capabilities; new packages created to house specific as follows:
   - `UnitTestEx.Azure.Functions` created to house Azure Functions specific capabilities;

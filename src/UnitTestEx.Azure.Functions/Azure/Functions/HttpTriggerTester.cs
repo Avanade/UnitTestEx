@@ -27,19 +27,76 @@ namespace UnitTestEx.Azure.Functions
     /// Provides Azure Function <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute"/> unit-testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
+    /// <remarks>To aid with the testing the following checks are automatically performed during execution with an <see cref="InvalidOperationException"/> thrown when:
+    /// <list type="bullet">
+    /// <item><description>The <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute.Methods"/> or <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Methods"/> does not contain the <see cref="HttpRequest.Method"/>.
+    /// This check can be further configured using the <see cref="WithNoMethodCheck"/> and <see cref="WithMethodCheck"/> methods prior to the <see cref="RunAsync"/> execution.</description></item>
+    /// <item><description>The <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute.Route"/> or <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Route"/> does not match the <see cref="HttpRequest.Path"/> and <see cref="HttpRequest.QueryString"/> combination.
+    /// This check can be further configured using the <see cref="WithNoRouteCheck"/> and <see cref="WithRouteCheck(RouteCheckOption, StringComparison?)"/> methods prior to the <see cref="RunAsync"/> execution.</description></item>
+    /// </list>
+    /// The above checks are generally neccessary to assist in ensuring that the function is being invoked correctly given the parameters have to be explicitly passed in separately.
+    /// </remarks>
     public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction>, IExpectations<HttpTriggerTester<TFunction>> where TFunction : class
     {
+        private bool _methodCheck = true;
+        private RouteCheckOption _routeCheckOption = RouteCheckOption.PathAndQuery;
+        private StringComparison _routeComparison = StringComparison.OrdinalIgnoreCase;
+
         /// <summary>
         /// Initializes a new <see cref="HttpTriggerTester{TFunction}"/> class.
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        public HttpTriggerTester(TesterBase owner, IServiceScope serviceScope) : base(owner, serviceScope) => ExpectationsArranger = new ExpectationsArranger<HttpTriggerTester<TFunction>>(owner, this);
+        public HttpTriggerTester(TesterBase owner, IServiceScope serviceScope) : base(owner, serviceScope)
+        { 
+            ExpectationsArranger = new ExpectationsArranger<HttpTriggerTester<TFunction>>(owner, this);
+            this.SetHttpMethodCheck(owner.SetUp);
+            this.SetHttpRouteCheck(owner.SetUp);
+        }
 
         /// <summary>
         /// Gets the <see cref="ExpectationsArranger{TSelf}"/>.
         /// </summary>
         public ExpectationsArranger<HttpTriggerTester<TFunction>> ExpectationsArranger { get; }
+
+        /// <summary>
+        /// Indicates that <i>no</i> check is performed to ensure that the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute.Methods"/> or <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Methods"/> contain the <see cref="HttpRequest.Method"/>.
+        /// </summary>
+        /// <remarks>Defaults to <see cref="TestSetUp"/> configuration values where configured; otherwise, <see cref="WithMethodCheck"/>.</remarks>
+        public HttpTriggerTester<TFunction> WithNoMethodCheck()
+        {
+            _methodCheck = false;
+            return this;
+        }
+
+        /// <summary>
+        /// Indicates that a check is performed to ensure that the <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute.Methods"/> or <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Methods"/> contain the <see cref="HttpRequest.Method"/>.
+        /// </summary>
+        /// <remarks>Defaults to <see cref="TestSetUp"/> configuration values where configured; otherwise, this is the default.</remarks>
+        public HttpTriggerTester<TFunction> WithMethodCheck()
+        {
+            _methodCheck = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the <see cref="RouteCheckOption"/> to be <see cref="RouteCheckOption.None"/>.
+        /// </summary>
+        /// <remarks>Defaults to <see cref="TestSetUp"/> configuration values where configured; otherwise, the default is <see cref="RouteCheckOption.PathAndQuery"/> and <see cref="StringComparer.OrdinalIgnoreCase"/></remarks>
+        public HttpTriggerTester<TFunction> WithNoRouteCheck() => WithRouteCheck(RouteCheckOption.None);
+
+        /// <summary>
+        /// Sets the <see cref="RouteCheckOption"/> to be checked during execution.
+        /// </summary>
+        /// <param name="option">The <see cref="RouteCheckOption"/>.</param>
+        /// <param name="comparison">The <see cref="StringComparison"/>.</param>
+        /// <remarks>Defaults to <see cref="TestSetUp"/> configuration values where configured; otherwise, the default is <see cref="RouteCheckOption.PathAndQuery"/> and <see cref="StringComparer.OrdinalIgnoreCase"/></remarks>
+        public HttpTriggerTester<TFunction> WithRouteCheck(RouteCheckOption option, StringComparison? comparison = StringComparison.OrdinalIgnoreCase)
+        {
+            _routeCheckOption = option;
+            _routeComparison = comparison ?? StringComparison.OrdinalIgnoreCase;
+            return this;
+        }
 
         /// <summary>
         /// Runs the HTTP Triggered (see <see cref="Microsoft.Azure.WebJobs.HttpTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute"/>) function using an <see cref="HttpRequestMessage"/> within the <paramref name="expression"/>.
@@ -61,13 +118,26 @@ namespace UnitTestEx.Azure.Functions
                 var httpRequest = v as HttpRequest;
                 LogRequest(httpRequest, requestVal);
 
-                var httpTriggerAttribute = a as Microsoft.Azure.WebJobs.HttpTriggerAttribute;
-                if (httpRequest != null && httpTriggerAttribute is not null && !httpTriggerAttribute.Methods.Contains(httpRequest.Method, StringComparer.OrdinalIgnoreCase))
-                    throw new InvalidOperationException($"The function {nameof(Microsoft.Azure.WebJobs.HttpTriggerAttribute)} supports {nameof(Microsoft.Azure.WebJobs.HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid.");
+                if (httpRequest is not null)
+                {
+                    var httpTriggerAttribute = a as Microsoft.Azure.WebJobs.HttpTriggerAttribute;
+                    if (httpTriggerAttribute is not null)
+                    {
+                        if (_methodCheck && !httpTriggerAttribute.Methods.Contains(httpRequest.Method, StringComparer.OrdinalIgnoreCase))
+                            throw new InvalidOperationException($"The function {nameof(Microsoft.Azure.WebJobs.HttpTriggerAttribute)} supports {nameof(Microsoft.Azure.WebJobs.HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid. Use '{nameof(WithNoMethodCheck)}' to change this behavior.");
 
-                var httpTriggerAttribute2 = a as Microsoft.Azure.Functions.Worker.HttpTriggerAttribute;
-                if (httpRequest != null && httpTriggerAttribute2 is not null && httpTriggerAttribute2.Methods is not null && !httpTriggerAttribute2.Methods!.Contains(httpRequest.Method, StringComparer.OrdinalIgnoreCase))
-                    throw new InvalidOperationException($"The function {nameof(Microsoft.Azure.Functions.Worker.HttpTriggerAttribute)} supports {nameof(Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute2.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid.");
+                        CheckRoute(httpRequest, httpTriggerAttribute.Route, p);
+                    }
+
+                    var httpTriggerAttribute2 = a as Microsoft.Azure.Functions.Worker.HttpTriggerAttribute;
+                    if (httpTriggerAttribute2 is not null)
+                    {
+                        if (_methodCheck && httpTriggerAttribute2.Methods is not null && !httpTriggerAttribute2.Methods!.Contains(httpRequest.Method, StringComparer.OrdinalIgnoreCase))
+                            throw new InvalidOperationException($"The function {nameof(Microsoft.Azure.Functions.Worker.HttpTriggerAttribute)} supports {nameof(Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Methods)} of {string.Join(" or ", httpTriggerAttribute2.Methods.Select(x => $"'{x.ToUpperInvariant()}'"))}; however, invoked using '{httpRequest.Method.ToUpperInvariant()}' which is not valid. Use '{nameof(WithNoMethodCheck)}' to change this behavior.");
+
+                        CheckRoute(httpRequest, httpTriggerAttribute2.Route, p);
+                    }
+                }
             }).ConfigureAwait(false);
 
             await Task.Delay(UnitTestEx.TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
@@ -77,6 +147,155 @@ namespace UnitTestEx.Azure.Functions
             await ExpectationsArranger.AssertAsync(logs, ex).ConfigureAwait(false);
 
             return new ActionResultAssertor(Owner, result, ex);
+        }
+
+        private void CheckRoute(HttpRequest request, string? route, (string? Name, object? Value)[] @params)
+        {
+            if (_routeCheckOption == RouteCheckOption.None)
+                return;
+
+            var reqUri = new Uri(request.GetDisplayUrl());
+            var rouUri = new Uri(new Uri($"{reqUri.Scheme}://{reqUri.Host}"), FormatReplacement(route ?? string.Empty, @params));
+
+            switch (_routeCheckOption)
+            {
+                case RouteCheckOption.Path:
+                    if (!string.Equals(reqUri.AbsolutePath, rouUri.AbsolutePath, _routeComparison))
+                        throw new InvalidOperationException($"The function route path '{rouUri.AbsolutePath}' does not match the request path '{reqUri.AbsolutePath}'. Use '{nameof(WithRouteCheck)}' to change this behavior.");
+
+                    break;
+
+                case RouteCheckOption.PathAndQuery:
+                    if (!string.Equals(reqUri.PathAndQuery, rouUri.PathAndQuery, _routeComparison))
+                        throw new InvalidOperationException($"The function route path and query '{rouUri.PathAndQuery}' does not match the request path and query '{reqUri.PathAndQuery}'. Use '{nameof(WithRouteCheck)}' to change this behavior.");
+
+                    break;
+
+                case RouteCheckOption.PathAndQueryStartsWith:
+                    if (!reqUri.PathAndQuery.StartsWith(rouUri.PathAndQuery, _routeComparison))
+                        throw new InvalidOperationException($"The function route path and query '{rouUri.PathAndQuery}' does not start with the request path and query '{reqUri.PathAndQuery}'. Use '{nameof(WithRouteCheck)}' to change this behavior.");
+
+                    break;
+
+                case RouteCheckOption.Query:
+                    if (!string.Equals(reqUri.Query, rouUri.Query, _routeComparison))
+                        throw new InvalidOperationException($"The function route query '{rouUri.Query}' does not match the request query '{reqUri.Query}'. Use '{nameof(WithRouteCheck)}' to change this behavior.");
+
+                    break;
+
+                case RouteCheckOption.QueryStartsWith:
+                    if (!reqUri.Query.StartsWith(rouUri.Query, _routeComparison))
+                        throw new InvalidOperationException($"The function route query '{rouUri.PathAndQuery}' does not start with the request query '{reqUri.PathAndQuery}'. Use '{nameof(WithRouteCheck)}' to change this behavior.");
+
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Format replacement inspired by: https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Logging.Abstractions/src/LogValuesFormatter.cs
+        /// </summary>
+        private static string FormatReplacement(string route, (string? Name, object? Value)[] @params)
+        {
+            var sb = new StringBuilder();
+            var scanIndex = 0;
+            var endIndex = route.Length;
+
+            while (scanIndex < endIndex)
+            {
+                var openBraceIndex = FindBraceIndex(route, '{', scanIndex, endIndex);
+                if (scanIndex == 0 && openBraceIndex == endIndex)
+                    return route;  // No holes found.
+
+                var closeBraceIndex = FindBraceIndex(route, '}', openBraceIndex, endIndex);
+                if (closeBraceIndex == endIndex)
+                {
+                    sb.Append(route, scanIndex, endIndex - scanIndex);
+                    scanIndex = endIndex;
+                }
+                else
+                {
+                    sb.Append(route, scanIndex, openBraceIndex - scanIndex);
+
+                    if (@params is not null)
+                    {
+                        var pval = @params.Where(x => x.Name != null && MemoryExtensions.Equals(route.AsSpan(openBraceIndex + 1, closeBraceIndex - openBraceIndex - 1), x.Name, StringComparison.Ordinal)).Select(x => x.Value).FirstOrDefault();
+                        if (pval is not null)
+                            sb.Append(FormatValue(pval));
+                    }
+
+                    scanIndex = closeBraceIndex + 1;
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Find the brace index within specified range.
+        /// </summary>
+        private static int FindBraceIndex(string format, char brace, int startIndex, int endIndex)
+        {
+            // Example: {{prefix{{{Argument}}}suffix}}.
+            var braceIndex = endIndex;
+            var scanIndex = startIndex;
+            var braceOccurenceCount = 0;
+
+            while (scanIndex < endIndex)
+            {
+                if (braceOccurenceCount > 0 && format[scanIndex] != brace)
+                {
+                    if (braceOccurenceCount % 2 == 0)
+                    {
+                        // Even number of '{' or '}' found. Proceed search with next occurence of '{' or '}'.
+                        braceOccurenceCount = 0;
+                        braceIndex = endIndex;
+                    }
+                    else
+                    {
+                        // An unescaped '{' or '}' found.
+                        break;
+                    }
+                }
+                else if (format[scanIndex] == brace)
+                {
+                    if (brace == '}')
+                    {
+                        if (braceOccurenceCount == 0)
+                        {
+                            // For '}' pick the first occurence.
+                            braceIndex = scanIndex;
+                        }
+                    }
+                    else
+                    {
+                        // For '{' pick the last occurence.
+                        braceIndex = scanIndex;
+                    }
+
+                    braceOccurenceCount++;
+                }
+
+                scanIndex++;
+            }
+
+            return braceIndex;
+        }
+
+        /// <summary>
+        /// Formats the value.
+        /// </summary>
+        private static string FormatValue(object value)
+        {
+            if (value is DateTime dt)
+                return dt.ToString("o", CultureInfo.InvariantCulture);
+            else if (value is DateTimeOffset dto)
+                return dto.ToString("o", CultureInfo.InvariantCulture);
+            else if (value is bool b)
+                return b.ToString().ToLowerInvariant();
+            else if (value is IFormattable fmt)
+                return fmt.ToString(null, CultureInfo.InvariantCulture);
+            else
+                return value.ToString() ?? string.Empty;
         }
 
         /// <summary>

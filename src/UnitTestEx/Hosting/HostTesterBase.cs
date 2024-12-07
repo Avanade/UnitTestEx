@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Json;
 
+using ParameterNameValuePair = (string? Name, object? Value);
+
 namespace UnitTestEx.Hosting
 {
     /// <summary>
@@ -52,13 +54,13 @@ namespace UnitTestEx.Hosting
         /// <param name="paramAttributeTypes">The optional parameter <see cref="Attribute"/> <see cref="Type"/>(s) to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting exception if any and elapsed milliseconds.</returns>
-        protected async Task<(Exception? Exception, double ElapsedMilliseconds)> RunAsync(Expression<Func<THost, Task>> expression, Type[]? paramAttributeTypes, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected async Task<(Exception? Exception, double ElapsedMilliseconds)> RunAsync(Expression<Func<THost, Task>> expression, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
             var mce = MethodCallExpressionValidate(expression);
             var pis = mce.Method.GetParameters();
-            var @params = new object?[pis.Length];
+            var @params = new ParameterNameValuePair[pis.Length];
             Attribute? paramAttribute = null;
             object? paramValue = null;
 
@@ -66,7 +68,7 @@ namespace UnitTestEx.Hosting
             {
                 var ue = Expression.Convert(mce.Arguments[i], typeof(object));
                 var le = Expression.Lambda<Func<object>>(ue);
-                @params[i] = le.Compile().Invoke();
+                @params[i] = new(pis[i].Name, le.Compile().Invoke());
 
                 if (paramAttribute == null && paramAttributeTypes != null)
                 {
@@ -77,7 +79,7 @@ namespace UnitTestEx.Hosting
                             break;
                     }
 
-                    paramValue = @params[i];
+                    paramValue = @params[i].Value;
                 }
             }
 
@@ -88,7 +90,8 @@ namespace UnitTestEx.Hosting
 
             try
             {
-                await ((Task)mce.Method.Invoke(h, @params)!).ConfigureAwait(false);
+                var p = @params.Select(x => x.Value).ToArray();
+                await ((Task)mce.Method.Invoke(h, p)!).ConfigureAwait(false);
                 sw.Stop();
                 return (null, sw.Elapsed.TotalMilliseconds);
             }
@@ -112,13 +115,13 @@ namespace UnitTestEx.Hosting
         /// <param name="paramAttributeTypes">The optional parameter <see cref="Attribute"/> <see cref="Type"/> array to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
-        protected async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<THost, Task<TValue>>> expression, Type[]? paramAttributeTypes, Action<object?[], Attribute?, object?>? onBeforeRun)
+        protected async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<THost, Task<TValue>>> expression, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
             var mce = MethodCallExpressionValidate(expression);
             var pis = mce.Method.GetParameters();
-            var @params = new object?[pis.Length];
+            var @params = new ParameterNameValuePair[pis.Length];
             Attribute? paramAttribute = null;
             object? paramValue = null;
 
@@ -126,7 +129,7 @@ namespace UnitTestEx.Hosting
             {
                 var ue = Expression.Convert(mce.Arguments[i], typeof(object));
                 var le = Expression.Lambda<Func<object>>(ue);
-                @params[i] = le.Compile().Invoke();
+                @params[i] = new(pis[i].Name, le.Compile().Invoke());
 
                 if (paramAttribute == null && paramAttributeTypes != null)
                 {
@@ -137,7 +140,7 @@ namespace UnitTestEx.Hosting
                             break;
                     }
 
-                    paramValue = @params[i];
+                    paramValue = @params[i].Value;
                 }
             }
 
@@ -163,6 +166,14 @@ namespace UnitTestEx.Hosting
                 return (default!, ex, sw.Elapsed.TotalMilliseconds);
             }
         }
+
+        /// <summary>
+        /// Represents the on before run delegate.
+        /// </summary>
+        /// <param name="parameters">The parameter name and value array (all method parameters).</param>
+        /// <param name="paramAttribute">The selected parameter <see cref="Attribute"/> found.</param>
+        /// <param name="paramValue">The corresponding value for the parameter with the <paramref name="paramAttribute"/>.</param>
+        protected delegate void OnBeforeRun(ParameterNameValuePair[] parameters, Attribute? paramAttribute, object? paramValue);
 
         /// <summary>
         /// Validates that the <paramref name="expression"/> is a valid <see cref="MethodCallExpression"/>.

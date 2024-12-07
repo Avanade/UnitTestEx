@@ -69,6 +69,14 @@ namespace UnitTestEx.Function
             log.LogInformation("C# HTTP trigger function processed a request.");
             return new ContentResult { Content = JsonSerializer.Serialize(new { first = person.FirstName, last = person.LastName }), ContentType = MediaTypeNames.Application.Json, StatusCode = 200 };
         }
+
+        [FunctionName("PersonFunctionQuery")]
+        public async Task<IActionResult> RunWithQuery([HttpTrigger(AuthorizationLevel.Function, "get", Route = "api/people?name={name}")] HttpRequest request, string name, ILogger log)
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+            log.LogInformation("C# HTTP trigger function processed a request.");
+            return new OkObjectResult(new { name });
+        }
     }
 
     public class Namer
