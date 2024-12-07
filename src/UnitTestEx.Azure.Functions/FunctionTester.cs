@@ -7,7 +7,7 @@ using UnitTestEx.Azure.Functions;
 namespace UnitTestEx
 {
     /// <summary>
-    /// Provides the <b>NUnit</b> Function testing capability.
+    /// Provides the Function testing capability.
     /// </summary>
     public static class FunctionTester
     {

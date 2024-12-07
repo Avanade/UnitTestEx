@@ -64,6 +64,8 @@ test.ReplaceHttpClientFactory(mcf)
 
 Both the [_Isolated worker model_](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide) and [_In-process model_](https://learn.microsoft.com/en-us/azure/azure-functions/functions-dotnet-class-library) are supported.
 
+Additionally, where an `HttpRequest` is used the passed `HttpRequest.PathAndQuery` is checked against that defined by the corresponding `HttpTriggerAttribute.Route` and will result in an error where different. The `HttpTrigger.WithRouteChecK` and `WithNoRouteCheck` methods control the path and query checking as needed.
+
 <br/>
 
 ## Service Bus-trigger Azure Function
@@ -113,6 +115,14 @@ test.Run<Gin, int>(gin => gin.Pour())
 
 <br/>
 
+## DI Mocking
+
+Each of the aforementioned test capabilities support Dependency Injection (DI) mocking. This is achieved by replacing the registered services with mocks, stubs, or fakes. The [`TesterBase`](./src/UnitTestEx/Abstractions/TesterBaseT.cs) enables using the `Mock*`, `Replace*` and `ConfigureServices` methods. 
+
+The underlying `Services` property also provides access to the `IServiceCollection` within the underlying test host to enable further configuration as required.
+
+<br/>
+
 ## HTTP Client mocking
 
 Where invoking a down-stream system using an [`HttpClient`](https://docs.microsoft.com/en-us/dotnet/api/system.net.http.httpclient) within a unit test context this should generally be mocked. To enable _UnitTestEx_ provides a [`MockHttpClientFactory`](./src/UnitTestEx/Mocking/MockHttpClientFactory.cs) to manage each `HttpClient` (one or more), and mock a response based on the configured request. This leverages the [Moq](https://github.com/moq/moq4) framework internally to enable. One or more requests can also be configured per `HttpClient`.
@@ -131,6 +141,8 @@ test.ReplaceHttpClientFactory(mcf)
     .AssertOK()
     .Assert(new { id = "Abc", description = "A blue carrot" });
 ```
+
+The `ReplaceHttpClientFactory` leverages the `Replace*` capabilities discussed earlier in [DI Mocking](#di-mocking).
 
 <br/>
 

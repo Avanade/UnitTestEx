@@ -69,13 +69,13 @@ namespace UnitTestEx.Azure.Functions
                 sbv = v;
                 foreach (var pi in p)
                 {
-                    if (pi is ServiceBusReceivedMessage sbrm)
+                    if (pi.Value is ServiceBusReceivedMessage sbrm)
                         sbv = sbrm;
-                    else if (pi is WebJobsServiceBusMessageActionsAssertor psba)
+                    else if (pi.Value is WebJobsServiceBusMessageActionsAssertor psba)
                         sba = psba;
-                    else if (pi is WebJobsServiceBusSessionMessageActionsAssertor pssba)
+                    else if (pi.Value is WebJobsServiceBusSessionMessageActionsAssertor pssba)
                         ssba = pssba;
-                    else if (pi is WorkerServiceBusMessageActionsAssertor pwsba)
+                    else if (pi.Value is WorkerServiceBusMessageActionsAssertor pwsba)
                         wsba = pwsba;
                 }
 

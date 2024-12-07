@@ -14,7 +14,7 @@ namespace UnitTestEx.NUnit.Test
             using var test = FunctionTester.Create<Startup>();
             test.HttpTrigger<HttpFunction>()
                 .ExpectLogContains("C# HTTP trigger function processed a request.")
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "hello")))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, null)))
                 .AssertSuccess();
         }
     }
