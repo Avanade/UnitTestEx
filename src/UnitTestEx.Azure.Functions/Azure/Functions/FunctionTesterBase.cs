@@ -36,7 +36,6 @@ namespace UnitTestEx.Azure.Functions
 
         private readonly bool? _includeUnitTestConfiguration;
         private readonly bool? _includeUserSecrets;
-        private readonly IEnumerable<KeyValuePair<string, string?>>? _additionalConfiguration;
         private IHost? _host;
         private bool _disposed;
 
@@ -62,7 +61,7 @@ namespace UnitTestEx.Azure.Functions
             Logger = LoggerProvider.CreateLogger(GetType().Name);
             _includeUnitTestConfiguration = includeUnitTestConfiguration;
             _includeUserSecrets = includeUserSecrets;
-            _additionalConfiguration = additionalConfiguration;
+            AdditionalConfiguration = additionalConfiguration;
         }
 
         /// <summary>
@@ -168,8 +167,8 @@ namespace UnitTestEx.Azure.Functions
                         if (!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration || _includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value)
                             cb.AddJsonFile("appsettings.unittest.json", optional: true);
 
-                        if (_additionalConfiguration != null)
-                            cb.AddInMemoryCollection(_additionalConfiguration);
+                        if (AdditionalConfiguration != null)
+                            cb.AddInMemoryCollection(AdditionalConfiguration);
                     })
                     .ConfigureServices(sc =>
                     {

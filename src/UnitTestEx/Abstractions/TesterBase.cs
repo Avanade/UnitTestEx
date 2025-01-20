@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnitTestEx.Json;
 using UnitTestEx.Logging;
 
@@ -18,6 +19,7 @@ namespace UnitTestEx.Abstractions
     {
         private string? _userName;
         private readonly List<Action<IServiceCollection>> _configureServices = [];
+        private IEnumerable<KeyValuePair<string, string?>>? _additionalConfiguration;
 
         /// <summary>
         /// Static constructor.
@@ -95,6 +97,19 @@ namespace UnitTestEx.Abstractions
         {
             get => _userName ?? SetUp.DefaultUserName;
             protected set => _userName = value;
+        }
+
+        /// <summary>
+        /// Gets the additional configuration used at host initialization (see <see cref="MemoryConfigurationBuilderExtensions.AddInMemoryCollection(IConfigurationBuilder, IEnumerable{KeyValuePair{string, string}})"/>).
+        /// </summary>
+        public IEnumerable<KeyValuePair<string, string?>>? AdditionalConfiguration
+        {
+            get => _additionalConfiguration?.ToArray();
+            protected set
+            {
+                _additionalConfiguration = value;
+                ResetHost(false);
+            }
         }
 
         /// <summary>
@@ -182,7 +197,7 @@ namespace UnitTestEx.Abstractions
         protected void AddConfiguredServices(IServiceCollection services)
         {
             if (IsHostInstantiated)
-                throw new InvalidOperationException($"Underlying host has been instantiated and as such the {nameof(ConfigureServices)} operations can no longer be used.");
+                throw new InvalidOperationException($"Underlying host has been instantiated and as such the {nameof(ConfigureServices)} operations can no longer be used; consider using '{nameof(ResetHost)}' prior to enable.");
 
             foreach (var configureService in _configureServices)
             {

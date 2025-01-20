@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v5.2.0
+- *Enhancement:* Added `TesterBase<TSelf>.UseAdditionalConfiguration` method to enable additional configuration to be specified that overrides the `IHostBuilder` as the host is being built. This leverages the underlying `IConfigurationBuilder.AddInMemoryCollection` capability to add. This is intended to support additional configuration that is not part of the standard `appsettings.json` or `appsettings.unittest.json` configuration.
+
 ## v5.1.0
 - *Enhancement:* Where an `HttpRequest` is used for an Azure Functions `HttpTriggerTester` the passed `HttpRequest.PathAndQuery` is checked against that defined by the corresponding `HttpTriggerAttribute.Route` and will result in an error where different. The `HttpTrigger.WithRouteChecK` and `WithNoRouteCheck` methods control the path and query checking as needed.
 

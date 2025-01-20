@@ -151,5 +151,15 @@ namespace UnitTestEx.NUnit.Test
             var cv = test.Configuration.GetValue<string>("SpecialKey");
             Assert.That(cv, Is.EqualTo("NotSoSpecial"));
         }
+
+        [Test]
+        public void Configuration_Overrride_Use()
+        {
+            // Demonstrates how to override the configuration settings for a test.
+            using var test = FunctionTester.Create<Startup>();
+            test.UseAdditionalConfiguration([new("SpecialKey", "NotSoSpecial")]);
+            var cv = test.Configuration.GetValue<string>("SpecialKey");
+            Assert.That(cv, Is.EqualTo("NotSoSpecial"));
+        }
     }
 }
