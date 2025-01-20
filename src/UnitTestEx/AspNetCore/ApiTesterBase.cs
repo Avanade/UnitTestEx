@@ -61,7 +61,12 @@ namespace UnitTestEx.AspNetCore
 
                 return _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb =>
                     whb.UseSolutionRelativeContentRoot(Environment.CurrentDirectory)
-                        .ConfigureAppConfiguration((_, x) => x.AddJsonFile("appsettings.unittest.json", optional: true))
+                        .ConfigureAppConfiguration((_, cb) =>
+                        {
+                            cb.AddJsonFile("appsettings.unittest.json", optional: true);
+                            if (AdditionalConfiguration != null)
+                                cb.AddInMemoryCollection(AdditionalConfiguration);
+                        })
                         .ConfigureServices(sc =>
                         {
                             sc.AddHttpContextAccessor();

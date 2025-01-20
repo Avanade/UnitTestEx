@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -50,6 +51,16 @@ namespace UnitTestEx.NUnit.Test.Other
 
             test.Run<Gin>(gin => gin.StirAsync())
                 .AssertException<DivideByZeroException>("As required by Bond; shaken, not stirred.");
+        }
+
+        [Test]
+        public void Configuration_Overrride_Use()
+        {
+            // Demonstrates how to override the configuration settings for a test.
+            using var test = GenericTester.Create();
+            test.UseAdditionalConfiguration([new("SpecialKey", "NotSoSpecial")]);
+            var cv = test.Configuration.GetValue<string>("SpecialKey");
+            Assert.That(cv, Is.EqualTo("NotSoSpecial"));
         }
     }
 

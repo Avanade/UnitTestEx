@@ -102,6 +102,21 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
+        public void Configuration_Use()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.UseAdditionalConfiguration("SpecialKey", "NotSoSpecial");
+
+            var cv = test.Configuration.GetValue<string>("SpecialKey");
+            Assert.That(cv, Is.EqualTo("NotSoSpecial"));
+
+            // Null to reset.
+            test.UseAdditionalConfiguration(null);
+            cv = test.Configuration.GetValue<string>("SpecialKey");
+            Assert.That(cv, Is.EqualTo("VerySpecialValue"));
+        }
+
+        [Test]
         public void DefaultHttpClient()
         {
             var mcf = MockHttpClientFactory.Create();

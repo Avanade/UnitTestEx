@@ -67,6 +67,9 @@ namespace UnitTestEx.Generic
                         ep.ConfigureAppConfiguration(hbc, cb);
                         cb.AddJsonFile("appsettings.unittest.json", optional: true)
                           .AddEnvironmentVariables();
+
+                        if (AdditionalConfiguration != null)
+                            cb.AddInMemoryCollection(AdditionalConfiguration);
                     })
                     .ConfigureServices(sc =>
                     {

@@ -1,8 +1,10 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
+using System.Collections.Generic;
 using UnitTestEx.Json;
 
 namespace UnitTestEx.Abstractions
@@ -89,6 +91,27 @@ namespace UnitTestEx.Abstractions
             JsonComparerOptions = options ?? throw new ArgumentNullException(nameof(options));
             return (TSelf)this;
         }
+
+        /// <summary>
+        /// Updates (replaces) the <see cref="TesterBase.AdditionalConfiguration"/> (see <see cref="MemoryConfigurationBuilderExtensions.AddInMemoryCollection(IConfigurationBuilder, IEnumerable{KeyValuePair{string, string}})"/>).
+        /// </summary>
+        /// <param name="additionalConfiguration">The additional configuration key/value pairs.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Usage will result in a <see cref="TesterBase.ResetHost()"/>.</remarks>
+        public TSelf UseAdditionalConfiguration(IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration)
+        {
+            AdditionalConfiguration = additionalConfiguration;
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Updates (replaces) the <see cref="TesterBase.AdditionalConfiguration"/> (see <see cref="MemoryConfigurationBuilderExtensions.AddInMemoryCollection(IConfigurationBuilder, IEnumerable{KeyValuePair{string, string}})"/>) with specified <paramref name="key"/> and <paramref name="value"/>.
+        /// </summary>
+        /// <param name="key">The additional configuration key.</param>
+        /// <param name="value">The additional configuration value.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Usage will result in a <see cref="TesterBase.ResetHost()"/>.</remarks>
+        public TSelf UseAdditionalConfiguration(string key, string? value) => UseAdditionalConfiguration([new KeyValuePair<string, string?>(key, value)]);
 
         /// <summary>
         /// Resets the underlying host to instantiate a new instance.
