@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=C:\Repos\UnitTestEx\src\UnitTestEx\Schema\mock.unittestex.json
 - method: post
   uri: products/xyz
   body: ^
@@ -9,6 +10,9 @@
 - method: get
   uri: people/123
   response:
+    headers:
+      Age: [ '55' ]
+      x-blah: [ abc ]
     body: |
       {
         "first":"Bob",

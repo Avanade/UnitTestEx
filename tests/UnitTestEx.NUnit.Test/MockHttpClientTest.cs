@@ -9,6 +9,7 @@ using UnitTestEx.NUnit.Test.Model;
 using UnitTestEx.NUnit;
 using NUnit.Framework;
 using System.Diagnostics;
+using System.Linq;
 
 namespace UnitTestEx.NUnit.Test
 {
@@ -410,7 +411,7 @@ namespace UnitTestEx.NUnit.Test
             var mcf = MockHttpClientFactory.Create();
             mcf.CreateDefaultClient(new Uri("https://d365test"))
                 .Request(HttpMethod.Post, "products/xyz").WithAnyBody()
-                .Respond.WithJson("{\"first\":\"Bob\",\"last\":\"Jane\"}", HttpStatusCode.Accepted);
+                .Respond.Headers([new("x-blah", "abc"), new("Age", "55")]).WithJson("{\"first\":\"Bob\",\"last\":\"Jane\"}", HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient();
             var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
@@ -419,6 +420,8 @@ namespace UnitTestEx.NUnit.Test
                 Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
                 Assert.That(await res.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
                 Assert.That(res.RequestMessage, Is.Not.Null);
+                Assert.That(res.Headers.GetValues("x-blah").Single(), Is.EqualTo("abc"));
+                Assert.That(res.Headers.Age, Is.EqualTo(TimeSpan.FromSeconds(55)));
             });
 
             Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
@@ -443,6 +446,8 @@ namespace UnitTestEx.NUnit.Test
             {
                 Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.OK));
                 ObjectComparer.JsonAssert("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+                Assert.That(res.Headers.GetValues("x-blah").Single(), Is.EqualTo("abc"));
+                Assert.That(res.Headers.Age, Is.EqualTo(TimeSpan.FromSeconds(55)));
             });
 
             mcf.VerifyAll();
