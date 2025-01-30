@@ -4,8 +4,6 @@
   body: ^
   response:
     status: 202
-    headers:
-      Content-Type: [ 'application/json' ]
     body: |
       {"product":"xyz","quantity":1}
 
