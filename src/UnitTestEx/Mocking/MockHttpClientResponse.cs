@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http;
@@ -60,6 +62,11 @@ namespace UnitTestEx.Mocking
         internal int Count { get; set; }
 
         /// <summary>
+        /// Gets the response headers.
+        /// </summary>
+        internal ConcurrentDictionary<string, List<string?>> HttpHeaders { get; } = [];
+
+        /// <summary>
         /// Sets the simulated delay (sleep) for the response.
         /// </summary>
         /// <param name="timeSpan">The delay (sleep) function.</param>
@@ -110,6 +117,42 @@ namespace UnitTestEx.Mocking
         /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
         /// <remarks>Each time a <c>Delay</c> is invoked it will override the previously set value.</remarks>
         public MockHttpClientResponse Delay(int from, int to) => Delay(TimeSpan.FromMilliseconds(from), TimeSpan.FromMilliseconds(to));
+
+        /// <summary>
+        /// Adds the specified headers and values for the response.
+        /// </summary>
+        /// <param name="headers">The headers collection.</param>
+        /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
+        public MockHttpClientResponse Headers(IEnumerable<KeyValuePair<string, string?>> headers)
+        {
+            foreach (var header in headers)
+            {
+                Header(header.Key, header.Value);
+            }
+
+            return this;
+        }
+
+        /// <summary>
+        /// Adds the specified header and its value for the response.
+        /// </summary>
+        /// <param name="name">The header name.</param>
+        /// <param name="value">The header value.</param>
+        /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
+        public MockHttpClientResponse Header(string name, string? value) => Header(name, [value]);
+
+        /// <summary>
+        /// Adds the specified header and its values for the response.
+        /// </summary>
+        /// <param name="name">The header name.</param>
+        /// <param name="values">The header values.</param>
+        /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
+        public MockHttpClientResponse Header(string name, IEnumerable<string?> values)
+        {
+            var h = HttpHeaders.GetOrAdd(name, _ => []);
+            h.AddRange(values);
+            return this;
+        }
 
         /// <summary>
         /// Provides the mocked response.

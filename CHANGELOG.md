@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v5.3.0
+- *Enhancement:* Added `MockHttpClientResponse.Header` methods to enable the specification of headers to be included in the mocked response.
+  - The `MockHttpClient.WithRequestsFromResource` YAML/JSON updated to also support the specification of response headers.   
+
 ## v5.2.0
 - *Enhancement:* Added `TesterBase<TSelf>.UseAdditionalConfiguration` method to enable additional configuration to be specified that overrides the `IHostBuilder` as the host is being built. This leverages the underlying `IConfigurationBuilder.AddInMemoryCollection` capability to add. This is intended to support additional configuration that is not part of the standard `appsettings.json` or `appsettings.unittest.json` configuration.
 

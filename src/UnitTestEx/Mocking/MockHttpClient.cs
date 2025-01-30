@@ -440,12 +440,21 @@ namespace UnitTestEx.Mocking
             public HttpStatusCode? Status { get; set; }
             public string? Body { get; set; }
             public string? Media { get; set; }
+            public Dictionary<string, string?[]>? Headers { get; set; }
 
             /// <summary>
             /// Adds the response.
             /// </summary>
             public void Add(MockHttpClientResponse res)
             {
+                if (Headers is not null)
+                {
+                    foreach (var header in Headers)
+                    {
+                        res.Header(header.Key, header.Value);
+                    }
+                }
+
                 if (string.IsNullOrEmpty(Body))
                 {
                     res.With(Status ?? HttpStatusCode.NoContent);

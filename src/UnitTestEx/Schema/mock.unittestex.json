@@ -61,6 +61,10 @@
           "title": "The HTTP Response status code.",
           "description": "Defaults to 200-OK where there is a corresponding Body; otherwise, 204-No content."
         },
+        "headers": {
+          "$ref": "#/definitions/MockResponseHeaders",
+          "title": "The HTTP Response headers configuration."
+        },
         "body": {
           "type": "string",
           "title": "The HTTP Response body (content)."
@@ -71,9 +75,19 @@
           "description": "Defaults to 'application/json' where the Body contains JSON; otherwise, 'text/plain'."
         }
       }
+    },
+    "MockResponseHeaders": {
+      "title": "The HTTP Response headers configuration.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "items": {
+      "$ref": "#/definitions/MockRequest"
     }
-  },
-  "items": {
-    "$ref": "#/definitions/MockRequest"
   }
 }

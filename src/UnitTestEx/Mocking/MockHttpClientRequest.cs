@@ -123,6 +123,14 @@ namespace UnitTestEx.Mocking
             if (response.Content != null)
                 httpResponse.Content = response.Content;
 
+            if (!response.HttpHeaders.IsEmpty)
+            {
+                foreach (var header in response.HttpHeaders)
+                {
+                    httpResponse.Headers.Add(header.Key, header.Value);
+                }
+            }
+
             await response.ExecuteDelayAsync(ct).ConfigureAwait(false);
 
             response.ResponseAction?.Invoke(httpResponse);
