@@ -256,6 +256,8 @@ The following represents a YAML example for one-to-one request/responses:
 - method: get
   uri: people/123
   response:
+    headers:
+      ETag: Abc123
     body: |
       {
         "first":"Bob",

@@ -1,9 +1,11 @@
-# yaml-language-server: $schema=C:\Repos\UnitTestEx\src\UnitTestEx\Schema\mock.unittestex.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Avanade/UnitTestEx/refs/heads/main/src/UnitTestEx/Schema/mock.unittestex.json
 - method: post
   uri: products/xyz
   body: ^
   response:
     status: 202
+    headers:
+      Content-Type: [ 'application/json' ]
     body: |
       {"product":"xyz","quantity":1}
 
