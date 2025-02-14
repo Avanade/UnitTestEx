@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v5.4.0
+- *Enhancement:* All `CreateHttpRequest` and related methods moved to `TesterBase` to ensure availability for all derived testers.
+- *Enhancement:* Added `ToHttpResponseMessageAssertor` to `ActionResultAssertor` and `ValueAssertor` that converts an `IActionResult` to an `HttpResponseMessage` and returns an `HttpResponseMessageAssertor` for further assertions. The underlying `Host` must be configured (DI) correctly for this to function; otherwise, an exception will be thrown.
+- *Enhancement:* Added `WithApiTester` base class per test framework to provide a shared `ApiTester` instance per test class; versus instantiating per test method. Be aware that using may result in cross-test contamination.
+
 ## v5.3.0
 - *Enhancement:* Added `MockHttpClientResponse.Header` methods to enable the specification of headers to be included in the mocked response.
   - The `MockHttpClient.WithRequestsFromResource` YAML/JSON updated to also support the specification of response headers.   

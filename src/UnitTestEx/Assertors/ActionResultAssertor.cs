@@ -1,11 +1,16 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text.Json;
@@ -472,6 +477,44 @@ namespace UnitTestEx.Assertors
         {
             Implementor.AssertFail($"Value Type '{typeof(TValue).FullName}' is not same as ObjectResult.Value Type '{result.GetType().FullName}'.");
             throw new InvalidOperationException($"{nameof(TestFrameworkImplementor)}.{nameof(TestFrameworkImplementor.AssertFail)} has not worked correctly; this code should never execute?!"); // Will never reach here; needed to compile.
+        }
+
+        /// <summary>
+        /// Converts the <see cref="IActionResult"/> to an <see cref="HttpResponseMessageAssertor"/>.
+        /// </summary>
+        /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
+        public HttpResponseMessageAssertor ToHttpResponseMessageAssertor() => ToHttpResponseMessageAssertor(Owner, Result);
+
+        /// <summary>
+        /// Converts the <see cref="ValueAssertor{TValue}"/> to an <see cref="HttpResponseMessageAssertor"/>.
+        /// </summary>
+        /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+        /// <param name="result">The <see cref="IActionResult"/> to convert.</param>
+        /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
+        internal static HttpResponseMessageAssertor ToHttpResponseMessageAssertor(TesterBase owner, IActionResult result)
+        {
+            var sw = Stopwatch.StartNew();
+            using var ms = new MemoryStream();
+            var context = new DefaultHttpContext { RequestServices = owner.Services };
+            context.Response.Body = ms;
+
+            result.ExecuteResultAsync(new ActionContext(context, new Microsoft.AspNetCore.Routing.RouteData(), new ActionDescriptor())).GetAwaiter().GetResult();
+
+            var hr = new HttpResponseMessage((System.Net.HttpStatusCode)context.Response.StatusCode);
+            foreach (var h in context.Response.Headers)
+                hr.Headers.TryAddWithoutValidation(h.Key, [.. h.Value]);
+
+            ms.Position = 0;
+            hr.Content = new ByteArrayContent(ms.ToArray());
+
+            hr.Content.Headers.ContentLength = context.Response.ContentLength;
+            if (context.Response.ContentType is not null && System.Net.Http.Headers.MediaTypeHeaderValue.TryParse(context.Response.ContentType, out var ct))
+                hr.Content.Headers.ContentType = ct;
+
+            sw.Stop();
+            owner.LogHttpResponseMessage(hr, sw);
+
+            return new HttpResponseMessageAssertor(owner, hr);
         }
     }
 }

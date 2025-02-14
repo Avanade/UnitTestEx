@@ -4,6 +4,7 @@ using Microsoft.Net.Http.Headers;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
@@ -115,13 +116,24 @@ namespace UnitTestEx.Assertors
         public TSelf AssertNotModified() => Assert(HttpStatusCode.NotModified);
 
         /// <summary>
-        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> <see cref="HttpResponseMessage.Headers"/> <see cref="HeaderNames.Location"/> matches the <paramref name="expectedETag"/>.
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> <see cref="HttpResponseMessage.Headers"/> <see cref="HeaderNames.ETag"/> matches the <paramref name="expectedETag"/>.
         /// </summary>
         /// <param name="expectedETag">The expected ETag value.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
         public TSelf AssertETagHeader(string expectedETag)
         {
             Implementor.AssertAreEqual(expectedETag, Response.Headers?.ETag?.Tag, $"Expected and Actual HTTP Response Header '{HeaderNames.ETag}' values are not equal.");
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> <see cref="HttpResponseMessage.Headers"/> <see cref="HeaderNames.ETag"/> matches the <paramref name="expectedETag"/>.
+        /// </summary>
+        /// <param name="expectedETag">The expected <see cref="System.Net.Http.Headers.EntityTagHeaderValue"/> value.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
+        public TSelf AssertETagHeader(System.Net.Http.Headers.EntityTagHeaderValue expectedETag)
+        {
+            Implementor.AssertAreEqual(expectedETag, Response.Headers?.ETag, $"Expected and Actual HTTP Response Header '{HeaderNames.ETag}' values are not equal.");
             return (TSelf)this;
         }
 
@@ -242,6 +254,22 @@ namespace UnitTestEx.Assertors
             }
             else
                 Implementor.AssertAreEqual(json, Response.Content?.ReadAsStringAsync().GetAwaiter().GetResult(), "Expected and Actual JSON values are not equal.");
+
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Asserts that a response header exists with the specified <paramref name="name"/> and contains the specified <paramref name="values"/>.
+        /// </summary>
+        /// <param name="name">The header name.</param>
+        /// <param name="values">The expected header value(s).</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
+        public TSelf AssertNamedHeader(string name, params string[] values)
+        {
+            if (Response.Headers.TryGetValues(name ?? throw new ArgumentNullException(nameof(name)), out var hvals))
+                Implementor.AssertAreEqual(string.Join(", ", values), string.Join(", ", hvals), $"Expected and Actual '{name}' header values are not equal.");
+            else
+                Implementor.AssertFail($"The '{name}' header was not found.");
 
             return (TSelf)this;
         }

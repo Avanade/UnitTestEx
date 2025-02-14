@@ -46,5 +46,17 @@ namespace UnitTestEx.Api.Controllers
             var val = JsonConvert.DeserializeObject<dynamic>(str);
             return new OkObjectResult(val);
         }
+
+        [HttpGet("test/created")]
+        public Task<IActionResult> GetCreated()
+        {
+            return Task.FromResult((IActionResult)new CreatedResult("bananas", "abc"));
+        }
+
+        [HttpGet("test/ok")]
+        public Task<IActionResult> GetOK()
+        {
+            return Task.FromResult((IActionResult)new OkResult());
+        }
     }
 }

@@ -54,6 +54,9 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         protected WebApplicationFactory<TEntryPoint> GetWebApplicationFactory()
         {
+            if (_waf != null)
+                return _waf;
+
             lock (SyncRoot)
             {
                 if (_waf != null)
@@ -84,7 +87,18 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <inheritdoc/>
-        protected override void ResetHost() => _waf = null;
+        protected override void ResetHost()
+        {
+            lock (SyncRoot)
+            {
+                if (_waf is not null)
+                {
+                    _waf.Dispose();
+                    _waf = null;
+                    Implementor.WriteLine("The underlying UnitTestEx 'ApiTester' Host has been reset.");
+                }
+            }
+        }
 
         /// <summary>
         /// Gets the <see cref="IServiceProvider"/> from the underlying host.

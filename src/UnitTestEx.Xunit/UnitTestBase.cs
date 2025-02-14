@@ -5,7 +5,7 @@ using UnitTestEx.Abstractions;
 using UnitTestEx.Xunit.Internal;
 using Xunit.Abstractions;
 
-namespace UnitTestEx.Xunit
+namespace UnitTestEx
 {
     /// <summary>
     /// Provides the base <b>Xunit</b> capabilities.

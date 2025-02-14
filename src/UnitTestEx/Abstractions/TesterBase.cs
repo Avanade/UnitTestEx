@@ -1,12 +1,20 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Mime;
+using System.Reflection;
+using System.Text;
+using System.Threading;
 using UnitTestEx.Json;
 using UnitTestEx.Logging;
 
@@ -193,7 +201,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Adds the previously <see cref="ConfigureServices(Action{IServiceCollection}, bool)"/> to the <paramref name="services"/>.
         /// </summary>
-        /// <remarks>It is recommended that this is performed within a <see cref="TesterBase.SyncRoot"/> to ensure thread-safety.</remarks>
+        /// <remarks>It is recommended that this is performed within a <see cref="SyncRoot"/> to ensure thread-safety.</remarks>
         protected void AddConfiguredServices(IServiceCollection services)
         {
             if (IsHostInstantiated)
@@ -206,5 +214,265 @@ namespace UnitTestEx.Abstractions
 
             IsHostInstantiated = true;
         }
+
+        /// <summary>
+        /// Logs the <see cref="HttpResponseMessage"/>.
+        /// </summary>
+        /// <param name="res">The <see cref="HttpResponseMessage"/>.</param>
+        /// <param name="sw">The optional <see cref="Stopwatch"/>.</param>
+        internal void LogHttpResponseMessage(HttpResponseMessage res, Stopwatch? sw)
+        {
+            Implementor.WriteLine("");
+            Implementor.WriteLine($"RESPONSE >");
+            Implementor.WriteLine($"HttpStatusCode: {res.StatusCode} ({(int)res.StatusCode})");
+            Implementor.WriteLine($"Elapsed (ms): {(sw == null ? "none" : sw.Elapsed.TotalMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture))}");
+
+            var hdrs = res.Headers?.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+            Implementor.WriteLine($"Headers: {(hdrs == null || hdrs.Length == 0 ? "none" : "")}");
+            if (hdrs != null && hdrs.Length > 0)
+            {
+                foreach (var hdr in hdrs)
+                {
+                    Implementor.WriteLine($"  {hdr}");
+                }
+            }
+
+            object? jo = null;
+            var content = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            if (!string.IsNullOrEmpty(content) && res.Content?.Headers?.ContentType?.MediaType == MediaTypeNames.Application.Json)
+            {
+                try
+                {
+                    jo = JsonSerializer.Deserialize(content);
+                }
+                catch (Exception) { /* This is being swallowed by design. */ }
+            }
+
+            var txt = $"Content: [{res.Content?.Headers?.ContentType?.MediaType ?? "none"}]";
+            if (jo != null)
+            {
+                Implementor.WriteLine(txt);
+                Implementor.WriteLine(JsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
+            }
+            else
+                Implementor.WriteLine($"{txt} {(string.IsNullOrEmpty(content) ? "none" : content)}");
+
+            Implementor.WriteLine("");
+            Implementor.WriteLine(new string('=', 80));
+            Implementor.WriteLine("");
+        }
+
+        #region CreateHttpRequest
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with no body.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri)
+#else
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri)
+#endif
+            => CreateHttpRequest(httpMethod, requestUri, null, MediaTypeNames.Text.Plain, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with <paramref name="body"/> (defaults <see cref="HttpRequest.ContentType"/> to <see cref="MediaTypeNames.Text.Plain"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="body">The optional body content.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? body)
+#else
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, string? body)
+#endif
+            => CreateHttpRequest(httpMethod, requestUri, body, null, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with <paramref name="body"/> and <paramref name="contentType"/>.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="body">The optional body content.</param>
+        /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? body, string? contentType)
+#else
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, string? body, string? contentType)
+#endif
+            => CreateHttpRequest(httpMethod, requestUri, body, contentType, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with no body.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, Action<HttpRequest>? requestModifier = null)
+#else
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, Action<HttpRequest>? requestModifier = null)
+#endif
+            => CreateHttpRequest(httpMethod, requestUri, null, MediaTypeNames.Text.Plain, requestModifier);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with <paramref name="body"/> (defaults <see cref="HttpRequest.ContentType"/> to <see cref="MediaTypeNames.Text.Plain"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="body">The optional body content.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? body, Action<HttpRequest>? requestModifier = null)
+#else
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri, string? body, Action<HttpRequest>? requestModifier = null)
+#endif
+            => CreateHttpRequest(httpMethod, requestUri, body, null, requestModifier);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with <i>optional</i> <paramref name="body"/> (defaults <see cref="HttpRequest.ContentType"/> to <see cref="MediaTypeNames.Text.Plain"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="body">The optional body content.</param>
+        /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri = null, string? body = null, string? contentType = null, Action<HttpRequest>? requestModifier = null)
+#else
+        public HttpRequest CreateHttpRequest(HttpMethod httpMethod, string? requestUri = null, string? body = null, string? contentType = null, Action<HttpRequest>? requestModifier = null)
+#endif
+        {
+            if (httpMethod == HttpMethod.Get && body != null)
+                LoggerProvider.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
+
+            var context = new DefaultHttpContext();
+
+            var uri = requestUri is null ? new Uri("http://unittestex") : new Uri(requestUri, UriKind.RelativeOrAbsolute);
+            if (!uri.IsAbsoluteUri)
+                uri = new Uri($"http://unittestex{(requestUri != null && requestUri.StartsWith('/') ? requestUri : $"/{requestUri}")}");
+
+            context.Request.Method = httpMethod?.Method ?? HttpMethod.Get.Method;
+            context.Request.Scheme = uri.Scheme;
+            context.Request.Host = new HostString(uri.Host);
+            context.Request.Path = uri.LocalPath;
+            context.Request.QueryString = new QueryString(uri.Query);
+
+            if (body is not null)
+            {
+                context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+                context.Request.ContentType = contentType ?? MediaTypeNames.Text.Plain;
+                context.Request.ContentLength = body.Length;
+            }
+            else
+                context.Request.ContentType = contentType;
+
+            requestModifier?.Invoke(context.Request);
+
+            if (SetUp.OnBeforeHttpRequestSendAsync != null)
+                SetUp.OnBeforeHttpRequestSendAsync(context.Request, UserName, CancellationToken.None).GetAwaiter().GetResult();
+
+            return context.Request;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with the <paramref name="value"/> JSON serialized as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Application.Json"/>.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="value">The value to JSON serialize.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, object? value)
+#else
+        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, string? requestUri, object? value)
+#endif
+            => CreateJsonHttpRequest(httpMethod, requestUri, value, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> with the <paramref name="value"/> JSON serialized as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Application.Json"/>.
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="value">The value to JSON serialize.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, object? value, Action<HttpRequest>? requestModifier = null)
+#else
+        public HttpRequest CreateJsonHttpRequest(HttpMethod httpMethod, string? requestUri, object? value, Action<HttpRequest>? requestModifier = null)
+#endif
+            => CreateHttpRequest(httpMethod, requestUri, JsonSerializer.Serialize(value), MediaTypeNames.Application.Json, requestModifier: requestModifier);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <typeparam name="TAssembly">The <see cref="Type"/> to infer <see cref="Type.Assembly"/> for the embedded resources.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string resourceName)
+#else
+        public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, string? requestUri, string resourceName)
+#endif
+            => CreateJsonHttpRequestFromResource<TAssembly>(httpMethod, requestUri, resourceName, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <typeparam name="TAssembly">The <see cref="Type"/> to infer <see cref="Type.Assembly"/> for the embedded resources.</typeparam>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string resourceName, Action<HttpRequest>? requestModifier = null)
+#else
+        public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, string? requestUri, string resourceName, Action<HttpRequest>? requestModifier = null)
+#endif
+            => CreateJsonHttpRequestFromResource(httpMethod, requestUri, resourceName, typeof(TAssembly).Assembly, requestModifier);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string resourceName, Assembly assembly)
+#else
+        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly assembly)
+#endif
+            => CreateJsonHttpRequestFromResource(httpMethod, requestUri, resourceName, assembly, null);
+
+        /// <summary>
+        /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
+        /// </summary>
+        /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
+        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
+        /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
+        /// <returns>The <see cref="HttpRequest"/>.</returns>
+#if NET7_0_OR_GREATER
+        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string resourceName, Assembly assembly, Action<HttpRequest>? requestModifier = null)
+#else
+        public HttpRequest CreateJsonHttpRequestFromResource(HttpMethod httpMethod, string? requestUri, string resourceName, Assembly assembly, Action<HttpRequest>? requestModifier = null)
+#endif
+            => CreateHttpRequest(httpMethod, requestUri, Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly()), MediaTypeNames.Application.Json, requestModifier: requestModifier);
+
+        #endregion
     }
 }

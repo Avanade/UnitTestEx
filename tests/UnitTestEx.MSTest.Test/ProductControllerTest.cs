@@ -9,7 +9,7 @@ using UnitTestEx.Api.Controllers;
 namespace UnitTestEx.MSTest.Test
 {
     [TestClass]
-    public class ProductControllerTest
+    public class ProductControllerTest : WithApiTester<Startup>
     {
         [TestMethod]
         public void Notfound_WithoutConfigurations()
@@ -20,8 +20,7 @@ namespace UnitTestEx.MSTest.Test
 
             Startup.MessageProcessingHandler.WasExecuted = false;
 
-            using var test = ApiTester.Create<Startup>();
-            test.ReplaceHttpClientFactory(mcf)
+            Test.ReplaceHttpClientFactory(mcf)
                 .Controller<ProductController>()
                 .Run(c => c.Get("xyz"))
                 .AssertNotFound();
@@ -38,8 +37,7 @@ namespace UnitTestEx.MSTest.Test
 
             Startup.MessageProcessingHandler.WasExecuted = false;
 
-            using var test = ApiTester.Create<Startup>();
-            test.ReplaceHttpClientFactory(mcf)
+            Test.ReplaceHttpClientFactory(mcf)
                 .Controller<ProductController>()
                 .Run(c => c.Get("xyz"))
                 .AssertNotFound();
@@ -54,8 +52,7 @@ namespace UnitTestEx.MSTest.Test
             mcf.CreateClient("XXX", new Uri("https://somesys"))
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
-            using var test = ApiTester.Create<Startup>();
-            test.ReplaceHttpClientFactory(mcf)
+            Test.ReplaceHttpClientFactory(mcf)
                 .Controller<ProductController>()
                 .Run(c => c.Get("abc"))
                 .AssertOK()
@@ -68,8 +65,7 @@ namespace UnitTestEx.MSTest.Test
             var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://somesys")).Request(HttpMethod.Get, "test").Respond.With("test output");
 
-            using var test = ApiTester.Create<Startup>();
-            var hc = test.ReplaceHttpClientFactory(mcf)
+            var hc = Test.ReplaceHttpClientFactory(mcf)
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
             var r = hc.GetAsync("test").Result;
@@ -85,8 +81,7 @@ namespace UnitTestEx.MSTest.Test
 
             Startup.MessageProcessingHandler.WasExecuted = false;
 
-            using var test = ApiTester.Create<Startup>();
-            var hc = test.ReplaceHttpClientFactory(mcf)
+            var hc = Test.ReplaceHttpClientFactory(mcf)
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
             var ex = Assert.ThrowsException<AggregateException>(() => hc.GetAsync("test").Result);
@@ -104,8 +99,7 @@ namespace UnitTestEx.MSTest.Test
 
             Startup.MessageProcessingHandler.WasExecuted = false;
 
-            using var test = ApiTester.Create<Startup>();
-            var hc = test.ReplaceHttpClientFactory(mcf)
+            var hc = Test.ReplaceHttpClientFactory(mcf)
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
             var ex = Assert.ThrowsException<AggregateException>(() => hc.GetAsync("test").Result);
