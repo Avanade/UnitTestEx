@@ -120,9 +120,17 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <param name="expectedETag">The expected ETag value.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
-        public TSelf AssertETagHeader(string expectedETag)
+        /// <remarks>An <paramref name="expectedETag"/> of <c>null</c> will confirm existence only, not the actual value.</remarks>
+        public TSelf AssertETagHeader(string? expectedETag = null)
         {
-            Implementor.AssertAreEqual(expectedETag, Response.Headers?.ETag?.Tag, $"Expected and Actual HTTP Response Header '{HeaderNames.ETag}' values are not equal.");
+            if (expectedETag is null)
+            {
+                if (Response.Headers?.ETag is null || Response.Headers?.ETag?.Tag is null)
+                    Implementor.AssertFail($"Expected an '{HeaderNames.ETag}' HTTP Response Header with a value; none was found.");
+            }
+            else
+                Implementor.AssertAreEqual(expectedETag, Response.Headers?.ETag?.Tag, $"Expected and Actual HTTP Response Header '{HeaderNames.ETag}' values are not equal.");
+
             return (TSelf)this;
         }
 
