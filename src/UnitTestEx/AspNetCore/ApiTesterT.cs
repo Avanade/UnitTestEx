@@ -9,5 +9,6 @@ namespace UnitTestEx.AspNetCore
     /// Provides the concrete <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> implementation.
     /// </summary>
     /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
-    public class ApiTester<TEntryPoint>() : ApiTesterBase<TEntryPoint, ApiTester<TEntryPoint>>(TestFrameworkImplementor.Create()) where TEntryPoint : class { }
+    /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
+    public class ApiTester<TEntryPoint>(Func<TestFrameworkImplementor>? createFactory = null) : ApiTesterBase<TEntryPoint, ApiTester<TEntryPoint>>(TestFrameworkImplementor.Create(createFactory)) where TEntryPoint : class { }
 }

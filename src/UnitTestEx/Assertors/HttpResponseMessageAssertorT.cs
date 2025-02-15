@@ -30,6 +30,12 @@ namespace UnitTestEx.Assertors
         }
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="HttpResponseMessageAssertor"/> class.
+        /// </summary>
+        /// <param name="assertor">The untyped <see cref="HttpResponseMessageAssertor"/>.</param>
+        internal HttpResponseMessageAssertor(HttpResponseMessageAssertor assertor) : this(assertor.Owner, assertor.Response) { }
+
+        /// <summary>
         /// Gets the response content as the deserialized JSON value.
         /// </summary>
         /// <returns>The result value.</returns>
@@ -105,7 +111,7 @@ namespace UnitTestEx.Assertors
         public HttpResponseMessageAssertor<TValue> AssertValue(TValue? expectedValue, params string[] pathsToIgnore)
         {
             var cr = Owner.CreateJsonComparer().CompareValue(expectedValue, Value, pathsToIgnore);
-            if (cr is not null)
+            if (cr.HasDifferences)
                 Implementor.AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
 
             return this;

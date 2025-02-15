@@ -52,10 +52,14 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Creates a new instance of the <see cref="TestFrameworkImplementor"/> (see <see cref="SetGlobalCreateFactory"/> or <see cref="SetLocalCreateFactory"/>).
         /// </summary>
+        /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
         /// <returns>The new instance of the <see cref="TestFrameworkImplementor"/>.</returns>
-        public static TestFrameworkImplementor Create()
+        public static TestFrameworkImplementor Create(Func<TestFrameworkImplementor>? createFactory = null)
         {
             TestSetUp.Force();
+
+            if (createFactory is not null)
+                return createFactory() ?? throw new InvalidOperationException($"The {nameof(createFactory)} has returned null.");
 
             if (_localCreateFactory.Value is not null)
                 return _localCreateFactory.Value.Invoke() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetLocalCreateFactory)} has returned null.");

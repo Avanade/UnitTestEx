@@ -10,9 +10,9 @@ using Xunit.Abstractions;
 
 namespace UnitTestEx.Xunit.Test
 {
-    public class ProductControllerTest : UnitTestBase
+    public class ProductControllerTest : WithApiTester<Startup>
     {
-        public ProductControllerTest(ITestOutputHelper output) : base(output) { }
+        public ProductControllerTest(ApiTestFixture<Startup> fixture, ITestOutputHelper output) : base(fixture, output) { }
 
         [Fact]
         public void Notfound()
@@ -21,8 +21,7 @@ namespace UnitTestEx.Xunit.Test
             mcf.CreateClient("XXX", new Uri("https://somesys/"))
                 .Request(HttpMethod.Get, "products/xyz").Respond.With(HttpStatusCode.NotFound);
 
-            using var test = ApiTester.Create<Startup>();
-            test.ReplaceHttpClientFactory(mcf)
+            Test.ReplaceHttpClientFactory(mcf)
                 .Controller<ProductController>()
                 .Run(c => c.Get("xyz"))
                 .AssertNotFound();
@@ -35,8 +34,7 @@ namespace UnitTestEx.Xunit.Test
             mcf.CreateClient("XXX", new Uri("https://somesys"))
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
-            using var test = ApiTester.Create<Startup>();
-            test.ReplaceHttpClientFactory(mcf)
+            Test.ReplaceHttpClientFactory(mcf)
                 .Controller<ProductController>()
                 .Run(c => c.Get("abc"))
                 .AssertOK()
@@ -49,13 +47,32 @@ namespace UnitTestEx.Xunit.Test
             var mcf = MockHttpClientFactory.Create();
             mcf.CreateClient("XXX", new Uri("https://somesys")).Request(HttpMethod.Get, "test").Respond.With("test output");
 
-            using var test = ApiTester.Create<Startup>();
-            var hc = test.ReplaceHttpClientFactory(mcf)
+            var hc = Test.ReplaceHttpClientFactory(mcf)
                 .Services.GetService<IHttpClientFactory>().CreateClient("XXX");
 
             var r = await hc.GetAsync("test");
             Assert.NotNull(r);
             Assert.Equal("test output", await r.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
+        public void To_HttpResponseMessage_Created()
+        {
+            Test.Type<ProductController>()
+                .Run(c => c.GetCreated())
+                .ToHttpResponseMessageAssertor()
+                .AssertCreated()
+                .AssertLocationHeaderContains("bananas")
+                .AssertContent("abc");
+        }
+
+        [Fact]
+        public void To_HttpResponseMessage_OK()
+        {
+            Test.Type<ProductController>()
+                .Run(c => c.GetOK())
+                .ToHttpResponseMessageAssertor()
+                .AssertOK();
         }
     }
 }

@@ -312,44 +312,7 @@ namespace UnitTestEx.AspNetCore
             if (res.RequestMessage == null)
                 return;
 
-            Implementor.WriteLine("");
-            Implementor.WriteLine($"RESPONSE >");
-            Implementor.WriteLine($"HttpStatusCode: {res.StatusCode} ({(int)res.StatusCode})");
-            Implementor.WriteLine($"Elapsed (ms): {(sw == null ? "none" : sw.Elapsed.TotalMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture))}");
-
-            var hdrs = res.Headers?.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-            Implementor.WriteLine($"Headers: {(hdrs == null || hdrs.Length == 0 ? "none" : "")}");
-            if (hdrs != null && hdrs.Length > 0)
-            {
-                foreach (var hdr in hdrs)
-                {
-                    Implementor.WriteLine($"  {hdr}");
-                }
-            }
-
-            object? jo = null;
-            var content = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            if (!string.IsNullOrEmpty(content) && res.Content?.Headers?.ContentType?.MediaType == MediaTypeNames.Application.Json)
-            {
-                try
-                {
-                    jo = JsonSerializer.Deserialize(content);
-                }
-                catch (Exception) { /* This is being swallowed by design. */ }
-            }
-
-            var txt = $"Content: [{res.Content?.Headers?.ContentType?.MediaType ?? "none"}]";
-            if (jo != null)
-            {
-                Implementor.WriteLine(txt);
-                Implementor.WriteLine(JsonSerializer.Serialize(jo, JsonWriteFormat.Indented));
-            }
-            else
-                Implementor.WriteLine($"{txt} {(string.IsNullOrEmpty(content) ? "none" : content)}");
-
-            Implementor.WriteLine("");
-            Implementor.WriteLine(new string('=', 80));
-            Implementor.WriteLine("");
+            Owner.LogHttpResponseMessage(res, sw);
         }
 
         /// <summary>

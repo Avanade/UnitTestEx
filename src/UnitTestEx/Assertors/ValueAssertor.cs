@@ -95,10 +95,16 @@ namespace UnitTestEx.Assertors
         /// <exception cref="InvalidOperationException">Thrown where the <see cref="Result"/> <see cref="Type"/> is not <see cref="HttpResponseMessage"/>.</exception>
         public HttpResponseMessageAssertor ToHttpResponseMessageAssertor()
         {
-            if (Result != null && Result is HttpResponseMessage hrm)
-                return new HttpResponseMessageAssertor(Owner, hrm);
+            if (Result != null)
+            {
+                if (Result is HttpResponseMessage hrm)
+                    return new HttpResponseMessageAssertor(Owner, hrm);
 
-            throw new InvalidOperationException($"Result Type '{typeof(TValue).Name}' must be '{nameof(HttpResponseMessage)}' and the value must not be null.");
+                if (Result is ActionResult ar)
+                    return ActionResultAssertor.ToHttpResponseMessageAssertor(Owner, ar);
+            }
+
+            throw new InvalidOperationException($"Result Type '{typeof(TValue).Name}' must be either a '{nameof(HttpResponseMessage)}' or '{nameof(IActionResult)}', and the value must not be null.");
         }
     }
 }

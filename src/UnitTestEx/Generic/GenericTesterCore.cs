@@ -48,8 +48,14 @@ namespace UnitTestEx.Generic
         /// </summary>
         private IHost GetHost()
         {
+            if (_host is not null)
+                return _host;
+
             lock (SyncRoot)
             {
+                if (_host is not null)
+                    return _host;
+
                 var ep = new EntryPoint(Activator.CreateInstance<TEntryPoint>());
 
                 return _host ??= new HostBuilder()
@@ -86,7 +92,18 @@ namespace UnitTestEx.Generic
         }
 
         /// <inheritdoc/>
-        protected override void ResetHost() => _host = null;
+        protected override void ResetHost()
+        {
+            lock (SyncRoot)
+            {
+                if (_host is not null)
+                {
+                    _host.Dispose();
+                    _host = null;
+                    Implementor.WriteLine("The underlying UnitTestEx 'GenericTester' Host has been reset.");
+                }
+            }
+        }
 
         /// <summary>
         /// Gets the <see cref="IServiceProvider"/> from the underlying host.
