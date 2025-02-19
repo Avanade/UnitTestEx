@@ -482,20 +482,22 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Converts the <see cref="IActionResult"/> to an <see cref="HttpResponseMessageAssertor"/>.
         /// </summary>
+        /// <param name="httpRequest">The optional requesting <see cref="HttpRequest"/> with <see cref="HttpContext"/>; otherwise, will default.</param>
         /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor ToHttpResponseMessageAssertor() => ToHttpResponseMessageAssertor(Owner, Result);
+        public HttpResponseMessageAssertor ToHttpResponseMessageAssertor(HttpRequest? httpRequest = null) => ToHttpResponseMessageAssertor(Owner, Result, httpRequest);
 
         /// <summary>
         /// Converts the <see cref="ValueAssertor{TValue}"/> to an <see cref="HttpResponseMessageAssertor"/>.
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="result">The <see cref="IActionResult"/> to convert.</param>
+        /// <param name="httpRequest">The optional requesting <see cref="HttpRequest"/>; otherwise, will default.</param>
         /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
-        internal static HttpResponseMessageAssertor ToHttpResponseMessageAssertor(TesterBase owner, IActionResult result)
+        internal static HttpResponseMessageAssertor ToHttpResponseMessageAssertor(TesterBase owner, IActionResult result, HttpRequest? httpRequest)
         {
             var sw = Stopwatch.StartNew();
             using var ms = new MemoryStream();
-            var context = new DefaultHttpContext { RequestServices = owner.Services };
+            var context = httpRequest?.HttpContext ?? new DefaultHttpContext { RequestServices = owner.Services };
             context.Response.Body = ms;
 
             result.ExecuteResultAsync(new ActionContext(context, new Microsoft.AspNetCore.Routing.RouteData(), new ActionDescriptor())).GetAwaiter().GetResult();

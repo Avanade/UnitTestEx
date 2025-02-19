@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Diagnostics.CodeAnalysis;
@@ -92,8 +93,9 @@ namespace UnitTestEx.Assertors
         /// Converts the <see cref="ValueAssertor{TValue}"/> to an <see cref="HttpResponseMessageAssertor"/>.
         /// </summary>
         /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
+        /// <param name="httpRequest">The optional requesting <see cref="HttpRequest"/> with <see cref="HttpContext"/>; otherwise, will default.</param>
         /// <exception cref="InvalidOperationException">Thrown where the <see cref="Result"/> <see cref="Type"/> is not <see cref="HttpResponseMessage"/>.</exception>
-        public HttpResponseMessageAssertor ToHttpResponseMessageAssertor()
+        public HttpResponseMessageAssertor ToHttpResponseMessageAssertor(HttpRequest? httpRequest = null)
         {
             if (Result != null)
             {
@@ -101,7 +103,7 @@ namespace UnitTestEx.Assertors
                     return new HttpResponseMessageAssertor(Owner, hrm);
 
                 if (Result is ActionResult ar)
-                    return ActionResultAssertor.ToHttpResponseMessageAssertor(Owner, ar);
+                    return ActionResultAssertor.ToHttpResponseMessageAssertor(Owner, ar, httpRequest);
             }
 
             throw new InvalidOperationException($"Result Type '{typeof(TValue).Name}' must be either a '{nameof(HttpResponseMessage)}' or '{nameof(IActionResult)}', and the value must not be null.");

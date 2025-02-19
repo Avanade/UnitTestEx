@@ -353,7 +353,10 @@ namespace UnitTestEx.Abstractions
             if (httpMethod == HttpMethod.Get && body != null)
                 LoggerProvider.CreateLogger("FunctionTesterBase").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
-            var context = new DefaultHttpContext();
+            var context = new DefaultHttpContext
+            {
+                RequestServices = Services
+            };
 
             var uri = requestUri is null ? new Uri("http://unittestex") : new Uri(requestUri, UriKind.RelativeOrAbsolute);
             if (!uri.IsAbsoluteUri)

@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v5.4.1
+- *Fixed:* The `ToHttpResponseMessageAssertor` supports a new `HttpRequest` parameter to enable access to the originating `HttpContext` such that its `HttpResponse` is used; versus, creating new internally.
+
 ## v5.4.0
 - *Enhancement:* All `CreateHttpRequest` and related methods moved to `TesterBase` to ensure availability for all derived testers.
 - *Enhancement:* Added `ToHttpResponseMessageAssertor` to `ActionResultAssertor` and `ValueAssertor` that converts an `IActionResult` to an `HttpResponseMessage` and returns an `HttpResponseMessageAssertor` for further assertions. The underlying `Host` must be configured (DI) correctly for this to function; otherwise, an exception will be thrown.

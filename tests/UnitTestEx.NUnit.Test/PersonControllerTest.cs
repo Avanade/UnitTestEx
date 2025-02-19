@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using Microsoft.AspNetCore.Mvc;
+using NUnit.Framework;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -305,6 +306,20 @@ namespace UnitTestEx.NUnit.Test
             test.Http<Person>()
                 .Run(HttpMethod.Post, "Person/1", new Person { FirstName = "Bob", LastName = "Smith" })
                 .AssertValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Type_IActionResult()
+        {
+            using var test = ApiTester.Create<Startup>();
+            var hr = test.CreateHttpRequest(HttpMethod.Get, "Person/1");
+            hr.HttpContext.Response.Headers.Add("X-Test", "Test");
+
+            var iar = new OkResult();
+
+            new Assertors.ValueAssertor<IActionResult>(test, iar, null)
+                .ToHttpResponseMessageAssertor(hr)
+                .AssertNamedHeader("X-Test", "Test");
         }
     }
 }
