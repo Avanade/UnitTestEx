@@ -1,10 +1,10 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
@@ -209,7 +209,26 @@ namespace UnitTestEx.Assertors
         /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
         public TSelf AssertErrors(params ApiError[] errors)
         {
-            var actual = Assertor.ConvertToApiErrors(GetValue<Dictionary<string, string[]>>() ?? []);
+            IDictionary<string, string[]>? val;
+
+            try
+            {
+                val = GetValue<IDictionary<string, string[]>>(null); 
+            }
+            catch (Exception)
+            {
+                try
+                {
+                    val = GetValue<HttpValidationProblemDetails>(null)?.Errors;
+                }
+                catch (Exception ex)
+                {
+                    Implementor.AssertFail($"Unable to deserialize the errors from either 'IDictionary<string, string[]>' or 'HttpValidationProblemDetails': {ex.Message}");
+                    return (TSelf)this;
+                }
+            }
+
+            var actual = Assertor.ConvertToApiErrors(val);
             if (!Assertor.TryAreErrorsMatched(errors, actual, out var errorMessage))
                 Implementor.AssertFail(errorMessage);
 

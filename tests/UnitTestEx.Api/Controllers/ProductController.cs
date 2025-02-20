@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -57,6 +59,12 @@ namespace UnitTestEx.Api.Controllers
         public Task<IActionResult> GetOK()
         {
             return Task.FromResult((IActionResult)new OkResult());
+        }
+
+        [HttpGet("test/problem")]
+        public Task<IActionResult> GetProblem()
+        {
+            return Task.FromResult((IActionResult)new JsonResult(new HttpValidationProblemDetails(new Dictionary<string, string[]> { { "id", ["Not specified."] } } )));
         }
     }
 }
