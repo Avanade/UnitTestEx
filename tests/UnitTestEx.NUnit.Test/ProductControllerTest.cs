@@ -130,5 +130,14 @@ namespace UnitTestEx.NUnit.Test
                 .AssertOK()
                 .AssertValue(new { id = "Def", description = "Default" });
         }
+
+        [Test]
+        public void ValidationProblemDetails()
+        {
+            using var test = ApiTester.Create<Startup>();
+            test.Http()
+                .Run(HttpMethod.Get, "product/test/problem")
+                .AssertErrors(new ApiError("id", "Not specified."));
+        }
     }
 }

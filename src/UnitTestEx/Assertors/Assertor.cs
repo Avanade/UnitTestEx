@@ -17,7 +17,7 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <param name="errors">The errors.</param>
         /// <returns>The <see cref="ApiError"/> array.</returns>
-        public static ApiError[] ConvertToApiErrors(Dictionary<string, string[]>? errors)
+        public static ApiError[] ConvertToApiErrors(IDictionary<string, string[]>? errors)
         {
             List<ApiError>? actual = [];
 

@@ -42,11 +42,13 @@ namespace UnitTestEx.Assertors
         /// Gets the response content as the deserialized JSON value.
         /// </summary>
         /// <typeparam name="T">The content <see cref="Type"/>.</typeparam>
+        /// <param name="expectedContentType">The expected content type; where <c>null</c> then the content type will not be validated.</param>
         /// <returns>The result value.</returns>
-        /// <remarks>The content type must be <see cref="MediaTypeNames.Application.Json"/>.</remarks>
-        public T? GetValue<T>()
+        public T? GetValue<T>(string? expectedContentType = MediaTypeNames.Application.Json)
         {
-            Implementor.AssertAreEqual(MediaTypeNames.Application.Json, Response.Content?.Headers?.ContentType?.MediaType);
+            if (expectedContentType is not null)
+                Implementor.AssertAreEqual(expectedContentType, Response.Content?.Headers?.ContentType?.MediaType);
+
             if (Response.Content == null)
                 return default!;
 
