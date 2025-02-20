@@ -273,14 +273,9 @@ namespace UnitTestEx.Assertors
                 return (TSelf)this;
             }
 
-            if (Response.Content?.Headers?.ContentType?.MediaType == MediaTypeNames.Application.Json)
-            {
-                var jc = Owner.CreateJsonComparer().Compare(json, Response.Content.ReadAsStringAsync().GetAwaiter().GetResult(), pathsToIgnore);
-                if (jc.HasDifferences)
-                    Implementor.AssertFail($"Expected and Actual JSON values are not equal:{Environment.NewLine}{jc}");
-            }
-            else
-                Implementor.AssertAreEqual(json, Response.Content?.ReadAsStringAsync().GetAwaiter().GetResult(), "Expected and Actual JSON values are not equal.");
+            var jc = Owner.CreateJsonComparer().Compare(json, Response.Content.ReadAsStringAsync().GetAwaiter().GetResult(), pathsToIgnore);
+            if (jc.HasDifferences)
+                Implementor.AssertFail($"Expected and Actual JSON values are not equal:{Environment.NewLine}{jc}");
 
             return (TSelf)this;
         }

@@ -4,6 +4,7 @@ Represents the **NuGet** versions.
 
 ## v5.4.2
 - *Fixed:* The `HttpResponseMessageAssertorBase.AssertErrors` has been extended to check for both `IDictionary<string, string[]>` (previous) and `HttpValidationProblemDetails` (new) HTTP response JSON content.
+- *Fixed:* The `HttpResponseMessageAssertorBase.AssertJson` corrected to not validate the content type as this should be handled by the `AssertContentType` method. The `AssertJson` method now only checks the content against the expected JSON value.
 
 ## v5.4.1
 - *Fixed:* The `ToHttpResponseMessageAssertor` supports a new `HttpRequest` parameter to enable access to the originating `HttpContext` such that its `HttpResponse` is used; versus, creating new internally.
