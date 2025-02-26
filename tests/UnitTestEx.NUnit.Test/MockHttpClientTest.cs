@@ -438,14 +438,14 @@ namespace UnitTestEx.NUnit.Test
             Assert.Multiple(async () =>
             {
                 Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
-                ObjectComparer.JsonAssert("{\"product\":\"xyz\",\"quantity\":1}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+                ObjectComparer.AssertJson("{\"product\":\"xyz\",\"quantity\":1}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
             });
 
             res = await hc.GetAsync("people/123");
             Assert.Multiple(async () =>
             {
                 Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-                ObjectComparer.JsonAssert("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+                ObjectComparer.AssertJson("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
                 Assert.That(res.Headers.GetValues("x-blah").Single(), Is.EqualTo("abc"));
                 Assert.That(res.Headers.Age, Is.EqualTo(TimeSpan.FromSeconds(55)));
             });
@@ -464,14 +464,14 @@ namespace UnitTestEx.NUnit.Test
             Assert.Multiple(async () =>
             {
                 Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-                ObjectComparer.JsonAssert("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+                ObjectComparer.AssertJson("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
             });
 
             res = await hc.GetAsync("people/123");
             Assert.Multiple(async () =>
             {
                 Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-                ObjectComparer.JsonAssert("{\"first\":\"Sarah\",\"last\":\"Johns\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
+                ObjectComparer.AssertJson("{\"first\":\"Sarah\",\"last\":\"Johns\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
             });
 
             mcf.VerifyAll();

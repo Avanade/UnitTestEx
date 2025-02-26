@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v5.4.3
+- *Fixed:* The `ValueAssertor.Result` is being obsoleted and replaced with `ValueAssertor.Value` to be more explicit. The `Result` property will be removed in a future version.
+- *Fixed:* The `ValueAssertor` JSON-based assertions updated to serialize the `Value` and compare; versus, serializing the JSON and then comparing.
+- *Fixed:* The `ObjectComparer.JsonAssert` is being obsoleted and replaced with `ObjectComparer.AssertJson` to be more consistent. The `JsonAssert` method will be removed in a future version.
+
 ## v5.4.2
 - *Fixed:* The `HttpResponseMessageAssertorBase.AssertErrors` has been extended to check for both `IDictionary<string, string[]>` (previous) and `HttpValidationProblemDetails` (new) HTTP response JSON content.
 - *Fixed:* The `HttpResponseMessageAssertorBase.AssertJson` corrected to not validate the content type as this should be handled by the `AssertContentType` method. The `AssertJson` method now only checks the content against the expected JSON value.

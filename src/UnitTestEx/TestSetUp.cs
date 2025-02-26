@@ -177,7 +177,7 @@ namespace UnitTestEx
         public Func<HttpRequest, string?, CancellationToken, Task>? OnBeforeHttpRequestSendAsync { get; set; }
 
         /// <summary>
-        /// Gets or sets the minimum <see cref="LogLevel"/> when configuring the underlying host (see <see cref="ILoggingBuilder"/>).
+        /// Gets or sets the minimum <see cref="LogLevel"/> when configuring the underlying host.
         /// </summary>
         public LogLevel MinimumLogLevel { get; set; } = LogLevel.Debug;
 

@@ -20,6 +20,15 @@ namespace UnitTestEx.NUnit.Test.Other
         }
 
         [Test]
+        public void Run_Success_AssertJSON()
+        {
+            using var test = GenericTester.Create();
+            test.Run(() => 1)
+                .AssertSuccess()
+                .AssertJson("1");
+        }
+
+        [Test]
         public void Run_Exception()
         {
             using var test = GenericTester.Create();
