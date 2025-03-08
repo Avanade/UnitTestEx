@@ -15,7 +15,7 @@ namespace UnitTestEx.Xunit.Internal
         /// Sets the <see cref="AsyncLocal{T}"/> <see cref="XunitTestImplementor"/>.
         /// </summary>
         /// <param name="implementor">The <see cref="XunitTestImplementor"/>.</param>
-        internal static void SetLocalImplementor(XunitTestImplementor implementor) => _localImplementor.Value = implementor;
+        public static void SetLocalImplementor(XunitTestImplementor implementor) => _localImplementor.Value = implementor;
 
         /// <summary>
         /// Gets the <see cref="AsyncLocal{T}"/> <see cref="XunitTestImplementor"/>.

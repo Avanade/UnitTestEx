@@ -68,7 +68,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
-        public TestFrameworkImplementor Implementor { get; }
+        public TestFrameworkImplementor Implementor { get; private set; }
 
         /// <summary>
         /// Gets the <see cref="SharedStateLoggerProvider"/> <see cref="ILoggerProvider"/>.
@@ -213,6 +213,15 @@ namespace UnitTestEx.Abstractions
             }
 
             IsHostInstantiated = true;
+        }
+
+        /// <summary>
+        /// Replaces the <see cref="TestFrameworkImplementor"/> with the specified <paramref name="implementor"/>.
+        /// </summary>
+        /// <param name="implementor">The new <see cref="TestFrameworkImplementor"/>.</param>
+        public void ReplaceTestFrameworkImplementor(TestFrameworkImplementor implementor)
+        {
+            Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
         }
 
         /// <summary>

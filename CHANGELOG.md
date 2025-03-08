@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v5.4.4
+- *Fixed:* The `XunitLocalTestImplementor.SetLocalImplementor` has been made public.
+- *Fixed:* Added `TesterBase.ReplaceTestFrameworkImplementor` to enable dynamic replacement.
+
 ## v5.4.3
 - *Fixed:* The `ValueAssertor.Result` is being obsoleted and replaced with `ValueAssertor.Value` to be more explicit. The `Result` property will be removed in a future version.
 - *Fixed:* The `ValueAssertor` JSON-based assertions updated to serialize the `Value` and compare; versus, serializing the JSON and then comparing.

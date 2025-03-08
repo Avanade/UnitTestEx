@@ -16,6 +16,11 @@ namespace UnitTestEx.Abstractions
         private static readonly AsyncLocal<Func<TestFrameworkImplementor>?> _localCreateFactory = new();
 
         /// <summary>
+        /// Gets a <see cref="NullTestImplementor"/> instance that does nothing.
+        /// </summary>
+        public static NullTestImplementor Null { get; } = new();
+
+        /// <summary>
         /// Sets the global <see cref="TestFrameworkImplementor"/> factory.
         /// </summary>
         /// <param name="createFactory">The function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
@@ -102,5 +107,23 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         /// <returns>The <see cref="ILoggerProvider"/>.</returns>
         public ILoggerProvider CreateLoggerProvider() => new TestFrameworkImplementorLoggerProvider(this);
+    }
+
+    /// <summary>
+    /// Provides a <see cref="TestFrameworkImplementor"/> that does nothing.
+    /// </summary>
+    public class NullTestImplementor : TestFrameworkImplementor
+    {
+        /// <inheritdoc/>
+        public override void AssertAreEqual<T>(T? expected, T? actual, string? message = null) where T : default { }
+
+        /// <inheritdoc/>
+        public override void AssertFail(string? message) { }
+
+        /// <inheritdoc/>
+        public override void AssertInconclusive(string? message) { }
+
+        /// <inheritdoc/>
+        public override void WriteLine(string? message) { }
     }
 }
