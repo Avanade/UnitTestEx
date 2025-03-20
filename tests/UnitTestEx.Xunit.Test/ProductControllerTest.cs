@@ -10,9 +10,9 @@ using Xunit.Abstractions;
 
 namespace UnitTestEx.Xunit.Test
 {
-    public class ProductControllerTest : WithApiTester<Startup>
+    public class ProductControllerTest : WithApiTester<Startup>, IClassFixture<ProductApiTestFixture<Startup>>
     {
-        public ProductControllerTest(ApiTestFixture<Startup> fixture, ITestOutputHelper output) : base(fixture, output) { }
+        public ProductControllerTest(ProductApiTestFixture<Startup> fixture, ITestOutputHelper output) : base(fixture, output) { }
 
         [Fact]
         public void Notfound()

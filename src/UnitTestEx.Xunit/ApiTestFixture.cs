@@ -16,6 +16,16 @@ namespace UnitTestEx
         private bool _disposed;
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="ApiTestFixture{TEntryPoint}"/> class.
+        /// </summary>
+        public ApiTestFixture() => OnConfiguration();
+
+        /// <summary>
+        /// Provides an opportunity to perform initial <see cref="Test"/> configuration before use.
+        /// </summary>
+        protected virtual void OnConfiguration() { }
+
+        /// <summary>
         /// Gets the shared <see cref="ApiTester{TEntryPoint}"/> for testing.
         /// </summary>
         public ApiTester<TEntryPoint> Test => _apiTester ?? throw new ObjectDisposedException(nameof(Test));
