@@ -186,35 +186,26 @@ namespace UnitTestEx.Mocking
 
             var body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
 
-            switch (_mediaType.ToLowerInvariant())
+            if (TesterBase.JsonMediaTypeNames.Contains(_mediaType.ToLowerInvariant()))
             {
-                // Deserialize the JSON and compare.
-                case MediaTypeNames.Application.Json:
-                    try
-                    {
-                        var content = _content is string cstring ? cstring : JsonSerializer.Serialize(_content);
-                        var options = JsonComparerOptions.Clone();
-                        options.JsonSerializer ??= JsonSerializer;
-                        var jcr = new JsonElementComparer(options).Compare(content, body, _pathsToIgnore);
-                        if (jcr.HasDifferences && _traceRequestComparisons)
-                            Implementor.WriteLine($"UnitTestEx > Mismatched HTTP request {request.Method} {request.RequestUri} mocked vs actual trace comparison differences:{Environment.NewLine}{jcr}");
+                try
+                {
+                    var content = _content is string cstring ? cstring : JsonSerializer.Serialize(_content);
+                    var options = JsonComparerOptions.Clone();
+                    options.JsonSerializer ??= JsonSerializer;
+                    var jcr = new JsonElementComparer(options).Compare(content, body, _pathsToIgnore);
+                    if (jcr.HasDifferences && _traceRequestComparisons)
+                        Implementor.WriteLine($"UnitTestEx > Mismatched HTTP request {request.Method} {request.RequestUri} mocked vs actual trace comparison differences:{Environment.NewLine}{jcr}");
 
-                        return jcr.AreEqual;
-                    }
-                    catch
-                    {
-                        return false;
-                    }
-
-                // For any other content type, just compare the body.
-                case MediaTypeNames.Text.Plain:
-                case MediaTypeNames.Text.Xml:
-                case MediaTypeNames.Text.Html:
-                case MediaTypeNames.Application.Soap:
-                case MediaTypeNames.Application.Xml:
-                default:
-                    return body == _content?.ToString();
+                    return jcr.AreEqual;
+                }
+                catch
+                {
+                    return false;
+                }
             }
+            else
+                 return body == _content?.ToString();
         }
 
         /// <inheritdoc/>
@@ -235,7 +226,7 @@ namespace UnitTestEx.Mocking
             if (_content == null)
                 return "'No content'";
 
-            if (_mediaType?.ToLowerInvariant() == MediaTypeNames.Application.Json && _content is not string)
+            if (TesterBase.JsonMediaTypeNames.Contains(_mediaType?.ToLowerInvariant()) && _content is not string)
                 return JsonSerializer.Serialize(_content);
 
             return _content.ToString();

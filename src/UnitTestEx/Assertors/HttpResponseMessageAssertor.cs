@@ -2,6 +2,7 @@
 
 using Microsoft.Net.Http.Headers;
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
 using UnitTestEx.Abstractions;
@@ -79,7 +80,7 @@ namespace UnitTestEx.Assertors
                 return this;
             }
 
-            if (Response.Content.Headers?.ContentType?.MediaType == MediaTypeNames.Application.Json)
+            if (TesterBase.JsonMediaTypeNames.Contains(Response.Content.Headers?.ContentType?.MediaType))
             {
                 var json = Response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 if (expectedValue == null)

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
@@ -332,7 +333,7 @@ namespace UnitTestEx.Assertors
             AssertResultType<ContentResult>();
 
             var cr = (ContentResult)Result;
-            if (expectedValue != null && cr.Content != null && cr.ContentType == MediaTypeNames.Application.Json)
+            if (expectedValue != null && cr.Content != null && TesterBase.JsonMediaTypeNames.Contains(cr.ContentType))
                 return AssertValue(expectedValue, JsonSerializer.Deserialize<TValue>(cr.Content)!, pathsToIgnore);
             else
                 return AssertValue(expectedValue, cr.Content!, pathsToIgnore);

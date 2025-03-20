@@ -52,6 +52,11 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
+        /// Gets the default JSON media type names used for JSON serialization/deserialization.
+        /// </summary>
+        public static string[] JsonMediaTypeNames { get; set; } = [MediaTypeNames.Application.Json, "application/json-patch+json", "application/problem+json", "application/merge-patch+json"];
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="TesterBase"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
@@ -248,7 +253,7 @@ namespace UnitTestEx.Abstractions
 
             object? jo = null;
             var content = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            if (!string.IsNullOrEmpty(content) && res.Content?.Headers?.ContentType?.MediaType == MediaTypeNames.Application.Json)
+            if (!string.IsNullOrEmpty(content) && JsonMediaTypeNames.Contains(res.Content?.Headers?.ContentType?.MediaType))
             {
                 try
                 {
