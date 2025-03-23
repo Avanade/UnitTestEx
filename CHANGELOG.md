@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v5.4.6
+- *Fixed:* Added `TestFrameworkImplementor.SetLocalCreateFactory` to Xunit `ApiTestFixture` constructor to ensure set correctly for the `OnConfiguration` method override.
+
 ## v5.4.5
 - *Fixed:* Added `TesterBase.JsonMediaTypeNames` which provides a list of valid JSON media types to be used to determine JSON-related payloads in tests.
 - *Fixed:* Added Xunit `ApiTestFixture.OnConfiguration` to enable configuration to be perform prior to test execution.
