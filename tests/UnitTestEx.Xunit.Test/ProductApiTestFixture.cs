@@ -8,11 +8,16 @@ namespace UnitTestEx.Xunit.Test
 
         protected override void OnConfiguration()
         {
+            Test.ReplaceSingleton<TestSomeSome>();
+            MockHttpClientFactory.Create();
+
             _counter++;
             if (_counter > 1)
             {
                 throw new InvalidOperationException("ProductApiTestFixture should only be instantiated once per test run.");
             }
         }
+
+        public class TestSomeSome { }
     }
 }

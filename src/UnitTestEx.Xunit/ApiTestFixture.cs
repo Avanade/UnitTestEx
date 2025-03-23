@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
+using UnitTestEx.Abstractions;
 using UnitTestEx.AspNetCore;
 using UnitTestEx.Xunit.Internal;
 
@@ -18,7 +19,11 @@ namespace UnitTestEx
         /// <summary>
         /// Initializes a new instance of the <see cref="ApiTestFixture{TEntryPoint}"/> class.
         /// </summary>
-        public ApiTestFixture() => OnConfiguration();
+        public ApiTestFixture()
+        {
+            TestFrameworkImplementor.SetLocalCreateFactory(() => new XunitLocalTestImplementor());
+            OnConfiguration();
+        }
 
         /// <summary>
         /// Provides an opportunity to perform initial <see cref="Test"/> configuration before use.
