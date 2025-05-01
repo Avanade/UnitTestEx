@@ -36,8 +36,8 @@ jobs:
 
     - name: Explicit NUnit test
       run: |
-        cp tests/UnitTestEx.Api/bin/Debug/net6.0/UnitTestEx.Api.deps.json tests/UnitTestEx.NUnit.Test/bin/Debug/net6.0
-        cd tests/UnitTestEx.NUnit.Test/bin/Debug/net6.0
+        cp tests/UnitTestEx.Api/bin/Debug/net8.0/UnitTestEx.Api.deps.json tests/UnitTestEx.NUnit.Test/bin/Debug/net8.0
+        cd tests/UnitTestEx.NUnit.Test/bin/Debug/net8.0
         dotnet test UnitTestEx.NUnit.Test.dll --no-build --verbosity normal
 
     - name: Explicit Xunit test
