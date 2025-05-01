@@ -44,7 +44,7 @@ namespace UnitTestEx.Api.Controllers
         [HttpGet("")]
         public IActionResult GetByArgs(string firstName, string lastName, [FromQuery] List<int> id = default)
         {
-            return new ObjectResult($"{firstName}-{lastName}-{string.Join(",", id)}");
+            return new ObjectResult($"{firstName}-{lastName}-{(id is null ? "" : string.Join(",", id))}");
         }
 
         [HttpPost("{id}")]

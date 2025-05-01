@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Reflection;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Expectations;
 using UnitTestEx.Hosting;
@@ -58,7 +59,56 @@ namespace UnitTestEx.Generic
 
                 var ep = new EntryPoint(Activator.CreateInstance<TEntryPoint>());
 
-                return _host ??= new HostBuilder()
+#if NET8_0_OR_GREATER
+                var settings = new HostApplicationBuilderSettings
+                {
+                    EnvironmentName = TestSetUp.Environment,
+                    ContentRootPath = Environment.CurrentDirectory
+                };
+
+                var builder = Host.CreateApplicationBuilder(settings);
+                builder.Logging.SetMinimumLevel(SetUp.MinimumLogLevel).ClearProviders().AddProvider(LoggerProvider);
+
+                if (ep.HasConfigureHostConfiguration)
+                    ep.ConfigureHostConfiguration(builder.Configuration);
+
+                builder.Configuration.AddJsonFile("appsettings.json", optional: true)
+                                     .AddJsonFile($"appsettings.{TestSetUp.Environment.ToLowerInvariant()}.json", optional: true);
+
+                if (ep.HasConfigureAppConfiguration)
+                {
+                    var fi = builder.GetType().GetField("_hostBuilderContext", BindingFlags.Instance | BindingFlags.NonPublic);
+                    if (fi is not null)
+                    {
+                        var hbc = (HostBuilderContext)fi.GetValue(builder)!;
+                        ep.ConfigureAppConfiguration(hbc, builder.Configuration);
+                    }
+                }
+
+                builder.Configuration.AddJsonFile("appsettings.unittest.json", optional: true)
+                                     .AddEnvironmentVariables();
+
+                if (AdditionalConfiguration != null)
+                    builder.Configuration.AddInMemoryCollection(AdditionalConfiguration);
+
+                if (ep.HasConfigureServices)
+                    ep.ConfigureServices(builder.Services);
+
+                if (ep.HasConfigureApplication)
+                    ep.ConfigureApplication(builder);
+
+                builder.Services.ReplaceScoped(_ => SharedState);
+
+                foreach (var tec in TestSetUp.Extensions)
+                    tec.ConfigureServices(this, builder.Services);
+
+                SetUp.ConfigureServices?.Invoke(builder.Services);
+                AddConfiguredServices(builder.Services);
+
+                _host = builder.Build();
+                return _host;
+#else
+                return _host ??= Host.CreateDefaultBuilder()
                     .UseEnvironment(TestSetUp.Environment)
                     .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
                     .ConfigureHostConfiguration(cb =>
@@ -88,6 +138,7 @@ namespace UnitTestEx.Generic
                         SetUp.ConfigureServices?.Invoke(sc);
                         AddConfiguredServices(sc);
                     }).Build();
+#endif
             }
         }
 

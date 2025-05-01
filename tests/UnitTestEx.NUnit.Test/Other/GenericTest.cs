@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -39,7 +40,7 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void Run_Service()
         {
-            using var test = GenericTester.Create().ConfigureServices(services => services.AddSingleton<Gin>());
+            using var test = GenericTester.Create<EntryPoint>();
 
             test.Run<Gin, int>(gin => gin.Pour())
                 .AssertSuccess()
@@ -82,5 +83,16 @@ namespace UnitTestEx.NUnit.Test.Other
         public Task ShakeAsync() => Task.CompletedTask;
         public int Pour() => 1;
         public Task<int> PourAsync() => Task.FromResult(1);
+    }
+
+    public class EntryPoint
+    {
+        //public void ConfigureAppConfiguration(HostBuilderContext context, IConfigurationBuilder config) { }
+
+        //public void ConfigureHostConfiguration(IConfigurationBuilder config) { }
+
+        //public void ConfigureServices(IServiceCollection services) { }
+
+        public void ConfigureApplication(IHostApplicationBuilder builder) => builder.Services.AddSingleton<Gin>();
     }
 }
