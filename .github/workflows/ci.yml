@@ -42,8 +42,8 @@ jobs:
 
     - name: Explicit Xunit test
       run: |
-        cp tests/UnitTestEx.Api/bin/Debug/net6.0/UnitTestEx.Api.deps.json tests/UnitTestEx.Xunit.Test/bin/Debug/net6.0
-        cd tests/UnitTestEx.Xunit.Test/bin/Debug/net6.0
+        cp tests/UnitTestEx.Api/bin/Debug/net8.0/UnitTestEx.Api.deps.json tests/UnitTestEx.Xunit.Test/bin/Debug/net8.0
+        cd tests/UnitTestEx.Xunit.Test/bin/Debug/net8.0
         dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests MockHttpClientTest
         dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests PersonFunctionTest
         dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests ProductFunctionTest
