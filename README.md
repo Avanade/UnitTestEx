@@ -113,6 +113,20 @@ test.Run<Gin, int>(gin => gin.Pour())
     .AssertValue(1);
 ```
 
+Additionally, where the `TEntryPoint` is specified and implements `ConfigureApplication` (`.NET8.0` or above) this will be invoked automatically to perform any additional configuration. 
+
+``` csharp
+using var test = GenericTester.Create<Startup>();
+test.Run<Gin, int>(gin => gin.Pour())
+    .AssertSuccess()
+    .AssertValue(1);
+
+public class Startup
+{
+    public void ConfigureApplication(IHostApplicationBuilder builder) => builder.Services.AddSingleton<Gin>();
+}
+```
+
 <br/>
 
 ## DI Mocking
