@@ -44,7 +44,7 @@ namespace UnitTestEx.Abstractions
         public static void SetLocalCreateFactory(Func<TestFrameworkImplementor> createFactory)
         {
             if (_localCreateFactory.Value is not null)
-                throw new InvalidOperationException($"The local {nameof(TestFrameworkImplementor)} factory has already been set.");
+                return;
 
             _localCreateFactory.Value = createFactory ?? throw new ArgumentNullException(nameof(createFactory));
         }

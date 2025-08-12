@@ -51,7 +51,12 @@ namespace UnitTestEx
 
             var cr = new JsonElementComparer(o).CompareValue(expected, actual, pathsToIgnore);
             if (cr.HasDifferences)
-                TestFrameworkImplementor.Create().AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
+            {
+                if (o.PreambleText is null)
+                    TestFrameworkImplementor.Create().AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
+                else
+                    TestFrameworkImplementor.Create().AssertFail($"{o.PreambleText}{Environment.NewLine}Expected and Actual values are not equal:{Environment.NewLine}{cr}");
+            }
         }
 
         /// <summary>

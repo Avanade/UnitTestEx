@@ -32,10 +32,13 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void Run_Exception()
         {
+            static Func<Task> ThrowBadness() => () => throw new DivideByZeroException("Badness.");
+
             using var test = GenericTester.Create();
             test.ExpectException("Badness.")
-                .Run(() => throw new DivideByZeroException("Badness."));
+                .Run(ThrowBadness());
         }
+
 
         [Test]
         public void Run_Service()
@@ -46,14 +49,28 @@ namespace UnitTestEx.NUnit.Test.Other
                 .AssertSuccess()
                 .AssertValue(1);
 
+#if NET9_0_OR_GREATER
+            // For .NET 9.0 and greater, we can use ValueTask directly.
             test.Run<Gin, int>(gin => gin.PourAsync())
                 .AssertSuccess()
                 .AssertValue(1);
+
+            test.Run<Gin, int>(async gin => await gin.PourAsync())
+                .AssertSuccess()
+                .AssertValue(1);
+#else
+            test.Run<Gin, int>(async gin => await gin.PourAsync())
+                .AssertSuccess()
+                .AssertValue(1);
+#endif
 
             test.Run<Gin>(gin => gin.Shake())
                 .AssertSuccess();
 
             test.Run<Gin>(gin => gin.ShakeAsync())
+                .AssertSuccess();
+
+            test.Run<Gin>(async gin => await gin.ShakeAsync())
                 .AssertSuccess();
 
             test.Run<Gin>(gin => gin.Stir())
@@ -82,7 +99,7 @@ namespace UnitTestEx.NUnit.Test.Other
         public void Shake() { }
         public Task ShakeAsync() => Task.CompletedTask;
         public int Pour() => 1;
-        public Task<int> PourAsync() => Task.FromResult(1);
+        public ValueTask<int> PourAsync() => ValueTask.FromResult(1);
     }
 
     public class EntryPoint

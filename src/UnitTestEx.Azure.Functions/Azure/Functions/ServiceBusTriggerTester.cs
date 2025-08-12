@@ -261,9 +261,9 @@ namespace UnitTestEx.Azure.Functions
             ssba?.LogResult();
             wsba?.LogResult();
 
-            Implementor.WriteLine("");
-            Implementor.WriteLine(new string('=', 80));
-            Implementor.WriteLine("");
+            //Implementor.WriteLine("");
+            //Implementor.WriteLine(new string('=', 80));
+            //Implementor.WriteLine("");
         }
     }
 }

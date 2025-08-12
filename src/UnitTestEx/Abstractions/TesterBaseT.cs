@@ -209,6 +209,45 @@ namespace UnitTestEx.Abstractions
         public TSelf ReplaceSingleton<TService, TImplementation>(bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceSingleton<TService, TImplementation>(), autoResetHost);
 
         /// <summary>
+        /// Replaces (where existing), or adds, a singleton service <paramref name="instance"/>. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="instance">The instance value.</param>
+        /// <param name="serviceKey">The service key.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ReplaceKeyedSingleton<TService>(TService instance, object? serviceKey, bool autoResetHost = true) where TService : class => ConfigureServices(sc => sc.ReplaceKeyedSingleton(serviceKey, _ => instance), autoResetHost);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a singleton service using an <paramref name="implementationFactory"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="implementationFactory">The implementation factory.</param>
+        /// <param name="serviceKey">The service key.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ReplaceKeyedSingleton<TService>(object? serviceKey, Func<IServiceProvider, TService> implementationFactory, bool autoResetHost = true) where TService : class => ConfigureServices(sc => sc.ReplaceKeyedSingleton(serviceKey, implementationFactory), autoResetHost);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a singleton service. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="serviceKey">The service key.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ReplaceKeyedSingleton<TService>(object? serviceKey, bool autoResetHost = true) where TService : class => ConfigureServices(sc => sc.ReplaceKeyedSingleton<TService>(serviceKey), autoResetHost);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a singleton service. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <param name="serviceKey">The service key.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ReplaceKeyedSingleton<TService, TImplementation>(object? serviceKey, bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceKeyedSingleton<TService, TImplementation>(serviceKey), autoResetHost);
+
+        /// <summary>
         /// Replaces (where existing), or adds, a scoped service using an <paramref name="implementationFactory"/>.
         /// </summary>
         /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
@@ -233,6 +272,35 @@ namespace UnitTestEx.Abstractions
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         public TSelf ReplaceScoped<TService, TImplementation>(bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceScoped<TService, TImplementation>(), autoResetHost);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a scoped service using an <paramref name="implementationFactory"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="serviceKey">The service key.</param>
+        /// <param name="implementationFactory">The implementation factory.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ReplaceKeyedScoped<TService>(object? serviceKey, Func<IServiceProvider, object?, TService> implementationFactory, bool autoResetHost = true) where TService : class => ConfigureServices(sc => sc.ReplaceKeyedScoped(serviceKey, implementationFactory), autoResetHost);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a scoped service. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="serviceKey">The service key.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ReplaceKeyedScoped<TService>(object? serviceKey, bool autoResetHost = true) where TService : class => ConfigureServices(sc => sc.ReplaceKeyedScoped<TService>(serviceKey), autoResetHost);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a scoped service. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <param name="serviceKey">The service key.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ReplaceKeyedScoped<TService, TImplementation>(object? serviceKey, bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceKeyedScoped<TService, TImplementation>(serviceKey), autoResetHost);
 
         /// <summary>
         /// Replaces (where existing), or adds, a transient service using an <paramref name="implementationFactory"/>.
@@ -261,6 +329,35 @@ namespace UnitTestEx.Abstractions
         public TSelf ReplaceTransient<TService, TImplementation>(bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceTransient<TService, TImplementation>(), autoResetHost);
 
         /// <summary>
+        /// Replaces (where existing), or adds, a transient service using an <paramref name="implementationFactory"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="serviceKey">The service key.</param>
+        /// <param name="implementationFactory">The implementation factory.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ReplaceKeyedTransient<TService>(object? serviceKey, Func<IServiceProvider, object?, TService> implementationFactory, bool autoResetHost = true) where TService : class => ConfigureServices(sc => sc.ReplaceKeyedTransient(serviceKey, implementationFactory), autoResetHost);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a transient service. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <param name="serviceKey">The service key.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ReplaceKeyedTransient<TService>(object? serviceKey, bool autoResetHost = true) where TService : class => ConfigureServices(sc => sc.ReplaceKeyedTransient<TService>(serviceKey), autoResetHost);
+
+        /// <summary>
+        /// Replaces (where existing), or adds, a transient service. 
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <param name="serviceKey">The service key.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ReplaceKeyedTransient<TService, TImplementation>(object? serviceKey, bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceKeyedTransient<TService, TImplementation>(serviceKey), autoResetHost);
+
+        /// <summary>
         /// Wraps the host execution to perform required start-up style activities; specifically resetting the <see cref="TestSharedState"/>.
         /// </summary>
         /// <typeparam name="T">The result <see cref="Type"/>.</typeparam>
@@ -268,7 +365,6 @@ namespace UnitTestEx.Abstractions
         /// <returns>The <paramref name="result"/>.</returns>
         protected T HostExecutionWrapper<T>(Func<T> result)
         {
-            TestSetUp.LogAutoSetUpOutputs(Implementor);
             SharedState.Reset();
             return result();
         }

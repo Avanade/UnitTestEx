@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Threading.Tasks;
 using UnitTestEx.Expectations;
 
 namespace UnitTestEx.MSTest.Test.Other
@@ -19,9 +20,21 @@ namespace UnitTestEx.MSTest.Test.Other
         [TestMethod]
         public void Run_Exception()
         {
+            static Func<Task> ThrowBadness() => () => throw new DivideByZeroException("Badness.");
+
             using var test = GenericTester.Create();
             test.ExpectError("Badness.")
-                .Run(() => throw new DivideByZeroException("Badness."));
+                .Run(ThrowBadness());
+        }
+
+        [TestMethod]
+        public void Run_Exception_ValueTask()
+        {
+            static Func<ValueTask> ThrowBadness() => () => throw new DivideByZeroException("Badness.");
+
+            using var test = GenericTester.Create();
+            test.ExpectError("Badness.")
+                .Run(ThrowBadness());
         }
     }
 }

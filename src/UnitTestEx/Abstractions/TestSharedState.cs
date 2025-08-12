@@ -85,7 +85,7 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Gets the state extension data that can be used for addition state information (where applicable).
+        /// Gets the state extension data that can be used for additional state information (where applicable).
         /// </summary>
         public ConcurrentDictionary<string, object?> StateData { get; } = new ConcurrentDictionary<string, object?>();
 

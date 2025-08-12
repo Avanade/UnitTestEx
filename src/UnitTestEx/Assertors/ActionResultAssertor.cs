@@ -333,7 +333,7 @@ namespace UnitTestEx.Assertors
             AssertResultType<ContentResult>();
 
             var cr = (ContentResult)Result;
-            if (expectedValue != null && cr.Content != null && TesterBase.JsonMediaTypeNames.Contains(cr.ContentType))
+            if (expectedValue != null && cr.Content != null && !string.IsNullOrEmpty(cr.ContentType) && TesterBase.JsonMediaTypeNames.Contains(cr.ContentType))
                 return AssertValue(expectedValue, JsonSerializer.Deserialize<TValue>(cr.Content)!, pathsToIgnore);
             else
                 return AssertValue(expectedValue, cr.Content!, pathsToIgnore);

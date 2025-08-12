@@ -22,7 +22,7 @@ namespace UnitTestEx.Api.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> Get(string id)
+        public async ValueTask<IActionResult> Get(string id)
         {
             var result = await _httpClient.GetAsync($"products/{id}").ConfigureAwait(false);
             if (result.StatusCode == HttpStatusCode.NotFound)
@@ -62,9 +62,9 @@ namespace UnitTestEx.Api.Controllers
         }
 
         [HttpGet("test/problem")]
-        public Task<IActionResult> GetProblem()
+        public ValueTask<IActionResult> GetProblem()
         {
-            return Task.FromResult((IActionResult)new JsonResult(new HttpValidationProblemDetails(new Dictionary<string, string[]> { { "id", ["Not specified."] } } )));
+            return ValueTask.FromResult((IActionResult)new JsonResult(new HttpValidationProblemDetails(new Dictionary<string, string[]> { { "id", ["Not specified."] } } )));
         }
     }
 }

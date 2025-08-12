@@ -2,6 +2,13 @@
 
 Represents the **NuGet** versions.
 
+## v5.6.0
+- *Enhancement:* The `RunAsync` methods updated to support `ValueTask` as well as `Task` for the `TypeTester` and `GenericTester` (.NET 9+ only).
+- *Enhancement:* Added `HttpResultAssertor` for ASP.NET Minimal APIs `Results` (e.g. `Results.Ok()`, `Results.NotFound()`, etc.) to enable assertions via the `ToHttpResponseMessageAssertor`.
+- *Enhancement:* `TesterBase`, `GenericTester` and `TypeTester` updated to support keyed services.
+- *Enhancement:* `GenericTester` and `TypeTester` updated to support the test run execution within a DI scope (using `UseRunAsScoped`).
+- *Fixed:* The `ExpectationsArranger` updated to `Clear` versus `Reset` after an assertion run to ensure no cross-test contamination.
+
 ## v5.5.0
 - *Enhancement:* The `GenericTester` where using `.NET8.0` and above will leverage the new `IHostApplicationBuilder` versus existing `IHostBuilder` (see Microsoft [documentation](https://learn.microsoft.com/en-us/dotnet/core/extensions/generic-host) and [recommendation](https://github.com/dotnet/runtime/discussions/81090#discussioncomment-4784551)). Additionally, if a `TEntryPoint` is specified with a method signature of `public void ConfigureApplication(IHostApplicationBuilder builder)` then this will be automatically invoked during host instantiation. This is a non-breaking change as largely internal.
 

@@ -25,7 +25,7 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Gets the owning <see cref="TesterBase"/>.
         /// </summary>
-        protected TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
+        public TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
 
         /// <summary>
         /// Gets the <see cref="IServiceScope"/>.
@@ -45,7 +45,7 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Create (instantiate) the <typeparamref name="THost"/> using the <see cref="ServiceScope"/> to provide the constructor based dependency injection (DI) values.
         /// </summary>
-        private THost CreateHost() => ServiceScope.ServiceProvider.CreateInstance<THost>();
+        private THost CreateHost(object? serviceKey) => ServiceScope.ServiceProvider.CreateInstance<THost>(serviceKey);
 
         /// <summary>
         /// Orchestrates the execution of a method as described by the <paramref name="expression"/> returning no result.
@@ -85,7 +85,7 @@ namespace UnitTestEx.Hosting
 
             onBeforeRun?.Invoke(@params, paramAttribute, paramValue);
 
-            var h = CreateHost();
+            var h = CreateHost(null);
             var sw = Stopwatch.StartNew();
 
             try
@@ -146,7 +146,7 @@ namespace UnitTestEx.Hosting
 
             onBeforeRun?.Invoke(@params, paramAttribute, paramValue);
 
-            var h = CreateHost();
+            var h = CreateHost(null);
             var sw = Stopwatch.StartNew();
 
             try

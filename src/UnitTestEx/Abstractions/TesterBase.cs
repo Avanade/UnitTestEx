@@ -67,7 +67,6 @@ namespace UnitTestEx.Abstractions
             SetUp = TestSetUp.Default.Clone();
             JsonSerializer = SetUp.JsonSerializer;
             JsonComparerOptions = SetUp.JsonComparerOptions;
-            TestSetUp.LogAutoSetUpOutputs(Implementor);
         }
 
         /// <summary>
@@ -253,7 +252,7 @@ namespace UnitTestEx.Abstractions
 
             object? jo = null;
             var content = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            if (!string.IsNullOrEmpty(content) && JsonMediaTypeNames.Contains(res.Content?.Headers?.ContentType?.MediaType))
+            if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(res.Content?.Headers?.ContentType?.MediaType) && JsonMediaTypeNames.Contains(res.Content.Headers.ContentType.MediaType))
             {
                 try
                 {
@@ -270,10 +269,6 @@ namespace UnitTestEx.Abstractions
             }
             else
                 Implementor.WriteLine($"{txt} {(string.IsNullOrEmpty(content) ? "none" : content)}");
-
-            Implementor.WriteLine("");
-            Implementor.WriteLine(new string('=', 80));
-            Implementor.WriteLine("");
         }
 
         #region CreateHttpRequest

@@ -17,6 +17,9 @@ namespace UnitTestEx.Expectations
     {
         private HttpStatusCode? _httpStatusCode;
 
+        /// <inheritdoc/>
+        public override string Title => "HTTP Response Message expectations";
+
         /// <summary>
         /// Expects that the <see cref="HttpResponseMessage.StatusCode"/> is equal to the <paramref name="httpStatusCode"/>.
         /// </summary>

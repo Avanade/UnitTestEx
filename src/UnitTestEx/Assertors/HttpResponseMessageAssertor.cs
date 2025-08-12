@@ -80,7 +80,7 @@ namespace UnitTestEx.Assertors
                 return this;
             }
 
-            if (TesterBase.JsonMediaTypeNames.Contains(Response.Content.Headers?.ContentType?.MediaType))
+            if (!string.IsNullOrEmpty(Response.Content.Headers?.ContentType?.MediaType) && TesterBase.JsonMediaTypeNames.Contains(Response.Content.Headers.ContentType.MediaType!))
             {
                 var json = Response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 if (expectedValue == null)

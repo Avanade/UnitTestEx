@@ -1,4 +1,6 @@
-﻿using UnitTestEx.Expectations;
+﻿using System;
+using System.Threading.Tasks;
+using UnitTestEx.Expectations;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -20,9 +22,11 @@ namespace UnitTestEx.Xunit.Test.Other
         [Fact]
         public void Run_Exception()
         {
+            static Func<Task> ThrowBadness() => () => throw new DivideByZeroException("Badness.");
+
             using var test = GenericTester.Create();
             test.ExpectError("Badness.")
-                .Run(() => throw new System.ArithmeticException("Badness."));
+                .Run(ThrowBadness());
         }
     }
 }

@@ -448,9 +448,9 @@ namespace UnitTestEx.Azure.Functions
                 }
             }
 
-            Implementor.WriteLine("");
-            Implementor.WriteLine(new string('=', 80));
-            Implementor.WriteLine("");
+            //Implementor.WriteLine("");
+            //Implementor.WriteLine(new string('=', 80));
+            //Implementor.WriteLine("");
         }
     }
 }

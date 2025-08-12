@@ -18,6 +18,9 @@ namespace UnitTestEx.Expectations
     {
         private readonly List<string> _expectTexts = [];
 
+        /// <inheritdoc/>
+        public override string Title => "Logger expectations";
+
         /// <summary>
         /// Expects that the <see cref="ILogger"/> will have logged a message that contains the specified <paramref name="texts"/>.
         /// </summary>

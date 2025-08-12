@@ -144,10 +144,6 @@ namespace UnitTestEx.Generic
                 }
             }
 
-            Implementor.WriteLine("");
-            Implementor.WriteLine(new string('=', 80));
-            Implementor.WriteLine("");
-
             await ExpectationsArranger.AssertAsync(messages, exception).ConfigureAwait(false);
 
             return new ValueAssertor<TValue>(this, value, exception);

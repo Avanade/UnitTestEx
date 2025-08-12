@@ -21,6 +21,11 @@ namespace UnitTestEx.Expectations
         public TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
 
         /// <summary>
+        /// Gets or sets the title used in the assertion output.
+        /// </summary>
+        public abstract string Title { get; }
+
+        /// <summary>
         /// Gets or sets the order in which the expectation is asserted.
         /// </summary>
         public virtual int Order { get; } = 100;

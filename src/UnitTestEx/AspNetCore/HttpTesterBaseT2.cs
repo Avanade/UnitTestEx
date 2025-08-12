@@ -57,6 +57,18 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <inheritdoc/>
-        protected override Task AssertExpectationsAsync(HttpResponseMessage res) => ExpectationsArranger.AssertAsync(ExpectationsArranger.CreateArgs(LastLogs).AddExtra(res));
+        protected async override Task AssertExpectationsAsync(HttpResponseMessage res)
+        {
+            TValue value = default!;
+            try
+            {
+                var json = await res.Content.ReadAsStringAsync();
+                if (!string.IsNullOrEmpty(json))
+                    value = JsonSerializer.Deserialize<TValue>(json)!;
+            }
+            catch { }
+
+            await ExpectationsArranger.AssertAsync(ExpectationsArranger.CreateValueArgs(LastLogs, value).AddExtra(res));
+        }
     }
 }
