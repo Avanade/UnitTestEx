@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnitTestEx.Json;
 
 namespace UnitTestEx.Abstractions
@@ -356,6 +357,20 @@ namespace UnitTestEx.Abstractions
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         public TSelf ReplaceKeyedTransient<TService, TImplementation>(object? serviceKey, bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceKeyedTransient<TService, TImplementation>(serviceKey), autoResetHost);
+
+        /// <summary>
+        /// Delays the execution of the test for the specified <paramref name="duration"/>.
+        /// </summary>
+        /// <param name="duration">The amount of time to delay the operation. Must be a non-negative <see cref="TimeSpan"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf Delay(TimeSpan duration) => Task.Delay(duration).ContinueWith(_ => (TSelf)this).Result;
+
+        /// <summary>
+        /// Delays the execution of the test for the specified <paramref name="durationInMilliseconds"/>.
+        /// </summary>
+        /// <param name="durationInMilliseconds">The amount of time to delay the operation. Must be a non-negative <see cref="int"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf Delay(int durationInMilliseconds) => Delay(TimeSpan.FromMilliseconds(durationInMilliseconds));
 
         /// <summary>
         /// Wraps the host execution to perform required start-up style activities; specifically resetting the <see cref="TestSharedState"/>.

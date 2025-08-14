@@ -16,7 +16,7 @@ namespace UnitTestEx.NUnit.Test
         [Test]
         public async Task Get_Test1()
         {
-            using var test = ApiTester.Create<Startup>();
+            using var test = ApiTester.Create<Startup>().Delay(1000);
             (await test.Controller<PersonController>()
                 .ExpectLogContains("Get using identifier 1")
                 .RunAsync(c => c.Get(1)))

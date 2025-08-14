@@ -7,6 +7,7 @@ Represents the **NuGet** versions.
 - *Enhancement:* Added `HttpResultAssertor` for ASP.NET Minimal APIs `Results` (e.g. `Results.Ok()`, `Results.NotFound()`, etc.) to enable assertions via the `ToHttpResponseMessageAssertor`.
 - *Enhancement:* `TesterBase`, `GenericTester` and `TypeTester` updated to support keyed services.
 - *Enhancement:* `GenericTester` and `TypeTester` updated to support the test run execution within a DI scope (using `UseRunAsScoped`).
+- *Enhancement:* Added `TesterBase<TSelf>.Delay` method to enable delays to be easily added in a test where needed.
 - *Fixed:* The `ExpectationsArranger` updated to `Clear` versus `Reset` after an assertion run to ensure no cross-test contamination.
 
 ## v5.5.0
