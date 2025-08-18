@@ -21,7 +21,7 @@ namespace UnitTestEx
         /// <summary>
         /// Initializes a new instance of the <see cref="WithApiTester{TEntryPoint}"/> class.
         /// </summary>
-        /// <param name="fixture">The shared <see cref="ApiTestFixture{TEntryPoint}"/>.</param>
+        /// <param name="fixture">The <see cref="ApiTestFixture{TEntryPoint}"/>.</param>
         /// <param name="output">The <see cref="ITestOutputHelper"/>.</param>
         public WithApiTester(ApiTestFixture<TEntryPoint> fixture, ITestOutputHelper output) : base(output)
         {
@@ -30,7 +30,7 @@ namespace UnitTestEx
         }
 
         /// <summary>
-        /// Gets the shared <see cref="ApiTester{TEntryPoint}"/> for testing.
+        /// Gets the underlying <see cref="ApiTester{TEntryPoint}"/> for testing.
         /// </summary>
         public ApiTester<TEntryPoint> Test { get; }
     }

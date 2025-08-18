@@ -228,14 +228,6 @@ namespace UnitTestEx.Azure.Functions
         public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 
         /// <summary>
-        /// Enables a specified <see cref="Type"/> (of <typeparamref name="T"/>) to be tested.
-        /// </summary>
-        /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
-        /// <param name="serviceKey">The optional keyed service key.</param>
-        /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
-        public TypeTester<T> Type<T>(object? serviceKey = null) where T : class => new(this, HostExecutionWrapper(() => GetHost().Services), serviceKey);
-
-        /// <summary>
         /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="ServiceBusTriggerAttribute"/> that is to be tested.
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="ServiceBusTriggerAttribute"/> to be tested.</typeparam>

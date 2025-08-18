@@ -17,7 +17,7 @@ namespace UnitTestEx
         private ApiTester<TEntryPoint>? _apiTester = ApiTester.Create<TEntryPoint>();
 
         /// <summary>
-        /// Gets the shared <see cref="ApiTester{TEntryPoint}"/> for testing.
+        /// Gets the underlying <see cref="ApiTester{TEntryPoint}"/> for testing.
         /// </summary>
         public ApiTester<TEntryPoint> Test => _apiTester ?? throw new ObjectDisposedException(nameof(Test));
 

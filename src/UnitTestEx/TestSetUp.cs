@@ -117,6 +117,7 @@ namespace UnitTestEx
             // Top-level test dividing line!
             implementor.WriteLine("");
             implementor.WriteLine(new string('=', 80));
+            implementor.WriteLine($"Timestamp: {DateTime.UtcNow} (UTC).");
 
             // Output any previously registered auto set up outputs.
             var output = GetAutoSetUpOutput();
