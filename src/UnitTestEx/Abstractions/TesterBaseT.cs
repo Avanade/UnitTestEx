@@ -5,7 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using UnitTestEx.Hosting;
 using UnitTestEx.Json;
 
 namespace UnitTestEx.Abstractions
@@ -131,11 +133,23 @@ namespace UnitTestEx.Abstractions
         /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the services.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>This can be called multiple times prior to the underlying host being instantiated. Internally, the <paramref name="configureServices"/> is queued and then played in order when the host is initially instantiated.
-        /// Once instantiated, further calls will result in a <see cref="InvalidOperationException"/> unless a <see cref="ResetHost(bool)"/> is performed.</remarks>
+        /// <remarks>This can be called multiple times prior to the underlying host being instantiated. Internally, the <paramref name="configureServices"/> is queued and then played in order when the host is initially instantiated.</remarks>
         public new TSelf ConfigureServices(Action<IServiceCollection> configureServices, bool autoResetHost = true)
         {
             base.ConfigureServices(configureServices, autoResetHost);
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Provides an opportunity to execute logic immediately after the underlying host has been started.
+        /// </summary>
+        /// <param name="start">A start <see cref="Action"/>.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the services.</param>
+        /// <remarks>This can be called multiple times prior to the underlying host being instantiated.
+        /// See <see cref="TesterBase.OnHostStartUp"/>.</remarks>
+        public new TSelf OnHostStart(Action start, bool autoResetHost = true)
+        {
+            base.OnHostStart(start, autoResetHost);
             return (TSelf)this;
         }
 
@@ -150,7 +164,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service with a mock object.
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/> being mocked.</typeparam>
         /// <param name="mock">The <see cref="Mock{T}"/>.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -159,7 +173,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a scoped service with a mock object.
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/> being mocked.</typeparam>
         /// <param name="mock">The <see cref="Mock{T}"/>.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -168,7 +182,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a transient service with a mock object.
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/> being mocked.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/> being mocked.</typeparam>
         /// <param name="mock">The <see cref="Mock{T}"/>.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -177,7 +191,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service <paramref name="instance"/>. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="instance">The instance value.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -186,7 +200,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service using an <paramref name="implementationFactory"/>.
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="implementationFactory">The implementation factory.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -195,7 +209,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         public TSelf ReplaceSingleton<TService>(bool autoResetHost = true) where TService : class => ConfigureServices(sc => sc.ReplaceSingleton<TService>(), autoResetHost);
@@ -203,8 +217,8 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
-        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="System.Type"/>.</typeparam>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         public TSelf ReplaceSingleton<TService, TImplementation>(bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceSingleton<TService, TImplementation>(), autoResetHost);
@@ -212,7 +226,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service <paramref name="instance"/>. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="instance">The instance value.</param>
         /// <param name="serviceKey">The service key.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
@@ -222,7 +236,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service using an <paramref name="implementationFactory"/>.
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="implementationFactory">The implementation factory.</param>
         /// <param name="serviceKey">The service key.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
@@ -232,7 +246,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="serviceKey">The service key.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -241,8 +255,8 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a singleton service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
-        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="System.Type"/>.</typeparam>
         /// <param name="serviceKey">The service key.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -251,7 +265,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a scoped service using an <paramref name="implementationFactory"/>.
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="implementationFactory">The implementation factory.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -260,7 +274,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a scoped service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         public TSelf ReplaceScoped<TService>(bool autoResetHost = true) where TService : class => ConfigureServices(sc => sc.ReplaceScoped<TService>(), autoResetHost);
@@ -268,8 +282,8 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a scoped service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
-        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="System.Type"/>.</typeparam>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         public TSelf ReplaceScoped<TService, TImplementation>(bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceScoped<TService, TImplementation>(), autoResetHost);
@@ -277,7 +291,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a scoped service using an <paramref name="implementationFactory"/>.
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="serviceKey">The service key.</param>
         /// <param name="implementationFactory">The implementation factory.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
@@ -287,7 +301,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a scoped service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="serviceKey">The service key.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -296,8 +310,8 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a scoped service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
-        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="System.Type"/>.</typeparam>
         /// <param name="serviceKey">The service key.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -306,7 +320,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a transient service using an <paramref name="implementationFactory"/>.
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="implementationFactory">The implementation factory.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -315,7 +329,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a transient service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         public TSelf ReplaceTransient<TService>(bool autoResetHost = true) where TService : class => ConfigureServices(sc => sc.ReplaceTransient<TService>(), autoResetHost);
@@ -323,8 +337,8 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a transient service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
-        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="System.Type"/>.</typeparam>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         public TSelf ReplaceTransient<TService, TImplementation>(bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceTransient<TService, TImplementation>(), autoResetHost);
@@ -332,7 +346,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a transient service using an <paramref name="implementationFactory"/>.
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="serviceKey">The service key.</param>
         /// <param name="implementationFactory">The implementation factory.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
@@ -342,7 +356,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a transient service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
         /// <param name="serviceKey">The service key.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -351,8 +365,8 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Replaces (where existing), or adds, a transient service. 
         /// </summary>
-        /// <typeparam name="TService">The service <see cref="Type"/>.</typeparam>
-        /// <typeparam name="TImplementation">The implementation <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TService">The service <see cref="System.Type"/>.</typeparam>
+        /// <typeparam name="TImplementation">The implementation <see cref="System.Type"/>.</typeparam>
         /// <param name="serviceKey">The service key.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the service.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -375,7 +389,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Wraps the host execution to perform required start-up style activities; specifically resetting the <see cref="TestSharedState"/>.
         /// </summary>
-        /// <typeparam name="T">The result <see cref="Type"/>.</typeparam>
+        /// <typeparam name="T">The result <see cref="System.Type"/>.</typeparam>
         /// <param name="result">The function to create the result.</param>
         /// <returns>The <paramref name="result"/>.</returns>
         protected T HostExecutionWrapper<T>(Func<T> result)
@@ -383,5 +397,131 @@ namespace UnitTestEx.Abstractions
             SharedState.Reset();
             return result();
         }
+
+        /// <summary>
+        /// Enables a specified <see cref="System.Type"/> (of <typeparamref name="TService"/>) to be tested.
+        /// </summary>
+        /// <typeparam name="TService">The <see cref="System.Type"/> to be tested.</typeparam>
+        /// <param name="serviceKey">The optional keyed service key.</param>
+        /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
+        public TypeTester<TService> Type<TService>(object? serviceKey = null) where TService : class => new(this, HostExecutionWrapper(() => Services), serviceKey);
+
+        /// <summary>
+        /// Enables a specified <see cref="System.Type"/> (of <typeparamref name="TService"/>) to be tested.
+        /// </summary>
+        /// <typeparam name="TService">The <see cref="System.Type"/> to be tested.</typeparam>
+        /// <param name="serviceFactory">The factory to create the <typeparamref name="TService"/> instance.</param>
+        /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
+        public TypeTester<TService> Type<TService>(Func<IServiceProvider, TService> serviceFactory) where TService : class => new(this, HostExecutionWrapper(() => Services), serviceFactory);
+
+        /// <summary>
+        /// Enables a <typeparamref name="TService"/> instance to be tested managed within a <see cref="TesterBase.Services"/> <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="System.Type"/> to be tested.</typeparam>
+        /// <param name="scopedTester">The <see cref="TypeTester{TService}"/> testing function.</param>
+        /// <param name="serviceKey">The optional keyed service key.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ScopedType<TService>(Action<ScopedTypeTester<TService>> scopedTester, object? serviceKey = null) where TService : class
+        {
+            ArgumentNullException.ThrowIfNull(scopedTester);
+
+            using var scope = HostExecutionWrapper(Services.CreateScope);
+            var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, scope.ServiceProvider.CreateInstance<TService>(serviceKey));
+            scopedTester(tester);
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Enables a <typeparamref name="TService"/> instance to be tested managed within a <see cref="TesterBase.Services"/> <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="System.Type"/> to be tested.</typeparam>
+        /// <param name="serviceFactory">The factory to create the <typeparamref name="TService"/> instance.</param>
+        /// <param name="scopedTester">The <see cref="TypeTester{TService}"/> testing function.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf ScopedType<TService>(Func<IServiceProvider, TService> serviceFactory, Action<ScopedTypeTester<TService>> scopedTester) where TService : class
+        {
+            ArgumentNullException.ThrowIfNull(scopedTester);
+            using var scope = HostExecutionWrapper(Services.CreateScope);
+            var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, serviceFactory(scope.ServiceProvider));
+            scopedTester(tester);
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Enables a <typeparamref name="TService"/> instance to be tested managed within a <see cref="TesterBase.Services"/> <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="System.Type"/> to be tested.</typeparam>
+        /// <param name="scopedTesterAsync">The <see cref="TypeTester{TService}"/> testing function.</param>
+        /// <param name="serviceKey">The optional keyed service key.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+#if NET9_0_OR_GREATER
+        [OverloadResolutionPriority(1)]
+#endif
+        public TSelf ScopedType<TService>(Func<ScopedTypeTester<TService>, Task> scopedTesterAsync, object? serviceKey = null) where TService : class
+        {
+            ArgumentNullException.ThrowIfNull(scopedTesterAsync);
+
+            using var scope = HostExecutionWrapper(Services.CreateScope);
+            var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, scope.ServiceProvider.CreateInstance<TService>(serviceKey));
+            scopedTesterAsync(tester).GetAwaiter().GetResult();
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Enables a <typeparamref name="TService"/> instance to be tested managed within a <see cref="TesterBase.Services"/> <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="System.Type"/> to be tested.</typeparam>
+        /// <param name="serviceFactory">The factory to create the <typeparamref name="TService"/> instance.</param>
+        /// <param name="scopedTesterAsync">The <see cref="TypeTester{TService}"/> testing function.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+#if NET9_0_OR_GREATER
+        [OverloadResolutionPriority(1)]
+#endif
+        public TSelf ScopedType<TService>(Func<IServiceProvider, TService> serviceFactory, Func<ScopedTypeTester<TService>, Task> scopedTesterAsync) where TService : class
+        {
+            ArgumentNullException.ThrowIfNull(scopedTesterAsync);
+            using var scope = HostExecutionWrapper(Services.CreateScope);
+            var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, serviceFactory(scope.ServiceProvider));
+            scopedTesterAsync(tester).GetAwaiter().GetResult();
+            return (TSelf)this;
+        }
+
+#if NET9_0_OR_GREATER
+        /// <summary>
+        /// Enables a <typeparamref name="TService"/> instance to be tested managed within a <see cref="TesterBase.Services"/> <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="System.Type"/> to be tested.</typeparam>
+        /// <param name="scopedTesterAsync">The <see cref="TypeTester{TService}"/> testing function.</param>
+        /// <param name="serviceKey">The optional keyed service key.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        [OverloadResolutionPriority(2)]
+        public TSelf ScopedType<TService>(Func<ScopedTypeTester<TService>, ValueTask> scopedTesterAsync, object? serviceKey = null) where TService : class
+        {
+            ArgumentNullException.ThrowIfNull(scopedTesterAsync);
+
+            using var scope = HostExecutionWrapper(Services.CreateScope);
+            var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, scope.ServiceProvider.CreateInstance<TService>(serviceKey));
+            scopedTesterAsync(tester).AsTask().GetAwaiter().GetResult();
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Enables a <typeparamref name="TService"/> instance to be tested managed within a <see cref="TesterBase.Services"/> <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/>.
+        /// </summary>
+        /// <typeparam name="TService">The service <see cref="System.Type"/> to be tested.</typeparam>
+        /// <param name="serviceFactory">The factory to create the <typeparamref name="TService"/> instance.</param>
+        /// <param name="scopedTesterAsync">The <see cref="TypeTester{TService}"/> testing function.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        [OverloadResolutionPriority(2)]
+        public TSelf ScopedType<TService>(Func<IServiceProvider, TService> serviceFactory, Func<ScopedTypeTester<TService>, ValueTask> scopedTesterAsync) where TService : class
+        {
+            ArgumentNullException.ThrowIfNull(scopedTesterAsync);
+            using var scope = HostExecutionWrapper(Services.CreateScope);
+            var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, serviceFactory(scope.ServiceProvider));
+            scopedTesterAsync(tester).AsTask().GetAwaiter().GetResult();
+            return (TSelf)this;
+        }
+
+#endif
     }
 }

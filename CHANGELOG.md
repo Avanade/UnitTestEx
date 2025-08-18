@@ -5,9 +5,9 @@ Represents the **NuGet** versions.
 ## v5.6.0
 - *Enhancement:* The `RunAsync` methods updated to support `ValueTask` as well as `Task` for the `TypeTester` and `GenericTester` (.NET 9+ only).
 - *Enhancement:* Added `HttpResultAssertor` for ASP.NET Minimal APIs `Results` (e.g. `Results.Ok()`, `Results.NotFound()`, etc.) to enable assertions via the `ToHttpResponseMessageAssertor`.
-- *Enhancement:* `TesterBase`, `GenericTester` and `TypeTester` updated to support keyed services.
-- *Enhancement:* `GenericTester` and `TypeTester` updated to support the test run execution within a DI scope (using `UseRunAsScoped`).
-- *Enhancement:* Added `TesterBase<TSelf>.Delay` method to enable delays to be easily added in a test where needed.
+- *Enhancement:* `TesterBase<TSelf>` updated to support keyed services.
+- *Enhancement* `ScopedTypeTester` created to support pre-instantiated scoped service where multiple tests can be run against the same scoped instance. The existing `TypeTester` will continue to create a new non-scoped instance. These now exist on the `TesterBase<TSelf>`.
+- *Enhancement:* Added `TesterBase<TSelf>.Delay` method to enable delays to be added in a test where needed.
 - *Fixed:* The `ExpectationsArranger` updated to `Clear` versus `Reset` after an assertion run to ensure no cross-test contamination.
 
 ## v5.5.0

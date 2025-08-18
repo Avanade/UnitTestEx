@@ -11,8 +11,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
-using UnitTestEx.Hosting;
 
 namespace UnitTestEx.AspNetCore
 {
@@ -62,7 +63,7 @@ namespace UnitTestEx.AspNetCore
                 if (_waf != null)
                     return _waf;
 
-                return _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb =>
+                _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb =>
                     whb.UseSolutionRelativeContentRoot(Environment.CurrentDirectory)
                         .ConfigureAppConfiguration((_, cb) =>
                         {
@@ -83,6 +84,10 @@ namespace UnitTestEx.AspNetCore
                             SetUp.ConfigureServices?.Invoke(sc);
                             AddConfiguredServices(sc);
                         }).ConfigureLogging(lb => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); }));
+
+                OnHostStartUp();
+
+                return _waf;
             }
         }
 
@@ -150,22 +155,6 @@ namespace UnitTestEx.AspNetCore
         /// <typeparam name="TResponse">The response value <see cref="System.Type"/>.</typeparam>
         /// <returns>The <see cref="HttpTester{TResponse}"/>.</returns>
         public HttpTester<TResponse> Http<TResponse>() => new(this, GetTestServer());
-
-        /// <summary>
-        /// Enables a specified <see cref="System.Type"/> (of <typeparamref name="T"/>) to be tested.
-        /// </summary>
-        /// <typeparam name="T">The <see cref="System.Type"/> to be tested.</typeparam>
-        /// <param name="serviceKey">The optional keyed service key.</param>
-        /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
-        public TypeTester<T> Type<T>(object? serviceKey = null) where T : class => new(this, HostExecutionWrapper(Services.CreateScope), serviceKey);
-
-        /// <summary>
-        /// Enables a specified <see cref="System.Type"/> (of <typeparamref name="T"/>) to be tested.
-        /// </summary>
-        /// <typeparam name="T">The <see cref="System.Type"/> to be tested.</typeparam>
-        /// <param name="serviceFactory">The factory to create the <typeparamref name="T"/> instance.</param>
-        /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
-        public TypeTester<T> Type<T>(Func<IServiceProvider, T> serviceFactory) where T : class => new(this, HostExecutionWrapper(Services.CreateScope), serviceFactory);
 
         /// <summary>
         /// Gets the underlying <see cref="TestServer"/>.

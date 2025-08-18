@@ -6,7 +6,9 @@ using UnitTestEx.Xunit.Internal;
 using Xunit;
 using Xunit.Abstractions;
 
+#pragma warning disable IDE0130 // Namespace does not match folder structure; improves usability.
 namespace UnitTestEx
+#pragma warning restore IDE0130
 {
     /// <summary>
     /// Provides a shared <see cref="Test"/> <see cref="ApiTester{TEntryPoint}"/> to enable usage of the same underlying <see cref="ApiTesterBase{TEntryPoint, TSelf}.GetTestServer"/> instance across multiple tests.

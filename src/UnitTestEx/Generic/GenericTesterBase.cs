@@ -18,38 +18,9 @@ namespace UnitTestEx.Generic
     /// <typeparam name="TEntryPoint">The <see cref="EntryPoint"/> <see cref="Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="GenericTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-    public abstract class GenericTesterBase<TEntryPoint, TSelf>(TestFrameworkImplementor implementor) 
+    public abstract class GenericTesterBase<TEntryPoint, TSelf>(TestFrameworkImplementor implementor)
         : GenericTesterCore<TEntryPoint, GenericTesterBase<TEntryPoint, TSelf>>(implementor) where TEntryPoint : class where TSelf : GenericTesterBase<TEntryPoint, TSelf>
     {
-        private bool _runAsScoped;
-        private Func<IServiceScope, Task>? _onRunScopeFuncAsync;
-
-        /// <summary>
-        /// Indicates that the underlying <b>Run</b> methods should be scoped (i.e. <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/>.
-        /// </summary>
-        /// <param name="onRunAsScoped">The optional function to execute before the primary <b>Run*</b> methods when running as scoped.</param>
-        /// <returns>The tester to support fluent-style method-chaining.</returns>
-        /// <remarks>By default the <b>Run</b> methods are not scoped.</remarks>
-        public TSelf UseRunAsScoped(Func<IServiceScope, Task>? onRunAsScoped = null)
-        {
-            _runAsScoped = true;
-            _onRunScopeFuncAsync = onRunAsScoped;
-            return (TSelf)this;
-        }
-
-        /// <summary>
-        /// Indicates that the underlying <b>Run</b> methods should be scoped (i.e. <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/>.
-        /// </summary>
-        /// <param name="runAsScoped"><see langword="true"/> indicates scoped; otherwise, <see langword="false"/>.</param>
-        /// <returns>The tester to support fluent-style method-chaining.</returns>
-        /// <remarks>By default the <b>Run</b> methods are not scoped.</remarks>
-        public TSelf UseRunAsScoped(bool runAsScoped)
-        {
-            _runAsScoped = runAsScoped;
-            _onRunScopeFuncAsync = null;
-            return (TSelf)this;
-        }
-
         /// <summary>
         /// Executes the <paramref name="action"/> that performs the logic.
         /// </summary>
@@ -256,25 +227,11 @@ namespace UnitTestEx.Generic
             Implementor.WriteLine("GENERIC TESTER...");
             Implementor.WriteLine("");
 
-            await OnBeforeRunAsync().ConfigureAwait(false);
-            if (OnBeforeRunFuncAsync is not null)
-                await OnBeforeRunFuncAsync().ConfigureAwait(false);
-
             Exception? exception = null;
-
-            IServiceScope? scope = null;
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
             try
             {
-                scope = _runAsScoped ? Services.CreateScope() : null;
-                if (scope is not null)
-                {
-                    await OnRunScopeAsync(scope).ConfigureAwait(false);
-                    if (_onRunScopeFuncAsync is not null)
-                        await _onRunScopeFuncAsync(scope).ConfigureAwait(false);
-                }
-
                 await function().ConfigureAwait(false);
             }
             catch (AggregateException aex)
@@ -284,10 +241,6 @@ namespace UnitTestEx.Generic
             catch (Exception ex)
             {
                 exception = ex;
-            }
-            finally
-            {
-                scope?.Dispose();
             }
 
             sw.Stop();
@@ -555,26 +508,13 @@ namespace UnitTestEx.Generic
             Implementor.WriteLine("GENERIC TESTER...");
             Implementor.WriteLine("");
 
-            await OnBeforeRunAsync().ConfigureAwait(false);
-            if (OnBeforeRunFuncAsync is not null)
-                await OnBeforeRunFuncAsync().ConfigureAwait(false);
-
             Exception? exception = null;
 
-            IServiceScope? scope = null;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             TValue value = default!;
 
             try
             {
-                scope = _runAsScoped ? Services.CreateScope() : null;
-                if (scope is not null)
-                {
-                    await OnRunScopeAsync(scope).ConfigureAwait(false);
-                    if (_onRunScopeFuncAsync is not null)
-                        await _onRunScopeFuncAsync(scope).ConfigureAwait(false);
-                }
-
                 value = await function().ConfigureAwait(false);
             }
             catch (AggregateException aex)
@@ -584,10 +524,6 @@ namespace UnitTestEx.Generic
             catch (Exception ex)
             {
                 exception = ex;
-            }
-            finally
-            {
-                scope?.Dispose();
             }
 
             sw.Stop();
@@ -641,21 +577,5 @@ namespace UnitTestEx.Generic
         public async Task<ValueAssertor<TValue>> RunAsync<TValue>(Func<ValueTask<TValue>> function)
             => await RunAsync(() => function().AsTask()).ConfigureAwait(false);
 #endif
-
-        /// <summary>
-        /// Provides an opportunity to perform any pre-run logic.
-        /// </summary>
-        protected virtual Task OnBeforeRunAsync() => Task.CompletedTask;
-
-        /// <summary>
-        /// Gets or sets the function to perform any pre-run logic.
-        /// </summary>
-        public Func<Task>? OnBeforeRunFuncAsync { get; set; }
-
-        /// <summary>
-        /// Provides an opportunity to perform any logic as a result of the <see cref="UseRunAsScoped(bool)"/>.
-        /// </summary>
-        /// <remarks>This is invoked after the <see cref="OnBeforeRunAsync"/>, but before the <b>Run</b> logic.</remarks>
-        protected virtual Task OnRunScopeAsync(IServiceScope scope) => Task.CompletedTask;
     }
 }

@@ -16,25 +16,23 @@ using UnitTestEx.Json;
 namespace UnitTestEx.Hosting
 {
     /// <summary>
-    /// Provides the generic <typeparamref name="TService"/> <see cref="Type"/> unit-testing capabilities.
+    /// Provides <typeparamref name="TService"/> <see cref="Type"/> unit-testing capabilities from a parent/owning host (see <see cref="TesterBase"/>).
     /// </summary>
     /// <typeparam name="TService">The service <see cref="Type"/> (must be a <c>class</c>).</typeparam>
-    /// <remarks>Note that the <typeparamref name="TService"/> service instance is created on first use and then reused (see <see cref="GetOrCreateService"/>).</remarks>
-    public class TypeTester<TService> : HostTesterBase<TService>, IExpectations<TypeTester<TService>> where TService : class
+    /// <remarks>Note that the <typeparamref name="TService"/> service instance is created within a scope during an underlying <i>Run</i>.</remarks>
+    public class TypeTester<TService> : HostTesterBase<TService, TypeTester<TService>>, IExpectations<TypeTester<TService>> where TService : class
     {
         private readonly object? _serviceKey;
         private readonly Func<IServiceProvider, TService>? _serviceFactory;
         private TService? _service;
-        private bool _runAsScoped;
-        private Func<IServiceScope, Task>? _onRunScopeFuncAsync;
 
         /// <summary>
         /// Initializes a new <see cref="TypeTester{TFunction}"/> class.
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
-        /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
+        /// <param name="serviceProvider">The <see cref="IServiceProvider"/>.</param>
         /// <param name="serviceKey">The optional key for a keyed service.</param>
-        public TypeTester(TesterBase owner, IServiceScope serviceScope, object? serviceKey = null) : base(owner, serviceScope)
+        public TypeTester(TesterBase owner, IServiceProvider serviceProvider, object? serviceKey = null) : base(owner, serviceProvider)
         {
             _serviceKey = serviceKey;
             ExpectationsArranger = new ExpectationsArranger<TypeTester<TService>>(owner, this);
@@ -44,39 +42,13 @@ namespace UnitTestEx.Hosting
         /// Initializes a new <see cref="TypeTester{TFunction}"/> class with a factory for creating the <typeparamref name="TService"/> instance.
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
-        /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
+        /// <param name="serviceProvider">The <see cref="IServiceProvider"/>.</param>
         /// <param name="serviceFactory">The factory to create the <typeparamref name="TService"/> instance.</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public TypeTester(TesterBase owner, IServiceScope serviceScope, Func<IServiceProvider, TService> serviceFactory) : base(owner, serviceScope)
+        public TypeTester(TesterBase owner, IServiceProvider serviceProvider, Func<IServiceProvider, TService> serviceFactory) : base(owner, serviceProvider)
         {
             _serviceFactory = serviceFactory ?? throw new ArgumentNullException(nameof(serviceFactory));
             ExpectationsArranger = new ExpectationsArranger<TypeTester<TService>>(owner, this);
-        }
-
-        /// <summary>
-        /// Indicates that the underlying <b>Run</b> methods should be scoped (i.e. <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/>.
-        /// </summary>
-        /// <param name="onRunAsScoped">The optional function to execute before the primary <b>Run*</b> methods when running as scoped.</param>
-        /// <returns>The tester to support fluent-style method-chaining.</returns>
-        /// <remarks>By default the <b>Run</b> methods are not scoped.</remarks>
-        public TypeTester<TService> UseRunAsScoped(Func<IServiceScope, Task>? onRunAsScoped = null)
-        {
-            _runAsScoped = true;
-            _onRunScopeFuncAsync = onRunAsScoped;
-            return this;
-        }
-
-        /// <summary>
-        /// Indicates that the underlying <b>Run</b> methods should be scoped (i.e. <see cref="ServiceProviderServiceExtensions.CreateScope(IServiceProvider)"/>.
-        /// </summary>
-        /// <param name="runAsScoped"><see langword="true"/> indicates scoped; otherwise, <see langword="false"/>.</param>
-        /// <returns>The tester to support fluent-style method-chaining.</returns>
-        /// <remarks>By default the <b>Run</b> methods are not scoped.</remarks>
-        public TypeTester<TService> UseRunAsScoped(bool runAsScoped)
-        {
-            _runAsScoped = runAsScoped;
-            _onRunScopeFuncAsync = null;
-            return this;
         }
 
         /// <summary>
@@ -85,22 +57,9 @@ namespace UnitTestEx.Hosting
         public ExpectationsArranger<TypeTester<TService>> ExpectationsArranger { get; }
 
         /// <summary>
-        /// Gets or creates the <typeparamref name="TService"/> service instance.
+        /// Creates the scoped <typeparamref name="TService"/> service instance.
         /// </summary>
-        /// <remarks>This is intended for advanced scenarios; for the most part the <c>Run</c> or <c>RunAsync</c> methods should be used for testing as these encapsulate logging, expectations and assertions.</remarks>
-        public TService GetOrCreateService() => _service ??= _serviceFactory is null
-            ? ServiceScope.ServiceProvider.CreateInstance<TService>(_serviceKey)
-            : _serviceFactory(ServiceScope.ServiceProvider);
-
-        /// <summary>
-        /// Resets the <typeparamref name="TService"/> service instance.
-        /// </summary>
-        /// <returns>The tester to support fluent-style method-chaining.</returns>
-        public TypeTester<TService> ResetService()
-        {
-            _service = default;
-            return this;
-        }
+        private TService CreateService(IServiceScope scope) => _service ??= _serviceFactory is null ? scope.ServiceProvider.CreateInstance<TService>(_serviceKey) : _serviceFactory(scope.ServiceProvider);
 
         /// <summary>
         /// Runs the synchronous method with no result.
@@ -149,26 +108,15 @@ namespace UnitTestEx.Hosting
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
-            IServiceScope? scope = null;
             Exception? ex = null;
             var sw = Stopwatch.StartNew();
+            LogHeader();
+
             try
             {
-                LogHeader();
-                await OnBeforeRunAsync().ConfigureAwait(false);
-                if (OnBeforeRunFuncAsync is not null)
-                    await OnBeforeRunFuncAsync().ConfigureAwait(false);
-
-                scope = _runAsScoped ? ServiceScope.ServiceProvider.CreateScope() : null;
-                if (scope is not null)
-                {
-                    await OnRunScopeAsync(scope).ConfigureAwait(false);
-                    if (_onRunScopeFuncAsync is not null)
-                        await _onRunScopeFuncAsync(scope).ConfigureAwait(false);
-                }
-
-                var f = GetOrCreateService();
-                await (function ?? throw new ArgumentNullException(nameof(function)))(f).ConfigureAwait(false);
+                using var scope = Services.CreateScope();
+                var service = CreateService(scope);
+                await (function ?? throw new ArgumentNullException(nameof(function)))(service).ConfigureAwait(false);
             }
             catch (AggregateException aex)
             {
@@ -180,7 +128,6 @@ namespace UnitTestEx.Hosting
             }
             finally
             {
-                scope?.Dispose();
                 sw.Stop();
             }
 
@@ -238,27 +185,16 @@ namespace UnitTestEx.Hosting
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
-            IServiceScope? scope = null;
             TValue result = default!;
             Exception? ex = null;
             var sw = Stopwatch.StartNew();
+            LogHeader();
+
             try
             {
-                LogHeader();
-                await OnBeforeRunAsync().ConfigureAwait(false);
-                if (OnBeforeRunFuncAsync is not null)
-                    await OnBeforeRunFuncAsync().ConfigureAwait(false);
-
-                scope = _runAsScoped ? ServiceScope.ServiceProvider.CreateScope() : null;
-                if (scope is not null)
-                {
-                    await OnRunScopeAsync(scope).ConfigureAwait(false);
-                    if (_onRunScopeFuncAsync is not null)
-                        await _onRunScopeFuncAsync(scope).ConfigureAwait(false);
-                }
-
-                var f = GetOrCreateService();
-                result = await (function ?? throw new ArgumentNullException(nameof(function)))(f).ConfigureAwait(false);
+                using var scope = Services.CreateScope();
+                var service = CreateService(scope);
+                result = await (function ?? throw new ArgumentNullException(nameof(function)))(service).ConfigureAwait(false);
             }
             catch (AggregateException aex)
             {
@@ -270,7 +206,6 @@ namespace UnitTestEx.Hosting
             }
             finally
             {
-                scope?.Dispose();
                 sw.Stop();
             }
 
@@ -344,21 +279,5 @@ namespace UnitTestEx.Hosting
                 Implementor.WriteLine(ex.ToString());
             }
         }
-
-        /// <summary>
-        /// Provides an opportunity to perform any pre-run logic.
-        /// </summary>
-        protected virtual Task OnBeforeRunAsync() => Task.CompletedTask;
-
-        /// <summary>
-        /// Gets or sets the function to perform any pre-run logic.
-        /// </summary>
-        public Func<Task>? OnBeforeRunFuncAsync { get; set; }
-
-        /// <summary>
-        /// Provides an opportunity to perform any logic as a result of the <see cref="UseRunAsScoped"/>.
-        /// </summary>
-        /// <remarks>This is invoked after the <see cref="OnBeforeRunAsync"/>, but before the <b>Run</b> logic.</remarks>
-        protected virtual Task OnRunScopeAsync(IServiceScope scope) => Task.CompletedTask;
     }
 }

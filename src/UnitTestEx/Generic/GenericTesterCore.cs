@@ -106,9 +106,10 @@ namespace UnitTestEx.Generic
                 AddConfiguredServices(builder.Services);
 
                 _host = builder.Build();
+                OnHostStartUp();
                 return _host;
 #else
-                return _host ??= Host.CreateDefaultBuilder()
+                _host ??= Host.CreateDefaultBuilder()
                     .UseEnvironment(TestSetUp.Environment)
                     .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
                     .ConfigureHostConfiguration(cb =>
@@ -138,6 +139,9 @@ namespace UnitTestEx.Generic
                         SetUp.ConfigureServices?.Invoke(sc);
                         AddConfiguredServices(sc);
                     }).Build();
+                
+                OnHostStartUp();
+                return _host;
 #endif
             }
         }
