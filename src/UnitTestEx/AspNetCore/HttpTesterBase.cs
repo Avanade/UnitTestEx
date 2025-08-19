@@ -164,6 +164,8 @@ namespace UnitTestEx.AspNetCore
             /// <inheritdoc/>
             protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
+                TestSetUp.LogAutoSetUpOutputs(_httpTester.Owner.Implementor);
+
                 if (_httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync != null)
                     await _httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync(request, _httpTester.UserName, cancellationToken);
 

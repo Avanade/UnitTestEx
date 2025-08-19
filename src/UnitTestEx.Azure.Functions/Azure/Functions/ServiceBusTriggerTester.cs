@@ -31,7 +31,7 @@ namespace UnitTestEx.Azure.Functions
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        public ServiceBusTriggerTester(TesterBase owner, IServiceScope serviceScope) : base(owner, serviceScope) => ExpectationsArranger = new ExpectationsArranger<ServiceBusTriggerTester<TFunction>>(owner, this);
+        public ServiceBusTriggerTester(TesterBase owner, IServiceScope serviceScope) : base(owner, serviceScope.ServiceProvider) => ExpectationsArranger = new ExpectationsArranger<ServiceBusTriggerTester<TFunction>>(owner, this);
 
         /// <summary>
         /// Gets the <see cref="ExpectationsArranger{TSelf}"/>.
@@ -81,7 +81,7 @@ namespace UnitTestEx.Azure.Functions
 
                 if (validateTriggerProperties && a is not null)
                 {
-                    var config = ServiceScope.ServiceProvider.GetRequiredService<IConfiguration>();
+                    var config = Services.GetRequiredService<IConfiguration>();
                     var sbta = a as Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute;
                     if (sbta is not null)
                         VerifyServiceBusTriggerProperties(config, sbta);
@@ -261,9 +261,9 @@ namespace UnitTestEx.Azure.Functions
             ssba?.LogResult();
             wsba?.LogResult();
 
-            Implementor.WriteLine("");
-            Implementor.WriteLine(new string('=', 80));
-            Implementor.WriteLine("");
+            //Implementor.WriteLine("");
+            //Implementor.WriteLine(new string('=', 80));
+            //Implementor.WriteLine("");
         }
     }
 }

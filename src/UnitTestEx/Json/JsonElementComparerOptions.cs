@@ -23,6 +23,11 @@ namespace UnitTestEx.Json
         }
 
         /// <summary>
+        /// Gets or sets the optional preamble text that provides context for the comparison in the resulting error message.
+        /// </summary>
+        public string? PreambleText { get; set; } = null;
+
+        /// <summary>
         /// Gets or sets the <see cref="IEqualityComparer{String}"/> to use for comparing JSON paths.
         /// </summary>
         /// <remarks>Defaults to <see cref="StringComparer.OrdinalIgnoreCase"/>.</remarks>

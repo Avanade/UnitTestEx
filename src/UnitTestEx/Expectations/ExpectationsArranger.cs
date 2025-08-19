@@ -70,14 +70,14 @@ namespace UnitTestEx.Expectations
         }
 
         /// <summary>
-        /// Performs the expectations assertion(s) with the specified <paramref name="logs"/> and <paramref name="exception"/>.
+        /// Performs the expectations assertion(s) with the specified <paramref name="logs"/> and <paramref name="exception"/>, and then does a <see cref="Clear"/> (regardless of outcome).
         /// </summary>
         /// <param name="logs">The logs captured.</param>
         /// <param name="exception">The <see cref="Exception"/>.</param>
         public Task AssertAsync(IEnumerable<string?>? logs, Exception? exception = null) => AssertAsync(CreateArgs(logs, exception));
 
         /// <summary>
-        /// Performs the expectations assertion(s) with the specified <paramref name="logs"/>, <paramref name="value"/> and <paramref name="exception"/>.
+        /// Performs the expectations assertion(s) with the specified <paramref name="logs"/>, <paramref name="value"/> and <paramref name="exception"/>, and then does a <see cref="Clear"/> (regardless of outcome).
         /// </summary>
         /// <param name="logs">The logs captured.</param>
         /// <param name="value">The resulting value.</param>
@@ -85,18 +85,25 @@ namespace UnitTestEx.Expectations
         public Task AssertValueAsync(IEnumerable<string?>? logs, object? value, Exception? exception = null) => AssertAsync(CreateValueArgs(logs, value, exception));
 
         /// <summary>
-        /// Performs the expectations assertion(s) for the specified <paramref name="args"/> and then does a <see cref="Reset"/> (regardless of outcome).
+        /// Performs the expectations assertion(s) for the specified <paramref name="args"/> and then does a <see cref="Clear"/> (regardless of outcome).
         /// </summary>
         public async Task AssertAsync(AssertArgs args)
         {
             try
             {
+                if (_expectations.Values.Count > 0)
+                {
+                    Owner.Implementor.WriteLine("");
+                    Owner.Implementor.WriteLine("EXPECTATIONS >");
+                }
+
                 foreach (var assert in _expectations.Values.OrderBy(x => x.Order))
                 {
+                    Owner.Implementor.WriteLine($"> {assert.Title}.");
                     await assert.AssertAsync(args).ConfigureAwait(false);
                 }
             }
-            finally { Reset(); }
+            finally { Clear(); }
         }
 
         /// <summary>
@@ -111,9 +118,13 @@ namespace UnitTestEx.Expectations
         }
 
         /// <summary>
-        /// Clears (removes) any existing expectations.
+        /// <see cref="Reset"/> and clears (removes) any existing expectations.
         /// </summary>
-        public void Clear() => _expectations.Clear();
+        public void Clear()
+        {
+            Reset();
+            _expectations.Clear();
+        }
 
         /// <summary>
         /// Creates a new <see cref="AssertArgs"/>.

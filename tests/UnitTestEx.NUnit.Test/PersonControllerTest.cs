@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -16,7 +17,7 @@ namespace UnitTestEx.NUnit.Test
         [Test]
         public async Task Get_Test1()
         {
-            using var test = ApiTester.Create<Startup>();
+            using var test = ApiTester.Create<Startup>().Delay(1000);
             (await test.Controller<PersonController>()
                 .ExpectLogContains("Get using identifier 1")
                 .RunAsync(c => c.Get(1)))
@@ -313,7 +314,7 @@ namespace UnitTestEx.NUnit.Test
         {
             using var test = ApiTester.Create<Startup>();
             var hr = test.CreateHttpRequest(HttpMethod.Get, "Person/1");
-            hr.HttpContext.Response.Headers.Add("X-Test", "Test");
+            hr.HttpContext.Response.Headers.Append("X-Test", "Test");
 
             var iar = new OkResult();
 

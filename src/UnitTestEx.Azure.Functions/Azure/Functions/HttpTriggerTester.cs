@@ -36,7 +36,7 @@ namespace UnitTestEx.Azure.Functions
     /// </list>
     /// The above checks are generally neccessary to assist in ensuring that the function is being invoked correctly given the parameters have to be explicitly passed in separately.
     /// </remarks>
-    public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction>, IExpectations<HttpTriggerTester<TFunction>> where TFunction : class
+    public class HttpTriggerTester<TFunction> : HostTesterBase<TFunction, HttpTriggerTester<TFunction>>, IExpectations<HttpTriggerTester<TFunction>> where TFunction : class
     {
         private bool _methodCheck = true;
         private RouteCheckOption _routeCheckOption = RouteCheckOption.PathAndQuery;
@@ -47,7 +47,7 @@ namespace UnitTestEx.Azure.Functions
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-        public HttpTriggerTester(TesterBase owner, IServiceScope serviceScope) : base(owner, serviceScope)
+        public HttpTriggerTester(TesterBase owner, IServiceScope serviceScope) : base(owner, serviceScope.ServiceProvider)
         { 
             ExpectationsArranger = new ExpectationsArranger<HttpTriggerTester<TFunction>>(owner, this);
             this.SetHttpMethodCheck(owner.SetUp);
@@ -448,9 +448,9 @@ namespace UnitTestEx.Azure.Functions
                 }
             }
 
-            Implementor.WriteLine("");
-            Implementor.WriteLine(new string('=', 80));
-            Implementor.WriteLine("");
+            //Implementor.WriteLine("");
+            //Implementor.WriteLine(new string('=', 80));
+            //Implementor.WriteLine("");
         }
     }
 }

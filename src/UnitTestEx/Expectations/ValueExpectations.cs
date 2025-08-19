@@ -20,6 +20,9 @@ namespace UnitTestEx.Expectations
         private Func<TTester, string>? _json;
         private bool _expectNull;
 
+        /// <inheritdoc/>
+        public override string Title => "Value expectations";
+
         /// <summary>
         /// Expects that the result JSON compares to the expected <paramref name="json"/>.
         /// </summary>

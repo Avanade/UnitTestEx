@@ -139,7 +139,7 @@ namespace UnitTestEx.Azure.Functions
                 var ep2 = ep as FunctionsStartup;
                 var ep3 = new EntryPoint(ep);
 
-                return _host = new HostBuilder()
+                _host = new HostBuilder()
                     .UseEnvironment(UnitTestEx.TestSetUp.Environment)
                     .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
                     .ConfigureHostConfiguration(cb =>
@@ -180,6 +180,10 @@ namespace UnitTestEx.Azure.Functions
                         SetUp.ConfigureServices?.Invoke(sc);
                         AddConfiguredServices(sc);
                     }).Build();
+
+                OnHostStartUp();
+
+                return _host;
             }
         }
 
@@ -222,13 +226,6 @@ namespace UnitTestEx.Azure.Functions
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="HttpTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="HttpTriggerTester{TFunction}"/>.</returns>
         public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
-
-        /// <summary>
-        /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
-        /// </summary>
-        /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
-        /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
-        public TypeTester<T> Type<T>() where T : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 
         /// <summary>
         /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="ServiceBusTriggerAttribute"/> that is to be tested.

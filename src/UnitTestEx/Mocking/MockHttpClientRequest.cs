@@ -226,7 +226,7 @@ namespace UnitTestEx.Mocking
             if (_content == null)
                 return "'No content'";
 
-            if (TesterBase.JsonMediaTypeNames.Contains(_mediaType?.ToLowerInvariant()) && _content is not string)
+            if (!string.IsNullOrEmpty(_mediaType) && TesterBase.JsonMediaTypeNames.Contains(_mediaType.ToLowerInvariant()) && _content is not string)
                 return JsonSerializer.Serialize(_content);
 
             return _content.ToString();

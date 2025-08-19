@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -17,25 +18,32 @@ namespace UnitTestEx.Hosting
     /// <summary>
     /// Provides the base host unit-testing capabilities.
     /// </summary>
-    /// <typeparam name="THost">The host <see cref="Type"/>.</typeparam>
+    /// <typeparam name="TService">The host/service <see cref="Type"/>.</typeparam>
     /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
-    /// <param name="serviceScope">The <see cref="IServiceScope"/>.</param>
-    public class HostTesterBase<THost>(TesterBase owner, IServiceScope serviceScope) where THost : class
+    /// <param name="serviceProvider">The <see cref="IServiceProvider"/>.</param>
+    public class HostTesterBase<TService>(TesterBase owner, IServiceProvider serviceProvider) where TService : class
     {
+        private ILogger? _logger;
+
         /// <summary>
         /// Gets the owning <see cref="TesterBase"/>.
         /// </summary>
-        protected TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
+        public TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
 
         /// <summary>
-        /// Gets the <see cref="IServiceScope"/>.
+        /// Gets the <see cref="IServiceProvider"/>.
         /// </summary>
-        protected IServiceScope ServiceScope { get; } = serviceScope ?? throw new ArgumentNullException(nameof(serviceScope));
+        public IServiceProvider Services { get; } = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
         /// </summary>
-        protected TestFrameworkImplementor Implementor => Owner.Implementor;
+        public TestFrameworkImplementor Implementor => Owner.Implementor;
+
+        /// <summary>
+        /// Gets the <see cref="ILogger"/> for the <see cref="HostTesterBase{THost}"/>.
+        /// </summary>
+        public ILogger Logger => _logger ??= Owner.LoggerProvider.CreateLogger(GetType().Name);
 
         /// <summary>
         /// Gets or sets the <see cref="IJsonSerializer"/>.
@@ -43,9 +51,9 @@ namespace UnitTestEx.Hosting
         protected IJsonSerializer JsonSerializer => Owner.JsonSerializer;
 
         /// <summary>
-        /// Create (instantiate) the <typeparamref name="THost"/> using the <see cref="ServiceScope"/> to provide the constructor based dependency injection (DI) values.
+        /// Create (instantiate) the <typeparamref name="TService"/> using the <see cref="Services"/> to provide the constructor based dependency injection (DI) values.
         /// </summary>
-        private THost CreateHost() => ServiceScope.ServiceProvider.CreateInstance<THost>();
+        private TService CreateHost(object? serviceKey) => Services.CreateInstance<TService>(serviceKey);
 
         /// <summary>
         /// Orchestrates the execution of a method as described by the <paramref name="expression"/> returning no result.
@@ -54,7 +62,7 @@ namespace UnitTestEx.Hosting
         /// <param name="paramAttributeTypes">The optional parameter <see cref="Attribute"/> <see cref="Type"/>(s) to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting exception if any and elapsed milliseconds.</returns>
-        protected async Task<(Exception? Exception, double ElapsedMilliseconds)> RunAsync(Expression<Func<THost, Task>> expression, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
+        protected async Task<(Exception? Exception, double ElapsedMilliseconds)> RunAsync(Expression<Func<TService, Task>> expression, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
@@ -85,7 +93,7 @@ namespace UnitTestEx.Hosting
 
             onBeforeRun?.Invoke(@params, paramAttribute, paramValue);
 
-            var h = CreateHost();
+            var h = CreateHost(null);
             var sw = Stopwatch.StartNew();
 
             try
@@ -115,7 +123,7 @@ namespace UnitTestEx.Hosting
         /// <param name="paramAttributeTypes">The optional parameter <see cref="Attribute"/> <see cref="Type"/> array to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
-        protected async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<THost, Task<TValue>>> expression, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
+        protected async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<TService, Task<TValue>>> expression, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
@@ -146,7 +154,7 @@ namespace UnitTestEx.Hosting
 
             onBeforeRun?.Invoke(@params, paramAttribute, paramValue);
 
-            var h = CreateHost();
+            var h = CreateHost(null);
             var sw = Stopwatch.StartNew();
 
             try
@@ -181,8 +189,7 @@ namespace UnitTestEx.Hosting
         /// <param name="expression">The <see cref="Expression"/>.</param>
         internal static MethodCallExpression MethodCallExpressionValidate([NotNull] Expression expression)
         {
-            if (expression == null)
-                throw new ArgumentNullException(nameof(expression));
+            ArgumentNullException.ThrowIfNull(expression, nameof(expression));
 
             if (expression is not LambdaExpression lex)
                 throw new ArgumentException($"Expression must be of Type '{nameof(LambdaExpression)}'.", nameof(expression));

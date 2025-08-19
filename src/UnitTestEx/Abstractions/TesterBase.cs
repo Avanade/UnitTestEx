@@ -28,6 +28,7 @@ namespace UnitTestEx.Abstractions
         private string? _userName;
         private readonly List<Action<IServiceCollection>> _configureServices = [];
         private IEnumerable<KeyValuePair<string, string?>>? _additionalConfiguration;
+        private readonly List<Action> _hostStart = [];
 
         /// <summary>
         /// Static constructor.
@@ -67,7 +68,6 @@ namespace UnitTestEx.Abstractions
             SetUp = TestSetUp.Default.Clone();
             JsonSerializer = SetUp.JsonSerializer;
             JsonComparerOptions = SetUp.JsonComparerOptions;
-            TestSetUp.LogAutoSetUpOutputs(Implementor);
         }
 
         /// <summary>
@@ -167,7 +167,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Resets the underlying host to instantiate a new instance.
         /// </summary>
-        /// <param name="resetConfiguredServices">Indicates whether to reset the previously configured services.</param>
+        /// <param name="resetConfiguredServices">Indicates whether to reset the previously configured services and start-ups.</param>
         public void ResetHost(bool resetConfiguredServices = false)
         {
             lock (SyncRoot)
@@ -186,13 +186,44 @@ namespace UnitTestEx.Abstractions
         protected abstract void ResetHost();
 
         /// <summary>
+        /// Enables opportunity to execute logic immediately after the underlying host has been started. 
+        /// </summary>
+        /// <remarks>Where overridding ensure the base is invoked first to avoid unintended side-effects as <see cref="TesterBase"/> will invoke the registered <see cref="OnHostStart(Action, bool)"/>.
+        /// <para><i>Note:</i> a host lifetime can span one or more tests so this should not be used for per-test set-up/configuration. Equally, a <see cref="ResetHost()"/> will result in a new host instantiation on first access.</para></remarks>
+        protected virtual void OnHostStartUp()
+        {
+            foreach (var start in _hostStart)
+            {
+                start();
+            }
+        }
+
+        /// <summary>
+        /// Provides an opportunity to execute logic immediately after the underlying host has been started.
+        /// </summary>
+        /// <param name="start">A start <see cref="Action"/>.</param>
+        /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the services.</param>
+        /// <remarks>This can be called multiple times prior to the underlying host being instantiated.
+        /// See <see cref="OnHostStartUp"/>.</remarks>
+        protected void OnHostStart(Action start, bool autoResetHost = true)
+        {
+            lock (SyncRoot)
+            {
+                if (autoResetHost)
+                    ResetHost(false);
+
+                _hostStart.Add(start);
+
+            }
+        }
+
+        /// <summary>
         /// Provides an opportunity to further configure the services before the underlying host is instantiated.
         /// </summary>
         /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the services.</param>
-        /// <remarks>This can be called multiple times prior to the underlying host being instantiated. Internally, the <paramref name="configureServices"/> is queued and then played in order when the host is initially instantiated.
-        /// Once instantiated, further calls will result in a <see cref="InvalidOperationException"/> unless a <see cref="ResetHost(bool)"/> is performed.</remarks>
-        public void ConfigureServices(Action<IServiceCollection> configureServices, bool autoResetHost = true)
+        /// <remarks>This can be called multiple times prior to the underlying host being instantiated. Internally, the <paramref name="configureServices"/> is queued and then played in order when the host is initially instantiated.</remarks>
+        protected void ConfigureServices(Action<IServiceCollection> configureServices, bool autoResetHost = true)
         {
             lock (SyncRoot)
             {
@@ -253,7 +284,7 @@ namespace UnitTestEx.Abstractions
 
             object? jo = null;
             var content = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-            if (!string.IsNullOrEmpty(content) && JsonMediaTypeNames.Contains(res.Content?.Headers?.ContentType?.MediaType))
+            if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(res.Content?.Headers?.ContentType?.MediaType) && JsonMediaTypeNames.Contains(res.Content.Headers.ContentType.MediaType))
             {
                 try
                 {
@@ -270,10 +301,6 @@ namespace UnitTestEx.Abstractions
             }
             else
                 Implementor.WriteLine($"{txt} {(string.IsNullOrEmpty(content) ? "none" : content)}");
-
-            Implementor.WriteLine("");
-            Implementor.WriteLine(new string('=', 80));
-            Implementor.WriteLine("");
         }
 
         #region CreateHttpRequest

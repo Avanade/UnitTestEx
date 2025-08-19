@@ -111,11 +111,19 @@ namespace UnitTestEx.Assertors
                 if (Value is HttpResponseMessage hrm)
                     return new HttpResponseMessageAssertor(Owner, hrm);
 
-                if (Value is ActionResult ar)
+                if (Value is IActionResult ar)
                     return ActionResultAssertor.ToHttpResponseMessageAssertor(Owner, ar, httpRequest);
+#if NET7_0_OR_GREATER
+                if (Value is IResult ir)
+                    return HttpResultAssertor.ToHttpResponseMessageAssertor(Owner, ir, httpRequest);
+#endif
             }
 
+#if NET7_0_OR_GREATER
+            throw new InvalidOperationException($"Result Type '{typeof(TValue).Name}' must be either a '{nameof(HttpResponseMessage)}', '{nameof(IResult)}' or '{nameof(IActionResult)}', and the value must not be null.");
+#else
             throw new InvalidOperationException($"Result Type '{typeof(TValue).Name}' must be either a '{nameof(HttpResponseMessage)}' or '{nameof(IActionResult)}', and the value must not be null.");
+#endif
         }
     }
 }

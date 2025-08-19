@@ -11,15 +11,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
-using UnitTestEx.Hosting;
 
 namespace UnitTestEx.AspNetCore
 {
     /// <summary>
     /// Provides the basic API unit-testing capabilities.
     /// </summary>
-    /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
+    /// <typeparam name="TEntryPoint">The API startup <see cref="System.Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class ApiTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : class where TSelf : ApiTesterBase<TEntryPoint, TSelf> 
     {
@@ -62,7 +63,7 @@ namespace UnitTestEx.AspNetCore
                 if (_waf != null)
                     return _waf;
 
-                return _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb =>
+                _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb =>
                     whb.UseSolutionRelativeContentRoot(Environment.CurrentDirectory)
                         .ConfigureAppConfiguration((_, cb) =>
                         {
@@ -83,6 +84,10 @@ namespace UnitTestEx.AspNetCore
                             SetUp.ConfigureServices?.Invoke(sc);
                             AddConfiguredServices(sc);
                         }).ConfigureLogging(lb => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); }));
+
+                OnHostStartUp();
+
+                return _waf;
             }
         }
 
@@ -121,7 +126,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Gets the <see cref="ILogger"/> for the specified <typeparamref name="TCategoryName"/> from the underlying <see cref="Services"/>.
         /// </summary>
-        /// <typeparam name="TCategoryName">The <see cref="Type"/> to infer the category name.</typeparam>
+        /// <typeparam name="TCategoryName">The <see cref="System.Type"/> to infer the category name.</typeparam>
         /// <returns>The <see cref="ILogger{TCategoryName}"/>.</returns>
         public ILogger<TCategoryName> GetLogger<TCategoryName>() => Services.GetRequiredService<ILogger<TCategoryName>>();
 
@@ -134,7 +139,7 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Specify the <see cref="ControllerBase">API Controller</see> to test.
         /// </summary>
-        /// <typeparam name="TController">The API Controller <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TController">The API Controller <see cref="System.Type"/>.</typeparam>
         /// <returns>The <see cref="ControllerTester{TController}"/>.</returns>
         public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, GetTestServer());
 
@@ -145,18 +150,11 @@ namespace UnitTestEx.AspNetCore
         public HttpTester Http() => new(this, GetTestServer());
 
         /// <summary>
-        /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/> with an expected response value <see cref="Type"/>.
+        /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/> with an expected response value <see cref="System.Type"/>.
         /// </summary>
-        /// <typeparam name="TResponse">The response value <see cref="Type"/>.</typeparam>
+        /// <typeparam name="TResponse">The response value <see cref="System.Type"/>.</typeparam>
         /// <returns>The <see cref="HttpTester{TResponse}"/>.</returns>
         public HttpTester<TResponse> Http<TResponse>() => new(this, GetTestServer());
-
-        /// <summary>
-        /// Specifies the <see cref="Type"/> of <typeparamref name="T"/> that is to be tested.
-        /// </summary>
-        /// <typeparam name="T">The <see cref="Type"/> to be tested.</typeparam>
-        /// <returns>The <see cref="TypeTester{TFunction}"/>.</returns>
-        public TypeTester<T> Type<T>() where T : class => new(this, HostExecutionWrapper(Services.CreateScope));
 
         /// <summary>
         /// Gets the underlying <see cref="TestServer"/>.

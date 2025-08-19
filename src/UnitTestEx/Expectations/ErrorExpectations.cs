@@ -16,6 +16,9 @@ namespace UnitTestEx.Expectations
     /// <param name="tester">The initiating tester.</param>
     public class ErrorExpectations<TTester>(TesterBase owner, TTester tester) : ExpectationsBase<TTester>(owner, tester)
     {
+        /// <inheritdoc/>
+        public override string Title => "Error expectations";
+
         /// <summary>
         /// Gets or sets the expected error (contains) message (as distinct from the <see cref="Errors"/>).
         /// </summary>

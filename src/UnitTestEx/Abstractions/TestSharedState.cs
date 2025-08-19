@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace UnitTestEx.Abstractions
 {
@@ -14,7 +15,11 @@ namespace UnitTestEx.Abstractions
     /// </summary>
     public sealed class TestSharedState
     {
+#if NET9_0_OR_GREATER
+        private readonly Lock _lock = new();
+#else
         private readonly object _lock = new();
+#endif
         private readonly ConcurrentDictionary<string, List<(DateTime, string?)>> _logOutput = new();
 
         /// <summary>
@@ -37,7 +42,7 @@ namespace UnitTestEx.Abstractions
 
             lock (_lock)
             {
-                var logs = _logOutput.GetOrAdd(id, _ => new());
+                var logs = _logOutput.GetOrAdd(id, _ => []);
 
                 // Parse in the message date where possible to ensure correct sequencing; assumes date/time is first 25 characters.
                 DateTime now = DateTime.Now;
@@ -80,12 +85,12 @@ namespace UnitTestEx.Abstractions
                 if (!string.IsNullOrEmpty(requestId) && _logOutput.TryRemove(requestId, out var l2) && l2 != null)
                     logs.AddRange(l2);
 
-                return logs.OrderBy(x => x.Item1).Select(x => x.Item2).ToArray();
+                return [.. logs.OrderBy(x => x.Item1).Select(x => x.Item2)];
             }
         }
 
         /// <summary>
-        /// Gets the state extension data that can be used for addition state information (where applicable).
+        /// Gets the state extension data that can be used for additional state information (where applicable).
         /// </summary>
         public ConcurrentDictionary<string, object?> StateData { get; } = new ConcurrentDictionary<string, object?>();
 

@@ -15,6 +15,9 @@ namespace UnitTestEx.Expectations
     public class ExceptionExpectations<TTester>(TesterBase owner, TTester tester) : ExpectationsBase<TTester>(owner, tester)
     {
         /// <inheritdoc/>
+        public override string Title => "Exception expectations";
+
+        /// <inheritdoc/>
         public override int Order => int.MinValue;
 
         /// <summary>
