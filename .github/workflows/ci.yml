@@ -30,7 +30,7 @@ jobs:
 
     - name: Explicit MSTest test
       run: |
-        cp tests/UnitTestEx.Api/bin/Debug/net6.0/UnitTestEx.Api.deps.json tests/UnitTestEx.MSTest.Test/bin/Debug/net8.0
+        cp tests/UnitTestEx.Api/bin/Debug/net8.0/UnitTestEx.Api.deps.json tests/UnitTestEx.MSTest.Test/bin/Debug/net8.0
         cd tests/UnitTestEx.MSTest.Test/bin/Debug/net8.0
         dotnet test UnitTestEx.MSTest.Test.dll --no-build --verbosity normal
 
