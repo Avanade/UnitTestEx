@@ -114,10 +114,12 @@ namespace UnitTestEx
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         public static void LogAutoSetUpOutputs(TestFrameworkImplementor implementor)
         {
+            var now = DateTime.UtcNow;
+
             // Top-level test dividing line!
             implementor.WriteLine("");
             implementor.WriteLine(new string('=', 80));
-            implementor.WriteLine($"Timestamp: {DateTime.UtcNow} (UTC).");
+            implementor.WriteLine($"Timestamp: {now.ToLocalTime()} (local) / {now} (UTC).");
 
             // Output any previously registered auto set up outputs.
             var output = GetAutoSetUpOutput();

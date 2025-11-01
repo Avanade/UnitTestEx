@@ -18,7 +18,7 @@ namespace UnitTestEx.Expectations
     {
         private const string NullJson = "null";
         private Func<TTester, string>? _json;
-        private bool _expectNull;
+        private bool _expectNull = true;
 
         /// <inheritdoc/>
         public override string Title => "Value expectations";
@@ -27,7 +27,11 @@ namespace UnitTestEx.Expectations
         /// Expects that the result JSON compares to the expected <paramref name="json"/>.
         /// </summary>
         /// <param name="json">The expected JSON function.</param>
-        public void SetExpectJson(Func<TTester, string> json) => _json = json ?? throw new ArgumentNullException(nameof(json));
+        public void SetExpectJson(Func<TTester, string> json)
+        {
+            _json = json ?? throw new ArgumentNullException(nameof(json));
+            _expectNull = false;
+        }
 
         /// <summary>
         /// Expects the the result JSON is <c>null</c>.
@@ -79,7 +83,7 @@ namespace UnitTestEx.Expectations
         /// <inheritdoc/>
         protected override Task OnLastAssertAsync(AssertArgs args)
         {
-            if (!ValueMatched)
+            if (!_expectNull && !ValueMatched)
                 args.Tester.Implementor.AssertFail($"Expected value; however, none was returned.");
 
             return Task.CompletedTask;
