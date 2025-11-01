@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v5.6.1
+- *Fixed:* The `ValueExpectations` corrected to ensure that the expected value is correctly compared against the actual value.
+
 ## v5.6.0
 - *Enhancement:* The `RunAsync` methods updated to support `ValueTask` as well as `Task` for the `TypeTester` and `GenericTester` (.NET 9+ only).
 - *Enhancement:* Added `HttpResultAssertor` for ASP.NET Minimal APIs `Results` (e.g. `Results.Ok()`, `Results.NotFound()`, etc.) to enable assertions via the `ToHttpResponseMessageAssertor`.
