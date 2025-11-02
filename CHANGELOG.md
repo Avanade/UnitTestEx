@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v5.6.2
+- *Fixed:* Republish packages with a new version; last publish was incomplete.
+
 ## v5.6.1
 - *Fixed:* The `ValueExpectations` corrected to ensure that the expected value is correctly compared against the actual value.
 
