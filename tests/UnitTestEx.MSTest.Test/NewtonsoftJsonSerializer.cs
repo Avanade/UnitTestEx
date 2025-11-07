@@ -66,7 +66,7 @@ namespace UnitTestEx.MSTest.Test
         /// <summary>
         /// Copies the settings.
         /// </summary>
-        private Nsj.JsonSerializerSettings CopySettings(JsonWriteFormat format)
+        private Nsj.JsonSerializerSettings CopySettings(JsonWriteFormat? format)
         {
             var s = new Nsj.JsonSerializerSettings
             {
@@ -89,7 +89,7 @@ namespace UnitTestEx.MSTest.Test
                 Context = Settings.Context,
                 DateFormatString = Settings.DateFormatString,
                 MaxDepth = Settings.MaxDepth,
-                Formatting = format == JsonWriteFormat.None ? Nsj.Formatting.None : Nsj.Formatting.Indented,
+                Formatting = format is null ? Settings.Formatting : format == JsonWriteFormat.None ? Nsj.Formatting.None : Nsj.Formatting.Indented,
                 DateFormatHandling = Settings.DateFormatHandling,
                 DateTimeZoneHandling = Settings.DateTimeZoneHandling,
                 DateParseHandling = Settings.DateParseHandling,
@@ -105,6 +105,9 @@ namespace UnitTestEx.MSTest.Test
 
             return s;
         }
+
+        /// <inheritdoc/>
+        public IJsonSerializer Clone() => new NewtonsoftJsonSerializer(CopySettings(null));
     }
 }
 

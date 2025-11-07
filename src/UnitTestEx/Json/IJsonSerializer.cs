@@ -45,5 +45,11 @@ namespace UnitTestEx.Json
         /// <param name="json">The JSON <see cref="string"/>.</param>
         /// <returns>The corresponding typed value.</returns>
         T? Deserialize<T>(string json);
+
+        /// <summary>
+        /// Clones the <see cref="IJsonSerializer"/>.
+        /// </summary>
+        /// <returns>The cloned <see cref="IJsonSerializer"/>.</returns>
+        IJsonSerializer Clone();
     }
 }
