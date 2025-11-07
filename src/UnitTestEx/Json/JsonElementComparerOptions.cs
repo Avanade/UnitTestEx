@@ -77,7 +77,7 @@ namespace UnitTestEx.Json
             MaxDifferences = MaxDifferences,
             ValueComparison = ValueComparison,
             NullComparison = NullComparison,
-            JsonSerializer = JsonSerializer
+            JsonSerializer = JsonSerializer?.Clone()
         };
     }
 }

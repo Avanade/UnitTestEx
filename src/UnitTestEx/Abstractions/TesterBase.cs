@@ -35,6 +35,8 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         static TesterBase()
         {
+            TestSetUp.Force();
+
             try
             {
                 var fi = new FileInfo(Path.Combine(Environment.CurrentDirectory, "appsettings.unittest.json"));

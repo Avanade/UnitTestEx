@@ -25,6 +25,7 @@ namespace UnitTestEx
     {
         private static readonly SemaphoreSlim _semaphore = new(1, 1);
         private static readonly ConcurrentQueue<string> _autoSetUpOutputs = new();
+        private static readonly ConcurrentDictionary<string, object?> _registeredAssemblies = new();
 
         private TestSetUp? _clonedFrom;
         private bool _setUpSet = false;
@@ -40,13 +41,16 @@ namespace UnitTestEx
         /// <remarks>Wires up the <see cref="OneOffTestSetUpAttribute.SetUp()"/> invocation whenever an <see cref="Assembly"/> is <see cref="AppDomain.AssemblyLoad">loaded.</see></remarks>
         static TestSetUp()
         {
-            // Load dependent UnitTestEx assemblies as they may not have been loaded yet!
-            foreach (var fi in new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory).EnumerateFiles("*.dll").Where(f => f.Name.StartsWith("UnitTestEx.")))
+            // Load all dependent assemblies to ensure all one off test set up(s) execute before any test exection is perfomed.
+            foreach (var fi in new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory).EnumerateFiles("*.dll"))
                 Assembly.LoadFrom(fi.FullName);
 
             // Wire up for any assemblies already loaded.
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                OneOffTestSetUpAttribute.SetUp(assembly);
+            {
+                if (_registeredAssemblies.TryAdd(assembly.FullName!, null))
+                    OneOffTestSetUpAttribute.SetUp(assembly);
+            }
 
             // Wire up for any future assembly loading.
             AppDomain.CurrentDomain.AssemblyLoad += (_, e) => OneOffTestSetUpAttribute.SetUp(e.LoadedAssembly);
@@ -199,8 +203,8 @@ namespace UnitTestEx
         /// <remarks>The <see cref="RegisterSetUp"/> and <see cref="RegisterAutoSetUp"/> will reference the originating unless explicitly registered (overridden) for the cloned instance.</remarks>
         public TestSetUp Clone() => new()
         {
-            JsonSerializer = JsonSerializer,
-            JsonComparerOptions = JsonComparerOptions,
+            JsonSerializer = JsonSerializer.Clone(),
+            JsonComparerOptions = JsonComparerOptions.Clone(),
             Properties = new Dictionary<string, object?>(Properties),
             DefaultUserName = DefaultUserName,
             UserNameConverter = UserNameConverter,
@@ -255,7 +259,7 @@ namespace UnitTestEx
         public async Task<bool> SetUpAsync(object? data = null, CancellationToken cancellationToken = default)
         {
             if (SetUpFunc == null && AutoSetUpFunc == null)
-                throw new InvalidOperationException("Set up can not be invoked as no set up function has been registered; please use RegisterSetUp() ot AutoRegisterSetUp() to enable.");
+                throw new InvalidOperationException("Set up can not be invoked as no set up function has been registered; please use RegisterSetUp() or AutoRegisterSetUp() to enable.");
 
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try

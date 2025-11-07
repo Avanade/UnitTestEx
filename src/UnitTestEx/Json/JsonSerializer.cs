@@ -64,5 +64,8 @@ namespace UnitTestEx.Json
 
         /// <inheritdoc/>
         public string Serialize<T>(T value, JsonWriteFormat? format = null) => Stj.JsonSerializer.Serialize(value, format == null || format.Value == JsonWriteFormat.None ? Options : IndentedOptions);
+
+        /// <inheritdoc/>
+        public IJsonSerializer Clone() => new JsonSerializer(new Stj.JsonSerializerOptions(Options));
     }
 }

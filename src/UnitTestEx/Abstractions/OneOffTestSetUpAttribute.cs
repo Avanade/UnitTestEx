@@ -14,9 +14,6 @@ namespace UnitTestEx.Abstractions
     [AttributeUsage(AttributeTargets.Assembly, Inherited = false, AllowMultiple = false)]
     public class OneOffTestSetUpAttribute(Type type) : Attribute
     {
-        private static readonly object _oneOffSetUpLock = new();
-        private static readonly HashSet<Type> _oneOffSetUpTypes = [];
-
         /// <summary>
         /// Performs the set up for the specified <paramref name="assembly"/> where configured using the <see cref="OneOffTestSetUpAttribute"/>.
         /// </summary>
