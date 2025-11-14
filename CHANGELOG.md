@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v5.7.0
+- *Enhancement:* Added `.NET10.0` support to all `UnitTestEx` packages.
+- *Enhancement:* Added `AssertNoNamedHeader` to the `HttpResponseMessageAssertor` to enable asserting that a named header is not present in the response.
+
 ## v5.6.3
 - *Fixed:* `TestSetUp` fixed to load _all_ assemblies on start up (versus selective) to ensure all `OneOffTestSetUpAttribute` implementations are executed prior to any test executions.
 - *Fixed:* Added `IJsonSerializer.Clone()` and `JsonElementComparerOptions.Clone` to ensure cross test contamination does not occur.
