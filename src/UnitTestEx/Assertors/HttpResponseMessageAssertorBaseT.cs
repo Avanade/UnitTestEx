@@ -213,7 +213,7 @@ namespace UnitTestEx.Assertors
 
             try
             {
-                val = GetValue<IDictionary<string, string[]>>(null); 
+                val = GetValue<IDictionary<string, string[]>>(null);
             }
             catch (Exception)
             {
@@ -292,6 +292,19 @@ namespace UnitTestEx.Assertors
                 Implementor.AssertAreEqual(string.Join(", ", values), string.Join(", ", hvals), $"Expected and Actual '{name}' header values are not equal.");
             else
                 Implementor.AssertFail($"The '{name}' header was not found.");
+
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Asserts that a response header does not exist with the specified <paramref name="name"/>.
+        /// </summary>
+        /// <param name="name">The header name.</param>
+        /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
+        public TSelf AssertNoNamedHeader(string name)
+        {
+            if (Response.Headers.TryGetValues(name ?? throw new ArgumentNullException(nameof(name)), out var _))
+                Implementor.AssertFail($"The '{name}' header was found when it was expected to be absent.");
 
             return (TSelf)this;
         }

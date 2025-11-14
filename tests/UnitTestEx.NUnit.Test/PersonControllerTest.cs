@@ -320,7 +320,8 @@ namespace UnitTestEx.NUnit.Test
 
             new Assertors.ValueAssertor<IActionResult>(test, iar, null)
                 .ToHttpResponseMessageAssertor(hr)
-                .AssertNamedHeader("X-Test", "Test");
+                .AssertNamedHeader("X-Test", "Test")
+                .AssertNoNamedHeader("X-Absent");
         }
     }
 }
