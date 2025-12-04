@@ -196,7 +196,10 @@ namespace UnitTestEx.Azure.Functions
                 {
                     _host.Dispose();
                     _host = null;
-                    Implementor.WriteLine("The underlying UnitTestEx 'FunctionTester' Host has been reset.");
+                    Implementor.WriteLine("");
+                    Implementor.WriteLine("** The underlying UnitTestEx 'FunctionTester' Host has been reset. **");
+                    Implementor.WriteLine("");
+
                 }
             }
         }

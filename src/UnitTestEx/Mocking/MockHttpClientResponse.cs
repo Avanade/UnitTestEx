@@ -182,32 +182,35 @@ namespace UnitTestEx.Mocking
         /// </summary>
         /// <param name="content">The <see cref="string"/> content.</param>
         /// <param name="statusCode">The optional <see cref="HttpStatusCode"/> (defaults to <see cref="HttpStatusCode.OK"/>).</param>
+        /// <param name="mediaType">The optional media type (defaults to <see cref="MediaTypeNames.Text.Plain"/>).</param>
         /// <param name="response">The optional action to enable additional configuration of the <see cref="HttpResponseMessage"/>.</param>
-        public void With(string content, HttpStatusCode? statusCode = null, Action<HttpResponseMessage>? response = null) => With(new StringContent(content ?? throw new ArgumentNullException(nameof(content))), statusCode, response);
+        public void With(string content, HttpStatusCode? statusCode = null, string? mediaType = MediaTypeNames.Text.Plain, Action<HttpResponseMessage>? response = null) => With(new StringContent(content ?? throw new ArgumentNullException(nameof(content)), null, mediaType!), statusCode, response);
 
         /// <summary>
         /// Provides the mocked response using the <paramref name="value"/> which will be automatically converted to JSON content.
         /// </summary>
         /// <typeparam name="T">The value <see cref="Type"/>.</typeparam>
-        /// <param name="value">The value to convert to <see cref="MediaTypeNames.Application.Json"/> content.</param>
+        /// <param name="value">The value to convert to JSON content.</param>
         /// <param name="statusCode">The optional <see cref="HttpStatusCode"/> (defaults to <see cref="HttpStatusCode.OK"/>).</param>
+        /// <param name="mediaType">The optional media type (defaults to <see cref="MediaTypeNames.Application.Json"/>).</param>
         /// <param name="response">The optional action to enable additional configuration of the <see cref="HttpResponseMessage"/>.</param>
-        public void WithJson<T>(T value, HttpStatusCode? statusCode = null, Action<HttpResponseMessage>? response = null) => WithJson(_clientRequest.JsonSerializer.Serialize(value, JsonWriteFormat.None), statusCode, response);
+        public void WithJson<T>(T value, HttpStatusCode? statusCode = null, string? mediaType = MediaTypeNames.Application.Json, Action<HttpResponseMessage>? response = null) => WithJson(_clientRequest.JsonSerializer.Serialize(value, JsonWriteFormat.None), statusCode, mediaType, response);
 
         /// <summary>
         /// Provides the mocked response using the <paramref name="json"/> formatted string as the content.
         /// </summary>
         /// <param name="json">The <see cref="MediaTypeNames.Application.Json"/> content.</param>
         /// <param name="statusCode">The optional <see cref="HttpStatusCode"/> (defaults to <see cref="HttpStatusCode.OK"/>).</param>
+        /// <param name="mediaType">The optional media type (defaults to <see cref="MediaTypeNames.Application.Json"/>).</param>
         /// <param name="response">The optional action to enable additional configuration of the <see cref="HttpResponseMessage"/>.</param>
 #if NET7_0_OR_GREATER
-        public void WithJson([StringSyntax(StringSyntaxAttribute.Json)] string json, HttpStatusCode? statusCode = null, Action<HttpResponseMessage>? response = null)
+        public void WithJson([StringSyntax(StringSyntaxAttribute.Json)] string json, HttpStatusCode? statusCode = null, string? mediaType = MediaTypeNames.Application.Json, Action<HttpResponseMessage>? response = null)
 #else
-        public void WithJson(string json, HttpStatusCode? statusCode = null, Action<HttpResponseMessage>? response = null)
+        public void WithJson(string json, HttpStatusCode? statusCode = null, string? mediaType = MediaTypeNames.Application.Json, Action<HttpResponseMessage>? response = null)
 #endif
         {
             var content = new StringContent(json ?? throw new ArgumentNullException(nameof(json)));
-            content.Headers.ContentType = MediaTypeHeaderValue.Parse(MediaTypeNames.Application.Json);
+            content.Headers.ContentType = MediaTypeHeaderValue.Parse(mediaType ?? MediaTypeNames.Application.Json);
             With(content, statusCode, response);
         }
 
@@ -217,21 +220,23 @@ namespace UnitTestEx.Mocking
         /// <typeparam name="TAssembly">The <see cref="Type"/> used to infer <see cref="Assembly"/> that contains the embedded resource.</typeparam>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <param name="statusCode">The optional <see cref="HttpStatusCode"/> (defaults to <see cref="HttpStatusCode.OK"/>).</param>
+        /// <param name="mediaType">The optional media type (defaults to <see cref="MediaTypeNames.Application.Json"/>).</param>
         /// <param name="response">The optional action to enable additional configuration of the <see cref="HttpResponseMessage"/>.</param>
-        public void WithJsonResource<TAssembly>(string resourceName, HttpStatusCode? statusCode = null, Action<HttpResponseMessage>? response = null)
-            => WithJsonResource(resourceName, statusCode, response, typeof(TAssembly).Assembly);
+        public void WithJsonResource<TAssembly>(string resourceName, HttpStatusCode? statusCode = null, string? mediaType = MediaTypeNames.Application.Json, Action<HttpResponseMessage>? response = null)
+            => WithJsonResource(resourceName, statusCode, mediaType, response, typeof(TAssembly).Assembly);
 
         /// <summary>
         /// Provides the mocked response using the JSON formatted embedded resource string as the content.
         /// </summary>
         /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
         /// <param name="statusCode">The optional <see cref="HttpStatusCode"/> (defaults to <see cref="HttpStatusCode.OK"/>).</param>
+        /// <param name="mediaType">The optional media type (defaults to <see cref="MediaTypeNames.Application.Json"/>).</param>
         /// <param name="response">The optional action to enable additional configuration of the <see cref="HttpResponseMessage"/>.</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
-        public void WithJsonResource(string resourceName, HttpStatusCode? statusCode = null, Action<HttpResponseMessage>? response = null, Assembly? assembly = null)
+        public void WithJsonResource(string resourceName, HttpStatusCode? statusCode = null, string? mediaType = MediaTypeNames.Application.Json, Action<HttpResponseMessage>? response = null, Assembly? assembly = null)
         {
             using var sr = Resource.GetStream(resourceName, assembly ?? Assembly.GetCallingAssembly());
-            WithJson(sr.ReadToEnd(), statusCode, response);
+            WithJson(sr.ReadToEnd(), statusCode, mediaType, response);
         }
 
         /// <summary>

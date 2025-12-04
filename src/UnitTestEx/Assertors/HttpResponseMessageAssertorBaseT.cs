@@ -64,6 +64,12 @@ namespace UnitTestEx.Assertors
         public TSelf AssertContentTypeJson() => AssertContentType(MediaTypeNames.Application.Json);
 
         /// <summary>
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> content type is '<c>application/problem+json</c>'.
+        /// </summary>
+        /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
+        public TSelf AssertContentTypeProblemJson() => AssertContentType("application/problem+json");
+
+        /// <summary>
         /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> content type is <see cref="MediaTypeNames.Text.Plain"/>.
         /// </summary>
         /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
@@ -186,6 +192,18 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
         public TSelf AssertForbidden() => Assert(HttpStatusCode.Forbidden);
+
+        /// <summary>
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> is a <see cref="HttpStatusCode.InternalServerError"/>.
+        /// </summary>
+        /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
+        public TSelf AssertInternalServerError() => Assert(HttpStatusCode.InternalServerError);
+
+        /// <summary>
+        /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> is a <see cref="HttpStatusCode.ServiceUnavailable"/>.
+        /// </summary>
+        /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
+        public TSelf AssertServiceUnavailable() => Assert(HttpStatusCode.ServiceUnavailable);
 
         /// <summary>
         /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> contains the expected error <paramref name="messages"/>.

@@ -100,7 +100,9 @@ namespace UnitTestEx.AspNetCore
                 {
                     _waf.Dispose();
                     _waf = null;
-                    Implementor.WriteLine("The underlying UnitTestEx 'ApiTester' Host has been reset.");
+                    Implementor.WriteLine("");
+                    Implementor.WriteLine("** The underlying UnitTestEx 'ApiTester' Host has been reset. **");
+                    Implementor.WriteLine("");
                 }
             }
         }
@@ -180,11 +182,8 @@ namespace UnitTestEx.AspNetCore
             if (_disposed)
                 return;
 
-            if (_waf != null)
-            {
-                _waf.Dispose();
-                _waf = null;
-            }
+            _waf?.Dispose();
+            _waf = null;
 
             _disposed = true;
         }

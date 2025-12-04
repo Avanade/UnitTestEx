@@ -187,7 +187,7 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Specifies that the configurations for the <see cref="GetHttpClient()"/> aer to be used.
+        /// Specifies that the configurations for the <see cref="GetHttpClient()"/> are to be used.
         /// </summary>
         /// <returns>The <see cref="MockHttpClient"/> to support fluent-style method-chaining.</returns>
         /// <remarks>By default the <see cref="GetHttpClient()"/> configurations are not invoked.</remarks>
@@ -428,7 +428,6 @@ namespace UnitTestEx.Mocking
                         (res ?? new()).Add(seq.Respond());
                     }
                 });
-
             }
         }
 
