@@ -39,13 +39,14 @@ namespace UnitTestEx.Assertors
         /// Gets the response content as the deserialized JSON value.
         /// </summary>
         /// <returns>The result value.</returns>
+        /// <remarks>The corresponding content type is not asserted, where this is required then <see cref="HttpResponseMessageAssertorBase.GetValue{T}(string?)"/> should be used.</remarks>
         public TValue? Value
         {
             get
             {
                 if (!_valueIsDeserialized)
                 {
-                    _value = GetValue<TValue>();
+                    _value = GetValue<TValue>(null);
                     _valueIsDeserialized = true;
                 }
 
@@ -60,7 +61,7 @@ namespace UnitTestEx.Assertors
         /// <returns>The <see cref="HttpResponseMessageAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
         public HttpResponseMessageAssertor<TValue> AssertLocationHeader(Func<TValue?, string> expected)
         {
-            Implementor.AssertAreEqual(expected?.Invoke(GetValue<TValue>()), Response.Headers?.Location?.ToString(), $"Expected and Actual HTTP Response Header '{HeaderNames.Location}' values are not equal.");
+            Implementor.AssertAreEqual(expected?.Invoke(Value), Response.Headers?.Location?.ToString(), $"Expected and Actual HTTP Response Header '{HeaderNames.Location}' values are not equal.");
             return this;
         }
 
@@ -71,7 +72,7 @@ namespace UnitTestEx.Assertors
         /// <returns>The <see cref="HttpResponseMessageAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
         public HttpResponseMessageAssertor<TValue> AssertLocationHeader(Func<TValue?, Uri> expectedUri)
         {
-            Implementor.AssertAreEqual(expectedUri?.Invoke(GetValue<TValue>()), Response.Headers?.Location, $"Expected and Actual HTTP Response Header '{HeaderNames.Location}' values are not equal.");
+            Implementor.AssertAreEqual(expectedUri?.Invoke(Value), Response.Headers?.Location, $"Expected and Actual HTTP Response Header '{HeaderNames.Location}' values are not equal.");
             return this;
         }
 
@@ -100,7 +101,7 @@ namespace UnitTestEx.Assertors
         /// <param name="expected">The expected string.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
         public HttpResponseMessageAssertor<TValue> AssertLocationHeaderContains(Func<TValue?, string> expected)
-            => AssertLocationHeaderContains(expected?.Invoke(GetValue<TValue>())!);
+            => AssertLocationHeaderContains(expected?.Invoke(Value)!);
 
         /// <summary>
         /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> matches the <paramref name="expectedValue"/>.

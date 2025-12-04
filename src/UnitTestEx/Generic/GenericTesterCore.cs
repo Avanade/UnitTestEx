@@ -155,7 +155,9 @@ namespace UnitTestEx.Generic
                 {
                     _host.Dispose();
                     _host = null;
-                    Implementor.WriteLine("The underlying UnitTestEx 'GenericTester' Host has been reset.");
+                    Implementor.WriteLine("");
+                    Implementor.WriteLine("** The underlying UnitTestEx 'GenericTester' Host has been reset. **");
+                    Implementor.WriteLine("");
                 }
             }
         }

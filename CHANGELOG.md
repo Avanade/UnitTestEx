@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v5.8.0
+- *Enhancement:* Extended the `MockHttpClientResponse.With*` methods to support optional _media type_ parameter to enable specification of the `Content-Type` header value.
+- *Enhancement:* Added `HttpResponseMessageAssertor.AssertContentTypeProblemJson` to enable asserting that the content type is `application/problem+json`.
+- *Fixed:* `HttpResponseMessageAssertor<TValue>.Value` no longer asserts the content type as `application/json` by default as this could not be overridden; this should be asserted explicitly using `AssertContentType()`, `AssertContentTypeJson()`, `AssertContentTypeProblemJson`, etc.
+
 ## v5.7.0
 - *Enhancement:* Added `.NET10.0` support to all `UnitTestEx` packages.
 - *Enhancement:* Added `AssertNoNamedHeader` to the `HttpResponseMessageAssertor` to enable asserting that a named header is not present in the response.
