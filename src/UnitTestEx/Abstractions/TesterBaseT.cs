@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using UnitTestEx.Hosting;
@@ -18,6 +19,8 @@ namespace UnitTestEx.Abstractions
     /// <typeparam name="TSelf">The <see cref="TesterBase{TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class TesterBase<TSelf> : TesterBase where TSelf : TesterBase<TSelf>
     {
+        private Func<IServiceProvider, Task>? _scopedSetUpAsync;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="TesterBase{TSelf}"/> class.
         /// </summary>
@@ -115,6 +118,17 @@ namespace UnitTestEx.Abstractions
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         /// <remarks>Usage will result in a <see cref="TesterBase.ResetHost()"/>.</remarks>
         public TSelf UseAdditionalConfiguration(string key, string? value) => UseAdditionalConfiguration([new KeyValuePair<string, string?>(key, value)]);
+
+        /// <summary>
+        /// Updates (replaces) the function that will be executed directly before each <see cref="ScopedTypeTester{TService}"/> is instantiated to allow standardized/common set up to occur.
+        /// </summary>
+        /// <param name="setupAsync">The set-up function.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf UseScopedTypeSetUp(Func<IServiceProvider, Task> setupAsync)
+        {
+            _scopedSetUpAsync = setupAsync;
+            return (TSelf)this;
+        }
 
         /// <summary>
         /// Resets the underlying host to instantiate a new instance.
@@ -426,6 +440,7 @@ namespace UnitTestEx.Abstractions
             ArgumentNullException.ThrowIfNull(scopedTester);
 
             using var scope = HostExecutionWrapper(Services.CreateScope);
+            InvokeScopedTesterSetUp(scope);
             var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, scope.ServiceProvider.CreateInstance<TService>(serviceKey));
             scopedTester(tester);
             return (TSelf)this;
@@ -442,6 +457,7 @@ namespace UnitTestEx.Abstractions
         {
             ArgumentNullException.ThrowIfNull(scopedTester);
             using var scope = HostExecutionWrapper(Services.CreateScope);
+            InvokeScopedTesterSetUp(scope);
             var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, serviceFactory(scope.ServiceProvider));
             scopedTester(tester);
             return (TSelf)this;
@@ -462,6 +478,7 @@ namespace UnitTestEx.Abstractions
             ArgumentNullException.ThrowIfNull(scopedTesterAsync);
 
             using var scope = HostExecutionWrapper(Services.CreateScope);
+            InvokeScopedTesterSetUp(scope);
             var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, scope.ServiceProvider.CreateInstance<TService>(serviceKey));
             scopedTesterAsync(tester).GetAwaiter().GetResult();
             return (TSelf)this;
@@ -481,6 +498,7 @@ namespace UnitTestEx.Abstractions
         {
             ArgumentNullException.ThrowIfNull(scopedTesterAsync);
             using var scope = HostExecutionWrapper(Services.CreateScope);
+            InvokeScopedTesterSetUp(scope);
             var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, serviceFactory(scope.ServiceProvider));
             scopedTesterAsync(tester).GetAwaiter().GetResult();
             return (TSelf)this;
@@ -500,6 +518,7 @@ namespace UnitTestEx.Abstractions
             ArgumentNullException.ThrowIfNull(scopedTesterAsync);
 
             using var scope = HostExecutionWrapper(Services.CreateScope);
+            InvokeScopedTesterSetUp(scope);
             var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, scope.ServiceProvider.CreateInstance<TService>(serviceKey));
             scopedTesterAsync(tester).AsTask().GetAwaiter().GetResult();
             return (TSelf)this;
@@ -517,11 +536,21 @@ namespace UnitTestEx.Abstractions
         {
             ArgumentNullException.ThrowIfNull(scopedTesterAsync);
             using var scope = HostExecutionWrapper(Services.CreateScope);
+            InvokeScopedTesterSetUp(scope);
             var tester = new ScopedTypeTester<TService>(this, scope.ServiceProvider, serviceFactory(scope.ServiceProvider));
             scopedTesterAsync(tester).AsTask().GetAwaiter().GetResult();
             return (TSelf)this;
         }
 
 #endif
+
+        /// <summary>
+        /// Executes the scoped tester set up.
+        /// </summary>
+        private void InvokeScopedTesterSetUp(IServiceScope? scope)
+        {
+            if (scope is not null && _scopedSetUpAsync is not null)
+                _scopedSetUpAsync(scope.ServiceProvider).GetAwaiter().GetResult();
+        }
     }
 }
