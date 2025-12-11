@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v5.9.0
+- *Enhancement:* Added `WithGenericTester` (_MSTest_ and _NUnit_ only) class to enable class-level generic tester usage versus one-off.
+- *Enhancement:* Added `TesterBase.UseScopedTypeSetUp()` to enable a function that will be executed directly before each `ScopedTypeTester{TService}` is instantiated to allow standardized/common set up to occur.
+
 ## v5.8.0
 - *Enhancement:* Extended the `MockHttpClientResponse.With*` methods to support optional _media type_ parameter to enable specification of the `Content-Type` header value.
 - *Enhancement:* Added `HttpResponseMessageAssertor.AssertContentTypeProblemJson` to enable asserting that the content type is `application/problem+json`.
