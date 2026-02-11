@@ -290,14 +290,15 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Disposes and removes the cached <see cref="HttpClient"/>.
+        /// Resets all the configured requests and related configurations.
         /// </summary>
+        /// <remarks>This invokes a <see cref="MockExtensions.Reset(Mock)"/> to reset the mock state. This includes its setups, configured default return values, registered event handlers, and all recorded invocations.</remarks>
         public void Reset()
         {
             lock (_lock)
             {
-                _httpClient?.Dispose();
-                _httpClient = null;
+                _requests.Clear();
+                MessageHandler.Reset();
             }
         }
 

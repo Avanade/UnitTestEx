@@ -1,15 +1,16 @@
 using Moq;
+using NUnit.Framework;
 using System;
+using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
-using UnitTestEx.NUnit.Test.Model;
 using UnitTestEx.NUnit;
-using NUnit.Framework;
-using System.Diagnostics;
-using System.Linq;
+using UnitTestEx.NUnit.Test.Model;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace UnitTestEx.NUnit.Test
 {
@@ -369,6 +370,67 @@ namespace UnitTestEx.NUnit.Test
                 Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
                 Assert.That(sw.ElapsedMilliseconds, Is.GreaterThanOrEqualTo(95));
             });
+        }
+
+        [Test]
+        public async Task MockReuseSameAndReset()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+            mc.Request(HttpMethod.Get, "products/xyz").Respond.With("some-some", HttpStatusCode.OK);
+
+            var hc = mcf.GetHttpClient("XXX");
+            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            var txt = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            Assert.That(txt, Is.EqualTo("some-some"));
+
+            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            txt = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            Assert.That(txt, Is.EqualTo("some-some"));
+
+            // Now let's reset.
+            mc.Reset();
+
+            // Should throw as no matched requests.
+            Console.WriteLine("No-match");
+            Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.GetAsync("products/xyz").ConfigureAwait(false));
+
+            // Add the request back in.
+            mc.Request(HttpMethod.Get, "products/xyz").Respond.With("some-some", HttpStatusCode.OK);
+            mc.Request(HttpMethod.Get, "products/abc").Respond.With("a-blue-carrot", HttpStatusCode.OK);
+
+            // Try again and should work.
+            Console.WriteLine("Yes-Match");
+            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            txt = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            Assert.That(txt, Is.EqualTo("some-some"));
+
+            res = await hc.GetAsync("products/abc").ConfigureAwait(false);
+            txt = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            Assert.That(txt, Is.EqualTo("a-blue-carrot"));
+        }
+
+        [Test]
+        public async Task MockOnTheFlyChange()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
+            var mcr = mc.Request(HttpMethod.Get, "products/xyz").Respond;
+
+            var hc = mcf.GetHttpClient("XXX");
+
+            // Set the response.
+            mcr.With("some-some", HttpStatusCode.OK);
+
+            // Get the response and verify.
+            var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            var txt = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            Assert.That(txt, Is.EqualTo("some-some"));
+
+            mcr.With("some-other", HttpStatusCode.Accepted);
+            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            txt = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            Assert.That(txt, Is.EqualTo("some-other"));
         }
 
         [Test]
