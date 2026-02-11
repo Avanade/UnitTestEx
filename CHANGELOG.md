@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v5.9.1
+- *Fixed:* The `MockHttpClientRequest` now caches the response content internally, and creates a new `HttpContent` instance for each request to ensure that the content can be read multiple times across multiple requests (where applicable); avoids potential object disposed error.
+- *Fixed:* The `MockHttpClient.Reset()` was incorrectly resetting the `MockHttpClient` instance to its default state, but was not resetting the internal request configuration which is used to determine the response. This has now been corrected to reset the internal mocked state only.
+- *Fixed:* The `ApiTesterBase` has had `UseSolutionRelativeContentRoot` added to correct the error where the underlying `WebApplicationFactory` was not correctly finding the `appsettings.json` file from the originating solution.
+
 ## v5.9.0
 - *Enhancement:* Added `WithGenericTester` (_MSTest_ and _NUnit_ only) class to enable class-level generic tester usage versus one-off.
 - *Enhancement:* Added `TesterBase.UseScopedTypeSetUp()` to enable a function that will be executed directly before each `ScopedTypeTester{TService}` is instantiated to allow standardized/common set up to occur.

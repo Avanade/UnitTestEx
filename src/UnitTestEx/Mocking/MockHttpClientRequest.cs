@@ -121,7 +121,24 @@ namespace UnitTestEx.Mocking
 
             var httpResponse = new HttpResponseMessage(response.StatusCode) { RequestMessage = request };
             if (response.Content != null)
-                httpResponse.Content = response.Content;
+            {
+                // Load into buffer to ensure content is available for multiple reads (internal only).
+#if NET9_0_OR_GREATER
+                await response.Content.LoadIntoBufferAsync(ct).ConfigureAwait(false);
+#else
+                await response.Content.LoadIntoBufferAsync().ConfigureAwait(false);
+#endif
+
+                // Copy content for the response vs. trying to reuse the same instance which may have already been read by the caller and therefore not available for the next call.
+                var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+                httpResponse.Content = new ByteArrayContent(bytes);
+
+                // Copy across the content headers (e.g. Content-Type) to the new content instance.
+                foreach (var h in response.Content.Headers)
+                {
+                    httpResponse.Content.Headers.TryAddWithoutValidation(h.Key, h.Value);
+                }
+            }
 
             if (!response.HttpHeaders.IsEmpty)
             {

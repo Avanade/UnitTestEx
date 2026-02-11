@@ -26,6 +26,7 @@ namespace UnitTestEx.AspNetCore
     {
         private bool _disposed;
         private WebApplicationFactory<TEntryPoint>? _waf;
+        private string? _solutionRelativePath;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> class.
@@ -64,7 +65,7 @@ namespace UnitTestEx.AspNetCore
                     return _waf;
 
                 _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb =>
-                    whb.UseSolutionRelativeContentRoot(Environment.CurrentDirectory)
+                    whb.UseSolutionRelativeContentRoot(_solutionRelativePath ?? Environment.CurrentDirectory)
                         .ConfigureAppConfiguration((_, cb) =>
                         {
                             cb.AddJsonFile("appsettings.unittest.json", optional: true);
@@ -163,6 +164,22 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <returns>The <see cref="TestServer"/>.</returns>
         public TestServer GetTestServer() => HostExecutionWrapper(() => GetWebApplicationFactory().Server);
+
+        /// <summary>
+        /// Sets the content root to be relative to the solution directory (i.e. the directory containing the .sln file). 
+        /// </summary>
+        /// <param name="solutionRelativePath">The directory of the solution file.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>This is required when the API project is not in the same directory as the test project and ensures that the API project's appsettings.json files are found and used.
+        /// <para>This is the functional equivalent of <see cref="Microsoft.AspNetCore.TestHost.WebHostBuilderExtensions.UseSolutionRelativeContentRoot(Microsoft.AspNetCore.Hosting.IWebHostBuilder, string, string)"/>.</para></remarks>
+        public TSelf UseSolutionRelativeContentRoot(string? solutionRelativePath)
+        {
+            if (_waf != null)
+                throw new InvalidOperationException("The content root must be set before the WebApplicationFactory is instantiated.");
+
+            _solutionRelativePath = solutionRelativePath;
+            return (TSelf)this;
+        }
 
         /// <summary>
         /// Releases all resources.

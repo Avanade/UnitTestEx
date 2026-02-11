@@ -68,6 +68,7 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Get, "products/xyz").Respond.WithJson(new { id = "Xyz", description = "Xtra yellow elephant" });
 
             using var test = ApiTester.Create<Startup>();
+            test.UseSolutionRelativeContentRoot("tests/UnitTestEx.Api");
             test.ReplaceHttpClientFactory(mcf)
                 .Controller<ProductController>()
                 .Run(c => c.Get("xyz"))
