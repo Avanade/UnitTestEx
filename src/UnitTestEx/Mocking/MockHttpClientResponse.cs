@@ -167,7 +167,10 @@ namespace UnitTestEx.Mocking
             ResponseAction = response;
 
             if (_rule != null)
+            {
+                _rule.Responses = null;
                 _clientRequest.MockResponse();
+            }
         }
 
         /// <summary>
@@ -250,6 +253,7 @@ namespace UnitTestEx.Mocking
 
             ArgumentNullException.ThrowIfNull(sequence);
 
+            _rule.Response = null;
             _rule.Responses ??= [];
 
             var s = new MockHttpClientResponseSequence(_clientRequest, _rule);

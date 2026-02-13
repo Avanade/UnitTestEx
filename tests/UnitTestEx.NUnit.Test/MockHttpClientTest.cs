@@ -415,22 +415,39 @@ namespace UnitTestEx.NUnit.Test
         {
             var mcf = MockHttpClientFactory.Create();
             var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
-            var mcr = mc.Request(HttpMethod.Get, "products/xyz").Respond;
+            var mcr = mc.Request(HttpMethod.Get, "products/xyz");
 
             var hc = mcf.GetHttpClient("XXX");
 
             // Set the response.
-            mcr.With("some-some", HttpStatusCode.OK);
+            mcr.Times(Times.Once()).Respond.With("some-some", HttpStatusCode.OK);
 
             // Get the response and verify.
             var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             var txt = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
             Assert.That(txt, Is.EqualTo("some-some"));
+            mcr.Verify();
 
-            mcr.With("some-other", HttpStatusCode.Accepted);
+            mcr.Times(Times.Once()).Respond.With("some-other", HttpStatusCode.Accepted);
             res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             txt = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
             Assert.That(txt, Is.EqualTo("some-other"));
+            mcr.Verify();
+
+            mcr.Respond.WithSequence(s =>
+            {
+                s.Respond().With("some-one", HttpStatusCode.OK);
+                s.Respond().With("some-two", HttpStatusCode.OK);
+            });
+
+            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            txt = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            Assert.That(txt, Is.EqualTo("some-one"));
+
+            res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
+            txt = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            Assert.That(txt, Is.EqualTo("some-two"));
+            mcr.Verify();
         }
 
         [Test]

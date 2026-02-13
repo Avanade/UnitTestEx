@@ -110,6 +110,11 @@ namespace UnitTestEx.Mocking
 
             // Mark as mock complete.
             IsMockComplete = true;
+
+            // Reset counts and indices.
+            Rule.Response?.Count = 0;
+            Rule.ResponsesIndex = 0;
+            Rule.Responses?.ForEach(x => x.Count = 0);
         }
 
         /// <summary>
@@ -152,21 +157,6 @@ namespace UnitTestEx.Mocking
 
             response.ResponseAction?.Invoke(httpResponse);
             return httpResponse;
-        }
-
-        /// <summary>
-        /// Converts the body to a string.
-        /// </summary>
-        private string BodyToString()
-        {
-            if (_mediaType == null || _content == null)
-                return "no";
-
-            return _mediaType.ToLowerInvariant() switch
-            {
-                MediaTypeNames.Application.Json => $"'{JsonSerializer.Serialize(_content, JsonWriteFormat.None)}' [{_mediaType}]",
-                _ => $"'{_content}' [{_mediaType}]",
-            };
         }
 
         /// <summary>

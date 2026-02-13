@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v5.9.2
+- *Fixed:* The `MockHttpClientRequest` now resets the internal count state when overridding a response to ensure `Verify()` functions correctly.
+
 ## v5.9.1
 - *Fixed:* The `MockHttpClientRequest` now caches the response content internally, and creates a new `HttpContent` instance for each request to ensure that the content can be read multiple times across multiple requests (where applicable); avoids potential object disposed error.
 - *Fixed:* The `MockHttpClient.Reset()` was incorrectly resetting the `MockHttpClient` instance to its default state, but was not resetting the internal request configuration which is used to determine the response. This has now been corrected to reset the internal mocked state only.
