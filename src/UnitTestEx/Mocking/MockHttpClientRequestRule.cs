@@ -38,7 +38,7 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Resets the rule to the default values.
         /// </summary>
-        /// <remarks>Does not reset the <see cref="Response"/> or <see cref="Times"/>.</remarks>
+        /// <remarks>Does not reset <see cref="Times"/>; the <see cref="Response"/> should be immediately updated post invocation to avoid runtime issues.</remarks>
         internal void Reset()
         {
             Body = null;
