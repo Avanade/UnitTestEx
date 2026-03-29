@@ -36,7 +36,7 @@ namespace UnitTestEx.Assertors
         }
 
         /// <summary>
-        /// Trys to match the <paramref name="expected"/> and <paramref name="actual"/> <see cref="ApiError"/> contents.
+        /// Tries to match the <paramref name="expected"/> and <paramref name="actual"/> <see cref="ApiError"/> contents.
         /// </summary>
         /// <param name="expected">The expected <see cref="ApiError"/> list.</param>
         /// <param name="actual">The actual <see cref="ApiError"/> list.</param>
@@ -56,13 +56,32 @@ namespace UnitTestEx.Assertors
             if (exp.Count > 0)
             {
                 sb.AppendLine(" Expected messages not matched:");
-                exp.ForEach(m => sb.AppendLine($" Error: {m.Message} {(m.Field != null ? $"[{m.Field}]" : null)}"));
+                exp.ForEach(m => sb.AppendLine($"  > {(m.Field != null ? $"{m.Field}" : "null")}: {m.Message}"));
             }
 
             if (act.Count > 0)
             {
+                if (exp.Count > 0)
+                    sb.AppendLine();
+
                 sb.AppendLine(" Actual messages not matched:");
-                act.ForEach(m => sb.AppendLine($" Error: {m.Message} {(m.Field != null ? $"[{m.Field}]" : null)}"));
+                act.ForEach(m => sb.AppendLine($"  > {(m.Field != null ? $"{m.Field}" : "null")}: {m.Message}"));
+            }
+
+            if (act.Count > 0)
+            {
+                sb.AppendLine().AppendLine();
+                sb.AppendLine("All actual message tuples as follows:");
+
+                for (int i = 0; i < act.Count; i++)
+                {
+                    var m = act[i];
+                    sb.Append($"  ({(m.Field != null ? $"\"{m.Field}\"" : "null")}, \"{m.Message}\")");
+                    if (i < act.Count - 1)
+                        sb.AppendLine(",");
+                    else
+                        sb.AppendLine();
+                }
             }
 
             errorMessage = sb.Length > 0 ? $"Error messages mismatch:{System.Environment.NewLine}{sb}" : null;

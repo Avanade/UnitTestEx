@@ -9,7 +9,7 @@ using UnitTestEx.Json;
 namespace UnitTestEx.Assertors
 {
     /// <summary>
-    /// Provdes the base <see cref="HttpResponseMessage"/> test assert helper capabilities.
+    /// Provides the base <see cref="HttpResponseMessage"/> test assert helper capabilities.
     /// </summary>
     /// <remarks>
     /// Initializes a new instance of the <see cref="HttpResponseMessageAssertorBase{TSelf}"/> class.

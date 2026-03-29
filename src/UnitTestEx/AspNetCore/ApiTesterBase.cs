@@ -10,10 +10,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
+using UnitTestEx.Expectations;
 
 namespace UnitTestEx.AspNetCore
 {
@@ -178,6 +180,58 @@ namespace UnitTestEx.AspNetCore
                 throw new InvalidOperationException("The content root must be set before the WebApplicationFactory is instantiated.");
 
             _solutionRelativePath = solutionRelativePath;
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Adds an action to be executed before the underlying test <b>Run</b> occurs.
+        /// </summary>
+        /// <param name="action">The action to execute.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf AddPreRunAction(Action<IExpectations> action)
+        {
+            if (action is not null)
+                PreRunActions.Add(tester => action(tester));
+
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Adds an action to be to be executed after the underlying test <b>Run</b> occurs (before <see cref="Expectations.ExpectationsArranger{TTester}.AssertAsync(Expectations.AssertArgs)"/>).
+        /// </summary>
+        /// <param name="action">The action to execute.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf AddPostRunBeforeExpectationsAction(Action<IExpectations> action)
+        {
+            if (action is not null)
+                PostRunBeforeExpectationsActions.Add(tester => action(tester));
+
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Adds an action to be to be executed after the underlying test <b>Run</b> occurs (after <see cref="Expectations.ExpectationsArranger{TTester}.AssertAsync(Expectations.AssertArgs)"/>).
+        /// </summary>
+        /// <param name="action">The action to execute.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf AddPostRunAfterExpectationsAction(Action<IExpectations> action)
+        {
+            if (action is not null)
+                PostRunAfterExpectationsActions.Add(tester => action(tester));
+
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Adds an action to be executed after the underlying test <b>Run</b> occurs (after all other post-run actions regardless of result).
+        /// </summary>
+        /// <param name="action">The action to execute.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf AddPostRunAction(Action<IExpectations> action)
+        {
+            if (action is not null)
+                PostRunActions.Add(tester => action(tester));
+
             return (TSelf)this;
         }
 

@@ -18,5 +18,17 @@ namespace UnitTestEx
         /// Gets the error message.
         /// </summary>
         public string Message { get; } = message;
+
+        /// <summary>
+        /// Implicitly converts a <c>(string? field, string message)</c> tuple to an <see cref="ApiError"/>.
+        /// </summary>
+        /// <param name="error">The tuple containing the field and message.</param>
+        public static implicit operator ApiError((string? field, string message) error) => new(error.field, error.message);
+
+        /// <summary>
+        /// Implicitly converts a <paramref name="message"/> <see cref="string"/> to an <see cref="ApiError"/>.
+        /// </summary>
+        /// <param name="message">The error message.</param>
+        public static implicit operator ApiError(string message) => new(null, message);
     }
 }

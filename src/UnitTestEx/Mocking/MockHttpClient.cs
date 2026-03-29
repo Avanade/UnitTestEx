@@ -331,14 +331,14 @@ namespace UnitTestEx.Mocking
         /// Adds mocked request(s) from the embedded resource formatted as either YAML or JSON.
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> used to infer <see cref="Assembly"/> that contains the embedded resource.</typeparam>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <returns></returns>
         public MockHttpClient WithRequestsFromResource<TAssembly>(string resourceName) => WithRequestsFromResource(resourceName, typeof(TAssembly).Assembly);
 
         /// <summary>
         /// Adds mocked request(s) from the embedded resource formatted as either YAML or JSON.
         /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
         /// <returns>The <see cref="MockHttpClient"/> to support fluent-style method-chaining.</returns>
         public MockHttpClient WithRequestsFromResource(string resourceName, Assembly? assembly = null)

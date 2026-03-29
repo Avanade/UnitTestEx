@@ -45,167 +45,216 @@ public class ScopedTypeTester<TService> : HostTesterBase<TService, ScopedTypeTes
     /// Runs the synchronous method with no result.
     /// </summary>
     /// <param name="function">The function execution.</param>
+    /// <param name="args">The optional <see cref="TesterArgs"/>.</param>
     /// <returns>A <see cref="VoidAssertor"/>.</returns>
-    public VoidAssertor Run(Action<TService> function) => RunAsync(x => { function(x); return Task.CompletedTask; }).GetAwaiter().GetResult();
+    public VoidAssertor Run(Action<TService> function, TesterArgs? args = null) => RunAsync(x => { function(x); return Task.CompletedTask; }, args).GetAwaiter().GetResult();
 
     /// <summary>
     /// Runs the synchronous method with a result.
     /// </summary>
     /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
     /// <param name="function">The function execution.</param>
+    /// <param name="args">The optional <see cref="TesterArgs"/>.</param>
     /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
-    public ValueAssertor<TValue> Run<TValue>(Func<TService, TValue> function) => RunAsync(x => Task.FromResult(function(x))).GetAwaiter().GetResult();
+    public ValueAssertor<TValue> Run<TValue>(Func<TService, TValue> function, TesterArgs? args = null) => RunAsync(x => Task.FromResult(function(x)), args).GetAwaiter().GetResult();
 
     /// <summary>
     /// Runs the asynchronous method with no result.
     /// </summary>
     /// <param name="function">The function execution.</param>
+    /// <param name="args">The optional <see cref="TesterArgs"/>.</param>
     /// <returns>A <see cref="VoidAssertor"/>.</returns>
 #if NET9_0_OR_GREATER
     [OverloadResolutionPriority(1)]
 #endif
-    public VoidAssertor Run(Func<TService, Task> function) => RunAsync(function).GetAwaiter().GetResult();
+    public VoidAssertor Run(Func<TService, Task> function, TesterArgs? args = null) => RunAsync(function, args).GetAwaiter().GetResult();
 
 #if NET9_0_OR_GREATER
     /// <summary>
     /// Runs the asynchronous method with no result.
     /// </summary>
     /// <param name="function">The function execution.</param>
+    /// <param name="args">The optional <see cref="TesterArgs"/>.</param>
     /// <returns>A <see cref="VoidAssertor"/>.</returns>
     [OverloadResolutionPriority(2)]
-    public VoidAssertor Run(Func<TService, ValueTask> function) => RunAsync(v => function(v).AsTask()).GetAwaiter().GetResult();
+    public VoidAssertor Run(Func<TService, ValueTask> function, TesterArgs? args = null) => RunAsync(v => function(v).AsTask(), args).GetAwaiter().GetResult();
 
 #endif
     /// <summary>
     /// Runs the asynchronous method with no result.
     /// </summary>
     /// <param name="function">The function execution.</param>
+    /// <param name="args">The optional <see cref="TesterArgs"/>.</param>
     /// <returns>A <see cref="VoidAssertor"/>.</returns>
 #if NET9_0_OR_GREATER
     [OverloadResolutionPriority(1)]
 #endif
-    public async Task<VoidAssertor> RunAsync(Func<TService, Task> function)
+    public async Task<VoidAssertor> RunAsync(Func<TService, Task> function, TesterArgs? args = null)
     {
-        TestSetUp.LogAutoSetUpOutputs(Implementor);
-
-        Exception? ex = null;
-        var sw = Stopwatch.StartNew();
-        LogHeader();
+        args ??= new TesterArgs();
+        _ = Owner.SharedState.GetLoggerMessages();
 
         try
         {
-            await (function ?? throw new ArgumentNullException(nameof(function)))(Service).ConfigureAwait(false);
-        }
-        catch (AggregateException aex)
-        {
-            ex = aex.InnerException ?? aex;
-        }
-        catch (Exception uex)
-        {
-            ex = uex;
-        }
-        finally
-        {
-            sw.Stop();
-        }
+            TestSetUp.LogAutoSetUpOutputs(Implementor);
 
-        await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-        var logs = Owner.SharedState.GetLoggerMessages();
-        LogResult(ex, sw.Elapsed.TotalMilliseconds, logs);
+            if (!args.BypassRunActions)
+                Owner.ExecutePreRunActions(this);
 
-        await ExpectationsArranger.AssertAsync(logs, ex).ConfigureAwait(false);
+            Exception? ex = null;
+            var sw = Stopwatch.StartNew();
+            LogHeader();
 
-        return new VoidAssertor(Owner, ex);
-    }
-
-#if NET9_0_OR_GREATER
-    /// <summary>
-    /// Runs the asynchronous method with no result.
-    /// </summary>
-    /// <param name="function">The function execution.</param>
-    /// <returns>A <see cref="VoidAssertor"/>.</returns>
-    [OverloadResolutionPriority(2)]
-    public async Task<VoidAssertor> RunAsync(Func<TService, ValueTask> function) => await RunAsync(v => function(v).AsTask()).ConfigureAwait(false);
-
-#endif
-    /// <summary>
-    /// Runs the asynchronous method with a result.
-    /// </summary>
-    /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
-    /// <param name="function">The function execution.</param>
-    /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
-#if NET9_0_OR_GREATER
-    [OverloadResolutionPriority(1)]
-#endif
-    public ValueAssertor<TValue> Run<TValue>(Func<TService, Task<TValue>> function) => RunAsync(function).GetAwaiter().GetResult();
-
-#if NET9_0_OR_GREATER
-    /// <summary>
-    /// Runs the asynchronous method with a result.
-    /// </summary>
-    /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
-    /// <param name="function">The function execution.</param>
-    /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
-    [OverloadResolutionPriority(2)]
-    public ValueAssertor<TValue> Run<TValue>(Func<TService, ValueTask<TValue>> function) => RunAsync(v => function(v).AsTask()).GetAwaiter().GetResult();
-
-#endif
-    /// <summary>
-    /// Runs the asynchronous method with a result.
-    /// </summary>
-    /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
-    /// <param name="function">The function execution.</param>
-    /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
-#if NET9_0_OR_GREATER
-    [OverloadResolutionPriority(1)]
-#endif
-    public async Task<ValueAssertor<TValue>> RunAsync<TValue>(Func<TService, Task<TValue>> function)
-    {
-        TestSetUp.LogAutoSetUpOutputs(Implementor);
-
-        TValue result = default!;
-        Exception? ex = null;
-        var sw = Stopwatch.StartNew();
-        LogHeader();
-
-        try
-        {
-            result = await (function ?? throw new ArgumentNullException(nameof(function)))(Service).ConfigureAwait(false);
-        }
-        catch (AggregateException aex)
-        {
-            ex = aex.InnerException ?? aex;
-        }
-        catch (Exception uex)
-        {
-            ex = uex;
-        }
-        finally
-        {
-            sw.Stop();
-        }
-
-        await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-        var logs = Owner.SharedState.GetLoggerMessages();
-        LogResult(ex, sw.Elapsed.TotalMilliseconds, logs);
-
-        if (ex == null)
-        {
-            if (result is string str)
-                Implementor.WriteLine($"Result: {str}");
-            else if (result is IFormattable ifm)
-                Implementor.WriteLine($"Result: {ifm.ToString(null, CultureInfo.CurrentCulture)}");
-            else
+            try
             {
-                Implementor.WriteLine($"Result: {(result == null ? "<null>" : result.GetType().Name)}");
-                if (result != null)
-                    Implementor.WriteLine(JsonSerializer.Serialize<dynamic>(result, JsonWriteFormat.Indented));
+                await (function ?? throw new ArgumentNullException(nameof(function)))(Service).ConfigureAwait(false);
             }
+            catch (AggregateException aex)
+            {
+                ex = aex.InnerException ?? aex;
+            }
+            catch (Exception uex)
+            {
+                ex = uex;
+            }
+            finally
+            {
+                sw.Stop();
+            }
+
+            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+            var logs = Owner.SharedState.GetLoggerMessages();
+            LogResult(ex, sw.Elapsed.TotalMilliseconds, logs);
+
+            if (!args.BypassRunActions)
+                Owner.ExecutePostRunBeforeExpectationsActions(this);
+
+            await ExpectationsArranger.AssertAsync(logs, ex).ConfigureAwait(false);
+
+            if (!args.BypassRunActions)
+                Owner.ExecutePostRunAfterExpectationsActions(this);
+
+            return new VoidAssertor(Owner, ex);
         }
+        finally
+        {
+            if (!args.BypassRunActions)
+                Owner.ExecutePostRunActions(this);
+        }
+    }
 
-        await ExpectationsArranger.AssertValueAsync(logs, result, ex).ConfigureAwait(false);
+#if NET9_0_OR_GREATER
+    /// <summary>
+    /// Runs the asynchronous method with no result.
+    /// </summary>
+    /// <param name="function">The function execution.</param>
+    /// <param name="args">The optional <see cref="TesterArgs"/>.</param>
+    /// <returns>A <see cref="VoidAssertor"/>.</returns>
+    [OverloadResolutionPriority(2)]
+    public async Task<VoidAssertor> RunAsync(Func<TService, ValueTask> function, TesterArgs? args = null) => await RunAsync(v => function(v).AsTask(), args).ConfigureAwait(false);
 
-        return new ValueAssertor<TValue>(Owner, result, ex);
+#endif
+    /// <summary>
+    /// Runs the asynchronous method with a result.
+    /// </summary>
+    /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
+    /// <param name="function">The function execution.</param>
+    /// <param name="args">The optional <see cref="TesterArgs"/>.</param>
+    /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
+#if NET9_0_OR_GREATER
+    [OverloadResolutionPriority(1)]
+#endif
+    public ValueAssertor<TValue> Run<TValue>(Func<TService, Task<TValue>> function, TesterArgs? args = null) => RunAsync(function, args).GetAwaiter().GetResult();
+
+#if NET9_0_OR_GREATER
+    /// <summary>
+    /// Runs the asynchronous method with a result.
+    /// </summary>
+    /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
+    /// <param name="function">The function execution.</param>
+    /// <param name="args">The optional <see cref="TesterArgs"/>.</param>
+    /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
+    [OverloadResolutionPriority(2)]
+    public ValueAssertor<TValue> Run<TValue>(Func<TService, ValueTask<TValue>> function, TesterArgs? args = null) => RunAsync(v => function(v).AsTask(), args).GetAwaiter().GetResult();
+
+#endif
+    /// <summary>
+    /// Runs the asynchronous method with a result.
+    /// </summary>
+    /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
+    /// <param name="function">The function execution.</param>
+    /// <param name="args">The optional <see cref="TesterArgs"/>.</param>
+    /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
+#if NET9_0_OR_GREATER
+    [OverloadResolutionPriority(1)]
+#endif
+    public async Task<ValueAssertor<TValue>> RunAsync<TValue>(Func<TService, Task<TValue>> function, TesterArgs? args = null)
+    {
+        args ??= new TesterArgs();
+        _ = Owner.SharedState.GetLoggerMessages();
+
+        try
+        {
+            TestSetUp.LogAutoSetUpOutputs(Implementor);
+
+            if (!args.BypassRunActions)
+                Owner.ExecutePreRunActions(this);
+
+            TValue result = default!;
+            Exception? ex = null;
+            var sw = Stopwatch.StartNew();
+            LogHeader();
+
+            try
+            {
+                result = await (function ?? throw new ArgumentNullException(nameof(function)))(Service).ConfigureAwait(false);
+            }
+            catch (AggregateException aex)
+            {
+                ex = aex.InnerException ?? aex;
+            }
+            catch (Exception uex)
+            {
+                ex = uex;
+            }
+            finally
+            {
+                sw.Stop();
+            }
+
+            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+            var logs = Owner.SharedState.GetLoggerMessages();
+            LogResult(ex, sw.Elapsed.TotalMilliseconds, logs);
+
+            if (ex == null)
+            {
+                if (result is string str)
+                    Implementor.WriteLine($"Result: {str}");
+                else if (result is IFormattable ifm)
+                    Implementor.WriteLine($"Result: {ifm.ToString(null, CultureInfo.CurrentCulture)}");
+                else
+                {
+                    Implementor.WriteLine($"Result: {(result == null ? "<null>" : result.GetType().Name)}");
+                    if (result != null)
+                        Implementor.WriteLine(JsonSerializer.Serialize<dynamic>(result, JsonWriteFormat.Indented));
+                }
+            }
+
+            if (!args.BypassRunActions)
+                Owner.ExecutePostRunBeforeExpectationsActions(this);
+
+            await ExpectationsArranger.AssertValueAsync(logs, result, ex).ConfigureAwait(false);
+
+            if (!args.BypassRunActions)
+                Owner.ExecutePostRunAfterExpectationsActions(this);
+
+            return new ValueAssertor<TValue>(Owner, result, ex);
+        }
+        finally
+        {
+            if (!args.BypassRunActions)
+                Owner.ExecutePostRunActions(this);
+        }
     }
 
 #if NET9_0_OR_GREATER
@@ -214,9 +263,10 @@ public class ScopedTypeTester<TService> : HostTesterBase<TService, ScopedTypeTes
     /// </summary>
     /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
     /// <param name="function">The function execution.</param>
+    /// <param name="args">The optional <see cref="TesterArgs"/>.</param>
     /// <returns>A <see cref="ValueAssertor{TValue}"/>.</returns>
     [OverloadResolutionPriority(2)]
-    public async Task<ValueAssertor<TValue>> RunAsync<TValue>(Func<TService, ValueTask<TValue>> function) => await RunAsync(v => function(v).AsTask()).ConfigureAwait(false);
+    public async Task<ValueAssertor<TValue>> RunAsync<TValue>(Func<TService, ValueTask<TValue>> function, TesterArgs? args = null) => await RunAsync(v => function(v).AsTask(), args).ConfigureAwait(false);
 
 #endif
     /// <summary>

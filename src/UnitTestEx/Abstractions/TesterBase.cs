@@ -15,6 +15,7 @@ using System.Net.Mime;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using UnitTestEx.Expectations;
 using UnitTestEx.Json;
 using UnitTestEx.Logging;
 
@@ -190,7 +191,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Enables opportunity to execute logic immediately after the underlying host has been started. 
         /// </summary>
-        /// <remarks>Where overridding ensure the base is invoked first to avoid unintended side-effects as <see cref="TesterBase"/> will invoke the registered <see cref="OnHostStart(Action, bool)"/>.
+        /// <remarks>Where overriding ensure the base is invoked first to avoid unintended side-effects as <see cref="TesterBase"/> will invoke the registered <see cref="OnHostStart(Action, bool)"/>.
         /// <para><i>Note:</i> a host lifetime can span one or more tests so this should not be used for per-test set-up/configuration. Equally, a <see cref="ResetHost()"/> will result in a new host instantiation on first access.</para></remarks>
         protected virtual void OnHostStartUp()
         {
@@ -254,6 +255,66 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
+        /// Gets the list of pre-run actions to be executed before the underlying test <b>Run</b> occurs.
+        /// </summary>
+        protected List<Action<IExpectations>> PreRunActions { get; } = [];
+
+        /// <summary>
+        /// Gets the list of post-run actions to be executed after the underlying test <b>Run</b> occurs (before <see cref="Expectations.ExpectationsArranger{TTester}.AssertAsync(Expectations.AssertArgs)"/>).
+        /// </summary>
+        protected List<Action<IExpectations>> PostRunBeforeExpectationsActions { get; } = [];
+
+        /// <summary>
+        /// Gets the list of post-run actions to be executed after the underlying test <b>Run</b> occurs (after <see cref="Expectations.ExpectationsArranger{TTester}.AssertAsync(Expectations.AssertArgs)"/>).
+        /// </summary>
+        protected List<Action<IExpectations>> PostRunAfterExpectationsActions { get; } = [];
+
+        /// <summary>
+        /// Gets the list of post-run actions to be executed after the underlying test <b>Run</b> occurs (always executed regardless of result to enable the likes of clean-up etc.).
+        /// </summary>
+        protected List<Action<IExpectations>> PostRunActions { get; } = [];
+
+        /// <summary>
+        /// Executes the pre-run actions before the underlying test <b>Run</b> occurs.
+        /// </summary>
+        /// <param name="tester">The <see cref="IExpectations"/> tester instance.</param>
+        internal void ExecutePreRunActions(IExpectations tester)
+        {
+            foreach (var action in PreRunActions)
+                action(tester);
+        }
+
+        /// <summary>
+        /// Executes the post-run actions after the underlying test <b>Run</b> occurs (before <see cref="Expectations.ExpectationsArranger{TTester}.AssertAsync(Expectations.AssertArgs)"/>).
+        /// </summary>
+        /// <param name="tester">The <see cref="IExpectations"/> tester instance.</param>
+        internal void ExecutePostRunBeforeExpectationsActions(IExpectations tester)
+        {
+            foreach (var action in PostRunBeforeExpectationsActions)
+                action(tester);
+        }
+
+        /// <summary>
+        /// Executes the post-run actions after the underlying test <b>Run</b> occurs (before <see cref="Expectations.ExpectationsArranger{TTester}.AssertAsync(Expectations.AssertArgs)"/>).
+        /// </summary>
+        /// <param name="tester">The <see cref="IExpectations"/> tester instance.</param>
+        internal void ExecutePostRunAfterExpectationsActions(IExpectations tester)
+        {
+            foreach (var action in PostRunAfterExpectationsActions)
+                action(tester);
+        }
+
+        /// <summary>
+        /// Executes the post-run actions after the underlying test <b>Run</b> occurs (always executed regardless of result to enable the likes of clean-up etc.).
+        /// </summary>
+        /// <param name="tester">The <see cref="IExpectations"/> tester instance.</param>
+        internal void ExecutePostRunActions(IExpectations tester)
+        {
+            foreach (var action in PostRunActions)
+                action(tester);
+        }
+
+        /// <summary>
         /// Replaces the <see cref="TestFrameworkImplementor"/> with the specified <paramref name="implementor"/>.
         /// </summary>
         /// <param name="implementor">The new <see cref="TestFrameworkImplementor"/>.</param>
@@ -311,7 +372,7 @@ namespace UnitTestEx.Abstractions
         /// Creates a new <see cref="HttpRequest"/> with no body.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="requestUri">The request uri.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
 #if NET7_0_OR_GREATER
         public HttpRequest CreateHttpRequest(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri)
@@ -324,7 +385,7 @@ namespace UnitTestEx.Abstractions
         /// Creates a new <see cref="HttpRequest"/> with <paramref name="body"/> (defaults <see cref="HttpRequest.ContentType"/> to <see cref="MediaTypeNames.Text.Plain"/>).
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="requestUri">The request uri.</param>
         /// <param name="body">The optional body content.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
 #if NET7_0_OR_GREATER
@@ -338,7 +399,7 @@ namespace UnitTestEx.Abstractions
         /// Creates a new <see cref="HttpRequest"/> with <paramref name="body"/> and <paramref name="contentType"/>.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="requestUri">The request uri.</param>
         /// <param name="body">The optional body content.</param>
         /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
@@ -353,7 +414,7 @@ namespace UnitTestEx.Abstractions
         /// Creates a new <see cref="HttpRequest"/> with no body.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="requestUri">The request uri.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
 #if NET7_0_OR_GREATER
@@ -367,7 +428,7 @@ namespace UnitTestEx.Abstractions
         /// Creates a new <see cref="HttpRequest"/> with <paramref name="body"/> (defaults <see cref="HttpRequest.ContentType"/> to <see cref="MediaTypeNames.Text.Plain"/>).
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="requestUri">The request uri.</param>
         /// <param name="body">The optional body content.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
@@ -382,7 +443,7 @@ namespace UnitTestEx.Abstractions
         /// Creates a new <see cref="HttpRequest"/> with <i>optional</i> <paramref name="body"/> (defaults <see cref="HttpRequest.ContentType"/> to <see cref="MediaTypeNames.Text.Plain"/>).
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="requestUri">The request uri.</param>
         /// <param name="body">The optional body content.</param>
         /// <param name="contentType">The content type. Defaults to <see cref="MediaTypeNames.Text.Plain"/>.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
@@ -432,7 +493,7 @@ namespace UnitTestEx.Abstractions
         /// Creates a new <see cref="HttpRequest"/> with the <paramref name="value"/> JSON serialized as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Application.Json"/>.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="requestUri">The request uri.</param>
         /// <param name="value">The value to JSON serialize.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
 #if NET7_0_OR_GREATER
@@ -446,7 +507,7 @@ namespace UnitTestEx.Abstractions
         /// Creates a new <see cref="HttpRequest"/> with the <paramref name="value"/> JSON serialized as <see cref="HttpRequest.ContentType"/> of <see cref="MediaTypeNames.Application.Json"/>.
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
+        /// <param name="requestUri">The request uri.</param>
         /// <param name="value">The value to JSON serialize.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
@@ -462,8 +523,8 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> to infer <see cref="Type.Assembly"/> for the embedded resources.</typeparam>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="requestUri">The request uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
 #if NET7_0_OR_GREATER
         public HttpRequest CreateJsonHttpRequestFromResource<TAssembly>(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string resourceName)
@@ -477,8 +538,8 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> to infer <see cref="Type.Assembly"/> for the embedded resources.</typeparam>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="requestUri">The request uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
 #if NET7_0_OR_GREATER
@@ -492,8 +553,8 @@ namespace UnitTestEx.Abstractions
         /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="requestUri">The request uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>
 #if NET7_0_OR_GREATER
@@ -507,8 +568,8 @@ namespace UnitTestEx.Abstractions
         /// Creates a new <see cref="HttpRequest"/> using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
         /// </summary>
         /// <param name="httpMethod">The <see cref="HttpMethod"/>.</param>
-        /// <param name="requestUri">The requuest uri.</param>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="requestUri">The request uri.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequest"/> modifier.</param>
         /// <returns>The <see cref="HttpRequest"/>.</returns>

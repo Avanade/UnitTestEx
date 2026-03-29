@@ -138,7 +138,7 @@ namespace UnitTestEx
         /// <summary>
         /// Compares two JSON strings to each other where the expected JSON is from an embedded resource.
         /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected JSON.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name) that contains the expected JSON.</param>
         /// <param name="actual">The actual JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         public static void AssertJsonFromResource(string resourceName, string? actual, params string[] pathsToIgnore)
@@ -148,7 +148,7 @@ namespace UnitTestEx
         /// Compares two JSON strings to each other where the expected JSON is from an embedded resource.
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> to infer the <see cref="Assembly"/> that contains the embedded resource.</typeparam>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected JSON.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name) that contains the expected JSON.</param>
         /// <param name="actual">The actual JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         public static void AssertJsonFromResource<TAssembly>(string resourceName, string? actual, params string[] pathsToIgnore)

@@ -14,7 +14,7 @@ using UnitTestEx.Abstractions;
 namespace UnitTestEx.Assertors
 {
     /// <summary>
-    /// Provdes the base <see cref="HttpResponseMessage"/> test assert helper capabilities.
+    /// Provides the base <see cref="HttpResponseMessage"/> test assert helper capabilities.
     /// </summary>
     /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
     /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
@@ -256,7 +256,7 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> JSON content matches the JSON from the embedded resource.
         /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected JSON.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name) that contains the expected JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
         public TSelf AssertJsonFromResource(string resourceName, params string[] pathsToIgnore) => AssertJson(Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), pathsToIgnore);
@@ -265,7 +265,7 @@ namespace UnitTestEx.Assertors
         /// Asserts that the <see cref="HttpResponseMessageAssertorBase.Response"/> matches the JSON serialized value.
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> to infer the <see cref="Assembly"/> that contains the embedded resource.</typeparam>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
         public TSelf AssertJsonFromResource<TAssembly>(string resourceName, params string[] pathsToIgnore) => AssertJson(Resource.GetJson(resourceName, typeof(TAssembly).Assembly), pathsToIgnore);

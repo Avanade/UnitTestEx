@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
+using UnitTestEx.Expectations;
 using UnitTestEx.Json;
 using UnitTestEx.Mocking;
 
@@ -22,7 +23,7 @@ namespace UnitTestEx.AspNetCore
     /// <summary>
     /// Provides the base HTTP testing capabilities.
     /// </summary>
-    public abstract class HttpTesterBase
+    public abstract class HttpTesterBase : IExpectations
     {
         /// <summary>
         /// Gets the '<c>unit-test-ex-request-id</c>' constant.
@@ -67,7 +68,7 @@ namespace UnitTestEx.AspNetCore
         public string? UserName { get; protected set; }
 
         /// <summary>
-        /// Gets the unqiue request identifier.
+        /// Gets the unique request identifier.
         /// </summary>
         /// <remarks>This value is related to the <see cref="RequestIdName"/>.</remarks>
         public string RequestId { get; } = Guid.NewGuid().ToString();
@@ -90,11 +91,22 @@ namespace UnitTestEx.AspNetCore
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, Action<HttpRequestMessage>? requestModifier)
 #endif
         {
-            using var client = CreateHttpClient();
-            var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, requestModifier).ConfigureAwait(false);
-            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            await AssertExpectationsAsync(res).ConfigureAwait(false);
-            return new HttpResponseMessageAssertor(Owner, res);
+            try
+            {
+                Owner.ExecutePreRunActions(this);
+                using var client = CreateHttpClient();
+                var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, requestModifier).ConfigureAwait(false);
+                await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+                Owner.ExecutePostRunBeforeExpectationsActions(this);
+                await AssertExpectationsAsync(res).ConfigureAwait(false);
+                Owner.ExecutePostRunAfterExpectationsActions(this);
+                return new HttpResponseMessageAssertor(Owner, res);
+            }
+            finally
+            {
+                Owner.ExecutePostRunActions(this);
+                Owner.SharedState.RemoveRequestStateData(RequestId);
+            }
         }
 
         /// <summary>
@@ -112,14 +124,25 @@ namespace UnitTestEx.AspNetCore
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
 #endif
         {
-            if (content != null && httpMethod == HttpMethod.Get)
-                Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
+            try
+            {
+                Owner.ExecutePreRunActions(this);
+                if (content != null && httpMethod == HttpMethod.Get)
+                    Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
-            using var client = CreateHttpClient();
-            var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, content, contentType, requestModifier).ConfigureAwait(false);
-            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            await AssertExpectationsAsync(res).ConfigureAwait(false);
-            return new HttpResponseMessageAssertor(Owner, res);
+                using var client = CreateHttpClient();
+                var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, content, contentType, requestModifier).ConfigureAwait(false);
+                await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+                Owner.ExecutePostRunBeforeExpectationsActions(this);
+                await AssertExpectationsAsync(res).ConfigureAwait(false);
+                Owner.ExecutePostRunAfterExpectationsActions(this);
+                return new HttpResponseMessageAssertor(Owner, res);
+            }
+            finally
+            {
+                Owner.ExecutePostRunActions(this);
+                Owner.SharedState.RemoveRequestStateData(RequestId);
+            }
         }
 
         /// <summary>
@@ -136,14 +159,25 @@ namespace UnitTestEx.AspNetCore
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
 #endif
         {
-            if (value != null && httpMethod == HttpMethod.Get)
-                Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
+            try
+            {
+                Owner.ExecutePreRunActions(this);
+                if (value != null && httpMethod == HttpMethod.Get)
+                    Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
-            using var client = CreateHttpClient();
-            var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, value, requestModifier).ConfigureAwait(false);
-            await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
-            await AssertExpectationsAsync(res).ConfigureAwait(false);
-            return new HttpResponseMessageAssertor(Owner, res);
+                using var client = CreateHttpClient();
+                var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, value, requestModifier).ConfigureAwait(false);
+                await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
+                Owner.ExecutePostRunBeforeExpectationsActions(this);
+                await AssertExpectationsAsync(res).ConfigureAwait(false);
+                Owner.ExecutePostRunAfterExpectationsActions(this);
+                return new HttpResponseMessageAssertor(Owner, res);
+            }
+            finally
+            {
+                Owner.ExecutePostRunActions(this);
+                Owner.SharedState.RemoveRequestStateData(RequestId);
+            }
         }
 
         /// <summary>
