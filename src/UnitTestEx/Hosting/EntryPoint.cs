@@ -32,7 +32,6 @@ namespace UnitTestEx.Hosting
             _mi1 = instance.GetType().GetMethod(nameof(ConfigureAppConfiguration), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, [typeof(HostBuilderContext), typeof(IConfigurationBuilder)]);
             _mi2 = instance.GetType().GetMethod(nameof(ConfigureHostConfiguration), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, [typeof(IConfigurationBuilder)]);
             _mi3 = instance.GetType().GetMethod(nameof(ConfigureServices), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, [typeof(IServiceCollection)]);
-            _mi3 = instance.GetType().GetMethod(nameof(ConfigureServices), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, [typeof(IServiceCollection)]);
 #if NET8_0_OR_GREATER
             _mi4 = instance.GetType().GetMethod(nameof(ConfigureApplication), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, [typeof(IHostApplicationBuilder)]);
 #endif
