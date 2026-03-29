@@ -15,7 +15,6 @@ using System.Net.Mime;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using UnitTestEx.AspNetCore;
 using UnitTestEx.Expectations;
 using UnitTestEx.Json;
 using UnitTestEx.Logging;
