@@ -175,7 +175,7 @@ namespace UnitTestEx.AspNetCore
             }
             finally
             {
-                Owner.ExecutePreRunActions(this);
+                Owner.ExecutePostRunActions(this);
                 Owner.SharedState.RemoveRequestStateData(RequestId);
             }
         }
