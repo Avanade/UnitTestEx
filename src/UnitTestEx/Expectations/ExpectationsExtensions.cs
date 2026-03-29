@@ -227,7 +227,7 @@ namespace UnitTestEx.Expectations
         /// <typeparam name="TSelf">The expectations <see cref="Type"/>.</typeparam>
         /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
         /// <param name="expectations">The <see cref="IValueExpectations{TValue, TSelf}"/>.</param>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
         /// <remarks>Uses <see cref="Resource.GetJson(string, Assembly?)"/> to load the embedded resource within the <see cref="Assembly.GetCallingAssembly"/>.</remarks>

@@ -69,7 +69,7 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Asserts that the <see cref="Value"/> matches the JSON serialized value from the named embedded resource.
         /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ValueAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
         public ValueAssertor<TValue> AssertJsonFromResource(string resourceName, params string[] pathsToIgnore)
@@ -79,7 +79,7 @@ namespace UnitTestEx.Assertors
         /// Asserts that the <see cref="Value"/> matches the JSON serialized value from the named embedded resource.
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> to infer the <see cref="Assembly"/> that contains the embedded resource.</typeparam>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name) that contains the expected value as serialized JSON.</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name) that contains the expected value as serialized JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ValueAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
         public ValueAssertor<TValue> AssertJsonFromResource<TAssembly>(string resourceName, params string[] pathsToIgnore)

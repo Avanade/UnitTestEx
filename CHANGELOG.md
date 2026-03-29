@@ -2,8 +2,15 @@
 
 Represents the **NuGet** versions.
 
+## v5.10.0
+- *Enhancement:* `TestSharedState` updated to enable request-based (isolated) state; with the corresponding `GetHttpRequestId()` method now made public.
+- *Enhancement:* Added `ApiTesterBase.AddPreRunAction()`, `AddPostRunBeforeExpectationsAction()`, `AddPostRunAfterExpectationsAction()` and `AddPostRunAction()` to enable the addition of actions to be executed at different stages of the `Run`/`RunAsync` process for every underlying test. This will enable the addition of common pre/post processing logic without having to explicitly add to each test.
+- *Enhancement:* `TEntryPoint` methods can now be specified as `static`.  
+- *Enhancement:* `ApiError` added implicit conversion from (`string?`, `string`) tuple to enable simplified usage; e.g. `AssertErrors(("field", "Bad Request"))` versus `AssertErrors(new ApiError("field", "Bad Request"))`.
+- *Fixed:* Reset `MockHttpClientRequest` internal state when using any `With*` method to ensure correct behavior.
+
 ## v5.9.2
-- *Fixed:* The `MockHttpClientRequest` now resets the internal count state when overridding a response to ensure `Verify()` functions correctly.
+- *Fixed:* The `MockHttpClientRequest` now resets the internal count state when overriding a response to ensure `Verify()` functions correctly.
 
 ## v5.9.1
 - *Fixed:* The `MockHttpClientRequest` now caches the response content internally, and creates a new `HttpContent` instance for each request to ensure that the content can be read multiple times across multiple requests (where applicable); avoids potential object disposed error.
@@ -95,10 +102,10 @@ Represents the **NuGet** versions.
   - `CreateFunctionTester<TStartup>()` replaced with `FunctionTester.Create<TStartup>()`.
 
 ## v4.4.2
-- *Fixed*: Updated `System.Text.Json` package depenedency to latest; resolve [Microsoft Security Advisory CVE-2024-43485](https://github.com/advisories/GHSA-8g4q-xg66-9fp4).
+- *Fixed*: Updated `System.Text.Json` package dependency to latest; resolve [Microsoft Security Advisory CVE-2024-43485](https://github.com/advisories/GHSA-8g4q-xg66-9fp4).
 
 ## v4.4.1
-- *Fixed:* Updated all package depenedencies to latest.
+- *Fixed:* Updated all package dependencies to latest.
 
 ## v4.4.0
 - *Enhancement:* Added `ExpectJson` and `ExpectJsonFromResource` to `IValueExpectations` to enable value comparison against the specified (expected) JSON.
@@ -136,7 +143,7 @@ Represents the **NuGet** versions.
 - *Fixed:* Removed all dependencies to `Newtonsoft.Json`; a developer will need to explicitly add this dependency and `IJsonSerializer` implementation where applicable.
 
 ## v4.0.0
-All internal dependecies to `CoreEx` have been removed. This is intended to further generalize the capabilities of `UnitTestEx`; but more importantly, break the circular dependency reference between the two repositories. New `CoreEx.UnitTesting*` packages have been created to extend the `UnitTestEx` capabilities for `CoreEx`.
+All internal dependencies to `CoreEx` have been removed. This is intended to further generalize the capabilities of `UnitTestEx`; but more importantly, break the circular dependency reference between the two repositories. New `CoreEx.UnitTesting*` packages have been created to extend the `UnitTestEx` capabilities for `CoreEx`.
  - *Enhancement:* All typed value assertions have been named `AssertValue` for consistency; otherwise, `AssertContent` for a simple string comparison.
  - *Enhancement:* All JSON-related assertions have been named `AssertJson*` for consistency.
  - *Enhancement:* The `CreateServiceBusMessage` methods that accept a generic `T` value have been renamed to `CreateServiceBusMessageFromValue`.
@@ -149,7 +156,7 @@ All internal dependecies to `CoreEx` have been removed. This is intended to furt
 The enhancements have been made in a manner to maximize backwards compatibility with previous versions of `UnitTestEx` where possible; however, some breaking changes were unfortunately unavoidable (and made to improve overall). There may be an opportunity for the consuming developer to add extension methods to support the previous naming conventions if desired; note that the next `CoreEx` version (`v3.6.0`) will implement extensions in new `CoreEx.UnitTesting` packages to support existing behaviors (where applicable).
 
 ## v3.1.0
-- *Enhancement:* Updated all package depenedencies to latest.
+- *Enhancement:* Updated all package dependencies to latest.
 - *Enhancement:* The `GenericTester` updated to support `IHostStartup` to enable shared host dependency injection configuration.
 - *Enhancement:* Added `IEventExpectations<TSelf>` and `ILoggerExpectations<TSelf>` support to `GenericTester` and `ValidationTester`.
 - *Enhancement:* Moved the `CreateServiceBusMessage` and related methods from `FunctionTesterBase` up the inheritance hierarchy to `TesterBase<TSelf>` to enable broader usage.
@@ -193,7 +200,7 @@ The enhancements have been made in a manner to maximize backwards compatibility 
 - *Fixed:* Incorrect package deployment; corrected.
 
 ## v2.1.0
-- *Enhancement:* Added `TestSetUp.RegisterAutoSetUp` that will automatically throw a `TestSetUpException` where unsuccessful; otherwise, queues the successful output message. This is required as most testing frameworks do not allow for a log write during construction or fuxture set up. The underlying _UnitTestEx_ test classes will automatically log write where entries are discovered in the queue. This will at least ensure one of the underlying tests will output the success output where applicable. Otherwise, to log write explicitly use `TestSetUp.LogAutoSetUpOutputs`.
+- *Enhancement:* Added `TestSetUp.RegisterAutoSetUp` that will automatically throw a `TestSetUpException` where unsuccessful; otherwise, queues the successful output message. This is required as most testing frameworks do not allow for a log write during construction or fixture set up. The underlying _UnitTestEx_ test classes will automatically log write where entries are discovered in the queue. This will at least ensure one of the underlying tests will output the success output where applicable. Otherwise, to log write explicitly use `TestSetUp.LogAutoSetUpOutputs`.
 
 ## v2.0.0
 - *Enhancement:* Updated `CoreEx` dependencies to `2.0.0` as breaking changes were introduced. There are no breaking changes within `UnitTestEx` as a result; primarily related to the key `CoreEx` dependency.
@@ -224,7 +231,7 @@ The enhancements have been made in a manner to maximize backwards compatibility 
 - *Fixed:* Handle `AggregateException` by using its `InnerException` as the `Exception`.
 
 ## v1.0.24
-- *Enhancement:* Updated the `ControllerTester` removing the HTTP request capabilies and moving into new `HttpTester`; this creates a more logical split as the latter needs no knowledge of the `Controller`. This new tester is available via `ApiTester.Http().Run(...)`.
+- *Enhancement:* Updated the `ControllerTester` removing the HTTP request capabilities and moving into new `HttpTester`; this creates a more logical split as the latter needs no knowledge of the `Controller`. This new tester is available via `ApiTester.Http().Run(...)`.
 - *Enhancement:* Added new `UnitTextEx.Expectations` namespace; when added will enable `Expect*` and `Ignore*` pre-execution assertions, that are then executed post `Run`/`RunAsync`. Some testers now also support the specification of a `TResponse` generic `Type` to enable further response value-related expectations.
 
 ## v1.0.23
@@ -283,7 +290,7 @@ The enhancements have been made in a manner to maximize backwards compatibility 
 - *Enhancement:* **Breaking change.** Integrate [`CoreEx`](https://github.com/Avanade/CoreEx/) package which primarily brings [`IJsonSerializer`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx/Json/IJsonSerializer.cs) functionality to enable configuration of either [`CoreEx.Text.Json.JsonSerializer`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx/Text/Json/JsonSerializer.cs) (default) or [`CoreEx.Newtonsoft.Json.JsonSerializer`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx.Newtonsoft/Json/JsonSerializer.cs). The `MockHttpClientFactory`, `ApiTester` and `FunctionTester` have new method `UseJsonSerializer` to individually update from the default. To change the default for all tests then set [`CoreEx.Json.JsonSerializer.Default`](https://github.com/Avanade/CoreEx/blob/main/src/CoreEx/Json/JsonSerializer.cs) to the desired serializer.
 - *Enhancement:* Improved the replacement of the `MockHttpClientFactory` with the `ApiTester` and `FunctionTester`. Existing code `test.ConfigureServices(sc => mcf.Replace(sc))` can be replaced with `test.ReplaceHttpClientFactory(mcf)`.
 - *Enhancement:* Added `ReplaceSingleton`, `ReplaceScoped` and `ReplaceTransient` methods directly to `ApiTester` and `FunctionTester`. For example, existing code `test.ConfigureServices(sc => sc.ReplaceTransient<XXX>())` can be replaced with `test.ReplaceTransient<XXX>()`.
-- *Enhancement:* Added addtional `CreateHttpRequest` overloads to support additional parameters `HttpRequestOptions? requestOptions = null, params IHttpArg[] args` as enabled by `CoreEx`. These enable additional capabilities for the `HttpRequest` query string and headers.
+- *Enhancement:* Added additional `CreateHttpRequest` overloads to support additional parameters `HttpRequestOptions? requestOptions = null, params IHttpArg[] args` as enabled by `CoreEx`. These enable additional capabilities for the `HttpRequest` query string and headers.
 
 ## v1.0.11
 - *[Issue 24](https://github.com/Avanade/UnitTestEx/issues/24)*: Added additional `IServiceCollection.Replace` extension methods to support `ReplaceXxx<T>()` and `ReplaceXxx<T, T>()` to match the standard `AddXxx` methods.
@@ -319,10 +326,10 @@ The enhancements have been made in a manner to maximize backwards compatibility 
 ## v1.0.4
 - *[Issue 3](https://github.com/Avanade/UnitTestEx/issues/3)*: Added support for MOQ `Times` struct to verify the number of times a request is made.
 - *[Issue 4](https://github.com/Avanade/UnitTestEx/issues/4)*: Added support for MOQ sequences; i.e. multiple different responses.
-- *[Issue 5](https://github.com/Avanade/UnitTestEx/issues/5)*: Deleted `MockServiceBus` as the mocking failed to work as intended. This has been replaced by `FunctionTesterBase` methods of `CreateServiceBusMessage`, `CreateServiceBusMessageFromResource` and `CreateServiceBusMessageFromJson`.
+- *[Issue 5](https://github.com/Avanade/UnitTestEx/issues/5)*: Delete `MockServiceBus` as the mocking failed to work as intended. This has been replaced by `FunctionTesterBase` methods of `CreateServiceBusMessage`, `CreateServiceBusMessageFromResource` and `CreateServiceBusMessageFromJson`.
 
 ## v1.0.3
-- *Fixed:* `MockHttpClientFactory.CreateClient` overloads were ambiquous, this has been corrected.
+- *Fixed:* `MockHttpClientFactory.CreateClient` overloads were ambiguous, this has been corrected.
 - *Fixed:* Resolved logging output challenges between the various test frameworks and `ApiTester` (specifically) to achieve consistent output.
 - *Enhancement:* The logging output now includes scope details.
 - *Added:* New `MockServiceBus.CreateReceivedMessage` which will mock the `ServiceBusReceivedMessage` and add the passed value as serialized JSON into the `Body` (`BinaryData`).

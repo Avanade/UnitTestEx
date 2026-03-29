@@ -11,7 +11,7 @@ namespace UnitTestEx.Hosting
     /// <summary>
     /// Provides a generic <see cref="EntryPoint"/> to support dependency injection.
     /// </summary>
-    /// <remarks>Uses reflection to map to the same named methods: <see cref="ConfigureAppConfiguration"/>, <see cref="ConfigureHostConfiguration"/> and <see cref="ConfigureServices"/>.</remarks>
+    /// <remarks>Uses reflection to map to the same named methods: <see cref="ConfigureAppConfiguration"/>, <see cref="ConfigureHostConfiguration"/> and <see cref="ConfigureServices"/>. These methods can be either instance or static methods.</remarks>
     public class EntryPoint
     {
         private readonly object _instance;
@@ -29,12 +29,12 @@ namespace UnitTestEx.Hosting
         public EntryPoint(object instance)
         {
             _instance = instance ?? throw new ArgumentNullException(nameof(instance));
-            _mi1 = instance.GetType().GetMethod(nameof(ConfigureAppConfiguration), BindingFlags.Instance | BindingFlags.Public, [typeof(HostBuilderContext), typeof(IConfigurationBuilder)]);
-            _mi2 = instance.GetType().GetMethod(nameof(ConfigureHostConfiguration), BindingFlags.Instance | BindingFlags.Public, [typeof(IConfigurationBuilder)]);
-            _mi3 = instance.GetType().GetMethod(nameof(ConfigureServices), BindingFlags.Instance | BindingFlags.Public, [typeof(IServiceCollection)]);
-            _mi3 = instance.GetType().GetMethod(nameof(ConfigureServices), BindingFlags.Instance | BindingFlags.Public, [typeof(IServiceCollection)]);
+            _mi1 = instance.GetType().GetMethod(nameof(ConfigureAppConfiguration), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, [typeof(HostBuilderContext), typeof(IConfigurationBuilder)]);
+            _mi2 = instance.GetType().GetMethod(nameof(ConfigureHostConfiguration), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, [typeof(IConfigurationBuilder)]);
+            _mi3 = instance.GetType().GetMethod(nameof(ConfigureServices), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, [typeof(IServiceCollection)]);
+            _mi3 = instance.GetType().GetMethod(nameof(ConfigureServices), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, [typeof(IServiceCollection)]);
 #if NET8_0_OR_GREATER
-            _mi4 = instance.GetType().GetMethod(nameof(ConfigureApplication), BindingFlags.Instance | BindingFlags.Public, [typeof(IHostApplicationBuilder)]);
+            _mi4 = instance.GetType().GetMethod(nameof(ConfigureApplication), BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public, [typeof(IHostApplicationBuilder)]);
 #endif
         }
 

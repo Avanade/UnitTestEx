@@ -164,8 +164,9 @@ namespace UnitTestEx.NUnit.Test
         public async Task UriAndBody_WithJsonResponse3()
         {
             var mcf = MockHttpClientFactory.Create();
-            mcf.CreateClient("XXX", new Uri("https://d365test"))
-                .Request(HttpMethod.Post, "products/xyz").WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
+            var req = mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Post, "products/xyz");
+
+            req.WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
                 .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
 
             var hc = mcf.GetHttpClient("XXX");
@@ -175,6 +176,41 @@ namespace UnitTestEx.NUnit.Test
                 Assert.That(res.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
                 Assert.That(await res.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
             });
+
+            // Change up the request body and now should fail.
+            req.WithJsonBody(new Person { FirstName = "Bob", LastName = "Janet" })
+                .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
+
+            try
+            { 
+                res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bob" }).ConfigureAwait(false);
+                Assert.Fail();
+            }
+            catch (MockHttpClientException mhcex)
+            {
+                Assert.That(mhcex.Message, Is.EqualTo("No corresponding MockHttpClient response found for HTTP request POST https://d365test/products/xyz {\"firstName\":\"Bob\",\"lastName\":\"Jane\"} (application/json)"));
+            }
+        }
+
+        [Test]
+        public async Task Mock_Request_Not_Found()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            var req = mcf.CreateClient("XXX", new Uri("https://d365test")).Request(HttpMethod.Post, "products/xyz");
+            
+            req.WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
+                .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
+
+            var hc = mcf.GetHttpClient("XXX");
+            try
+            {
+                var res = await hc.PostAsJsonAsync("products/xyz", new Person { LastName = "Jane", FirstName = "Bobby" }).ConfigureAwait(false);
+                Assert.Fail();
+            }
+            catch (MockHttpClientException mhcex)
+            {
+                Assert.That(mhcex.Message, Is.EqualTo("No corresponding MockHttpClient response found for HTTP request POST https://d365test/products/xyz {\"firstName\":\"Bobby\",\"lastName\":\"Jane\"} (application/json)"));
+            }
         }
 
         [Test]

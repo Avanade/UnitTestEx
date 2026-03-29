@@ -242,7 +242,7 @@ namespace UnitTestEx
         }
 
         /// <summary>
-        /// Executes the registered set up synchronsously.
+        /// Executes the registered set up synchronously.
         /// </summary>
         /// <param name="data">The optional data.</param>
         /// <returns><c>true</c> indicates that the set up was successful; otherwise, <c>false</c>.</returns>
@@ -250,7 +250,7 @@ namespace UnitTestEx
         public bool SetUp(object? data = null) => SetUpAsync(data).GetAwaiter().GetResult();
 
         /// <summary>
-        /// Executes the registered set up asynchronsously.
+        /// Executes the registered set up asynchronously.
         /// </summary>
         /// <param name="data">The optional data.</param>
         /// <param name="cancellationToken">The <see cref="CancellationToken"/>.</param>

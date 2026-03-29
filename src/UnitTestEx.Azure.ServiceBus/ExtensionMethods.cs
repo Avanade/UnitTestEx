@@ -41,7 +41,7 @@ namespace UnitTestEx
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> to infer <see cref="Type.Assembly"/> for the embedded resources.</typeparam>
         /// <param name="tester">The <see cref="TesterBase"/>.</param>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>
         public static ServiceBusReceivedMessage CreateServiceBusMessageFromResource<TAssembly>(this TesterBase tester, string resourceName, Action<AmqpAnnotatedMessage>? messageModify = null)
@@ -51,7 +51,7 @@ namespace UnitTestEx
         /// Creates a <see cref="ServiceBusReceivedMessage"/> where the <see cref="ServiceBusMessage.Body"/> <see cref="BinaryData"/> will contain the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
         /// </summary>
         /// <param name="tester">The <see cref="TesterBase"/>.</param>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="messageModify">Optional <see cref="AmqpAnnotatedMessage"/> modifier than enables the message to be further configured.</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetEntryAssembly()"/>.</param>
         /// <returns>The <see cref="ServiceBusReceivedMessage"/>.</returns>

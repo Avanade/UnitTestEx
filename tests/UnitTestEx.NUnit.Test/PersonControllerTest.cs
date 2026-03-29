@@ -149,8 +149,8 @@ namespace UnitTestEx.NUnit.Test
                 .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }))
                 .AssertBadRequest()
                 .AssertErrors(
-                    new ApiError("firstName", "First name is required."),
-                    new ApiError("lastName", "Last name is required."));
+                    ("firstName", "First name is required."),
+                    "Last name is required.");
         }
 
         [Test]
@@ -179,7 +179,7 @@ namespace UnitTestEx.NUnit.Test
                     .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }));
             });
 
-            Assert.That(ex.Message, Does.Contain("Error: First name is requiredx."));
+            Assert.That(ex.Message, Does.Contain("null: First name is requiredx."));
         }
 
         [Test]

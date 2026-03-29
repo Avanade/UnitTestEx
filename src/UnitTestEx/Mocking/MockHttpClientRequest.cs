@@ -240,11 +240,28 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
+        /// Reset to initial state; ensure consistency to allow reuse of the same <see cref="MockHttpClientRequest"/> instance.
+        /// </summary>
+        private void Reset()
+        {
+            IsMockComplete = false;
+            _anyContent = false;
+            _content = null;
+            _mediaType = null;
+            _pathsToIgnore = [];
+            _traceRequestComparisons = false;
+
+            Rule.Reset();
+            Rule.Response = new MockHttpClientResponse(this, Rule);
+        }
+
+        /// <summary>
         /// Enables <i>any</i> request with <i>a</i> body (functionally equivalent to <see cref="ItExpr.IsAny{TValue}"/>).
         /// </summary>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithAnyBody()
         {
+            Reset();
             _anyContent = true;
             _mediaType = MediaTypeNames.Text.Plain;
             return new MockHttpClientRequestBody(Rule);
@@ -257,6 +274,7 @@ namespace UnitTestEx.Mocking
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithBody(string text)
         {
+            Reset();
             _content = text;
             _mediaType = MediaTypeNames.Text.Plain; 
             return new MockHttpClientRequestBody(Rule);
@@ -270,6 +288,7 @@ namespace UnitTestEx.Mocking
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithBody(string body, string mediaType)
         {
+            Reset();
             _content = body;
             _mediaType = mediaType;
             return new MockHttpClientRequestBody(Rule);
@@ -284,6 +303,7 @@ namespace UnitTestEx.Mocking
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithJsonBody<T>(T value, params string[] pathsToIgnore)
         {
+            Reset();
             _content = value;
             _mediaType = MediaTypeNames.Application.Json;
             _pathsToIgnore = pathsToIgnore;
@@ -302,6 +322,8 @@ namespace UnitTestEx.Mocking
         public MockHttpClientRequestBody WithJsonBody(string json, params string[] pathsToIgnore)
 #endif
         {
+            Reset();
+
             try
             {
                 _ = JsonSerializer.Deserialize(json);
@@ -320,7 +342,7 @@ namespace UnitTestEx.Mocking
         /// Provides the expected request body using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> used to infer <see cref="Assembly"/> that contains the embedded resource.</typeparam>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithJsonResourceBody<TAssembly>(string resourceName, params string[] pathsToIgnore) => WithJsonResourceBody(resourceName, typeof(TAssembly).Assembly, pathsToIgnore);
@@ -328,12 +350,13 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Provides the expected request body using the JSON formatted embedded resource as the content (<see cref="MediaTypeNames.Application.Json"/>).
         /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithJsonResourceBody(string resourceName, Assembly? assembly = null, params string[] pathsToIgnore)
         {
+            Reset();
             _content = Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly());
             _pathsToIgnore = pathsToIgnore;
             _mediaType = MediaTypeNames.Application.Json;

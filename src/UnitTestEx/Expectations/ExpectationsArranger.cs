@@ -107,7 +107,7 @@ namespace UnitTestEx.Expectations
         }
 
         /// <summary>
-        /// Resets any existing expectations back to their orginating assert state to allow for a re-execution.
+        /// Resets any existing expectations back to their originating assert state to allow for a re-execution.
         /// </summary>
         public void Reset()
         {

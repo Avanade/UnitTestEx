@@ -34,5 +34,17 @@ namespace UnitTestEx.Mocking
         /// Gets or sets the number of <see cref="Moq.Times"/>.
         /// </summary>
         internal Times? Times { get; set; }
+
+        /// <summary>
+        /// Resets the rule to the default values.
+        /// </summary>
+        /// <remarks>Does not reset the <see cref="Response"/> or <see cref="Times"/>.</remarks>
+        internal void Reset()
+        {
+            Body = null;
+            Response = null;
+            Responses = null;
+            ResponsesIndex = 0;
+        }
     }
 }

@@ -104,16 +104,16 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Sets the simulated delay (sleep) for the response.
         /// </summary>
-        /// <param name="millseconds">The delay (sleep) milliseconds.</param>
+        /// <param name="milliseconds">The delay (sleep) milliseconds.</param>
         /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
         /// <remarks>Each time a <c>Delay</c> is invoked it will override the previously set value.</remarks>
-        public MockHttpClientResponse Delay(int millseconds) => Delay(TimeSpan.FromMilliseconds(millseconds));
+        public MockHttpClientResponse Delay(int milliseconds) => Delay(TimeSpan.FromMilliseconds(milliseconds));
 
         /// <summary>
         /// Sets the simulated delay (sleep) as a random between the <paramref name="from"/> and <paramref name="to"/> values for the response.
         /// </summary>
         /// <param name="from">The from milliseconds.</param>
-        /// <param name="to">The to millseconds.</param>
+        /// <param name="to">The to milliseconds.</param>
         /// <returns>The <see cref="MockHttpClientResponse"/> to support fluent-style method-chaining.</returns>
         /// <remarks>Each time a <c>Delay</c> is invoked it will override the previously set value.</remarks>
         public MockHttpClientResponse Delay(int from, int to) => Delay(TimeSpan.FromMilliseconds(from), TimeSpan.FromMilliseconds(to));
@@ -221,7 +221,7 @@ namespace UnitTestEx.Mocking
         /// Provides the mocked response using the JSON formatted embedded resource string as the content.
         /// </summary>
         /// <typeparam name="TAssembly">The <see cref="Type"/> used to infer <see cref="Assembly"/> that contains the embedded resource.</typeparam>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="statusCode">The optional <see cref="HttpStatusCode"/> (defaults to <see cref="HttpStatusCode.OK"/>).</param>
         /// <param name="mediaType">The optional media type (defaults to <see cref="MediaTypeNames.Application.Json"/>).</param>
         /// <param name="response">The optional action to enable additional configuration of the <see cref="HttpResponseMessage"/>.</param>
@@ -231,7 +231,7 @@ namespace UnitTestEx.Mocking
         /// <summary>
         /// Provides the mocked response using the JSON formatted embedded resource string as the content.
         /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="statusCode">The optional <see cref="HttpStatusCode"/> (defaults to <see cref="HttpStatusCode.OK"/>).</param>
         /// <param name="mediaType">The optional media type (defaults to <see cref="MediaTypeNames.Application.Json"/>).</param>
         /// <param name="response">The optional action to enable additional configuration of the <see cref="HttpResponseMessage"/>.</param>

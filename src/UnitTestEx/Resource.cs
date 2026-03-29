@@ -19,7 +19,7 @@ namespace UnitTestEx
         /// <summary>
         /// Gets the named embedded resource <see cref="StreamReader"/>.
         /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
         /// <returns>The <see cref="StreamReader"/>; otherwise, an <see cref="ArgumentException"/> will be thrown.</returns>
         public static StreamReader GetStream(string resourceName, Assembly? assembly = null)
@@ -38,7 +38,7 @@ namespace UnitTestEx
         /// <summary>
         /// Gets the named embedded resource as a <see cref="string"/>.
         /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
         /// <returns>The JSON <see cref="string"/>.</returns>
         public static string GetString(string resourceName, Assembly? assembly = null)
@@ -51,7 +51,7 @@ namespace UnitTestEx
         /// Gets the value by deserializing the JSON within the named embedded resource to the specified <see cref="Type"/> of <typeparamref name="T"/>.
         /// </summary>
         /// <typeparam name="T">The value <see cref="Type"/>.</typeparam>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
         /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>; defaults to <see cref="JsonSerializer.Default"/>.</param>
         /// <returns>The deserialized value.</returns>
@@ -64,7 +64,7 @@ namespace UnitTestEx
         /// <summary>
         /// Gets the named embedded resource as a validated JSON <see cref="string"/>.
         /// </summary>
-        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualifed resource name).</param>
+        /// <param name="resourceName">The embedded resource name (matches to the end of the fully qualified resource name).</param>
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
         /// <returns>The JSON <see cref="string"/>.</returns>
         public static string GetJson(string resourceName, Assembly? assembly = null)

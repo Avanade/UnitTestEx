@@ -110,7 +110,7 @@ namespace UnitTestEx.NUnit.Test.Other
 
         //public void ConfigureServices(IServiceCollection services) { }
 
-        public void ConfigureApplication(IHostApplicationBuilder builder)
+        public static void ConfigureApplication(IHostApplicationBuilder builder)
         {
             builder.Services.AddSingleton<Gin>();
         }
