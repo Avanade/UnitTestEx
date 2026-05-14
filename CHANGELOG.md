@@ -3,7 +3,7 @@
 Represents the **NuGet** versions.
 
 ## v5.11.0
-- *Enhancement:* Added `AssertorBase.Logs` to enable access to the logs captured during execution of the test for assertion purposes. This is intended to be used in conjunction with the existing `ExpectLogContains` expectation to enable additional (more advanced) assertions against the logs.
+- *Enhancement:* Added `AssertorBase.LogMessages` to enable access to the logs captured during execution of the test for assertion purposes. This is intended to be used in conjunction with the existing `ExpectLogContains` expectation to enable additional (more advanced) assertions against the logs.
 
 ## v5.10.0
 - *Enhancement:* `TestSharedState` updated to enable request-based (isolated) state; with the corresponding `GetHttpRequestId()` method now made public.
