@@ -4,6 +4,7 @@
 
 using Microsoft.AspNetCore.Http;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -16,8 +17,9 @@ namespace UnitTestEx.Assertors
     /// </summary>
     /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
     /// <param name="result">The <see cref="IResult"/>.</param>
+    /// <param name="logs">The logs captured during execution.</param>
     /// <param name="exception">The <see cref="Exception"/> (if any).</param>
-    public class HttpResultAssertor(TesterBase owner, IResult result, Exception? exception) : AssertorBase<HttpResultAssertor>(owner, exception)
+    public class HttpResultAssertor(TesterBase owner, IResult result, IEnumerable<string?>? logs, Exception? exception) : AssertorBase<HttpResultAssertor>(owner, logs, exception)
     {
         /// <summary>
         /// Gets the <see cref="IResult"/>.
@@ -29,16 +31,17 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <param name="httpRequest">The optional requesting <see cref="HttpRequest"/> with <see cref="HttpContext"/>; otherwise, will default.</param>
         /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
-        public HttpResponseMessageAssertor ToHttpResponseMessageAssertor(HttpRequest? httpRequest = null) => ToHttpResponseMessageAssertor(Owner, Result, httpRequest);
+        public HttpResponseMessageAssertor ToHttpResponseMessageAssertor(HttpRequest? httpRequest = null) => ToHttpResponseMessageAssertor(Owner, Result, LogMessages, httpRequest);
 
         /// <summary>
         /// Converts the <see cref="ValueAssertor{TValue}"/> to an <see cref="HttpResponseMessageAssertor"/>.
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
         /// <param name="result">The <see cref="IResult"/> to convert.</param>
-        /// <param name="httpRequest">The optional requesting <see cref="HttpRequest"/>; otherwise, will default.</param>
+        /// <param name="logs">The log messages captured during execution.</param>
+        /// <param name="httpRequest">The optional requesting <see cref="HttpRequest"/> with <see cref="HttpContext"/>; otherwise, will default.</param>
         /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
-        internal static HttpResponseMessageAssertor ToHttpResponseMessageAssertor(TesterBase owner, IResult result, HttpRequest? httpRequest)
+        internal static HttpResponseMessageAssertor ToHttpResponseMessageAssertor(TesterBase owner, IResult result, IEnumerable<string?>? logs, HttpRequest? httpRequest)
         {
             var sw = Stopwatch.StartNew();
             using var ms = new MemoryStream();
@@ -61,7 +64,7 @@ namespace UnitTestEx.Assertors
             sw.Stop();
             owner.LogHttpResponseMessage(hr, sw);
 
-            return new HttpResponseMessageAssertor(owner, hr);
+            return new HttpResponseMessageAssertor(owner, logs, hr);
         }
     }
 }

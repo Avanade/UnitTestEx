@@ -98,7 +98,7 @@ namespace UnitTestEx.Azure.Functions
 
             await ExpectationsArranger.AssertAsync(logs, ex).ConfigureAwait(false);
 
-            return new VoidAssertor(Owner, ex);
+            return new VoidAssertor(Owner, logs, ex);
         }
 
         /// <summary>

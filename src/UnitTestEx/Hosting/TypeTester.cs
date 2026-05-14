@@ -137,7 +137,7 @@ namespace UnitTestEx.Hosting
 
             await ExpectationsArranger.AssertAsync(logs, ex).ConfigureAwait(false);
 
-            return new VoidAssertor(Owner, ex);
+            return new VoidAssertor(Owner, logs, ex);
         }
 
 #if NET9_0_OR_GREATER
@@ -229,7 +229,7 @@ namespace UnitTestEx.Hosting
 
             await ExpectationsArranger.AssertValueAsync(logs, result, ex).ConfigureAwait(false);
 
-            return new ValueAssertor<TValue>(Owner, result, ex);
+            return new ValueAssertor<TValue>(Owner, result, logs, ex);
         }
 
 #if NET9_0_OR_GREATER

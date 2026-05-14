@@ -270,7 +270,7 @@ namespace UnitTestEx.Generic
 
             await ExpectationsArranger.AssertAsync(messages, exception).ConfigureAwait(false);
 
-            return new VoidAssertor(this, exception);
+            return new VoidAssertor(this, messages, exception);
         }
 
 #if NET9_0_OR_GREATER
@@ -563,7 +563,7 @@ namespace UnitTestEx.Generic
 
             await ExpectationsArranger.AssertAsync(messages, exception).ConfigureAwait(false);
 
-            return new ValueAssertor<TValue>(this, value, exception);
+            return new ValueAssertor<TValue>(this, value, messages, exception);
         }
 
 #if NET9_0_OR_GREATER

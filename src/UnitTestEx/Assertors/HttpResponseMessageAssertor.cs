@@ -2,6 +2,7 @@
 
 using Microsoft.Net.Http.Headers;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
@@ -13,8 +14,9 @@ namespace UnitTestEx.Assertors
     /// Represents the <see cref="HttpResponseMessage"/> test assert helper.
     /// </summary>
     /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="logs">The log messages captured during execution.</param>
     /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-    public class HttpResponseMessageAssertor(TesterBase owner, HttpResponseMessage response) : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor>(owner, response)
+    public class HttpResponseMessageAssertor(TesterBase owner, IEnumerable<string?>? logs, HttpResponseMessage response) : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor>(owner, logs, response)
     {
         /// <summary>
         /// Asserts the the <see cref="HttpResponseMessageAssertorBase.Response"/> <see cref="HttpResponseMessage.Headers"/> <see cref="HeaderNames.Location"/> matches the <paramref name="expectedUri"/>.

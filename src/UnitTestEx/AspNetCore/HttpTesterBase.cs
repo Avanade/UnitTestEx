@@ -100,7 +100,7 @@ namespace UnitTestEx.AspNetCore
                 Owner.ExecutePostRunBeforeExpectationsActions(this);
                 await AssertExpectationsAsync(res).ConfigureAwait(false);
                 Owner.ExecutePostRunAfterExpectationsActions(this);
-                return new HttpResponseMessageAssertor(Owner, res);
+                return new HttpResponseMessageAssertor(Owner, LastLogs, res);
             }
             finally
             {
@@ -136,7 +136,7 @@ namespace UnitTestEx.AspNetCore
                 Owner.ExecutePostRunBeforeExpectationsActions(this);
                 await AssertExpectationsAsync(res).ConfigureAwait(false);
                 Owner.ExecutePostRunAfterExpectationsActions(this);
-                return new HttpResponseMessageAssertor(Owner, res);
+                return new HttpResponseMessageAssertor(Owner, LastLogs, res);
             }
             finally
             {
@@ -171,7 +171,7 @@ namespace UnitTestEx.AspNetCore
                 Owner.ExecutePostRunBeforeExpectationsActions(this);
                 await AssertExpectationsAsync(res).ConfigureAwait(false);
                 Owner.ExecutePostRunAfterExpectationsActions(this);
-                return new HttpResponseMessageAssertor(Owner, res);
+                return new HttpResponseMessageAssertor(Owner, LastLogs, res);
             }
             finally
             {

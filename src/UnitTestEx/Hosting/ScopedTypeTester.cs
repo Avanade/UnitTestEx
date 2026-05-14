@@ -134,7 +134,7 @@ public class ScopedTypeTester<TService> : HostTesterBase<TService, ScopedTypeTes
             if (!args.BypassRunActions)
                 Owner.ExecutePostRunAfterExpectationsActions(this);
 
-            return new VoidAssertor(Owner, ex);
+            return new VoidAssertor(Owner, logs, ex);
         }
         finally
         {
@@ -248,7 +248,7 @@ public class ScopedTypeTester<TService> : HostTesterBase<TService, ScopedTypeTes
             if (!args.BypassRunActions)
                 Owner.ExecutePostRunAfterExpectationsActions(this);
 
-            return new ValueAssertor<TValue>(Owner, result, ex);
+            return new ValueAssertor<TValue>(Owner, result, logs, ex);
         }
         finally
         {
