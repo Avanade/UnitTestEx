@@ -10,8 +10,9 @@ namespace UnitTestEx.Assertors
     /// Represents the base test assert helper that distinguishes between <see cref="AssertException"/> and <see cref="AssertSuccess"/>.
     /// </summary>
     /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="logs">The logs captured during execution.</param>
     /// <param name="exception">The <see cref="Exception"/> (if any).</param>
-    public abstract class AssertorBase<TSelf>(TesterBase owner, Exception? exception) : AssertorBase(owner, exception) where TSelf : AssertorBase<TSelf>
+    public abstract class AssertorBase<TSelf>(TesterBase owner, IEnumerable<string?>? logs, Exception? exception) : AssertorBase(owner, logs, exception) where TSelf : AssertorBase<TSelf>
     {
         /// <summary>
         /// Asserts that an <see cref="Exception"/> was thrown during execution.

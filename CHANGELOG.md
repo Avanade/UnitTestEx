@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v5.11.0
+- *Enhancement:* Added `AssertorBase.LogMessages` to enable access to the logs captured during execution of the test for assertion purposes. This is intended to be used in conjunction with the existing `ExpectLogContains` expectation to enable additional (more advanced) assertions against the logs.
+
 ## v5.10.0
 - *Enhancement:* `TestSharedState` updated to enable request-based (isolated) state; with the corresponding `GetHttpRequestId()` method now made public.
 - *Enhancement:* Added `ApiTesterBase.AddPreRunAction()`, `AddPostRunBeforeExpectationsAction()`, `AddPostRunAfterExpectationsAction()` and `AddPostRunAction()` to enable the addition of actions to be executed at different stages of the `Run`/`RunAsync` process for every underlying test. This will enable the addition of common pre/post processing logic without having to explicitly add to each test.

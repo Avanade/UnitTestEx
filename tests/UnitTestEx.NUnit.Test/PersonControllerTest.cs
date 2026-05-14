@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using NUnit.Framework;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using UnitTestEx.Api;
@@ -196,21 +197,28 @@ namespace UnitTestEx.NUnit.Test
         public void Update_Test7_ExpectationFailure2()
         {
             using var test = ApiTester.Create<Startup>();
-            test.Controller<PersonController>()
+            var assertor = test.Controller<PersonController>()
                 .ExpectStatusCode(System.Net.HttpStatusCode.BadRequest)
                 .ExpectError("No can do eighty-eight.")
                 .Run(c => c.Update(88, new Person { FirstName = null, LastName = null }));
+
+            Assert.That(assertor, Is.Not.Null);
+            Assert.That(assertor.LogMessages, Is.Not.Null);
         }
 
         [Test]
         public async Task Http_Get1()
         {
             using var test = ApiTester.Create<Startup>();
-            (await test.Http()
+            var assertor = (await test.Http()
                 .ExpectLogContains("Get using identifier 1")
                 .RunAsync(HttpMethod.Get, "Person/1" ))
                 .AssertOK()
                 .AssertValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+
+            Assert.That(assertor, Is.Not.Null);
+            Assert.That(assertor.LogMessages, Is.Not.Null);
+            Assert.That(assertor.LogMessages.Count(m => m.Contains("Get using identifier 1")), Is.EqualTo(1), "Expected log message was not found exactly once.");
         }
 
         [Test]
@@ -318,10 +326,13 @@ namespace UnitTestEx.NUnit.Test
 
             var iar = new OkResult();
 
-            new Assertors.ValueAssertor<IActionResult>(test, iar, null)
+            var valueAssertor = new Assertors.ValueAssertor<IActionResult>(test, iar, [], null)
                 .ToHttpResponseMessageAssertor(hr)
                 .AssertNamedHeader("X-Test", "Test")
                 .AssertNoNamedHeader("X-Absent");
+
+            Assert.That(valueAssertor, Is.Not.Null);
+            Assert.That(valueAssertor.LogMessages, Is.Not.Null);
         }
     }
 }

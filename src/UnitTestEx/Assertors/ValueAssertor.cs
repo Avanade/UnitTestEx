@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Reflection;
@@ -16,8 +17,9 @@ namespace UnitTestEx.Assertors
     /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
     /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
     /// <param name="value">The result value.</param>
+    /// <param name="logs">The logs captured during execution.</param>
     /// <param name="exception">The <see cref="Exception"/> (if any).</param>
-    public class ValueAssertor<TValue>(TesterBase owner, TValue value, Exception? exception) : AssertorBase<ValueAssertor<TValue>>(owner, exception)
+    public class ValueAssertor<TValue>(TesterBase owner, TValue value, IEnumerable<string?>? logs, Exception? exception) : AssertorBase<ValueAssertor<TValue>>(owner, logs, exception)
     {
         /// <summary>
         /// Gets the resulting value.
@@ -93,7 +95,7 @@ namespace UnitTestEx.Assertors
         public ActionResultAssertor ToActionResultAssertor()
         {
             if (typeof(IActionResult).IsAssignableFrom(typeof(TValue)))
-                return new ActionResultAssertor(Owner, (IActionResult)Value!, Exception);
+                return new ActionResultAssertor(Owner, (IActionResult)Value!, LogMessages, Exception);
 
             throw new InvalidOperationException($"Result Type '{typeof(TValue).Name}' must be assignable from '{nameof(IActionResult)}'");
         }
@@ -109,13 +111,13 @@ namespace UnitTestEx.Assertors
             if (Value != null)
             {
                 if (Value is HttpResponseMessage hrm)
-                    return new HttpResponseMessageAssertor(Owner, hrm);
+                    return new HttpResponseMessageAssertor(Owner, LogMessages, hrm);
 
                 if (Value is IActionResult ar)
-                    return ActionResultAssertor.ToHttpResponseMessageAssertor(Owner, ar, httpRequest);
+                    return ActionResultAssertor.ToHttpResponseMessageAssertor(Owner, ar, LogMessages, httpRequest);
 #if NET7_0_OR_GREATER
                 if (Value is IResult ir)
-                    return HttpResultAssertor.ToHttpResponseMessageAssertor(Owner, ir, httpRequest);
+                    return HttpResultAssertor.ToHttpResponseMessageAssertor(Owner, ir, LogMessages, httpRequest);
 #endif
             }
 

@@ -2,6 +2,7 @@
 
 using Microsoft.Net.Http.Headers;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using UnitTestEx.Abstractions;
 
@@ -11,8 +12,9 @@ namespace UnitTestEx.Assertors
     /// Represents the <see cref="HttpResponseMessage"/> test assert helper with a specified response <typeparamref name="TValue"/> <see cref="Type"/>.
     /// </summary>
     /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="logs">The log messages captured during execution.</param>
     /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-    public class HttpResponseMessageAssertor<TValue>(TesterBase owner, HttpResponseMessage response) : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor<TValue>>(owner, response)
+    public class HttpResponseMessageAssertor<TValue>(TesterBase owner, IEnumerable<string?>? logs, HttpResponseMessage response) : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor<TValue>>(owner, logs, response)
     {
         private TValue? _value;
         private bool _valueIsDeserialized;
@@ -21,9 +23,10 @@ namespace UnitTestEx.Assertors
         /// Initializes a new instance of the <see cref="HttpResponseMessageAssertor"/> class.
         /// </summary>
         /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+        /// <param name="logs">The log messages captured during execution.</param>
         /// <param name="value">The value already deserialized.</param>
         /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-        public HttpResponseMessageAssertor(TesterBase owner, TValue value, HttpResponseMessage response) : this(owner, response)
+        public HttpResponseMessageAssertor(TesterBase owner, IEnumerable<string?>? logs, TValue value, HttpResponseMessage response) : this(owner, logs, response)
         {
             _value = value;
             _valueIsDeserialized = true;
@@ -33,7 +36,7 @@ namespace UnitTestEx.Assertors
         /// Initializes a new instance of the <see cref="HttpResponseMessageAssertor"/> class.
         /// </summary>
         /// <param name="assertor">The untyped <see cref="HttpResponseMessageAssertor"/>.</param>
-        internal HttpResponseMessageAssertor(HttpResponseMessageAssertor assertor) : this(assertor.Owner, assertor.Response) { }
+        internal HttpResponseMessageAssertor(HttpResponseMessageAssertor assertor) : this(assertor.Owner, assertor.LogMessages, assertor.Response) { }
 
         /// <summary>
         /// Gets the response content as the deserialized JSON value.

@@ -17,8 +17,9 @@ namespace UnitTestEx.Assertors
     /// Provides the base <see cref="HttpResponseMessage"/> test assert helper capabilities.
     /// </summary>
     /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="logs">The log messages captured during execution.</param>
     /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-    public abstract class HttpResponseMessageAssertorBase<TSelf>(TesterBase owner, HttpResponseMessage response) : HttpResponseMessageAssertorBase(owner, response) where TSelf : HttpResponseMessageAssertorBase<TSelf>
+    public abstract class HttpResponseMessageAssertorBase<TSelf>(TesterBase owner, IEnumerable<string?>? logs, HttpResponseMessage response) : HttpResponseMessageAssertorBase(owner, logs, response) where TSelf : HttpResponseMessageAssertorBase<TSelf>
     {
         /// <summary>
         /// Asserts that the <see cref="HttpResponseMessage.StatusCode"/> has a successful value between 200 and 299.

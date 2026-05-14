@@ -3,6 +3,7 @@ using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Moq;
 using NUnit.Framework;
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using UnitTestEx.Expectations;
@@ -35,12 +36,14 @@ namespace UnitTestEx.NUnit.Test
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
             using var test = FunctionTester.Create<Startup>();
-            test.ReplaceHttpClientFactory(mcf)
+            var assertor =test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
                 .ExpectLogContains("C# HTTP trigger function processed a request.")
                 .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc", test.Logger))
                 .AssertOK()
                 .AssertValue(new { id = "Abc", description = "A blue carrot" });
+
+            Assert.That(assertor.LogMessages.Count(m => m.Contains("C# HTTP trigger function processed a request.")), Is.EqualTo(1), "Expected log message was not found exactly once.");
         }
 
         [Test]

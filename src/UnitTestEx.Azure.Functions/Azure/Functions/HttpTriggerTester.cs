@@ -146,7 +146,7 @@ namespace UnitTestEx.Azure.Functions
 
             await ExpectationsArranger.AssertAsync(logs, ex).ConfigureAwait(false);
 
-            return new ActionResultAssertor(Owner, result, ex);
+            return new ActionResultAssertor(Owner, result, logs, ex);
         }
 
         private void CheckRoute(HttpRequest request, string? route, (string? Name, object? Value)[] @params)

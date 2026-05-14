@@ -11,8 +11,9 @@ namespace UnitTestEx.Assertors
     /// Represents the base test assert helper.
     /// </summary>
     /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="logs">The logs captured during execution.</param>
     /// <param name="exception">The <see cref="Exception"/> (if any).</param>
-    public abstract class AssertorBase(TesterBase owner, Exception? exception)
+    public abstract class AssertorBase(TesterBase owner, IEnumerable<string?>? logs, Exception? exception)
     {
         private static List<Func<AssertorBase, ApiError[], bool>>? _assertErrorsExtentions;
 
@@ -27,6 +28,11 @@ namespace UnitTestEx.Assertors
         /// Gets the owning <see cref="TesterBase"/>.
         /// </summary>
         public TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
+
+        /// <summary>
+        /// Gets the log messages captured during execution.
+        /// </summary>
+        public IEnumerable<string?> LogMessages { get; } = logs ?? [];
 
         /// <summary>
         /// Gets the <see cref="System.Exception"/>.
@@ -58,7 +64,7 @@ namespace UnitTestEx.Assertors
                         return;
                 }
 
-                if (!Assertor.TryAreErrorsMatched(errors, Array.Empty<ApiError>(), out var errorMessage))
+                if (!Assertor.TryAreErrorsMatched(errors, [], out var errorMessage))
                     Implementor.AssertFail(errorMessage);
             }
         }
