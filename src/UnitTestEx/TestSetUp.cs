@@ -50,7 +50,7 @@ namespace UnitTestEx
                 }
                 catch (Exception ex)
                 {
-                    // Ignore any load failures; this is not a problem as the assembly may not be relevant to the current test execution.
+// Ignore load failures (some DLLs may be native or unrelated); note that failing to load a managed dependency may prevent one-off setup from running for that assembly.
                     System.Diagnostics.Debug.WriteLine($"TestSetUp: Unable to load assembly '{fi.FullName}': {ex.Message}");
                 }
             }
