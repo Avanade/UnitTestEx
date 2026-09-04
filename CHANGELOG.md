@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v5.11.1
+- *Fixed:* Wrapped `Assembly.LoadFrom` in `TestSetUp` with try-catch to log exceptions and prevent setup failures.
+
 ## v5.11.0
 - *Enhancement:* Added `AssertorBase.LogMessages` to enable access to the logs captured during execution of the test for assertion purposes. This is intended to be used in conjunction with the existing `ExpectLogContains` expectation to enable additional (more advanced) assertions against the logs.
 
