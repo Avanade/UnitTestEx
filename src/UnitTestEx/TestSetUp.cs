@@ -43,7 +43,17 @@ namespace UnitTestEx
         {
             // Load all dependent assemblies to ensure all one off test set up(s) execute before any test exection is perfomed.
             foreach (var fi in new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory).EnumerateFiles("*.dll"))
-                Assembly.LoadFrom(fi.FullName);
+            {
+                try
+                {
+                    Assembly.LoadFrom(fi.FullName);
+                }
+                catch (Exception ex)
+                {
+// Ignore load failures (some DLLs may be native or unrelated); note that failing to load a managed dependency may prevent one-off setup from running for that assembly.
+                    System.Diagnostics.Debug.WriteLine($"TestSetUp: Unable to load assembly '{fi.FullName}': {ex.Message}");
+                }
+            }
 
             // Wire up for any assemblies already loaded.
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
