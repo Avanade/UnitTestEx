@@ -175,10 +175,12 @@ wrapper; a documentation section showing this pattern (resource → real URL →
 
 ## 8. Sketch of the new `UnitTestEx.Aspire` package surface
 
-Illustrative only — not implemented by this doc:
+Illustrative only — not implemented by this doc. **Revised per section 9's inheritance analysis:**
+`AspireTesterBase` extends the non-generic `TesterBase`, *not* `TesterBase<TSelf>` — see section 9 for
+why.
 
 ```csharp
-public abstract class AspireTesterBase<TAppHost, TSelf> : TesterBase<TSelf>, IAsyncDisposable
+public abstract class AspireTesterBase<TAppHost, TSelf> : TesterBase, IAsyncDisposable
     where TAppHost : class
     where TSelf : AspireTesterBase<TAppHost, TSelf>
 {
@@ -194,9 +196,17 @@ public abstract class AspireTesterBase<TAppHost, TSelf> : TesterBase<TSelf>, IAs
     public Task WaitForResourceAsync(string resourceName, TimeSpan? timeout = null);
 
     // Resource-scoped Http()/Http<T>() wired to the resource's real HttpClient, reusing the
-    // existing HttpTester/HttpTester<T> fluent assertion API for consistency with Tier 1.
+    // existing HttpTester/HttpTester<T> fluent assertion API for consistency with Tier 1 — made
+    // possible because HttpTesterBase already only depends on the non-generic TesterBase (see
+    // section 9), not on anything DI-related from TesterBase<TSelf>.
     public HttpTester Http(string resourceName);
     public HttpTester<TResponse> Http<TResponse>(string resourceName);
+
+    // The two members TesterBase declares abstract; honestly unsupported for a multi-process tester.
+    public override IServiceProvider Services =>
+        throw new NotSupportedException("AspireTesterBase has no single in-process IServiceProvider; each resource owns its own DI container. Use Http(resourceName) or configure the resource directly instead.");
+    public override IConfiguration Configuration =>
+        throw new NotSupportedException("AspireTesterBase has no single in-process IConfiguration; configure/override the resource's own environment/configuration before it starts instead.");
 }
 ```
 
@@ -204,43 +214,95 @@ A WireMock resource plugs into the same model as just another named resource: st
 wrapper described in section 5, then assert against the real domain resource's behavior via
 `Http(resourceName)` as usual.
 
-## 9. `TesterBase<TSelf>` reuse: why `AspireTesterBase` can't just inherit it unchanged
+## 9. Why `AspireTesterBase` inherits `TesterBase`, not `TesterBase<TSelf>`
 
-`TesterBase<TSelf>` (`src/UnitTestEx/Abstractions/TesterBaseT.cs`) is the type a large number of fluent
-extension methods hang off (`ReplaceSingleton`/`Scoped`/`Transient` + `Keyed`/`Mock` variants,
-`ReplaceHttpClientFactory`, `ScopedType`, `Type`, `UseUser`, `UseJsonSerializer`, `Delay`, ...). If
-`AspireTesterBase` simply extended it, most of these would still compile — some fully valid, some
-subtly, silently broken. Cataloguing what's actually in play:
+**Revised conclusion, superseding an earlier draft of this section.** The first draft of this doc (and
+the sketch in section 8) had `AspireTesterBase<TAppHost, TSelf> : TesterBase<TSelf>` — i.e. reuse the
+*generic* base and guard away the parts that don't apply. On reflection that's the wrong shape: it's a
+Liskov substitution violation waiting to happen. `TesterBase<TSelf>` (`src/UnitTestEx/Abstractions/TesterBaseT.cs`)
+exists for exactly one reason — **in-process DI reach-in** — and it is *only* that: `ReplaceSingleton`/
+`Scoped`/`Transient` + `Keyed`/`Mock` variants, `ReplaceHttpClientFactory`, `ScopedType<TService>`,
+`Type<TService>` (~30 members total, all DI-flavoured). None of it applies to a multi-process Tier 2
+tester, full stop. Inheriting it just to guard ~30 members with a runtime `NotSupportedException` means
+every one of those methods *looks* like a valid, IntelliSense-suggested thing to call on an
+`AspireTesterBase` — compiles clean, reads clean — and then blows up at test-run time. That's a bad
+authoring experience for a large surface, and the guard from section 8 (now shipped) only mitigates it;
+it doesn't remove it.
 
-**Host-agnostic — reusable as-is, no change needed:**
-- `UserName`/`UseUser`/`WithUser` — this doesn't touch DI at all; it feeds
-  `TestSetUp.OnBeforeHttpRequestMessageSendAsync`/`OnBeforeHttpRequestSendAsync`, a hook that mutates the
-  outgoing `HttpRequestMessage`/`HttpRequest` before it's sent (e.g. to attach an OAuth token) — just as
-  meaningful for a real cross-resource HTTP call in Tier 2 as for an in-memory one in Tier 1.
-- `UseJsonSerializer`/`JsonComparerOptions`/`CreateJsonComparer` — test-side JSON handling, independent
-  of the host model.
-- `Delay`, `ResetHost()` (`abstract`, each tier already implements its own semantics),
-  `OnHostStart`/`OnHostStartUp` (`OnHostStartUp` is already `protected virtual`) — can be reinterpreted
-  as "run after the resource becomes healthy" rather than "run after the in-process host starts."
+**What's actually shared between the tiers, concretely, not hypothetically:** the evidence is
+`HttpTesterBase` (`src/UnitTestEx/AspNetCore/HttpTesterBase.cs`) — the class that already implements
+Tier 1's entire HTTP request/response/assertion engine (request+response logging, JSON (de)serialization,
+the `Expectations`/`Assertors` pipeline, per-request log capture correlated via `SharedState`/`RequestId`,
+the `OnBeforeHttpRequestMessageSendAsync` user-impersonation hook). It takes an `Owner` typed as the
+*non-generic* `TesterBase` in its constructor — **not** `TesterBase<TSelf>` — and never touches
+`Services`, `Configuration`, `ConfigureServices`, or any `Replace*`/`ScopedType`/`Type` member. It's
+composed alongside a `TesterBase<TSelf>`-derived `ApiTesterBase` today (which supplies the `TestServer`),
+but it doesn't need the DI-heavy base itself. That's a real, working example — not a guess — of exactly
+where the tier boundary actually sits: **`TesterBase` (non-generic) is the true shared capability set;
+`TesterBase<TSelf>` is Tier-1-only.**
 
-**Already correctly guarded today — no framework change needed:**
-- `Services` and `Configuration` are already `abstract`; `AspireTesterBase` just needs to override them
-  to `throw new NotSupportedException(...)`.
-- `ScopedType<TService>`/`Type<TService>` (6 overloads) call `Services.CreateScope()` **synchronously at
-  the call site** (via the existing `HostExecutionWrapper`) — so once `Services` throws, these already
-  fail immediately and correctly. Nothing to add here.
+**What `TesterBase` (non-generic) actually gives you, and why every item is genuinely host-agnostic:**
+- `Implementor`, `LoggerProvider`, `SharedState` — test-framework output plumbing and the log-capture/
+  request-correlation mechanism `HttpTesterBase` relies on.
+- `JsonSerializer`/`UseJsonSerializer`, `JsonComparerOptions`/`CreateJsonComparer` — test-side JSON
+  handling, independent of the host model.
+- `UserName`/`UseUser`/`WithUser` — feeds `TestSetUp.OnBeforeHttpRequestMessageSendAsync`, a hook that
+  mutates the outgoing `HttpRequestMessage` before it's sent (e.g. to attach an OAuth token) — just as
+  meaningful for a real cross-resource HTTP call in Tier 2 as an in-memory one in Tier 1.
+- `SetUp` (`TestSetUp`), `Delay`, `ExecutePreRunActions`/`ExecutePostRun*Actions`,
+  `OnHostStart`/`OnHostStartUp` — pipeline hooks `HttpTesterBase.SendAsync` already calls today;
+  "host start" can be reinterpreted as "resource becomes healthy" for Tier 2.
+- `ResetHost()` (`abstract`) — each tier already implements its own semantics; Tier 2's will look more
+  like "tear down and rebuild the `DistributedApplication`" than Tier 1's in-place reset, but the shape
+  (an abstract hook the base calls when needed) still fits.
+- `Services`/`Configuration` (`abstract`) and `SupportsServiceConfiguration`/`ConfigureServices` (the
+  guard shipped in this repo already) — `AspireTesterBase` still needs to override the two abstract
+  members and still benefits from the guard as defense-in-depth (see below), but critically it does
+  **not** need to inherit the ~30 concrete DI-flavoured methods to do so.
 
-**The actual gap:** every `Replace*`/`Mock*`/`ReplaceHttpClientFactory` method (~25 overloads across
-singleton/scoped/transient/keyed variants) funnels through one method —
-`TesterBase.ConfigureServices(Action<IServiceCollection>, bool)` — which is `protected` but **not
-virtual**. A subclass has no way to intercept or reject it. Left unchanged, calling e.g.
-`.ReplaceSingleton<IFoo>(...)` on an `AspireTesterBase` would compile fine, silently queue into an
-internal list, and then simply never run — because nothing in an Aspire-hosted flow ever calls
-`AddConfiguredServices(IServiceCollection)` (there's no in-process `IServiceCollection` to configure).
-**That's a silent no-op, not a compile error or a runtime exception** — the test looks like it wired in
-a mock, passes, and the mock was never applied. That's a worse failure mode than an explicit exception.
+**What this means for `HttpTesterBase` itself (a small, real follow-up, not hand-waving):** today it's
+hard-coded to `TestServer` (`CreateHttpClient() => new(new HttpDelegatingHandler(this,
+TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress }`). To let `AspireTesterBase.Http(resourceName)`
+reuse the same engine, `HttpTesterBase`/its `HttpTester` subclasses need their `HttpClient` source
+extracted behind a small seam (e.g. an abstract/virtual `CreateHttpClient()`, or a constructor taking a
+`Func<HttpClient>` instead of a `TestServer` directly) so Tier 2 can supply `app.CreateHttpClient(resourceName)`
+in place of `TestServer.CreateHandler()`. Everything else in `HttpTesterBase` — logging, JSON, expectations,
+the user-impersonation hook — needs no change at all.
 
-**Proposed fix — one new public virtual property, one guard clause, fully backward-compatible:**
+**So, concretely, for Phase 3 (prototyping `AspireTesterBase`):**
+1. `AspireTesterBase<TAppHost, TSelf> : TesterBase` (non-generic) — see the revised section 8 sketch.
+   It gets zero `Replace*`/`ScopedType`/`Type` members: not guarded away, simply never inherited. A
+   consumer reading its IntelliSense sees only members that actually work.
+2. Override `Services`/`Configuration` honestly (`throw new NotSupportedException(...)`, pointing at the
+   real per-resource alternative) — this is a deliberate, single, well-documented override of two members
+   already declared `abstract`, not a smell; it's exactly what an abstract member is for.
+3. Extract `HttpTesterBase`'s `HttpClient` source behind a small seam so `Http(resourceName)` can reuse
+   the entire existing HTTP assertion engine unchanged, fed from `app.CreateHttpClient(resourceName)`
+   instead of `TestServer`.
+4. The `SupportsServiceConfiguration` guard (already shipped in core `TesterBase`) remains valuable as
+   defense-in-depth — not for `AspireTesterBase` itself (which never has the DI methods to call), but for
+   *other* extension methods written directly against the non-generic `TesterBase` (by this repo, a
+   companion package, or a consumer) that might reach into DI without going through the funnel. See below
+   for the one existing entry point that still sits outside it.
+
+Cataloguing the rest of what's on `TesterBase<TSelf>` for completeness, so nothing is assumed away:
+`ScopedType<TService>`/`Type<TService>` (6 overloads) call `Services.CreateScope()` synchronously at the
+call site — they'd already fail correctly once `Services` throws, if they were ever inherited, but under
+the revised design they simply aren't present on `AspireTesterBase` at all, which is strictly better than
+"present but throws."
+
+**The actual gap the guard closes (still true, still shipped):** every `Replace*`/`Mock*`/
+`ReplaceHttpClientFactory` method (~25 overloads) funnels through one method —
+`TesterBase.ConfigureServices(Action<IServiceCollection>, bool)` — which was `protected` but **not
+virtual** before this repo's change. A subclass had no way to intercept or reject it. Left unguarded,
+calling e.g. `.ReplaceSingleton<IFoo>(...)` on any future non-in-process `TesterBase`-derived type would
+compile fine, silently queue into an internal list, and then simply never run — because nothing in a
+non-in-process flow ever calls `AddConfiguredServices(IServiceCollection)`. **That's a silent no-op, not
+a compile error or a runtime exception** — worse than an explicit exception. The guard fixes that for any
+type that ends up with those methods in scope; the revised `AspireTesterBase` design avoids needing to
+rely on it at all by simply not inheriting them, but the guard is still the right belt-and-braces fix at
+the `TesterBase` level, in case a future extension method (companion package or consumer) adds its own
+`Replace*`-shaped helper directly against `TesterBase`.
 
 ```csharp
 // TesterBase — public getter (read-only, virtual) so extension methods — UnitTestEx's own, a companion
@@ -279,10 +341,12 @@ getter lets any extension method written against `TesterBase<TSelf>` check
 tier-appropriate message, or offer a fallback — the same pattern already used for the public
 `IsHostInstantiated` flag on `TesterBase`.
 
-`AspireTesterBase` overrides `SupportsServiceConfiguration => false` and implements the already-abstract
-`Services`/`Configuration` to throw the same way. Because every DI-flavoured fluent method already
-funnels through this one guarded method, all ~25 of them fail loudly and immediately at the call site,
-with a message pointing at the real Tier 2 alternative — no need to touch each method individually.
+`AspireTesterBase` doesn't even need to override `SupportsServiceConfiguration` — under the revised
+design (section 9 above) it never inherits `TesterBase<TSelf>` or its ~25 DI-flavoured fluent methods in
+the first place, so there's no funnel call site to guard for it specifically. It still implements the
+already-abstract `Services`/`Configuration` to throw. The guard earns its keep for any *other*
+`TesterBase`-derived type (present or future) that does end up with DI-touching methods in scope without
+going through the intended flow.
 
 This is intentionally a single boolean switch, not a `[Flags]` capability enum — given how centralized
 `ConfigureServices` already is and how few other members are actually host-model-sensitive (see above),
@@ -309,9 +373,9 @@ checked as well:
 
 The public `SupportsServiceConfiguration` getter still matters for *future* extension methods —
 particularly anything a `UnitTestEx.Aspire` package itself, or a consumer, might add directly against
-`TesterBase<TSelf>` that touches DI without going through the existing `ConfigureServices` funnel. Any
-such method should check `tester.SupportsServiceConfiguration` itself rather than assume the funnel will
-catch it, exactly because today's audit shows the funnel is the only enforcement point.
+`TesterBase` that touches DI without going through the existing `ConfigureServices` funnel. Any such
+method should check `tester.SupportsServiceConfiguration` itself rather than assume the funnel will catch
+it, exactly because today's audit shows the funnel is the only enforcement point.
 
 **One direct configuration entry point deliberately sits outside the guard: `TestSetUp.ConfigureServices`.**
 This is a global `Action<IServiceCollection>?` delegate (set once on `TestSetUp`/`TestSetUp.Default`,
@@ -349,14 +413,19 @@ future Tier 2 tester implementation is simply responsible for not invoking it.
 Ship this as a new, separately-versioned, **opt-in** `UnitTestEx.Aspire` package, following the same
 companion-package pattern already established by `UnitTestEx.Azure.Functions` and
 `UnitTestEx.Azure.ServiceBus` — the core `UnitTestEx` package and `ApiTesterBase`/`MockHttpClientFactory`
-are untouched either way. The one small, backward-compatible change needed in core `UnitTestEx` is the
-`SupportsServiceConfiguration` guard from section 9 — everything else is additive. Suggested phasing for
-follow-up work:
+are untouched either way. The small, backward-compatible changes needed in core `UnitTestEx` are the
+`SupportsServiceConfiguration` guard (already shipped) and the `HttpTesterBase` `HttpClient`-source
+extraction (section 9) — everything else is additive. Suggested phasing for follow-up work:
 
 1. This design doc (done).
-2. Add the `SupportsServiceConfiguration` guard to `TesterBase`/`TesterBase<TSelf>` (section 9) — a
-   small, additive, backward-compatible core change, landed and released independently of the rest.
-3. Prototype `AspireTesterBase`/`DistributedTesterBase` with resource-scoped `Http()`/`Http<T>()`,
+2. Add the `SupportsServiceConfiguration` guard to `TesterBase` (section 9) — a small, additive,
+   backward-compatible core change, landed and released independently of the rest (done).
+3. Extract `HttpTesterBase`'s hard-coded `TestServer`/`HttpClient` construction behind a small seam
+   (section 9) so it can be fed from either `TestServer` (Tier 1, unchanged) or
+   `app.CreateHttpClient(resourceName)` (Tier 2) — a small, additive, backward-compatible core change,
+   ideally landed and released independently too, ahead of the rest.
+4. Prototype `AspireTesterBase<TAppHost, TSelf> : TesterBase` (non-generic — see revised section 8/9)
+   with resource-scoped `Http()`/`Http<T>()` (reusing the extracted engine from step 3),
    `WaitForResourceAsync`, and environment-override helpers.
-4. Thin WireMock.Net wrapper mirroring `MockHttpClient`'s authoring syntax.
-5. Documentation for the Playwright/UI pattern (section 7) — no new code required, just guidance.
+5. Thin WireMock.Net wrapper mirroring `MockHttpClient`'s authoring syntax.
+6. Documentation for the Playwright/UI pattern (section 7) — no new code required, just guidance.
