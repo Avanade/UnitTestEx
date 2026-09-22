@@ -240,11 +240,13 @@ internal list, and then simply never run — because nothing in an Aspire-hosted
 **That's a silent no-op, not a compile error or a runtime exception** — the test looks like it wired in
 a mock, passes, and the mock was never applied. That's a worse failure mode than an explicit exception.
 
-**Proposed fix — one new virtual property, one guard clause, fully backward-compatible:**
+**Proposed fix — one new public virtual property, one guard clause, fully backward-compatible:**
 
 ```csharp
-// TesterBase — new; defaults to true, so every existing Tier 1 tester needs zero changes.
-protected virtual bool SupportsServiceConfiguration => true;
+// TesterBase — public getter (read-only, virtual) so extension methods — UnitTestEx's own, a companion
+// package's, or a consumer's — can defensively check the capability themselves, not just rely on
+// catching the exception. Defaults to true, so every existing Tier 1 tester needs zero changes.
+public virtual bool SupportsServiceConfiguration => true;
 
 protected void ConfigureServices(Action<IServiceCollection> configureServices, bool autoResetHost = true)
 {
@@ -265,7 +267,18 @@ protected void ConfigureServices(Action<IServiceCollection> configureServices, b
 }
 ```
 
-`AspireTesterBase` sets `SupportsServiceConfiguration => false` and implements the already-abstract
+Making the getter `public` rather than `protected` matters because `TesterBase<TSelf>`'s whole design
+point is being a hook for extension methods (many of `UnitTestEx`'s own fluent methods are already
+written as extensions elsewhere in the codebase, and consumers/companion packages write their own).
+A `protected` flag is invisible to any of those — they'd have no way to guard themselves and would just
+propagate whatever exception the guarded core method throws (or, worse, do the DI-touching work
+*themselves* without ever routing through `ConfigureServices`, bypassing the guard entirely). A public
+getter lets any extension method written against `TesterBase<TSelf>` check
+`tester.SupportsServiceConfiguration` up front and either skip the operation, throw its own
+tier-appropriate message, or offer a fallback — the same pattern already used for the public
+`IsHostInstantiated` flag on `TesterBase`.
+
+`AspireTesterBase` overrides `SupportsServiceConfiguration => false` and implements the already-abstract
 `Services`/`Configuration` to throw the same way. Because every DI-flavoured fluent method already
 funnels through this one guarded method, all ~25 of them fail loudly and immediately at the call site,
 with a message pointing at the real Tier 2 alternative — no need to touch each method individually.
@@ -273,8 +286,31 @@ with a message pointing at the real Tier 2 alternative — no need to touch each
 This is intentionally a single boolean switch, not a `[Flags]` capability enum — given how centralized
 `ConfigureServices` already is and how few other members are actually host-model-sensitive (see above),
 a richer capability model would be speculative complexity today. If further, more granular gaps emerge
-once `UnitTestEx.Aspire` is actually built, a `TesterCapabilities` flags enum can replace the single bool
-then, without another breaking change (the guarded call site stays the same shape).
+once `UnitTestEx.Aspire` is actually built, a `TesterCapabilities` flags enum can replace the single
+public property then, without another breaking change (the guarded call site stays the same shape).
+
+**Existing extension methods audited too, not just core members.** `TesterBase`/`TesterBase<TSelf>` is
+also the hook for extension methods defined outside `UnitTestEx` itself, so the companion packages were
+checked as well:
+
+- `UnitTestEx.Azure.ServiceBus/ExtensionMethods.cs` (`CreateServiceBusMessageFromValue`,
+  `CreateServiceBusMessage*`, etc.) and `UnitTestEx.Azure.Functions/ExtensionMethods.cs`
+  (`CreateWebJobsServiceBusMessageActions`, etc.) both extend `TesterBase` — but neither touches DI at
+  all; they only read `tester.JsonSerializer`/`tester.Implementor` to build message payloads/assertors.
+  Both are host-agnostic already and need no guarding.
+- `UnitTestEx/ExtensionMethods.cs`'s `ReplaceSingleton`/`ReplaceScoped`/`ReplaceTransient`/`Keyed*`/
+  `Remove`/`RemoveKeyed` are extensions on `IServiceCollection`, not on `TesterBase` — they can only ever
+  be called from inside a `ConfigureServices(sc => ...)` callback delegate. Since that callback is only
+  ever queued (and only ever played back) through the now-guarded `TesterBase.ConfigureServices`, these
+  are automatically shielded for free: for a Tier 2 tester the callback is never queued in the first
+  place (the guard throws before it can be), so these `IServiceCollection` extensions are simply never
+  invoked. No separate check needed inside them.
+
+The public `SupportsServiceConfiguration` getter still matters for *future* extension methods —
+particularly anything a `UnitTestEx.Aspire` package itself, or a consumer, might add directly against
+`TesterBase<TSelf>` that touches DI without going through the existing `ConfigureServices` funnel. Any
+such method should check `tester.SupportsServiceConfiguration` itself rather than assume the funnel will
+catch it, exactly because today's audit shows the funnel is the only enforcement point.
 
 ## 10. Versioning and CI impact
 
