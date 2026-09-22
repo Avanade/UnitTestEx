@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
 using System.Net.Http;
@@ -28,7 +28,7 @@ namespace UnitTestEx.AspNetCore
         public ExpectationsArranger<TSelf> ExpectationsArranger { get; }
 
         /// <summary>
-        /// Sets (overrides) the test user name (defaults to <see cref="TesterBase.UserName"/>).
+        /// Sets (overrides) the test user name (defaults to <see cref="TesterBaseCore.UserName"/>).
         /// </summary>
         /// <param name="userName">The test user name.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
@@ -39,7 +39,7 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <summary>
-        /// Sets (overrides) the test user name (defaults to <see cref="TesterBase.UserName"/>).
+        /// Sets (overrides) the test user name (defaults to <see cref="TesterBaseCore.UserName"/>).
         /// </summary>
         /// <param name="userIdentifier">The test user identifier.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>

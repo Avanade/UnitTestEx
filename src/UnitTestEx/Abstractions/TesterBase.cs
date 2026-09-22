@@ -65,7 +65,7 @@ namespace UnitTestEx.Abstractions
         /// Resets the underlying host to instantiate a new instance.
         /// </summary>
         /// <param name="resetConfiguredServices">Indicates whether to reset the previously configured services and start-ups.</param>
-        public new void ResetHost(bool resetConfiguredServices = false)
+        public void ResetHost(bool resetConfiguredServices = false)
         {
             lock (SyncRoot)
             {
@@ -96,7 +96,7 @@ namespace UnitTestEx.Abstractions
         /// <summary>
         /// Adds the previously <see cref="ConfigureServices(Action{IServiceCollection}, bool)"/> to the <paramref name="services"/>.
         /// </summary>
-        /// <remarks>It is recommended that this is performed within a <see cref="SyncRoot"/> to ensure thread-safety.</remarks>
+        /// <remarks>It is recommended that this is performed within a <see cref="TesterBaseCore.SyncRoot"/> to ensure thread-safety.</remarks>
         protected void AddConfiguredServices(IServiceCollection services)
         {
             if (IsHostInstantiated)

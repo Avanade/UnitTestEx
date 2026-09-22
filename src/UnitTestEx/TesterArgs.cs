@@ -10,7 +10,7 @@ namespace UnitTestEx
         /// <summary>
         /// Indicates whether to bypass the execution of the configured run actions.
         /// </summary>
-        /// <remarks>The run actions are: <see cref="TesterBase.PreRunActions"/>, <see cref="TesterBase.PostRunBeforeExpectationsActions"/> and <see cref="TesterBase.PostRunAfterExpectationsActions"/>.</remarks>
+        /// <remarks>The run actions are: <see cref="TesterBaseCore.PreRunActions"/>, <see cref="TesterBaseCore.PostRunBeforeExpectationsActions"/> and <see cref="TesterBaseCore.PostRunAfterExpectationsActions"/>.</remarks>
         public bool BypassRunActions { get; set; }
     }
 }

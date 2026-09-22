@@ -28,11 +28,11 @@ namespace UnitTestEx.Abstractions
         public TesterBase(TestFrameworkImplementor implementor) : base(implementor) => UseSetUp(TestSetUp.Default);
 
         /// <summary>
-        /// Replaces the <see cref="TesterBase.SetUp"/> by cloning the <paramref name="setUp"/> and will <see cref="ResetHost(bool)"/>.
+        /// Replaces the <see cref="TesterBaseCore.SetUp"/> by cloning the <paramref name="setUp"/> and will <see cref="ResetHost(bool)"/>.
         /// </summary>
         /// <param name="setUp">The <see cref="TestSetUp"/></param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>Updates the <see cref="TesterBase.JsonSerializer"/> and <see cref="TesterBase.JsonComparerOptions"/> from the <paramref name="setUp"/>.
+        /// <remarks>Updates the <see cref="TesterBaseCore.JsonSerializer"/> and <see cref="TesterBaseCore.JsonComparerOptions"/> from the <paramref name="setUp"/>.
         /// <para>As the host is <see cref="ResetHost(bool)">reset</see> it is recommended that the <see cref="UseSetUp(TestSetUp)"/> is performed early so as to not inadvertently override earlier configurations.</para></remarks>
         public TSelf UseSetUp(TestSetUp setUp)
         {
@@ -48,9 +48,9 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Updates (replaces) the default test <see cref="TesterBase.UserName"/>.
+        /// Updates (replaces) the default test <see cref="TesterBaseCore.UserName"/>.
         /// </summary>
-        /// <param name="userName">The test user name (a <c>null</c> value will reset to <see cref="TesterBase.SetUp"/> <see cref="TestSetUp.DefaultUserName"/>).</param>
+        /// <param name="userName">The test user name (a <c>null</c> value will reset to <see cref="TesterBaseCore.SetUp"/> <see cref="TestSetUp.DefaultUserName"/>).</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         public TSelf UseUser(string? userName)
         {
@@ -59,9 +59,9 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Updates (replaces) the default test <see cref="TesterBase.UserName"/>.
+        /// Updates (replaces) the default test <see cref="TesterBaseCore.UserName"/>.
         /// </summary>
-        /// <param name="userIdentifier">The test user identifier (a <c>null</c> value will reset to <see cref="TesterBase.SetUp"/> <see cref="TestSetUp.DefaultUserName"/>).</param>
+        /// <param name="userIdentifier">The test user identifier (a <c>null</c> value will reset to <see cref="TesterBaseCore.SetUp"/> <see cref="TestSetUp.DefaultUserName"/>).</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         /// <remarks>The <see cref="TestSetUp.UserNameConverter"/> is required for the conversion to take place.</remarks>
         public TSelf UseUser(object? userIdentifier)
@@ -76,7 +76,7 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Updates the <see cref="TesterBase.JsonSerializer"/> used by the <see cref="TesterBase{TSelf}"/> itself, not the underlying executing host which should be configured separately.
+        /// Updates the <see cref="TesterBaseCore.JsonSerializer"/> used by the <see cref="TesterBase{TSelf}"/> itself, not the underlying executing host which should be configured separately.
         /// </summary>
         /// <param name="jsonSerializer">The <see cref="JsonSerializer"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -87,11 +87,11 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Updates the <see cref="TesterBase.JsonComparerOptions"/> used by the <see cref="TesterBase{TSelf}"/> itself, not the underlying executing host which should be configured separately.
+        /// Updates the <see cref="TesterBaseCore.JsonComparerOptions"/> used by the <see cref="TesterBase{TSelf}"/> itself, not the underlying executing host which should be configured separately.
         /// </summary>
         /// <param name="options">The <see cref="JsonElementComparerOptions"/>.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <para>Where the <see cref="JsonElementComparerOptions.JsonSerializer"/> is <c>null</c> then the <see cref="TesterBase.JsonSerializer"/> will be used.</para>
+        /// <para>Where the <see cref="JsonElementComparerOptions.JsonSerializer"/> is <c>null</c> then the <see cref="TesterBaseCore.JsonSerializer"/> will be used.</para>
         public TSelf UseJsonComparerOptions(JsonElementComparerOptions options)
         {
             JsonComparerOptions = options ?? throw new ArgumentNullException(nameof(options));
@@ -103,7 +103,7 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         /// <param name="additionalConfiguration">The additional configuration key/value pairs.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>Usage will result in a <see cref="TesterBase.ResetHost()"/>.</remarks>
+        /// <remarks>Usage will result in a <see cref="TesterBaseCore.ResetHost()"/>.</remarks>
         public TSelf UseAdditionalConfiguration(IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration)
         {
             AdditionalConfiguration = additionalConfiguration;
@@ -116,7 +116,7 @@ namespace UnitTestEx.Abstractions
         /// <param name="key">The additional configuration key.</param>
         /// <param name="value">The additional configuration value.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>Usage will result in a <see cref="TesterBase.ResetHost()"/>.</remarks>
+        /// <remarks>Usage will result in a <see cref="TesterBaseCore.ResetHost()"/>.</remarks>
         public TSelf UseAdditionalConfiguration(string key, string? value) => UseAdditionalConfiguration([new KeyValuePair<string, string?>(key, value)]);
 
         /// <summary>
@@ -160,7 +160,7 @@ namespace UnitTestEx.Abstractions
         /// <param name="start">A start <see cref="Action"/>.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the services.</param>
         /// <remarks>This can be called multiple times prior to the underlying host being instantiated.
-        /// See <see cref="TesterBase.OnHostStartUp"/>.</remarks>
+        /// See <see cref="TesterBaseCore.OnHostStartUp"/>.</remarks>
         public new TSelf OnHostStart(Action start, bool autoResetHost = true)
         {
             base.OnHostStart(start, autoResetHost);
