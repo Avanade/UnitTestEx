@@ -101,15 +101,6 @@ namespace UnitTestEx.Abstractions
         public bool IsHostInstantiated { get; internal set; }
 
         /// <summary>
-        /// Indicates whether the underlying host supports in-process service configuration/replacement (see <see cref="ConfigureServices(Action{IServiceCollection}, bool)"/>).
-        /// </summary>
-        /// <remarks>Defaults to <c>true</c>. Testers whose underlying host does not run in-process (for example, one that orchestrates real, separate processes) should override this to return
-        /// <c>false</c>, and should also have their <see cref="Services"/>/<see cref="Configuration"/> implementations throw a <see cref="NotSupportedException"/> for the same reason.
-        /// <para>This is exposed publicly (rather than <c>protected</c>) so that extension methods - whether defined by UnitTestEx itself, a companion package, or a consumer - can defensively check
-        /// the capability themselves before attempting an in-process service configuration/replacement operation, rather than relying solely on the <see cref="NotSupportedException"/> being thrown.</para></remarks>
-        public virtual bool SupportsServiceConfiguration => true;
-
-        /// <summary>
         /// Gets the synchronization object where synchronized access is required.
         /// </summary>
         protected object SyncRoot { get; } = new object();
@@ -235,15 +226,8 @@ namespace UnitTestEx.Abstractions
         /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the services.</param>
         /// <remarks>This can be called multiple times prior to the underlying host being instantiated. Internally, the <paramref name="configureServices"/> is queued and then played in order when the host is initially instantiated.</remarks>
-        /// <exception cref="NotSupportedException">Thrown when <see cref="SupportsServiceConfiguration"/> is <c>false</c>.</exception>
         protected void ConfigureServices(Action<IServiceCollection> configureServices, bool autoResetHost = true)
         {
-            if (!SupportsServiceConfiguration)
-                throw new NotSupportedException(
-                    $"{GetType().Name} does not support in-process service configuration/replacement because its underlying host does not run in-process (see {nameof(SupportsServiceConfiguration)}). " +
-                    $"Instead, configure the target resource through its supported environment/configuration surface (e.g. an Aspire resource builder's 'WithEnvironment'/'WithReference'), " +
-                    $"or mock its external HTTP dependencies at the resource boundary (e.g. using WireMock.Net.Aspire) rather than in-process.");
-
             lock (SyncRoot)
             {
                 if (autoResetHost)

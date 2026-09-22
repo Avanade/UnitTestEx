@@ -2,9 +2,6 @@
 
 Represents the **NuGet** versions.
 
-## v5.12.0
-- *Enhancement:* Added `TesterBase.SupportsServiceConfiguration` (defaults to `true`) to enable testers whose underlying host does not run in-process (for example, a future multi-host/distributed application tester) to opt out of in-process DI service configuration/replacement. Where overridden to `false`, the DI-related fluent methods (e.g. `ReplaceSingleton`/`ReplaceScoped`/`ReplaceTransient` and their `Keyed`/`Mock` variants, `ReplaceHttpClientFactory`) now throw a `NotSupportedException` instead of silently queuing configuration that would never be applied.
-
 ## v5.11.1
 - *Fixed:* Wrapped `Assembly.LoadFrom` in `TestSetUp` with try-catch to log exceptions and prevent setup failures.
 
