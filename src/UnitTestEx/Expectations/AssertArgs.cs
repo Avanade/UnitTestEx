@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
 using System.Collections.Generic;
@@ -18,11 +18,11 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Initializes a new instance of the <see cref="AssertArgs"/> class.
         /// </summary>
-        /// <param name="tester">The owning <see cref="TesterBase"/>.</param>
+        /// <param name="tester">The owning <see cref="TesterBaseCore"/>.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore where comparing the result value.</param>
         /// <param name="exception">The <see cref="Exception"/>.</param>
         /// <param name="logs">The logs captured.</param>
-        internal AssertArgs(TesterBase tester, IEnumerable<string> pathsToIgnore, Exception? exception, IEnumerable<string?>? logs)
+        internal AssertArgs(TesterBaseCore tester, IEnumerable<string> pathsToIgnore, Exception? exception, IEnumerable<string?>? logs)
         {
             Tester = tester ?? throw new ArgumentNullException(nameof(tester));
             PathsToIgnore = pathsToIgnore;
@@ -33,21 +33,21 @@ namespace UnitTestEx.Expectations
         /// <summary>
         /// Initializes a new instance of the <see cref="AssertArgs"/> class with a <paramref name="value"/>.
         /// </summary>
-        /// <param name="tester">The owning <see cref="TesterBase"/>.</param>
+        /// <param name="tester">The owning <see cref="TesterBaseCore"/>.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore where comparing the result value.</param>
         /// <param name="exception">The <see cref="Exception"/>.</param>
         /// <param name="logs">The logs captured.</param>
         /// <param name="value">The resulting value.</param>
-        internal AssertArgs(TesterBase tester, IEnumerable<string> pathsToIgnore, Exception? exception, IEnumerable<string?>? logs, object? value) : this(tester, pathsToIgnore, exception, logs)
+        internal AssertArgs(TesterBaseCore tester, IEnumerable<string> pathsToIgnore, Exception? exception, IEnumerable<string?>? logs, object? value) : this(tester, pathsToIgnore, exception, logs)
         {
             _hasValue = true;
             _value = value;
         }
 
         /// <summary>
-        /// Gets the owning <see cref="TesterBase"/>.
+        /// Gets the owning <see cref="TesterBaseCore"/>.
         /// </summary>
-        public TesterBase Tester { get; }
+        public TesterBaseCore Tester { get; }
 
         /// <summary>
         /// Gets the <see cref="Exception"/> that was the result of the test.

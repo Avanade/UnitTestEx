@@ -188,7 +188,7 @@ namespace UnitTestEx.Azure.Functions
         }
 
         /// <inheritdoc/>
-        protected override void ResetHost()
+        protected override void OnResetHost()
         {
             lock (SyncRoot)
             {

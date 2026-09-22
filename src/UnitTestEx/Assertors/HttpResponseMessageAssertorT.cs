@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Microsoft.Net.Http.Headers;
 using System;
@@ -11,10 +11,10 @@ namespace UnitTestEx.Assertors
     /// <summary>
     /// Represents the <see cref="HttpResponseMessage"/> test assert helper with a specified response <typeparamref name="TValue"/> <see cref="Type"/>.
     /// </summary>
-    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
     /// <param name="logs">The log messages captured during execution.</param>
     /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-    public class HttpResponseMessageAssertor<TValue>(TesterBase owner, IEnumerable<string?>? logs, HttpResponseMessage response) : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor<TValue>>(owner, logs, response)
+    public class HttpResponseMessageAssertor<TValue>(TesterBaseCore owner, IEnumerable<string?>? logs, HttpResponseMessage response) : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor<TValue>>(owner, logs, response)
     {
         private TValue? _value;
         private bool _valueIsDeserialized;
@@ -22,11 +22,11 @@ namespace UnitTestEx.Assertors
         /// <summary>
         /// Initializes a new instance of the <see cref="HttpResponseMessageAssertor"/> class.
         /// </summary>
-        /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+        /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
         /// <param name="logs">The log messages captured during execution.</param>
         /// <param name="value">The value already deserialized.</param>
         /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-        public HttpResponseMessageAssertor(TesterBase owner, IEnumerable<string?>? logs, TValue value, HttpResponseMessage response) : this(owner, logs, response)
+        public HttpResponseMessageAssertor(TesterBaseCore owner, IEnumerable<string?>? logs, TValue value, HttpResponseMessage response) : this(owner, logs, response)
         {
             _value = value;
             _valueIsDeserialized = true;

@@ -24,7 +24,7 @@ namespace UnitTestEx.AspNetCore
     /// </summary>
     /// <typeparam name="TEntryPoint">The API startup <see cref="System.Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
-    public abstract class ApiTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : class where TSelf : ApiTesterBase<TEntryPoint, TSelf> 
+    public abstract class ApiTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IHttpClientSource, IDisposable where TEntryPoint : class where TSelf : ApiTesterBase<TEntryPoint, TSelf> 
     {
         private bool _disposed;
         private WebApplicationFactory<TEntryPoint>? _waf;
@@ -95,7 +95,7 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <inheritdoc/>
-        protected override void ResetHost()
+        protected override void OnResetHost()
         {
             lock (SyncRoot)
             {
@@ -146,26 +146,30 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <typeparam name="TController">The API Controller <see cref="System.Type"/>.</typeparam>
         /// <returns>The <see cref="ControllerTester{TController}"/>.</returns>
-        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, GetTestServer());
+        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, this);
 
         /// <summary>
         /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/>.
         /// </summary>
         /// <returns>The <see cref="HttpTester"/>.</returns>
-        public HttpTester Http() => new(this, GetTestServer());
+        public HttpTester Http() => new(this, this);
 
         /// <summary>
         /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/> with an expected response value <see cref="System.Type"/>.
         /// </summary>
         /// <typeparam name="TResponse">The response value <see cref="System.Type"/>.</typeparam>
         /// <returns>The <see cref="HttpTester{TResponse}"/>.</returns>
-        public HttpTester<TResponse> Http<TResponse>() => new(this, GetTestServer());
+        public HttpTester<TResponse> Http<TResponse>() => new(this, this);
 
         /// <summary>
         /// Gets the underlying <see cref="TestServer"/>.
         /// </summary>
         /// <returns>The <see cref="TestServer"/>.</returns>
         public TestServer GetTestServer() => HostExecutionWrapper(() => GetWebApplicationFactory().Server);
+
+        /// <inheritdoc/>
+        public HttpClient CreateHttpClient(string? name = null) => new(GetTestServer().CreateHandler()) { BaseAddress = GetTestServer().BaseAddress };
+
 
         /// <summary>
         /// Sets the content root to be relative to the solution directory (i.e. the directory containing the .sln file). 

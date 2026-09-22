@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
 using System.Collections.Generic;
@@ -14,16 +14,16 @@ namespace UnitTestEx.Expectations
     /// </summary>
     /// <typeparam name="TTester">The <see cref="Tester"/> type.</typeparam>
     /// <remarks>An <see cref="ExpectationsArranger{TTester}.AssertAsync(AssertArgs)"/> will <see cref="Reset"/> after execution; as such, the configuration is not intended to be reused more than once.</remarks>
-    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
     /// <param name="tester">The initiating tester.</param>
-    public class ExpectationsArranger<TTester>(TesterBase owner, TTester tester)
+    public class ExpectationsArranger<TTester>(TesterBaseCore owner, TTester tester)
     {
         private readonly Dictionary<Type, ExpectationsBase<TTester>> _expectations = [];
 
         /// <summary>
-        /// Gets the owning <see cref="TesterBase"/>.
+        /// Gets the owning <see cref="TesterBaseCore"/>.
         /// </summary>
-        public TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
+        public TesterBaseCore Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
 
         /// <summary>
         /// Gets the initiating tester.
