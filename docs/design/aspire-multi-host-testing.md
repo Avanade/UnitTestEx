@@ -253,9 +253,10 @@ protected void ConfigureServices(Action<IServiceCollection> configureServices, b
     if (!SupportsServiceConfiguration)
         throw new NotSupportedException(
             $"{GetType().Name} does not support in-process service configuration/replacement because its " +
-            "underlying host runs as a separate real process. Configure the resource itself instead " +
-            "(environment variables/config passed at AppHost build time), or swap in a WireMock resource " +
-            "for HTTP boundaries.");
+            $"underlying host does not run in-process (see {nameof(SupportsServiceConfiguration)}). " +
+            $"Instead, configure the target resource through its supported environment/configuration surface " +
+            $"(e.g. an Aspire resource builder's 'WithEnvironment'/'WithReference'), or mock its external HTTP " +
+            $"dependencies at the resource boundary (e.g. using WireMock.Net.Aspire) rather than in-process.");
 
     lock (SyncRoot)
     {
@@ -311,6 +312,19 @@ particularly anything a `UnitTestEx.Aspire` package itself, or a consumer, might
 `TesterBase<TSelf>` that touches DI without going through the existing `ConfigureServices` funnel. Any
 such method should check `tester.SupportsServiceConfiguration` itself rather than assume the funnel will
 catch it, exactly because today's audit shows the funnel is the only enforcement point.
+
+**One direct configuration entry point deliberately sits outside the guard: `TestSetUp.ConfigureServices`.**
+This is a global `Action<IServiceCollection>?` delegate (set once on `TestSetUp`/`TestSetUp.Default`,
+not per-tester) that each *concrete* Tier 1 tester's own host-building code invokes directly —
+e.g. `ApiTesterBase`/`GenericTesterCore` both call `SetUp.ConfigureServices?.Invoke(sc)` immediately
+before `AddConfiguredServices(sc)` while constructing their `IServiceCollection`. It never routes through
+`TesterBase.ConfigureServices`, so the new guard clause does not — and cannot — see it. This is safe by
+construction rather than by the guard: an `AspireTesterBase`'s host-building code has no in-process
+`IServiceCollection` to build in the first place, so it simply would never call
+`SetUp.ConfigureServices?.Invoke(...)` at all — there is nothing to guard because there is no call site
+to guard. This is called out explicitly so it isn't mistaken for a gap the `SupportsServiceConfiguration`
+guard is responsible for closing; it is a different, tester-implementation-level entry point, and each
+future Tier 2 tester implementation is simply responsible for not invoking it.
 
 ## 10. Versioning and CI impact
 

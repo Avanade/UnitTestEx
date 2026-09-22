@@ -235,11 +235,14 @@ namespace UnitTestEx.Abstractions
         /// <param name="configureServices">A delegate for configuring <see cref="IServiceCollection"/>.</param>
         /// <param name="autoResetHost">Indicates whether to automatically <see cref="ResetHost(bool)"/> (passing <c>false</c>) when configuring the services.</param>
         /// <remarks>This can be called multiple times prior to the underlying host being instantiated. Internally, the <paramref name="configureServices"/> is queued and then played in order when the host is initially instantiated.</remarks>
-        /// <exception cref="NotSupportedException">Thrown where <see cref="SupportsServiceConfiguration"/> is <c>false</c>.</exception>
+        /// <exception cref="NotSupportedException">Thrown when <see cref="SupportsServiceConfiguration"/> is <c>false</c>.</exception>
         protected void ConfigureServices(Action<IServiceCollection> configureServices, bool autoResetHost = true)
         {
             if (!SupportsServiceConfiguration)
-                throw new NotSupportedException($"{GetType().Name} does not support in-process service configuration/replacement because its underlying host does not run in-process (see {nameof(SupportsServiceConfiguration)}).");
+                throw new NotSupportedException(
+                    $"{GetType().Name} does not support in-process service configuration/replacement because its underlying host does not run in-process (see {nameof(SupportsServiceConfiguration)}). " +
+                    $"Instead, configure the target resource through its supported environment/configuration surface (e.g. an Aspire resource builder's 'WithEnvironment'/'WithReference'), " +
+                    $"or mock its external HTTP dependencies at the resource boundary (e.g. using WireMock.Net.Aspire) rather than in-process.");
 
             lock (SyncRoot)
             {
