@@ -12,6 +12,12 @@
 // Aspire's DCP orchestrator cannot disambiguate a multi-targeted project resource on its own (see
 // https://github.com/dotnet/aspire/issues/2962), so the framework is passed explicitly via '--framework'.
 //
+// Endpoints are declared explicitly (launchProfileName: null + WithHttpsEndpoint) rather than relying on
+// AddProject's implicit launchSettings.json-derived endpoint detection: that detection proved unreliable for a
+// multi-targeted referenced project (UnitTestEx.Api targets net8.0/9.0/10.0) - it worked locally but failed on
+// Linux CI with "no endpoint was found matching one of the specified names: https, http". A single explicit
+// https endpoint avoids that ambiguity entirely (UnitTestEx.Api unconditionally redirects http to https anyway).
+//
 // A plain AddProject resource has no health check by default, so it is reported "Healthy" as soon as the OS
 // process starts - not once Kestrel has actually bound its endpoint(s). WithHttpHealthCheck closes that race so
 // that AspireTesterBase.WaitForResourceAsync (which waits on resource health) is a genuine readiness gate before
@@ -19,8 +25,9 @@
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-builder.AddProject<Projects.UnitTestEx_Api>("api")
+builder.AddProject<Projects.UnitTestEx_Api>("api", launchProfileName: null)
+    .WithHttpsEndpoint(name: "https")
     .WithArgs("--framework", "net8.0")
-    .WithHttpHealthCheck("/Person?firstName=health&lastName=check");
+    .WithHttpHealthCheck("/Person?firstName=health&lastName=check", endpointName: "https");
 
 builder.Build().Run();
