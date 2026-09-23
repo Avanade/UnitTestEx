@@ -1,5 +1,6 @@
 // Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using System.Collections.Generic;
 using System.Net.Http;
 
 namespace UnitTestEx.Abstractions
@@ -18,5 +19,13 @@ namespace UnitTestEx.Abstractions
         /// <param name="name">The optional name used to select the target resource/endpoint; ignored by single-host implementations that only ever have the one target.</param>
         /// <returns>The <see cref="HttpClient"/>.</returns>
         HttpClient CreateHttpClient(string? name = null);
+
+        /// <summary>
+        /// Gets the log messages captured for the specified request, where supported by the underlying host.
+        /// </summary>
+        /// <param name="requestId">The unique request identifier (see <see cref="AspNetCore.HttpTesterBase.RequestId"/>).</param>
+        /// <returns>The log messages; where <c>null</c> the caller falls back to its default, in-process logger-based correlation (see <see cref="TestSharedState.GetLoggerMessages(string?)"/>), which
+        /// requires no changes to any existing, single in-process host implementation of this interface.</returns>
+        IEnumerable<string?>? GetRequestLogMessages(string requestId) => null;
     }
 }

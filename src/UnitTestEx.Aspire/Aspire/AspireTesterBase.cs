@@ -5,9 +5,13 @@ using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.AspNetCore;
@@ -28,6 +32,7 @@ namespace UnitTestEx.Aspire
         where TSelf : AspireTesterBase<TAppHost, TSelf>
     {
         private readonly List<Action<IDistributedApplicationTestingBuilder>> _configureBuilder = [];
+        private readonly ConcurrentDictionary<string, ConcurrentQueue<string?>> _resourceLogBuffers = new();
         private Task<DistributedApplication>? _appTask;
         private LogLevel _minimumLogLevel = LogLevel.Warning;
         private bool _disposed;
@@ -78,7 +83,16 @@ namespace UnitTestEx.Aspire
         {
             var builder = await DistributedApplicationTestingBuilder.CreateAsync<TAppHost>().ConfigureAwait(false);
 
-            builder.Services.Configure<LoggerFilterOptions>(options => options.MinLevel = _minimumLogLevel);
+            builder.Services.Configure<LoggerFilterOptions>(options =>
+            {
+                options.MinLevel = _minimumLogLevel;
+
+                // The AppHost forwards each resource's own logging (e.g. its own ILogger writes) under a "{ApplicationName}.Resources.{resourceName}" category (see 'EnableResourceLogging');
+                // exempt our own capture provider from the MinimumLogLevel filter above (by provider, not category) so it always sees everything, regardless of the visible console noise level.
+                options.Rules.Add(new LoggerFilterRule(typeof(ResourceLogCaptureProvider).FullName, null, LogLevel.Trace, null));
+            });
+
+            builder.Services.AddSingleton<ILoggerProvider>(new ResourceLogCaptureProvider($"{builder.Environment.ApplicationName}.Resources.", _resourceLogBuffers));
 
             foreach (var configure in _configureBuilder)
             {
@@ -191,11 +205,79 @@ namespace UnitTestEx.Aspire
             GetDistributedApplicationAsync().GetAwaiter().GetResult().CreateHttpClient(name ?? throw new ArgumentNullException(nameof(name)));
 
         /// <summary>
+        /// An <see cref="ILoggerProvider"/> that captures each resource's own forwarded logging (see <c>EnableResourceLogging</c>) - logged by the AppHost under a
+        /// "{ApplicationName}.Resources.{resourceName}" category - into an in-memory, per-resource buffer.
+        /// </summary>
+        /// <remarks>Under <see cref="DistributedApplicationTestingBuilder"/>, <see cref="ResourceLoggerService.GetAllAsync(string)"/>/<see cref="ResourceLoggerService.WatchAsync(string)"/>
+        /// are not populated (a known limitation of the testing host), so this is the only reliable way to observe a resource's own logging from a test.</remarks>
+        private sealed class ResourceLogCaptureProvider(string resourceCategoryPrefix, ConcurrentDictionary<string, ConcurrentQueue<string?>> buffers) : ILoggerProvider
+        {
+            public ILogger CreateLogger(string categoryName)
+            {
+                if (!categoryName.StartsWith(resourceCategoryPrefix, StringComparison.Ordinal))
+                    return NullLogger.Instance;
+
+                var resourceName = categoryName[resourceCategoryPrefix.Length..];
+                return new ResourceLogger(buffers.GetOrAdd(resourceName, _ => new ConcurrentQueue<string?>()));
+            }
+
+            public void Dispose() { }
+
+            private sealed class ResourceLogger(ConcurrentQueue<string?> buffer) : ILogger
+            {
+                // The AppHost forwards each resource's already console-rendered text (ANSI colour codes and a "{lineNumber}: {timestamp} " prefix per physical line); strip both for a clean,
+                // readable "LOGGING >" section.
+                private static readonly Regex _ansiPattern = new(@"\x1b\[[0-9;]*m", RegexOptions.Compiled);
+                private static readonly Regex _linePrefixPattern = new(@"^\d+:\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s?", RegexOptions.Compiled);
+
+                public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+                public bool IsEnabled(LogLevel logLevel) => true;
+
+                public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+                {
+                    var message = _ansiPattern.Replace(formatter(state, exception), string.Empty);
+                    buffer.Enqueue(_linePrefixPattern.Replace(message, string.Empty));
+                }
+            }
+        }
+
+        /// <summary>
         /// An <see cref="IHttpClientSource"/> bound to a specific named resource (and optional endpoint).
         /// </summary>
+        /// <remarks>Piggy-backs the resource's own forwarded logging (captured via <see cref="ResourceLogCaptureProvider"/>) into the same "LOGGING &gt;" section of the tester output that a
+        /// Tier 1, in-process host correlates via <see cref="TestSharedState.GetLoggerMessages(string?)"/>; as there is no shared, in-process container to correlate by request identifier, the
+        /// window of lines captured between <see cref="CreateHttpClient(string?)"/> (invoked immediately before the request is sent) and <see cref="GetRequestLogMessages(string)"/> (invoked
+        /// immediately after the response is received) is used as a pragmatic proxy - this naturally excludes the resource's own start-up banner noise (already buffered by the time the first
+        /// request is sent) and correlates correctly for the typical, sequential one-request-at-a-time usage pattern.</remarks>
         private sealed class ResourceHttpClientSource(AspireTesterBase<TAppHost, TSelf> owner, string resourceName, string? endpointName) : IHttpClientSource
         {
-            public HttpClient CreateHttpClient(string? name = null) => owner.GetDistributedApplicationAsync().GetAwaiter().GetResult().CreateHttpClient(resourceName, endpointName);
+            private int _lastLineCount;
+
+            public HttpClient CreateHttpClient(string? name = null)
+            {
+                var app = owner.GetDistributedApplicationAsync().GetAwaiter().GetResult();
+                _lastLineCount = owner._resourceLogBuffers.TryGetValue(resourceName, out var buffer) ? buffer.Count : 0;
+                return app.CreateHttpClient(resourceName, endpointName);
+            }
+
+            public IEnumerable<string?>? GetRequestLogMessages(string requestId) => GetNewResourceLogMessagesAsync().GetAwaiter().GetResult();
+
+            /// <summary>
+            /// Gets the resource's own log lines captured since <see cref="CreateHttpClient(string?)"/> was last invoked.
+            /// </summary>
+            /// <remarks>The resource's logging is forwarded asynchronously; a single short grace period is allowed for it to catch up before giving up, rather than an open-ended poll that would
+            /// otherwise tax every request - including the (typical) majority that log nothing at all.</remarks>
+            private async Task<IReadOnlyList<string?>> GetNewResourceLogMessagesAsync()
+            {
+                if (!owner._resourceLogBuffers.TryGetValue(resourceName, out var buffer))
+                    return [];
+
+                if (buffer.Count <= _lastLineCount)
+                    await Task.Delay(300).ConfigureAwait(false);
+
+                return [.. buffer.Skip(_lastLineCount)];
+            }
         }
 
         /// <summary>

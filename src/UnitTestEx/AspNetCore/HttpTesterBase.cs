@@ -243,7 +243,7 @@ namespace UnitTestEx.AspNetCore
                 sw.Stop();
 
                 await Task.Delay(0, cancellationToken).ConfigureAwait(false);
-                _httpTester.LastLogs = _httpTester.Owner.SharedState.GetLoggerMessages(_httpTester.RequestId);
+                _httpTester.LastLogs = _httpTester.HttpClientSource.GetRequestLogMessages(_httpTester.RequestId) ?? _httpTester.Owner.SharedState.GetLoggerMessages(_httpTester.RequestId);
                 _httpTester.LogResponse(res, sw, _httpTester.LastLogs);
                 return res;
             }
