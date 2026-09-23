@@ -121,17 +121,24 @@ namespace UnitTestEx.Aspire
         }
 
         /// <summary>
+        /// Gets the default <paramref name="timeout"/> used by <see cref="WaitForResourceAsync(string, TimeSpan?)"/> when none is specified.
+        /// </summary>
+        public static TimeSpan DefaultWaitForResourceTimeout { get; } = TimeSpan.FromSeconds(60);
+
+        /// <summary>
         /// Waits for the named resource to report a healthy status.
         /// </summary>
         /// <param name="resourceName">The resource name (as configured within the AppHost).</param>
-        /// <param name="timeout">The optional timeout (defaults to waiting indefinitely).</param>
+        /// <param name="timeout">The timeout (defaults to <see cref="DefaultWaitForResourceTimeout"/>); pass <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> to wait indefinitely.</param>
+        /// <remarks>A resource that never becomes healthy (e.g. a misconfigured health check) should fail the test fast rather than hang it indefinitely, hence the default timeout.</remarks>
         public async Task WaitForResourceAsync(string resourceName, TimeSpan? timeout = null)
         {
             if (resourceName is null) throw new ArgumentNullException(nameof(resourceName));
 
+            var effectiveTimeout = timeout ?? DefaultWaitForResourceTimeout;
             var app = await GetDistributedApplicationAsync().ConfigureAwait(false);
             var wait = app.ResourceNotifications.WaitForResourceHealthyAsync(resourceName);
-            await (timeout.HasValue ? wait.WaitAsync(timeout.Value) : wait).ConfigureAwait(false);
+            await (effectiveTimeout == System.Threading.Timeout.InfiniteTimeSpan ? wait : wait.WaitAsync(effectiveTimeout)).ConfigureAwait(false);
         }
 
         /// <summary>
