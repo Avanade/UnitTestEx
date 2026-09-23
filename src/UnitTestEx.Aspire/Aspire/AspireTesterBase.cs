@@ -9,9 +9,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.AspNetCore;
@@ -33,6 +36,7 @@ namespace UnitTestEx.Aspire
     {
         private readonly List<Action<IDistributedApplicationTestingBuilder>> _configureBuilder = [];
         private readonly ConcurrentDictionary<string, ConcurrentQueue<string?>> _resourceLogBuffers = new();
+        private ResourceLogCaptureProvider? _resourceLogCaptureProvider;
         private Task<DistributedApplication>? _appTask;
         private LogLevel _minimumLogLevel = LogLevel.Warning;
         private bool _disposed;
@@ -92,7 +96,7 @@ namespace UnitTestEx.Aspire
                 options.Rules.Add(new LoggerFilterRule(typeof(ResourceLogCaptureProvider).FullName, null, LogLevel.Trace, null));
             });
 
-            builder.Services.AddSingleton<ILoggerProvider>(new ResourceLogCaptureProvider($"{builder.Environment.ApplicationName}.Resources.", _resourceLogBuffers));
+            builder.Services.AddSingleton<ILoggerProvider>(_resourceLogCaptureProvider = new ResourceLogCaptureProvider($"{builder.Environment.ApplicationName}.Resources.", _resourceLogBuffers));
 
             foreach (var configure in _configureBuilder)
             {
@@ -206,29 +210,69 @@ namespace UnitTestEx.Aspire
 
         /// <summary>
         /// An <see cref="ILoggerProvider"/> that captures each resource's own forwarded logging (see <c>EnableResourceLogging</c>) - logged by the AppHost under a
-        /// "{ApplicationName}.Resources.{resourceName}" category - into an in-memory, per-resource buffer.
+        /// "{ApplicationName}.Resources.{resourceName}" category - into an in-memory, per-resource buffer, reformatted to match the standard UnitTestEx <see cref="Logging.LoggerBase"/>
+        /// output style (see <see cref="ResourceLogger.FlushPending"/>).
         /// </summary>
         /// <remarks>Under <see cref="DistributedApplicationTestingBuilder"/>, <see cref="ResourceLoggerService.GetAllAsync(string)"/>/<see cref="ResourceLoggerService.WatchAsync(string)"/>
         /// are not populated (a known limitation of the testing host), so this is the only reliable way to observe a resource's own logging from a test.</remarks>
         private sealed class ResourceLogCaptureProvider(string resourceCategoryPrefix, ConcurrentDictionary<string, ConcurrentQueue<string?>> buffers) : ILoggerProvider
         {
+            private readonly ConcurrentBag<ResourceLogger> _loggers = [];
+
             public ILogger CreateLogger(string categoryName)
             {
                 if (!categoryName.StartsWith(resourceCategoryPrefix, StringComparison.Ordinal))
                     return NullLogger.Instance;
 
                 var resourceName = categoryName[resourceCategoryPrefix.Length..];
-                return new ResourceLogger(buffers.GetOrAdd(resourceName, _ => new ConcurrentQueue<string?>()));
+                var logger = new ResourceLogger(buffers.GetOrAdd(resourceName, _ => new ConcurrentQueue<string?>()));
+                _loggers.Add(logger);
+                return logger;
             }
 
-            public void Dispose() { }
+            /// <summary>
+            /// Flushes any pending (not-yet-terminated by a subsequent header line) entry for every resource.
+            /// </summary>
+            /// <remarks>An entry only completes once <i>another</i> line (typically the next header) arrives to terminate it, so the most recently logged entry for a resource would otherwise remain
+            /// invisible until something else happens to log afterwards; callers that need to observe "everything captured so far" (e.g. before reading a resource's log buffer) must force this.</remarks>
+            public void FlushPendingEntries()
+            {
+                foreach (var logger in _loggers)
+                {
+                    logger.FlushPending();
+                }
+            }
 
+            /// <summary>
+            /// Flushes any pending entry for every resource, so a final log line is not lost when the underlying <see cref="DistributedApplication"/> is disposed mid-entry.
+            /// </summary>
+            public void Dispose() => FlushPendingEntries();
+
+            /// <summary>
+            /// Parses and reformats each resource's forwarded, already console-rendered text into the standard UnitTestEx <see cref="Logging.LoggerBase"/> output style, i.e.
+            /// "<c>{timestamp} {level}: {message} [{category}]</c>".
+            /// </summary>
+            /// <remarks>The AppHost forwards each resource's own console output one <i>physical line</i> at a time (e.g. the "<c>{level}: {category}[{eventId}]</c>" header line, then one or more
+            /// indented message lines, as separate <see cref="Log{TState}"/> calls), each prefixed with a "<c>{lineNumber}: {timestamp}Z </c>" marker that Aspire itself adds; this reassembles those
+            /// physical lines back into a single logical entry using the same style as an in-process (Tier 1) tester, re-using Aspire's own embedded timestamp (converted to local time) rather than
+            /// substituting the capture time, so timestamps reflect when the resource itself actually logged the entry.
+            /// <para>A line that does not match the expected "<c>{lineNumber}: {timestamp}Z </c>" prefix (e.g. a resource that does not use the standard console logger format) is passed through
+            /// unmodified, ANSI colour codes aside, so nothing is silently dropped.</para></remarks>
             private sealed class ResourceLogger(ConcurrentQueue<string?> buffer) : ILogger
             {
-                // The AppHost forwards each resource's already console-rendered text (ANSI colour codes and a "{lineNumber}: {timestamp} " prefix per physical line); strip both for a clean,
-                // readable "LOGGING >" section.
                 private static readonly Regex _ansiPattern = new(@"\x1b\[[0-9;]*m", RegexOptions.Compiled);
-                private static readonly Regex _linePrefixPattern = new(@"^\d+:\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s?", RegexOptions.Compiled);
+                private static readonly Regex _linePrefixPattern = new(@"^\d+:\s+(?<ts>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+)Z\s?(?<rest>.*)$", RegexOptions.Compiled);
+                private static readonly Regex _headerPattern = new(@"^(?<level>trce|dbug|info|warn|fail|crit): (?<category>.+)\[(?<eventId>-?\d+)\]$", RegexOptions.Compiled);
+
+#if NET9_0_OR_GREATER
+                private readonly Lock _lock = new();
+#else
+                private readonly object _lock = new();
+#endif
+                private string? _pendingTimestamp;
+                private string? _pendingLevel;
+                private string? _pendingCategory;
+                private readonly List<string> _pendingMessageLines = [];
 
                 public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -236,8 +280,67 @@ namespace UnitTestEx.Aspire
 
                 public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
                 {
-                    var message = _ansiPattern.Replace(formatter(state, exception), string.Empty);
-                    buffer.Enqueue(_linePrefixPattern.Replace(message, string.Empty));
+                    var line = _ansiPattern.Replace(formatter(state, exception), string.Empty);
+                    var prefixMatch = _linePrefixPattern.Match(line);
+
+                    lock (_lock)
+                    {
+                        if (!prefixMatch.Success)
+                        {
+                            // Not a recognized Aspire-forwarded console line; flush anything pending and pass this through as-is rather than silently dropping it.
+                            FlushPendingNoLock();
+                            buffer.Enqueue(line);
+                            return;
+                        }
+
+                        var rest = prefixMatch.Groups["rest"].Value;
+                        var headerMatch = _headerPattern.Match(rest);
+                        if (headerMatch.Success)
+                        {
+                            // A new header line always terminates any previously pending entry.
+                            FlushPendingNoLock();
+                            _pendingTimestamp = prefixMatch.Groups["ts"].Value;
+                            _pendingLevel = headerMatch.Groups["level"].Value;
+                            _pendingCategory = headerMatch.Groups["category"].Value;
+                        }
+                        else if (_pendingTimestamp is not null)
+                            _pendingMessageLines.Add(rest.TrimStart()); // A message/continuation line for the currently pending header.
+                        else
+                            buffer.Enqueue(rest); // A line with no preceding header (unexpected); pass through as-is.
+                    }
+                }
+
+                /// <summary>
+                /// Flushes any pending entry to the buffer, reformatted to match <see cref="Logging.LoggerBase"/>'s output style.
+                /// </summary>
+                public void FlushPending()
+                {
+                    lock (_lock)
+                    {
+                        FlushPendingNoLock();
+                    }
+                }
+
+                private void FlushPendingNoLock()
+                {
+                    if (_pendingTimestamp is null)
+                        return;
+
+                    var ts = DateTime.Parse(_pendingTimestamp, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal).ToLocalTime();
+                    var sb = new StringBuilder();
+                    sb.Append($"{ts.ToString("yyyy-MM-ddTHH:mm:ss.fffff", DateTimeFormatInfo.InvariantInfo)} {_pendingLevel}: {(_pendingMessageLines.Count > 0 ? _pendingMessageLines[0] : string.Empty)} [{_pendingCategory}]");
+                    for (var i = 1; i < _pendingMessageLines.Count; i++)
+                    {
+                        sb.AppendLine();
+                        sb.Append($"{new string(' ', 32)}{_pendingMessageLines[i]}");
+                    }
+
+                    buffer.Enqueue(sb.ToString());
+
+                    _pendingTimestamp = null;
+                    _pendingLevel = null;
+                    _pendingCategory = null;
+                    _pendingMessageLines.Clear();
                 }
             }
         }
@@ -257,6 +360,9 @@ namespace UnitTestEx.Aspire
             public HttpClient CreateHttpClient(string? name = null)
             {
                 var app = owner.GetDistributedApplicationAsync().GetAwaiter().GetResult();
+
+                // Flush any pending (not-yet-terminated) entry first so it is counted in the baseline rather than leaking into this request's own captured window.
+                owner._resourceLogCaptureProvider?.FlushPendingEntries();
                 _lastLineCount = owner._resourceLogBuffers.TryGetValue(resourceName, out var buffer) ? buffer.Count : 0;
                 return app.CreateHttpClient(resourceName, endpointName);
             }
@@ -275,6 +381,10 @@ namespace UnitTestEx.Aspire
 
                 if (buffer.Count <= _lastLineCount)
                     await Task.Delay(300).ConfigureAwait(false);
+
+                // An entry only becomes visible in the buffer once terminated by a subsequent header line; force-flush whatever is currently pending so the most recently logged entry
+                // (often the interesting one, e.g. the endpoint's own logging for this very request) is not lost while waiting for a line that may never come.
+                owner._resourceLogCaptureProvider?.FlushPendingEntries();
 
                 return [.. buffer.Skip(_lastLineCount)];
             }
