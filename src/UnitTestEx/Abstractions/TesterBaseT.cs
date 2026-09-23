@@ -415,10 +415,10 @@ namespace UnitTestEx.Abstractions
         /// Waits for the specified <paramref name="duration"/>, then writes any log messages captured during that time (e.g. from a background/hosted service not attributed to a specific HTTP
         /// request) to the test output.
         /// </summary>
-        /// <param name="reason">The reason for waiting (written to the test output for context).</param>
-        /// <param name="duration">The duration to wait.</param>
+        /// <param name="reason">The reason for waiting (written to the test output for context); defaults to "No reason specified" where not specified.</param>
+        /// <param name="duration">The duration to wait; defaults to <see cref="TesterBaseCore.DefaultWaitDuration"/> where not specified.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf WaitAndLog(string reason, TimeSpan duration) => WriteWaitAndLog(reason, duration).ContinueWith(_ => (TSelf)this).Result;
+        public TSelf Wait(string? reason = null, TimeSpan? duration = null) => WriteWait(reason, duration).ContinueWith(_ => (TSelf)this).Result;
 
         /// <summary>
         /// Wraps the host execution to perform required start-up style activities; specifically resetting the <see cref="TestSharedState"/>.

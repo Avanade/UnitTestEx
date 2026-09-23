@@ -7,7 +7,7 @@ namespace UnitTestEx.MSTest.Test.Other
 {
     /// <summary>
     /// A <see cref="TestFrameworkImplementor"/> that forwards to an <paramref name="inner"/> implementor (so the underlying test framework still receives all output), while also capturing every
-    /// <see cref="WriteLine(string?)"/> call so tests can assert on the exact output produced (e.g. by <see cref="Abstractions.TesterBase{TSelf}"/>'s <c>Reason</c>/<c>WaitAndLog</c> methods).
+    /// <see cref="WriteLine(string?)"/> call so tests can assert on the exact output produced (e.g. by <see cref="Abstractions.TesterBase{TSelf}"/>'s <c>Reason</c>/<c>Wait</c> methods).
     /// </summary>
     /// <param name="inner">The <see cref="TestFrameworkImplementor"/> to forward to.</param>
     internal sealed class SpyTestFrameworkImplementor(TestFrameworkImplementor inner) : TestFrameworkImplementor

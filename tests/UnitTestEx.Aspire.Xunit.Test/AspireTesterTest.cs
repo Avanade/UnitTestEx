@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Threading.Tasks;
 using UnitTestEx;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Api.Models;
 using Xunit;
 using Xunit.Abstractions;
@@ -43,7 +44,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
         }
 
         [Fact]
-        public async Task Reason_And_WaitAndLog_AggregatesResourceLogs()
+        public async Task Reason_And_Wait_AggregatesResourceLogs()
         {
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
@@ -55,15 +56,18 @@ namespace UnitTestEx.Aspire.Xunit.Test
 
             var reasonResult = tester.Reason("Confirming Reason() writes context for Aspire multi-host testers too.");
 
-            // Fire a request against the 'api' resource part-way through the wait window to simulate background/inter-resource activity.
+            // Fire a raw (uninstrumented) request against the 'api' resource part-way through the wait window to simulate genuine background/inter-resource activity that is not
+            // tied to a tester-driven request/response (which would otherwise claim - and so report - the resource's log line itself, rather than Wait).
             var backgroundCallTask = Task.Run(async () =>
             {
                 await Task.Delay(300);
-                tester.Http("api").Run(HttpMethod.Get, "Person/1");
+                using var client = ((IHttpClientSource)tester).CreateHttpClient("api");
+                using var response = await client.GetAsync("Person/1");
+                response.EnsureSuccessStatusCode();
             });
 
             var sw = Stopwatch.StartNew();
-            var waitResult = tester.WaitAndLog("Waiting for a background Person lookup to complete and log.", TimeSpan.FromSeconds(2));
+            var waitResult = tester.Wait("Waiting for a background Person lookup to complete and log.", TimeSpan.FromSeconds(2));
             sw.Stop();
 
             await backgroundCallTask;
@@ -72,9 +76,10 @@ namespace UnitTestEx.Aspire.Xunit.Test
             Assert.Same(tester, waitResult);
             Assert.True(sw.Elapsed >= TimeSpan.FromSeconds(2) - TimeSpan.FromMilliseconds(200), $"Expected to wait ~2s, actually waited {sw.Elapsed}.");
             Assert.Contains("REASON >", spy.Lines);
-            Assert.Contains(spy.Lines, l => l != null && l.Contains("WAIT >") && l.Contains("Waiting for a background Person lookup to complete and log."));
+            Assert.Contains(spy.Lines, l => l != null && l.Contains("WAIT (00:00:02) >"));
+            Assert.Contains(spy.Lines, l => l != null && l.Contains("Waiting for a background Person lookup to complete and log."));
             Assert.Contains("LOGGING >", spy.Lines);
-            Assert.Contains(spy.Lines, l => l != null && l.Contains("[api]") && l.Contains("Get using identifier 1."));
+            Assert.Contains(spy.Lines, l => l != null && l.Contains("Get using identifier 1.") && l.EndsWith("(api)]", StringComparison.Ordinal));
         }
     }
 }
