@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -15,7 +16,7 @@ namespace UnitTestEx.Aspire.NUnit.Test
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
 
-            await tester.WaitForResourceAsync("api");
+            await tester.WaitForResourceAsync("api", TimeSpan.FromSeconds(60));
 
             tester.Http("api")
                 .Run(HttpMethod.Get, "Person?firstName=John&lastName=Doe")
@@ -29,7 +30,7 @@ namespace UnitTestEx.Aspire.NUnit.Test
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
 
-            await tester.WaitForResourceAsync("api");
+            await tester.WaitForResourceAsync("api", TimeSpan.FromSeconds(60));
 
             tester.Http("api")
                 .Run(HttpMethod.Get, "Person/1")

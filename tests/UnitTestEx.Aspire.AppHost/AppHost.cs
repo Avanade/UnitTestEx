@@ -23,7 +23,19 @@
 // that AspireTesterBase.WaitForResourceAsync (which waits on resource health) is a genuine readiness gate before
 // tests attempt to call the resource.
 
+using Microsoft.Extensions.DependencyInjection;
+
 var builder = DistributedApplication.CreateBuilder(args);
+
+// dotnet dev-certs https --trust is not fully supported on Linux, so the ASP.NET Core dev cert used by the
+// "api" resource's https endpoint is not OS-trusted on Linux CI runners. Both the health check probe above and
+// AspireTesterBase's CreateHttpClient() resolve their HttpClient via this same DI container's IHttpClientFactory,
+// so disabling certificate validation here (dev/test-only AppHost, never shipped) covers both.
+builder.Services.ConfigureHttpClientDefaults(http =>
+    http.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+    }));
 
 builder.AddProject<Projects.UnitTestEx_Api>("api", launchProfileName: null)
     .WithHttpsEndpoint(name: "https")
