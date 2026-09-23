@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <RootNamespace>UnitTestEx</RootNamespace>
+    <Product>UnitTestEx</Product>
+    <Title>UnitTestEx Aspire Multi-Host Test Extensions.</Title>
+    <Description>UnitTestEx .NET Aspire distributed-application (multi-host) Test Extensions.</Description>
+    <PackageTags>unittestex aspire distributed multi-host unit test unittest</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Testing" Version="13.5.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UnitTestEx\UnitTestEx.csproj" />
+  </ItemGroup>
+
+  <Import Project="..\..\Common.targets" />
+
+</Project>

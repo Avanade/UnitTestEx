@@ -51,3 +51,12 @@ jobs:
         dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests ServiceBusFunctionTest
         dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests PersonControllerTest
         dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests ProductControllerTest
+
+    - name: Explicit Aspire MSTest test
+      run: dotnet test tests/UnitTestEx.Aspire.MSTest.Test/UnitTestEx.Aspire.MSTest.Test.csproj --no-build --verbosity normal
+
+    - name: Explicit Aspire NUnit test
+      run: dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --no-build --verbosity normal
+
+    - name: Explicit Aspire Xunit test
+      run: dotnet test tests/UnitTestEx.Aspire.Xunit.Test/UnitTestEx.Aspire.Xunit.Test.csproj --no-build --verbosity normal

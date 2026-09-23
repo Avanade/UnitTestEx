@@ -251,10 +251,10 @@ namespace UnitTestEx.AspNetCore
             /// <summary>
             /// Create the request.
             /// </summary>
-            private static HttpRequestMessage CreateRequest(HttpMethod method, string requestUri, HttpContent? content, Action<HttpRequestMessage>? requestModifier)
+            private HttpRequestMessage CreateRequest(HttpMethod method, string requestUri, HttpContent? content, Action<HttpRequestMessage>? requestModifier)
             {
                 var uri = new Uri(requestUri, UriKind.RelativeOrAbsolute);
-                var ub = new UriBuilder(uri.IsAbsoluteUri ? uri : new Uri(MockHttpClient.DefaultBaseAddress, requestUri));
+                var ub = new UriBuilder(uri.IsAbsoluteUri ? uri : new Uri(_client.BaseAddress ?? MockHttpClient.DefaultBaseAddress, requestUri));
 
                 var request = new HttpRequestMessage(method, ub.Uri);
                 if (content != null)
