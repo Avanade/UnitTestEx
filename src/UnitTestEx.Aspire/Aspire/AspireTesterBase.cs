@@ -39,7 +39,6 @@ namespace UnitTestEx.Aspire
         private readonly ConcurrentDictionary<string, int> _elapsedLogLineCounts = new();
         private ResourceLogCaptureProvider? _resourceLogCaptureProvider;
         private Task<DistributedApplication>? _appTask;
-        private LogLevel _minimumLogLevel = LogLevel.Warning;
         private bool _disposed;
 
         /// <summary>
@@ -61,27 +60,6 @@ namespace UnitTestEx.Aspire
         }
 
         /// <summary>
-        /// Gets or sets the minimum <see cref="LogLevel"/> for the underlying AppHost's own logging - i.e. Aspire's hosting/DCP bootstrap messages and the console-log relay
-        /// it forwards for each resource (not the resources' own internal logging, which is governed by their own configuration); defaults to <see cref="LogLevel.Warning"/> so
-        /// that this Aspire-internal chatter does not swamp the UnitTestEx request/response tester output. Must be set before the underlying <see cref="DistributedApplication"/>
-        /// has been built (see <see cref="GetDistributedApplicationAsync"/>).
-        /// </summary>
-        public LogLevel MinimumLogLevel
-        {
-            get => _minimumLogLevel;
-            set
-            {
-                lock (SyncRoot)
-                {
-                    if (_appTask is not null)
-                        throw new InvalidOperationException($"{nameof(MinimumLogLevel)} must be set before the underlying {nameof(DistributedApplication)} has been built (i.e. before any {nameof(Http)}/{nameof(WaitForResourceAsync)} call).");
-
-                    _minimumLogLevel = value;
-                }
-            }
-        }
-
-        /// <summary>
         /// Creates, builds and starts the underlying <see cref="DistributedApplication"/>.
         /// </summary>
         private async Task<DistributedApplication> CreateDistributedApplicationAsync()
@@ -89,13 +67,10 @@ namespace UnitTestEx.Aspire
             var builder = await DistributedApplicationTestingBuilder.CreateAsync<TAppHost>().ConfigureAwait(false);
 
             builder.Services.Configure<LoggerFilterOptions>(options =>
-            {
-                options.MinLevel = _minimumLogLevel;
-
                 // The AppHost forwards each resource's own logging (e.g. its own ILogger writes) under a "{ApplicationName}.Resources.{resourceName}" category (see 'EnableResourceLogging');
-                // exempt our own capture provider from the MinimumLogLevel filter above (by provider, not category) so it always sees everything, regardless of the visible console noise level.
-                options.Rules.Add(new LoggerFilterRule(typeof(ResourceLogCaptureProvider).FullName, null, LogLevel.Trace, null));
-            });
+                // exempt our own capture provider from any ambient filtering (by provider, not category) so it always sees everything, regardless of the AppHost's own console noise level
+                // (which the AppHost's own default logging configuration governs independently and is not something UnitTestEx overrides).
+                options.Rules.Add(new LoggerFilterRule(typeof(ResourceLogCaptureProvider).FullName, null, LogLevel.Trace, null)));
 
             builder.Services.AddSingleton<ILoggerProvider>(_resourceLogCaptureProvider = new ResourceLogCaptureProvider($"{builder.Environment.ApplicationName}.Resources.", _resourceLogBuffers));
 
