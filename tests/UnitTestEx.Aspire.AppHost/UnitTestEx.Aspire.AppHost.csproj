@@ -16,7 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" />
+    <!-- UnitTestEx.Api is multi-targeted (net8.0;net9.0;net10.0). Aspire's AppHost SDK generates a Projects.UnitTestEx_Api
+         metadata type from this reference and needs a single, unambiguous TargetFramework to resolve it against; without
+         SetTargetFramework, Visual Studio's build engine can fail with MSB4057 ("GetTargetPath does not exist") when
+         resolving a multi-targeted project reference (dotnet build/CI tolerate the ambiguity, VS's engine does not). -->
+    <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" SetTargetFramework="TargetFramework=net8.0" />
   </ItemGroup>
 
 </Project>
