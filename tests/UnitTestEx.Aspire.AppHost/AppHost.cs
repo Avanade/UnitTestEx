@@ -11,10 +11,16 @@
 //
 // Aspire's DCP orchestrator cannot disambiguate a multi-targeted project resource on its own (see
 // https://github.com/dotnet/aspire/issues/2962), so the framework is passed explicitly via '--framework'.
+//
+// A plain AddProject resource has no health check by default, so it is reported "Healthy" as soon as the OS
+// process starts - not once Kestrel has actually bound its endpoint(s). WithHttpHealthCheck closes that race so
+// that AspireTesterBase.WaitForResourceAsync (which waits on resource health) is a genuine readiness gate before
+// tests attempt to call the resource.
 
 var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddProject<Projects.UnitTestEx_Api>("api")
-    .WithArgs("--framework", "net8.0");
+    .WithArgs("--framework", "net8.0")
+    .WithHttpHealthCheck("/Person?firstName=health&lastName=check");
 
 builder.Build().Run();
