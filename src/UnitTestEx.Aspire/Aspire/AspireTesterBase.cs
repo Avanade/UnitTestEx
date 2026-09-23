@@ -36,6 +36,7 @@ namespace UnitTestEx.Aspire
     {
         private readonly List<Action<IDistributedApplicationTestingBuilder>> _configureBuilder = [];
         private readonly ConcurrentDictionary<string, ConcurrentQueue<string?>> _resourceLogBuffers = new();
+        private readonly ConcurrentDictionary<string, int> _elapsedLogLineCounts = new();
         private ResourceLogCaptureProvider? _resourceLogCaptureProvider;
         private Task<DistributedApplication>? _appTask;
         private LogLevel _minimumLogLevel = LogLevel.Warning;
@@ -183,6 +184,50 @@ namespace UnitTestEx.Aspire
             var app = await GetDistributedApplicationAsync().ConfigureAwait(false);
             var wait = app.ResourceNotifications.WaitForResourceHealthyAsync(resourceName);
             await (effectiveTimeout == System.Threading.Timeout.InfiniteTimeSpan ? wait : wait.WaitAsync(effectiveTimeout)).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or wait, is being performed).
+        /// </summary>
+        /// <param name="reason">The reason text.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf Reason(string reason)
+        {
+            WriteReason(reason);
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Waits for the specified <paramref name="duration"/>, then writes any resource log messages captured (across <i>all</i> resources) during that time to the test output.
+        /// </summary>
+        /// <param name="reason">The reason for waiting (written to the test output for context).</param>
+        /// <param name="duration">The duration to wait.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Useful when waiting on background/inter-resource activity (e.g. a message being processed by a downstream resource) that is not tied to a specific HTTP request/response (see
+        /// <see cref="Http(string, string?)"/> for the latter, request-scoped, correlation).</remarks>
+        public TSelf WaitAndLog(string reason, TimeSpan duration) => WriteWaitAndLog(reason, duration).ContinueWith(_ => (TSelf)this).Result;
+
+        /// <inheritdoc/>
+        /// <remarks>Combines the elapsed log messages captured (via <see cref="ResourceLogCaptureProvider"/>) across <i>all</i> resources since the last invocation, each line prefixed with its
+        /// owning resource name for clarity, as background/inter-resource activity is not necessarily confined to a single resource.</remarks>
+        protected override IEnumerable<string?>? DrainElapsedLogMessages()
+        {
+            _resourceLogCaptureProvider?.FlushPendingEntries();
+
+            var lines = new List<string?>();
+            foreach (var (resourceName, buffer) in _resourceLogBuffers)
+            {
+                var lastCount = _elapsedLogLineCounts.GetOrAdd(resourceName, 0);
+                var newLines = buffer.Skip(lastCount).ToArray();
+                _elapsedLogLineCounts[resourceName] = buffer.Count;
+
+                foreach (var line in newLines)
+                {
+                    lines.Add($"[{resourceName}] {line}");
+                }
+            }
+
+            return lines;
         }
 
         /// <summary>

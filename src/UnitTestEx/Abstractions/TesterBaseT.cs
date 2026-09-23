@@ -401,6 +401,26 @@ namespace UnitTestEx.Abstractions
         public TSelf Delay(int durationInMilliseconds) => Delay(TimeSpan.FromMilliseconds(durationInMilliseconds));
 
         /// <summary>
+        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or wait, is being performed).
+        /// </summary>
+        /// <param name="reason">The reason text.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf Reason(string reason)
+        {
+            WriteReason(reason);
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Waits for the specified <paramref name="duration"/>, then writes any log messages captured during that time (e.g. from a background/hosted service not attributed to a specific HTTP
+        /// request) to the test output.
+        /// </summary>
+        /// <param name="reason">The reason for waiting (written to the test output for context).</param>
+        /// <param name="duration">The duration to wait.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf WaitAndLog(string reason, TimeSpan duration) => WriteWaitAndLog(reason, duration).ContinueWith(_ => (TSelf)this).Result;
+
+        /// <summary>
         /// Wraps the host execution to perform required start-up style activities; specifically resetting the <see cref="TestSharedState"/>.
         /// </summary>
         /// <typeparam name="T">The result <see cref="System.Type"/>.</typeparam>

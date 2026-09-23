@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
+using System.Threading.Tasks;
 using UnitTestEx.Expectations;
 using UnitTestEx.Json;
 using UnitTestEx.Logging;
@@ -249,6 +250,63 @@ namespace UnitTestEx.Abstractions
         public void ReplaceTestFrameworkImplementor(TestFrameworkImplementor implementor)
         {
             Implementor = implementor ?? throw new ArgumentNullException(nameof(implementor));
+        }
+
+        /// <summary>
+        /// Gets the log messages accumulated since the last time this was invoked (draining/resetting the starting point for the next invocation).
+        /// </summary>
+        /// <returns>The accumulated log messages; <c>null</c>/empty where none.</returns>
+        /// <remarks>Used by <see cref="WriteWaitAndLog(string, TimeSpan)"/> to correlate output that occurs during a wait period rather than a specific HTTP request/response (see
+        /// <see cref="AspNetCore.HttpTesterBase"/> for the latter, request-scoped, correlation). The default (Tier 1, single in-process host) implementation surfaces any <see cref="SharedState"/>
+        /// logging that was not attributed to a specific HTTP request (see <see cref="TestSharedState.GetLoggerMessages(string?)"/>) - e.g. from a background/hosted service. A Tier 2 (e.g. multi-host
+        /// Aspire) tester should override this to surface whatever is applicable to its own hosting model.</remarks>
+        protected virtual IEnumerable<string?>? DrainElapsedLogMessages() => SharedState.GetLoggerMessages();
+
+        /// <summary>
+        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or wait, is being performed).
+        /// </summary>
+        /// <param name="reason">The reason text.</param>
+        protected void WriteReason(string reason)
+        {
+            if (string.IsNullOrEmpty(reason))
+                return;
+
+            Implementor.WriteLine("");
+            Implementor.WriteLine("REASON >");
+            Implementor.WriteLine(reason);
+        }
+
+        /// <summary>
+        /// Waits for the specified <paramref name="duration"/>, then writes any log messages captured during that time (e.g. from a background process) to the test output (see
+        /// <see cref="DrainElapsedLogMessages"/>).
+        /// </summary>
+        /// <param name="reason">The reason for waiting (written to the test output for context).</param>
+        /// <param name="duration">The duration to wait.</param>
+        protected async Task WriteWaitAndLog(string reason, TimeSpan duration)
+        {
+            // Drain any pre-existing/stale backlog first so only messages logged during the wait window itself are reported.
+            DrainElapsedLogMessages();
+
+            Implementor.WriteLine("");
+            Implementor.WriteLine(new string('=', 80));
+            Implementor.WriteLine($"WAIT > {reason}");
+            Implementor.WriteLine($"Timeout: {duration}");
+            Implementor.WriteLine(new string('=', 80));
+
+            await Task.Delay(duration).ConfigureAwait(false);
+
+            Implementor.WriteLine("");
+            Implementor.WriteLine("LOGGING >");
+            var logs = DrainElapsedLogMessages();
+            if (logs is not null && logs.Any())
+            {
+                foreach (var msg in logs)
+                {
+                    Implementor.WriteLine(msg);
+                }
+            }
+            else
+                Implementor.WriteLine("None.");
         }
 
         /// <summary>
