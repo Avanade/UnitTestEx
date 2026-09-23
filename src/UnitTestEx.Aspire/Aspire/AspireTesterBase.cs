@@ -121,7 +121,7 @@ namespace UnitTestEx.Aspire
         }
 
         /// <summary>
-        /// Gets the default <paramref name="timeout"/> used by <see cref="WaitForResourceAsync(string, TimeSpan?)"/> when none is specified.
+        /// Gets the default timeout used by <see cref="WaitForResourceAsync(string, TimeSpan?)"/> when none is specified.
         /// </summary>
         public static TimeSpan DefaultWaitForResourceTimeout { get; } = TimeSpan.FromSeconds(60);
 
