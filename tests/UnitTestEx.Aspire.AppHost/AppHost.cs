@@ -22,6 +22,12 @@
 // process starts - not once Kestrel has actually bound its endpoint(s). WithHttpHealthCheck closes that race so
 // that AspireTesterBase.WaitForResourceAsync (which waits on resource health) is a genuine readiness gate before
 // tests attempt to call the resource.
+//
+// The "gateway" resource is a real WireMock.Net.Aspire container (WireMockServerResource), used by the Tier 2
+// HttpMock tests to stub the "api" resource's "XXX" external HTTP dependency (see UnitTestEx.Api's Startup.cs
+// and ProductController). Unlike a hand-rolled/embedded resource, it is a genuine DCP-managed resource with its
+// own health check, dashboard entry and logs - requires Docker/Podman at runtime (see the WireMock.Net.Aspire
+// package), which CI provides but a local Docker-free sandbox may not.
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -37,9 +43,12 @@ builder.Services.ConfigureHttpClientDefaults(http =>
         ServerCertificateCustomValidationCallback = (_, _, _, _) => true
     }));
 
+var gateway = builder.AddWireMock("gateway");
+
 builder.AddProject<Projects.UnitTestEx_Api>("api", launchProfileName: null)
     .WithHttpsEndpoint(name: "https")
     .WithArgs("--framework", "net8.0")
-    .WithHttpHealthCheck("/Person?firstName=health&lastName=check", endpointName: "https");
+    .WithHttpHealthCheck("/Person?firstName=health&lastName=check", endpointName: "https")
+    .WithEnvironment("XXX__BaseUrl", gateway.GetEndpoint("http"));
 
 builder.Build().Run();

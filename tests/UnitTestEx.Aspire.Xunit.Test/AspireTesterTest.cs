@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Moq;
 using UnitTestEx;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Api.Models;
@@ -80,6 +81,104 @@ namespace UnitTestEx.Aspire.Xunit.Test
             Assert.Contains(spy.Lines, l => l != null && l.Contains("Waiting for a background Person lookup to complete and log."));
             Assert.Contains("LOGGING >", spy.Lines);
             Assert.Contains(spy.Lines, l => l != null && l.Contains("Get using identifier 1.") && l.EndsWith("(api)]", StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task HttpMock_StubsExternalGatewayDependency_Product()
+        {
+            // Note: this exercises a real WireMock.Net container resource (added via 'gateway' in the AppHost using the official WireMock.Net.Aspire package); it requires Docker/Podman to
+            // be available to the CI/dev machine running the test (see docs/design/aspire-multi-host-testing.md).
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+
+            await tester.WaitForResourceAsync("api");
+            await tester.WaitForResourceAsync("gateway");
+
+            var stub = await tester.HttpMock("gateway")
+                .Request(HttpMethod.Get, "/products/abc")
+                .Times(Times.Once())
+                .WithAnyBody()
+                .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
+
+            tester.Http("api")
+                .Run(HttpMethod.Get, "Product/abc")
+                .AssertOK()
+                .AssertValue(new { id = "Abc", description = "A blue carrot" });
+
+            await stub.VerifyAsync();
+        }
+
+        [Fact]
+        public async Task HttpMock_WithSequenceAsync_ReturnsResponsesInOrderThenExhausts()
+        {
+            // Note: this exercises WireMock.Net's Scenario/state mechanism (see docs/design/aspire-multi-host-testing.md); each subsequent invocation returns the next configured
+            // response. Unlike a single stub, a sequence's own completeness (exactly one invocation per configured response) IS the expectation - mirroring Tier 1's WithSequence -
+            // so Times cannot be combined with it, and any invocation beyond the configured responses receives a distinct 500 "exhausted" response instead of silently repeating.
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+
+            await tester.WaitForResourceAsync("api");
+            await tester.WaitForResourceAsync("gateway");
+
+            var stub = await tester.HttpMock("gateway")
+                .Request(HttpMethod.Get, "/products/seq")
+                .WithAnyBody()
+                .Respond.WithSequenceAsync(seq =>
+                {
+                    seq.Respond().WithJson(new { id = "Seq", description = "First" });
+                    seq.Respond().WithJson(new { id = "Seq", description = "Second" });
+                    seq.Respond().WithJson(new { id = "Seq", description = "Third" });
+                });
+
+            tester.Http("api").Run(HttpMethod.Get, "Product/seq").AssertOK().AssertValue(new { id = "Seq", description = "First" });
+            tester.Http("api").Run(HttpMethod.Get, "Product/seq").AssertOK().AssertValue(new { id = "Seq", description = "Second" });
+            tester.Http("api").Run(HttpMethod.Get, "Product/seq").AssertOK().AssertValue(new { id = "Seq", description = "Third" });
+
+            await stub.VerifyAsync();
+        }
+
+        [Fact]
+        public async Task HttpMock_WithSequenceAsync_ExceedingConfiguredResponses_Throws()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+
+            await tester.WaitForResourceAsync("api");
+            await tester.WaitForResourceAsync("gateway");
+
+            var stub = await tester.HttpMock("gateway")
+                .Request(HttpMethod.Get, "/products/seq")
+                .WithAnyBody()
+                .Respond.WithSequenceAsync(seq => seq.Respond().WithJson(new { id = "Seq", description = "Only" }));
+
+            tester.Http("api").Run(HttpMethod.Get, "Product/seq").AssertOK().AssertValue(new { id = "Seq", description = "Only" });
+            tester.Http("api").Run(HttpMethod.Get, "Product/seq").AssertInternalServerError();
+
+            await Assert.ThrowsAsync<MockHttpClientException>(() => stub.VerifyAsync());
+        }
+
+        [Fact]
+        public async Task HttpMock_WithJsonBody_PathsToIgnore_IgnoresSpecifiedProperty()
+        {
+            // Note: exercises WireMock.Net's own JsonPartialMatcher (see docs/design/aspire-multi-host-testing.md) - a variable 'eTag' is ignored from the match pattern, while a
+            // genuinely differing (non-ignored) 'id' still fails to match any stub (WireMock.Net's default "no mapping found" 404 response).
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>();
+
+            await tester.WaitForResourceAsync("gateway");
+
+            var stub = await tester.HttpMock("gateway")
+                .Request(HttpMethod.Post, "/echo")
+                .Times(Times.Once())
+                .WithJsonBody(new { id = "Abc", eTag = "pattern-etag-value" }, "eTag")
+                .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
+
+            tester.Http("gateway").Run(HttpMethod.Post, "/echo", new { id = "Abc", eTag = Guid.NewGuid().ToString() })
+                .AssertOK()
+                .AssertValue(new { id = "Abc", description = "A blue carrot" });
+
+            tester.Http("gateway").Run(HttpMethod.Post, "/echo", new { id = "Xyz", eTag = "whatever" }).AssertNotFound();
+
+            await stub.VerifyAsync();
         }
     }
 }

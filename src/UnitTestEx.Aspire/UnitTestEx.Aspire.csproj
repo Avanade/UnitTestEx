@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Testing" Version="13.5.4" />
+    <PackageReference Include="WireMock.Net.Aspire" Version="2.18.0" />
+    <PackageReference Include="WireMock.Net.RestClient" Version="2.18.0" />
   </ItemGroup>
 
   <ItemGroup>

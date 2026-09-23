@@ -138,6 +138,30 @@ consistent, `UnitTestEx.Aspire` should ship a thin fluent wrapper over WireMock.
 the existing `MockHttpClient`/`MockHttpClientRequest`/`MockHttpClientResponse` builder syntax as closely
 as possible, so switching between tiers doesn't mean learning a new mocking DSL.
 
+### 5.1 `HttpMock` implementation notes (finalized during build-out)
+
+Two semantics divergences from WireMock.Net's raw defaults were deliberately closed to keep the `HttpMock`
+authoring experience consistent with Tier 1's `MockHttpClientFactory`:
+
+- **Sequenced responses (`WithSequenceAsync`) exactly mirror Tier 1**: the sequence length is the *exact*
+  expected invocation count (not a minimum, not silently repeating the last response forever) — the same
+  as `MockHttpClientRequest`'s `Responses` mode. `.Times(...)` is disallowed in combination with
+  `WithSequenceAsync` (throws `InvalidOperationException`) because it's meaningless once the sequence
+  itself is the exact-count contract. An invocation beyond the configured sequence returns a distinct
+  `500 InternalServerError` from a synthetic guard mapping (WireMock.Net can't throw a .NET exception
+  across the process boundary the way Tier 1 can from inside the mocked call), and `VerifyAsync()` checks
+  both that guard was never hit and that every configured response was invoked exactly once.
+- **`WithJsonBody(..., pathsToIgnore: ...)` uses WireMock.Net's native `JsonPartialMatcher`**, not
+  UnitTestEx's own `JsonElementComparer` — matching happens inside the (potentially separate-process)
+  WireMock.Net server, which has no way to call back into the test process's comparer. Named paths are
+  stripped from the pattern before it's posted, then the matcher switches from strict `JsonMatcher` to
+  `JsonPartialMatcher`. This is deliberately simpler than Tier 1's `pathsToIgnore` (dot-separated property
+  names only, no JSONPath/array indices) and *looser*: `JsonPartialMatcher` also silently tolerates any
+  other unanticipated extra property in the actual body, not just the ones explicitly ignored. Good enough
+  for the common case (an unpredictable ETag/timestamp/GUID) but callers should know it isn't a drop-in
+  equivalent of Tier 1's stricter bidirectional-deep-equal-minus-ignored-paths behavior. Left unchanged
+  (strict `JsonMatcher`) when `pathsToIgnore` isn't supplied.
+
 ## 6. Mocking individual components case-by-case across processes
 
 Since there's no cross-process DI, "mock this one component in that other service" has to be solved

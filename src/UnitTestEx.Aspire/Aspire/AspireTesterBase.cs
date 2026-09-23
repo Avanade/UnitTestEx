@@ -255,6 +255,24 @@ namespace UnitTestEx.Aspire
         /// <returns>The <see cref="HttpTester{TResponse}"/>.</returns>
         public HttpTester<TResponse> Http<TResponse>(string resourceName, string? endpointName = null) => new(this, new ResourceHttpClientSource(this, resourceName, endpointName));
 
+        /// <summary>
+        /// Enables a fluent <see cref="HttpMock.AspireHttpMockClient"/> to stub HTTP responses from a WireMock.Net server resource (added via the official <c>WireMock.Net.Aspire</c> package's
+        /// <c>builder.AddWireMock(name)</c> in the AppHost), for mocking external/third-party HTTP dependencies within a Tier 2 test.
+        /// </summary>
+        /// <param name="resourceName">The WireMock.Net server resource name (as configured within the AppHost) to target.</param>
+        /// <param name="endpointName">The optional endpoint name; where not specified, the resource's single default endpoint is used (see <c>DistributedApplicationExtensions.CreateWireMockAdminClient</c>).</param>
+        /// <returns>The <see cref="HttpMock.AspireHttpMockClient"/>.</returns>
+        public HttpMock.AspireHttpMockClient HttpMock(string resourceName, string? endpointName = null)
+        {
+            if (resourceName is null) throw new ArgumentNullException(nameof(resourceName));
+
+            return new HttpMock.AspireHttpMockClient(async () =>
+            {
+                var app = await GetDistributedApplicationAsync().ConfigureAwait(false);
+                return app.CreateWireMockAdminClient(resourceName, endpointName);
+            });
+        }
+
         /// <inheritdoc/>
         /// <remarks>The <paramref name="name"/> is required as, unlike a single-host Tier 1 tester, there is no single default resource to fall back to; prefer <see cref="Http(string, string?)"/>/
         /// <see cref="Http{TResponse}(string, string?)"/> which bind the resource name for you.</remarks>
