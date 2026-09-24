@@ -87,7 +87,7 @@ namespace UnitTestEx.Abstractions
         /// Gets the configured <see cref="TestSetUp"/>. 
         /// </summary>
         /// <remarks>Defaults to <see cref="TestSetUp.Default"/>.</remarks>
-        public TestSetUp SetUp { get; internal set; }
+        public TestSetUp SetUp { get; protected set; }
 
         /// <summary>
         /// Indicates whether the underlying host has been instantiated.
@@ -116,13 +116,13 @@ namespace UnitTestEx.Abstractions
         /// Gets the <see cref="IJsonSerializer"/> <i>not</i> from the underlying host.
         /// </summary>
         /// <remarks>Defaults to <see cref="TestSetUp.JsonSerializer"/>. This does <i>not</i> use the instance from the underlying host as a different serializer may be required or may not have been configured.</remarks>
-        public IJsonSerializer JsonSerializer { get; internal set; }
+        public IJsonSerializer JsonSerializer { get; protected set; }
 
         /// <summary>
         /// Gets the <see cref="JsonElementComparerOptions"/> <i>not</i> from the underlying host.
         /// </summary>
         /// <remarks>Defaults to <see cref="TestSetUp.JsonSerializer"/>. This does <i>not</i> use the instance from the underlying host as a different serializer may be required or may not have been configured.</remarks>
-        public JsonElementComparerOptions JsonComparerOptions { get; internal set; }
+        public JsonElementComparerOptions JsonComparerOptions { get; protected set; }
 
         /// <summary>
         /// Creates a <see cref="JsonElementComparer"/> using the configured <see cref="JsonComparerOptions"/> and <see cref="JsonSerializer"/>.
@@ -256,19 +256,19 @@ namespace UnitTestEx.Abstractions
         /// Gets the log messages accumulated since the last time this was invoked (draining/resetting the starting point for the next invocation).
         /// </summary>
         /// <returns>The accumulated log messages; <c>null</c>/empty where none.</returns>
-        /// <remarks>Used by <see cref="WriteWait(string?, TimeSpan?)"/> to correlate output that occurs during a wait period rather than a specific HTTP request/response (see
+        /// <remarks>Used by <see cref="WriteDelay(string?, TimeSpan?)"/> to correlate output that occurs during a delay period rather than a specific HTTP request/response (see
         /// <see cref="AspNetCore.HttpTesterBase"/> for the latter, request-scoped, correlation). The default (Tier 1, single in-process host) implementation surfaces any <see cref="SharedState"/>
         /// logging that was not attributed to a specific HTTP request (see <see cref="TestSharedState.GetLoggerMessages(string?)"/>) - e.g. from a background/hosted service. A Tier 2 (e.g. multi-host
         /// Aspire) tester should override this to surface whatever is applicable to its own hosting model.</remarks>
         protected virtual IEnumerable<string?>? DrainElapsedLogMessages() => SharedState.GetLoggerMessages();
 
         /// <summary>
-        /// Gets the default duration used by <see cref="WriteWait(string?, TimeSpan?)"/> when none is specified; defaults to 1 second.
+        /// Gets the default duration used by <see cref="WriteDelay(string?, TimeSpan?)"/> when none is specified; defaults to 1 second.
         /// </summary>
-        public static TimeSpan DefaultWaitDuration { get; } = TimeSpan.FromSeconds(1);
+        public static TimeSpan DefaultDelayDuration { get; } = TimeSpan.FromSeconds(1);
 
         /// <summary>
-        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or wait, is being performed).
+        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or delay, is being performed).
         /// </summary>
         /// <param name="reason">The reason text.</param>
         protected void WriteReason(string reason)
@@ -283,22 +283,22 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <summary>
-        /// Waits for the specified <paramref name="duration"/>, then writes any log messages captured during that time (e.g. from a background process) to the test output (see
+        /// Delays for the specified <paramref name="duration"/>, then writes any log messages captured during that time (e.g. from a background process) to the test output (see
         /// <see cref="DrainElapsedLogMessages"/>).
         /// </summary>
-        /// <param name="reason">The reason for waiting (written to the test output for context); defaults to "No reason specified" where not specified.</param>
-        /// <param name="duration">The duration to wait; defaults to <see cref="DefaultWaitDuration"/> where not specified.</param>
-        protected async Task WriteWait(string? reason, TimeSpan? duration)
+        /// <param name="reason">The reason for delaying (written to the test output for context); defaults to "No reason specified" where not specified.</param>
+        /// <param name="duration">The duration to delay; defaults to <see cref="DefaultDelayDuration"/> where not specified.</param>
+        protected async Task WriteDelay(string? reason, TimeSpan? duration)
         {
             var effectiveReason = string.IsNullOrEmpty(reason) ? "No reason specified" : reason;
-            var effectiveDuration = duration ?? DefaultWaitDuration;
+            var effectiveDuration = duration ?? DefaultDelayDuration;
 
-            // Drain any pre-existing/stale backlog first so only messages logged during the wait window itself are reported.
+            // Drain any pre-existing/stale backlog first so only messages logged during the delay window itself are reported.
             DrainElapsedLogMessages();
 
             Implementor.WriteLine("");
             Implementor.WriteLine(new string('-', 80));
-            Implementor.WriteLine($"WAIT ({effectiveDuration}) >");
+            Implementor.WriteLine($"DELAY ({effectiveDuration}) >");
             Implementor.WriteLine(effectiveReason);
 
             await Task.Delay(effectiveDuration).ConfigureAwait(false);

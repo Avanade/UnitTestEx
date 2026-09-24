@@ -23,12 +23,21 @@
 // that AspireTesterBase.WaitForResourceAsync (which waits on resource health) is a genuine readiness gate before
 // tests attempt to call the resource.
 //
-// The "gateway" resource is a real WireMock.Net.Aspire container (WireMockServerResource), used by the Tier 2
-// HttpMock tests to stub the "api" resource's "XXX" external HTTP dependency (see UnitTestEx.Api's Startup.cs
-// and ProductController). Unlike a hand-rolled/embedded resource, it is a genuine DCP-managed resource with its
-// own health check, dashboard entry and logs - requires Docker/Podman at runtime (see the WireMock.Net.Aspire
-// package), which CI provides but a local Docker-free sandbox may not.
+// The "mockhost" resource is UnitTestEx's recommended, self-hosted WireMock.Net pattern: an ordinary project resource
+// (UnitTestEx.Aspire.MockHost - a *sample* a consumer would copy into their own solution, not a package UnitTestEx
+// ships) that self-hosts the WireMock.Net engine directly (WireMock.Net.StandAlone), rather than the official
+// WireMock.Net.Aspire package's container resource. It stubs the "api" resource's "XXX" external HTTP dependency
+// (see UnitTestEx.Api's Startup.cs and ProductController) for the Tier 2 HttpMock tests. Because it's just our own
+// process, it registers a custom IMatcher (UnitTestEx.Aspire's JsonElementComparerMatcher) that delegates JSON body matching to UnitTestEx's
+// own JsonElementComparer - see AspireTesterBase.HttpMock and AspireHttpMockRequest.WithJsonBodyUsingUnitTestExComparer
+// - giving genuine JSON comparison-semantics parity with Tier 1 (including semantic date/GUID/number coercion; use
+// JsonElementComparerOptions.Exact instead for WireMock-style strict textual matching) rather than being limited to
+// WireMock.Net's own JSON comparison (see AspireHttpMockRequest.WithJsonBody's remarks). It also needs no
+// Docker/Podman at all, unlike the official container resource - which remains a fully supported alternative for
+// teams already standardized on it, simply by adding it directly to their own AppHost (builder.AddWireMock(name)
+// from the WireMock.Net.Aspire package); UnitTestEx's HttpMock works against either resource type identically.
 
+using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -43,12 +52,16 @@ builder.Services.ConfigureHttpClientDefaults(http =>
         ServerCertificateCustomValidationCallback = (_, _, _, _) => true
     }));
 
-var gateway = builder.AddWireMock("gateway");
+// IsRunMode: never surface this test-only resource in a published manifest (per the self-hosted WireMock.Net housekeeping note - see AppHost.cs's header comment).
+var mockhost = builder.AddMockHostProject<Projects.UnitTestEx_Aspire_MockHost>("mockhost");
 
 builder.AddProject<Projects.UnitTestEx_Api>("api", launchProfileName: null)
     .WithHttpsEndpoint(name: "https")
     .WithArgs("--framework", "net8.0")
     .WithHttpHealthCheck("/Person?firstName=health&lastName=check", endpointName: "https")
-    .WithEnvironment("XXX__BaseUrl", gateway.GetEndpoint("http"));
+    // "mockhost" only exists in run mode (see the note above); WithMockHostEnvironment no-ops when it's null
+    // rather than requiring an inline "if" guard at this (or any future) optional-resource call site.
+    .WithMockHostEnvironment("XXX__BaseUrl", mockhost, "http");
 
 builder.Build().Run();
+

@@ -5,6 +5,7 @@
     <IsPackable>false</IsPackable>
     <PreserveCompilationContext>true</PreserveCompilationContext>
     <IsTestProject>true</IsTestProject>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

@@ -13,15 +13,24 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.5.4" />
-    <PackageReference Include="WireMock.Net.Aspire" Version="2.18.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <!-- UnitTestEx.Aspire is referenced only for its UnitTestExAspireExtensions helpers (AddMockHostProject/WithMockHostEnvironment) -
+         it is an ordinary library reference, not a resource for Aspire to orchestrate, so IsAspireProjectResource must be
+         set to false; otherwise the AppHost SDK treats it as an orchestration candidate (warns ASPIRE004 since it's not an
+         executable) and its types/extension methods aren't visible to this project at compile time. -->
+    <ProjectReference Include="..\..\src\UnitTestEx.Aspire\UnitTestEx.Aspire.csproj" IsAspireProjectResource="false" />
+
     <!-- UnitTestEx.Api is multi-targeted (net8.0;net9.0;net10.0). Aspire's AppHost SDK generates a Projects.UnitTestEx_Api
          metadata type from this reference and needs a single, unambiguous TargetFramework to resolve it against; without
          SetTargetFramework, Visual Studio's build engine can fail with MSB4057 ("GetTargetPath does not exist") when
          resolving a multi-targeted project reference (dotnet build/CI tolerate the ambiguity, VS's engine does not). -->
     <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" SetTargetFramework="TargetFramework=net8.0" />
+
+    <!-- UnitTestEx.Aspire.MockHost is a self-hosted WireMock.Net project resource (see its own header comment for the rationale) - UnitTestEx's recommended, sole pattern for these
+         tests' "mockhost" HttpMock resource; no container-based WireMock.Net.Aspire resource is used at all. -->
+    <ProjectReference Include="..\UnitTestEx.Aspire.MockHost\UnitTestEx.Aspire.MockHost.csproj" />
   </ItemGroup>
 
 </Project>

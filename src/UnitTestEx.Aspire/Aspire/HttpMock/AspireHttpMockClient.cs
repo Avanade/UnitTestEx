@@ -13,8 +13,8 @@ using WireMock.Client;
 namespace UnitTestEx.Aspire.HttpMock
 {
     /// <summary>
-    /// Provides a thin fluent wrapper over a real, out-of-process WireMock.Net server resource (added to the AppHost via the official <c>WireMock.Net.Aspire</c> package's
-    /// <c>builder.AddWireMock(name)</c>), for stubbing HTTP responses from a Tier 2 (<see cref="AspireTesterBase{TAppHost, TSelf}"/>) multi-host test.
+    /// Provides a thin fluent wrapper over a real, out-of-process WireMock.Net server resource - typically a self-hosted, ordinary Aspire project resource (see
+    /// <see cref="AspireTesterBase{TAppHost, TSelf}.HttpMock"/> remarks) - for stubbing HTTP responses from a Tier 2 (<see cref="AspireTesterBase{TAppHost, TSelf}"/>) multi-host test.
     /// </summary>
     /// <remarks>Unlike Tier 1's in-memory, purely synchronous <see cref="Mocking.MockHttpClient"/> (a Moq-based <see cref="HttpMessageHandler"/> substitution), this issues genuine HTTP requests
     /// to the WireMock.Net server's admin API (a separate OS process, potentially in a container); every stub-defining and verification method is therefore asynchronous - there is no honest way
@@ -24,12 +24,24 @@ namespace UnitTestEx.Aspire.HttpMock
     public sealed class AspireHttpMockClient : IHttpMockClient
     {
         private readonly Func<Task<IWireMockAdminApi>> _adminApiFactory;
+        private readonly Func<Json.JsonElementComparerOptions> _jsonComparerOptionsFactory;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AspireHttpMockClient"/> class.
         /// </summary>
         /// <param name="adminApiFactory">The factory function used to (asynchronously) resolve the underlying <see cref="IWireMockAdminApi"/>.</param>
-        internal AspireHttpMockClient(Func<Task<IWireMockAdminApi>> adminApiFactory) => _adminApiFactory = adminApiFactory ?? throw new ArgumentNullException(nameof(adminApiFactory));
+        /// <param name="jsonComparerOptionsFactory">The function used to read the owning tester's current <see cref="Json.JsonElementComparerOptions"/> (see <see cref="JsonComparerOptions"/>).</param>
+        internal AspireHttpMockClient(Func<Task<IWireMockAdminApi>> adminApiFactory, Func<Json.JsonElementComparerOptions> jsonComparerOptionsFactory)
+        {
+            _adminApiFactory = adminApiFactory ?? throw new ArgumentNullException(nameof(adminApiFactory));
+            _jsonComparerOptionsFactory = jsonComparerOptionsFactory ?? throw new ArgumentNullException(nameof(jsonComparerOptionsFactory));
+        }
+
+        /// <summary>
+        /// Gets the owning tester's current <see cref="Json.JsonElementComparerOptions"/>, read live (not cached) so a later <see cref="AspireTesterBase{TAppHost, TSelf}.UseJsonComparerOptions"/>
+        /// call is honoured by a subsequent <see cref="AspireHttpMockRequest.WithJsonBodyUsingUnitTestExComparer(string, string[])"/>.
+        /// </summary>
+        internal Json.JsonElementComparerOptions JsonComparerOptions => _jsonComparerOptionsFactory();
 
         /// <summary>
         /// Gets the underlying <see cref="IWireMockAdminApi"/> as an escape hatch for scenarios not covered by the fluent wrapper (e.g. scenarios, proxying, gRPC/protobuf mappings).

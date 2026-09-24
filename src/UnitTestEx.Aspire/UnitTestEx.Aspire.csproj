@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
@@ -11,8 +11,13 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Testing" Version="13.5.4" />
-    <PackageReference Include="WireMock.Net.Aspire" Version="2.18.0" />
     <PackageReference Include="WireMock.Net.RestClient" Version="2.18.0" />
+    <!-- WireMock.Net.Shared transitively pulls Humanizer 2.14.1 (which pins Humanizer.Core and every locale sub-package to exactly 2.14.1), conflicting with Aspire.Hosting's own
+         Humanizer.Core 3.0.10 - pinning the top-level Humanizer package directly (rather than Humanizer.Core) resolves the NU1608 warning, since it replaces the whole 2.14.1
+         dependency subtree (Handlebars.Net.Helpers.Humanizer, the only consumer of Humanizer in this graph, isn't exercised by JsonElementComparerMatcher, so the version bump has no
+         functional effect on us). -->
+    <PackageReference Include="Humanizer" Version="3.0.10" />
+    <PackageReference Include="WireMock.Net.Shared" Version="2.18.0" />
   </ItemGroup>
 
   <ItemGroup>

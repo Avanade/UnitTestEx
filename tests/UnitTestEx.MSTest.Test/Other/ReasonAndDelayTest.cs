@@ -11,7 +11,7 @@ using UnitTestEx.Api.Controllers;
 namespace UnitTestEx.MSTest.Test.Other
 {
     [TestClass]
-    public class ReasonAndWaitTest
+    public class ReasonAndDelayTest
     {
         [TestMethod]
         public void Reason_WritesReasonToOutput()
@@ -28,7 +28,7 @@ namespace UnitTestEx.MSTest.Test.Other
         }
 
         [TestMethod]
-        public async Task Wait_WaitsAndSurfacesLoggingThatOccursDuringTheWait()
+        public async Task Delay_DelaysAndSurfacesLoggingThatOccursDuringTheDelay()
         {
             using var test = ApiTester.Create<Startup>();
             var spy = new SpyTestFrameworkImplementor(test.Implementor);
@@ -40,38 +40,38 @@ namespace UnitTestEx.MSTest.Test.Other
             var backgroundLogTask = Task.Run(async () =>
             {
                 await Task.Delay(300);
-                logger.LogInformation("Background message logged during the wait window.");
+                logger.LogInformation("Background message logged during the delay window.");
             });
 
             var sw = Stopwatch.StartNew();
-            var result = test.Wait("Waiting for a background process to log.", TimeSpan.FromSeconds(2));
+            var result = test.Delay(TimeSpan.FromSeconds(2), "Waiting for a background process to log.");
             sw.Stop();
 
             await backgroundLogTask;
 
             Assert.AreSame(test, result);
-            Assert.IsTrue(sw.Elapsed >= TimeSpan.FromSeconds(2) - TimeSpan.FromMilliseconds(100), $"Expected to wait ~2s, actually waited {sw.Elapsed}.");
-            Assert.IsTrue(spy.Lines.Any(l => l != null && l.Contains("WAIT (00:00:02) >")));
+            Assert.IsTrue(sw.Elapsed >= TimeSpan.FromSeconds(2) - TimeSpan.FromMilliseconds(100), $"Expected to delay ~2s, actually waited {sw.Elapsed}.");
+            Assert.IsTrue(spy.Lines.Any(l => l != null && l.Contains("DELAY (00:00:02) >")));
             Assert.IsTrue(spy.Lines.Any(l => l != null && l.Contains("Waiting for a background process to log.")));
             Assert.IsTrue(spy.Lines.Contains("LOGGING >"));
-            Assert.IsTrue(spy.Lines.Any(l => l != null && l.Contains("Background message logged during the wait window.")));
+            Assert.IsTrue(spy.Lines.Any(l => l != null && l.Contains("Background message logged during the delay window.")));
         }
 
         [TestMethod]
-        public void Wait_ExcludesLoggingThatOccurredBeforeTheWaitStarted()
+        public void Delay_ExcludesLoggingThatOccurredBeforeTheDelayStarted()
         {
             using var test = ApiTester.Create<Startup>();
             var spy = new SpyTestFrameworkImplementor(test.Implementor);
             test.ReplaceTestFrameworkImplementor(spy);
 
             var logger = test.Services.GetRequiredService<ILogger<PersonController>>();
-            logger.LogInformation("Stale message logged before the wait started.");
+            logger.LogInformation("Stale message logged before the delay started.");
 
-            test.Wait("Waiting with nothing new expected.", TimeSpan.FromMilliseconds(200));
+            test.Delay(TimeSpan.FromMilliseconds(200), "Waiting with nothing new expected.");
 
             Assert.IsTrue(spy.Lines.Contains("LOGGING >"));
             Assert.IsTrue(spy.Lines.Contains("None."));
-            Assert.IsFalse(spy.Lines.Any(l => l != null && l.Contains("Stale message logged before the wait started.")));
+            Assert.IsFalse(spy.Lines.Any(l => l != null && l.Contains("Stale message logged before the delay started.")));
         }
     }
 }

@@ -42,7 +42,7 @@ namespace UnitTestEx.Aspire.MSTest.Test
         }
 
         [TestMethod]
-        public async Task Reason_And_Wait_AggregatesResourceLogs()
+        public async Task Reason_And_Delay_AggregatesResourceLogs()
         {
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
@@ -54,8 +54,8 @@ namespace UnitTestEx.Aspire.MSTest.Test
 
             var reasonResult = tester.Reason("Confirming Reason() writes context for Aspire multi-host testers too.");
 
-            // Fire a raw (uninstrumented) request against the 'api' resource part-way through the wait window to simulate genuine background/inter-resource activity that is not
-            // tied to a tester-driven request/response (which would otherwise claim - and so report - the resource's log line itself, rather than Wait).
+            // Fire a raw (uninstrumented) request against the 'api' resource part-way through the delay window to simulate genuine background/inter-resource activity that is not
+            // tied to a tester-driven request/response (which would otherwise claim - and so report - the resource's log line itself, rather than Delay).
             var backgroundCallTask = Task.Run(async () =>
             {
                 await Task.Delay(300);
@@ -65,16 +65,16 @@ namespace UnitTestEx.Aspire.MSTest.Test
             });
 
             var sw = Stopwatch.StartNew();
-            var waitResult = tester.Wait("Waiting for a background Person lookup to complete and log.", TimeSpan.FromSeconds(2));
+            var delayResult = tester.Delay(TimeSpan.FromSeconds(2), "Waiting for a background Person lookup to complete and log.");
             sw.Stop();
 
             await backgroundCallTask;
 
             Assert.AreSame(tester, reasonResult);
-            Assert.AreSame(tester, waitResult);
-            Assert.IsTrue(sw.Elapsed >= TimeSpan.FromSeconds(2) - TimeSpan.FromMilliseconds(200), $"Expected to wait ~2s, actually waited {sw.Elapsed}.");
+            Assert.AreSame(tester, delayResult);
+            Assert.IsTrue(sw.Elapsed >= TimeSpan.FromSeconds(2) - TimeSpan.FromMilliseconds(200), $"Expected to delay ~2s, actually waited {sw.Elapsed}.");
             Assert.IsTrue(spy.Lines.Contains("REASON >"));
-            Assert.IsTrue(spy.Lines.Any(l => l != null && l.Contains("WAIT (00:00:02) >")));
+            Assert.IsTrue(spy.Lines.Any(l => l != null && l.Contains("DELAY (00:00:02) >")));
             Assert.IsTrue(spy.Lines.Any(l => l != null && l.Contains("Waiting for a background Person lookup to complete and log.")));
             Assert.IsTrue(spy.Lines.Contains("LOGGING >"));
             Assert.IsTrue(spy.Lines.Any(l => l != null && l.Contains("Get using identifier 1.") && l.EndsWith("(api)]", StringComparison.Ordinal)));

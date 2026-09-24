@@ -110,7 +110,8 @@ namespace UnitTestEx.Aspire.HttpMock
         /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         /// <remarks>See the <see cref="AspireHttpMockClient"/> remarks regarding WireMock.Net's JSON comparison semantics versus <see cref="Json.JsonElementComparer"/> (as used by, for
         /// example, <see cref="Assertors.HttpResponseMessageAssertor.AssertValue{TValue}(TValue, string[])"/>): they are <b>not</b> equivalent, and there is no semantic value coercion
-        /// (e.g. dates, GUIDs) here.
+        /// (e.g. dates, GUIDs) here. Where that parity matters, target a self-hosted WireMock.Net project resource (see <see cref="AspireTesterBase{TAppHost, TSelf}.HttpMock"/> remarks)
+        /// and use <see cref="WithJsonBodyUsingUnitTestExComparer(string, string[])"/> instead.
         /// <para>Where <paramref name="pathsToIgnore"/> is specified, the named properties are removed from the match pattern <i>and</i> the underlying matcher switches from an exact,
         /// bidirectional <c>JsonMatcher</c> to WireMock.Net's own <c>JsonPartialMatcher</c> (a subset match): properties present in the pattern must still match exactly, but the
         /// ignored (removed) properties - and any other property not present in the pattern - are not checked at all, regardless of their value or even presence in the actual
@@ -165,6 +166,53 @@ namespace UnitTestEx.Aspire.HttpMock
         /// <param name="pathsToIgnore">The simple property paths to exclude from the match pattern; see <see cref="WithJsonBody(string, string[])"/> remarks.</param>
         /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         public AspireHttpMockRequestBody WithJsonBody<T>(T value, params string[] pathsToIgnore) => WithJsonBody(JsonSerializer.Serialize(value), pathsToIgnore);
+
+        /// <summary>
+        /// Indicates that the request body must match the specified <paramref name="json"/> using UnitTestEx's own <see cref="Json.JsonElementComparer"/> - i.e. the <b>same</b>
+        /// comparison semantics as Tier 1 (including semantic value coercion for dates, GUIDs and numbers) - rather than WireMock.Net's own JSON comparison (see <see cref="WithJsonBody(string, string[])"/>).
+        /// </summary>
+        /// <param name="json">The JSON body to match.</param>
+        /// <param name="pathsToIgnore">The simple (dot-separated) property paths to exclude from the match - see <see cref="Json.JsonElementComparer.Compare(string, string, string[])"/>;
+        /// unlike <see cref="WithJsonBody(string, string[])"/>, this still requires an exact 1:1 property correspondence apart from the ignored paths (true parity with Tier 1), rather
+        /// than switching to a looser subset/partial match.</param>
+        /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
+        /// <remarks>Requires the target <see cref="AspireHttpMockClient"/> to have been resolved against a <i>self-hosted</i> WireMock.Net project resource (via
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.HttpMock"/>, targeting a small sample project the consumer copies into their own solution - see UnitTestEx's README
+        /// "Aspire multi-host testing" section) that has registered <see cref="JsonElementComparerMatcher"/> - the official <c>WireMock.Net.Aspire</c> package's container resource has
+        /// no way to load this custom matcher type and will reject the mapping with a "Matcher 'JsonElementComparerMatcher' is not supported" error.
+        /// <para>The tester's current <see cref="Abstractions.TesterBaseCore.JsonComparerOptions"/> - specifically <see cref="Json.JsonElementComparerOptions.ValueComparison"/>,
+        /// <see cref="Json.JsonElementComparerOptions.NullComparison"/> and <see cref="Json.JsonElementComparerOptions.MaxDifferences"/> - is captured (as data, into the matcher's
+        /// payload) at the point this method is called, since the matcher itself runs in a separate OS process (the self-hosted WireMock.Net server) with no access to this test
+        /// process's live state; mutating <see cref="Json.JsonElementComparer.Default"/> or this tester's <see cref="AspireTesterBase{TAppHost, TSelf}.UseJsonComparerOptions"/>
+        /// <b>after</b> calling this method has no effect on an already-configured mapping. Where strict, WireMock-style textual matching is instead wanted against a self-hosted
+        /// resource, call <see cref="AspireTesterBase{TAppHost, TSelf}.UseJsonComparerOptions"/> with <see cref="Json.JsonElementComparerOptions.ValueComparison"/> set to
+        /// <see cref="Json.JsonElementComparison.Exact"/> before calling this method, rather than falling back to <see cref="WithJsonBody(string, string[])"/>.</para></remarks>
+        public AspireHttpMockRequestBody WithJsonBodyUsingUnitTestExComparer([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore)
+        {
+            ArgumentNullException.ThrowIfNull(json);
+
+            var options = Client.JsonComparerOptions;
+            var envelope = JsonSerializer.Serialize(new
+            {
+                Json = json,
+                PathsToIgnore = pathsToIgnore,
+                options.ValueComparison,
+                options.NullComparison,
+                options.MaxDifferences
+            });
+            Rule.Body = new BodyModel { Matcher = new MatcherModel { Name = JsonElementComparerMatcher.MatcherName, Pattern = envelope } };
+            return new(this);
+        }
+
+        /// <summary>
+        /// Indicates that the request body must match the JSON serialized representation of the specified <paramref name="value"/> using UnitTestEx's own <see cref="Json.JsonElementComparer"/>;
+        /// see <see cref="WithJsonBodyUsingUnitTestExComparer(string, string[])"/> remarks.
+        /// </summary>
+        /// <typeparam name="T">The value <see cref="Type"/>.</typeparam>
+        /// <param name="value">The value to serialize and match.</param>
+        /// <param name="pathsToIgnore">The simple property paths to exclude from the match pattern; see <see cref="WithJsonBodyUsingUnitTestExComparer(string, string[])"/> remarks.</param>
+        /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
+        public AspireHttpMockRequestBody WithJsonBodyUsingUnitTestExComparer<T>(T value, params string[] pathsToIgnore) => WithJsonBodyUsingUnitTestExComparer(JsonSerializer.Serialize(value), pathsToIgnore);
 
         /// <summary>
         /// Indicates that the request body must match the JSON formatted embedded resource content (using WireMock.Net's JSON comparison semantics).

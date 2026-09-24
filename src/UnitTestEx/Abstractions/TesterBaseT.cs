@@ -387,21 +387,25 @@ namespace UnitTestEx.Abstractions
         public TSelf ReplaceKeyedTransient<TService, TImplementation>(object? serviceKey, bool autoResetHost = true) where TService : class where TImplementation : class, TService => ConfigureServices(sc => sc.ReplaceKeyedTransient<TService, TImplementation>(serviceKey), autoResetHost);
 
         /// <summary>
-        /// Delays the execution of the test for the specified <paramref name="duration"/>.
+        /// Delays the execution of the test for the specified <paramref name="duration"/>, then writes any log messages captured during that time (e.g. from a background/hosted service not
+        /// attributed to a specific HTTP request) to the test output.
         /// </summary>
-        /// <param name="duration">The amount of time to delay the operation. Must be a non-negative <see cref="TimeSpan"/>.</param>
+        /// <param name="duration">The duration to delay; defaults to <see cref="TesterBaseCore.DefaultDelayDuration"/> where not specified.</param>
+        /// <param name="reason">The reason for delaying (written to the test output for context); defaults to "No reason specified" where not specified.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf Delay(TimeSpan duration) => Task.Delay(duration).ContinueWith(_ => (TSelf)this).Result;
+        public TSelf Delay(TimeSpan? duration = null, string? reason = null) => WriteDelay(reason, duration).ContinueWith(_ => (TSelf)this).Result;
 
         /// <summary>
-        /// Delays the execution of the test for the specified <paramref name="durationInMilliseconds"/>.
+        /// Delays the execution of the test for the specified <paramref name="durationInMilliseconds"/>, then writes any log messages captured during that time (e.g. from a background/hosted
+        /// service not attributed to a specific HTTP request) to the test output.
         /// </summary>
-        /// <param name="durationInMilliseconds">The amount of time to delay the operation. Must be a non-negative <see cref="int"/>.</param>
+        /// <param name="durationInMilliseconds">The amount of time, in milliseconds, to delay the operation. Must be a non-negative <see cref="int"/>.</param>
+        /// <param name="reason">The reason for delaying (written to the test output for context); defaults to "No reason specified" where not specified.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf Delay(int durationInMilliseconds) => Delay(TimeSpan.FromMilliseconds(durationInMilliseconds));
+        public TSelf Delay(int durationInMilliseconds, string? reason = null) => Delay(TimeSpan.FromMilliseconds(durationInMilliseconds), reason);
 
         /// <summary>
-        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or wait, is being performed).
+        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or delay, is being performed).
         /// </summary>
         /// <param name="reason">The reason text.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
@@ -410,15 +414,6 @@ namespace UnitTestEx.Abstractions
             WriteReason(reason);
             return (TSelf)this;
         }
-
-        /// <summary>
-        /// Waits for the specified <paramref name="duration"/>, then writes any log messages captured during that time (e.g. from a background/hosted service not attributed to a specific HTTP
-        /// request) to the test output.
-        /// </summary>
-        /// <param name="reason">The reason for waiting (written to the test output for context); defaults to "No reason specified" where not specified.</param>
-        /// <param name="duration">The duration to wait; defaults to <see cref="TesterBaseCore.DefaultWaitDuration"/> where not specified.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf Wait(string? reason = null, TimeSpan? duration = null) => WriteWait(reason, duration).ContinueWith(_ => (TSelf)this).Result;
 
         /// <summary>
         /// Wraps the host execution to perform required start-up style activities; specifically resetting the <see cref="TestSharedState"/>.
