@@ -2,6 +2,9 @@
 
 Represents the **NuGet** versions.
 
+## v5.12.0
+- *Enhancement:* Added `UnitTestEx.Aspire` (NET8+) to enable testing of [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) multi-host (inter-domain) testing alongside existing in-process `WebApplicationFactory`. The API surface between the two is consistent where appropriate. Additionally, `HttpClient` mocking is supported via `AspireHttpClientMock` which internally leverages []().
+
 ## v5.11.1
 - *Fixed:* Wrapped `Assembly.LoadFrom` in `TestSetUp` with try-catch to log exceptions and prevent setup failures.
 
