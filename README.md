@@ -15,6 +15,7 @@ The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style te
 - [Service Bus-trigger Azure Function](#Service-Bus-trigger-Azure-Function)
 - [Generic Azure Function Type](#Generic-Azure-Function-Type)
 - [HTTP Client mocking](#HTTP-Client-mocking)
+- [Aspire multi-host testing](#Aspire-multi-host-testing)
 
 <br/>
 
@@ -301,6 +302,63 @@ _Note:_ Not all scenarios are currently available using YAML/JSON configuration.
 
 <br/>
 
+## Aspire multi-host testing
+
+Everything above (`ApiTester`, `FunctionTester`, `GenericTester`, etc.) hosts a **single** system/service in-process via `WebApplicationFactory` - ideal for intra-domain testing where you want deep, per-component control (DI replacement, mocked `HttpClient`s) of one service in isolation.
+
+Sometimes, though, you genuinely need to prove that two or more **real**, separately-hosted services interact correctly over the network (inter-domain testing) - for example a [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) distributed application where a "shopping" API calls a "products" API. For this, the [`UnitTestEx.Aspire`](./src/UnitTestEx.Aspire) package provides `AspireTester`, which spins up the **entire AppHost** - every project, container and executable resource it declares - as separate, real OS processes wired together with Aspire's actual service discovery, exactly as they'd run in production. This is deliberately a second, opt-in tier rather than an extension of the first: pick the tier per test based on what you're actually trying to prove, don't force a hybrid. See the [design note](./docs/design/aspire-multi-host-testing.md) for the full rationale.
+
+``` csharp
+await using var tester = AspireTester.Create<Projects.MyAppHost>();
+
+await tester.WaitForResourceAsync("shopping");
+
+tester.Http("shopping")
+    .Run(HttpMethod.Get, "orders/123")
+    .AssertOK()
+    .AssertValue(new { id = "123", product = "Widget" });
+```
+
+External-to-the-solution dependencies (an email/notification provider, an identity/auth service, an ERP system, a payment gateway, etc.) still need to be mocked - a real inter-domain test proves *your* services talk to each other correctly, not that a third-party's sandbox environment is up. For this, add a [`WireMock.Net.Aspire`](https://github.com/WireMock-Net/WireMock.Net-Aspire) container resource per external dependency to the AppHost, and wire its endpoint in as configuration:
+
+``` csharp
+// AppHost.cs
+var email = builder.AddWireMock("email");
+var auth  = builder.AddWireMock("auth");
+var erp   = builder.AddWireMock("erp");
+
+builder.AddProject<Projects.MyApi>("api")
+    .WithEnvironment("Email__BaseUrl", email.GetEndpoint("http"))
+    .WithEnvironment("Auth__BaseUrl", auth.GetEndpoint("http"))
+    .WithEnvironment("Erp__BaseUrl", erp.GetEndpoint("http"));
+```
+
+Each is a genuine, isolated WireMock.Net container/process - one per external system, so stubs configured for `"email"` can never leak into `"auth"` or `"erp"`. Within a test, `AspireTesterBase.HttpMock(resourceName)` returns a fluent `AspireHttpMockClient` for the named resource:
+
+``` csharp
+await using var tester = AspireTester.Create<Projects.MyAppHost>();
+
+await tester.WaitForResourceAsync("api");
+await tester.WaitForResourceAsync("erp");
+
+var stub = await tester.HttpMock("erp")
+    .Request(HttpMethod.Get, "products/abc")
+    .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
+
+tester.Http("api")
+    .Run(HttpMethod.Get, "Product/abc")
+    .AssertOK()
+    .AssertValue(new { id = "Abc", description = "A blue carrot" });
+
+await stub.VerifyAsync();
+```
+
+The fluent configuration API is intentionally near-identical to Tier 1's `MockHttpClientFactory` above (both implement the shared [`IHttpMockClient`](./src/UnitTestEx/Mocking/IHttpMockClient.cs)/`IHttpMockRequest`/`IHttpMockResponse` interfaces) - a helper method written once against these interfaces can configure request/response stubbing identically regardless of which tier it's handed. The main differences are that the terminal `With*` methods here are asynchronous (`AspireHttpMockClient` performs a real HTTP call to the WireMock.Net server's admin API to register each mapping) and must be awaited, and the underlying JSON comparison/sequence-exhaustion semantics are WireMock.Net's own (not identical to Tier 1's) - see the [design note](./docs/design/aspire-multi-host-testing.md) for the specifics.
+
+_Note:_ Aspire-hosted resources are real OS processes/containers (Docker/Podman required for `AddWireMock` and similar container resources), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
+
+<br/>
+
 ## Expectations
 
 By default _UnitTestEx_ provides out-of-the-box `Assert*` capabilities that are applied after execution to verify the test results. However, by adding the `UnitTestEx.Expectations` namespace in a test additional `Expect*` capabilities will be enabled (where applicable). These allow expectations to be defined prior to the execution which are automatically asserted on execution. 
@@ -339,6 +397,7 @@ As _UnitTestEx_ is intended for testing, look at the tests for further details o
 - [UnitTestEx.MSTest.Test](./tests/UnitTestEx.MSTest.Test)
 - [UnitTestEx.NUnit.Test](./tests/UnitTestEx.NUnit.Test)
 - [UnitTestEx.Xunit.Test](./tests/UnitTestEx.Xunit.Test)
+- [UnitTestEx.Aspire.Xunit.Test](./tests/UnitTestEx.Aspire.Xunit.Test) - Aspire multi-host testing (see [above](#Aspire-multi-host-testing))
 
 _Note:_ There may be some slight variations in how the tests are constructed per test capability, this is to account for any differences between the frameworks themselves. For the most part the code should be near identical.
 
