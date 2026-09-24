@@ -19,6 +19,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="Resources\AspireTesterTest-mock.unittestex.yaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\AspireTesterTest-mock.unittestex.yaml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\UnitTestEx.Aspire\UnitTestEx.Aspire.csproj" />
     <ProjectReference Include="..\..\src\UnitTestEx.Xunit\UnitTestEx.Xunit.csproj" />
     <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" />

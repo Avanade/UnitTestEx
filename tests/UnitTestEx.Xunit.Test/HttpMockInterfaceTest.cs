@@ -121,6 +121,30 @@ namespace UnitTestEx.Xunit.Test
         }
 
         [Fact]
+        public async Task Interface_Client_WithRequestsFromResourceAsync_Dim_LoadsStubsFromYaml()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            IHttpMockClient client = mcf.CreateClient("XXX", new System.Uri("https://d365test"));
+
+            await client.WithRequestsFromResourceAsync<HttpMockInterfaceTest>("HttpMockInterfaceTest-mock.unittestex.yaml"); // DIM: shared YAML/JSON resource loader.
+
+            var hc = mcf.GetHttpClient("XXX");
+
+            var res1 = await hc.PostAsJsonAsync("products/xyz", new { product = "xyz", quantity = 1, stamp = "does-not-matter" });
+            Assert.Equal(HttpStatusCode.Accepted, res1.StatusCode);
+            Assert.Equal("{\"product\":\"xyz\",\"quantity\":1}", (await res1.Content.ReadAsStringAsync()).Trim());
+
+            var res2 = await hc.GetAsync("people/123");
+            Assert.Equal(HttpStatusCode.OK, res2.StatusCode);
+            Assert.Equal("abc", res2.Headers.GetValues("x-blah").Single());
+
+            var res3 = await hc.GetAsync("sequence");
+            Assert.Equal("{\"seq\":1}", (await res3.Content.ReadAsStringAsync()).Trim());
+            var res4 = await hc.GetAsync("sequence");
+            Assert.Equal("{\"seq\":2}", (await res4.Content.ReadAsStringAsync()).Trim());
+        }
+
+        [Fact]
         public async Task Interface_ResponseSequenceItem_Extras_Dim()
         {
             var mcf = MockHttpClientFactory.Create();

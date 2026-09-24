@@ -205,6 +205,27 @@ namespace UnitTestEx.Aspire.Xunit.Test
         }
 
         [Fact]
+        public async Task HttpMock_WithRequestsFromResourceAsync_LoadsStubsFromYaml_IdenticallyToTier1()
+        {
+            // Proves the shared IHttpMockClient.WithRequestsFromResourceAsync DIM (see HttpMockResourceConfig in the core UnitTestEx project) loads the exact same YAML/JSON schema
+            // as Tier 1's native MockHttpClient.WithRequestsFromResource against a real WireMock.Net gateway resource - closing the feature gap between the two tiers.
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>();
+
+            await tester.WaitForResourceAsync("gateway");
+
+            IHttpMockClient client = tester.HttpMock("gateway");
+            await client.WithRequestsFromResourceAsync<AspireTesterTest>("AspireTesterTest-mock.unittestex.yaml");
+
+            tester.Http("gateway").Run(HttpMethod.Get, "/resource-config/simple")
+                .AssertOK()
+                .AssertValue(new { id = "FromResource", description = "Loaded from shared YAML resource." });
+
+            tester.Http("gateway").Run(HttpMethod.Post, "/resource-config/echo", new { id = "Abc", stamp = Guid.NewGuid().ToString() })
+                .AssertAccepted()
+                .AssertValue(new { id = "Abc", description = "matched" });
+        }
+
+        [Fact]
         public async Task HttpMock_InterfaceCoreMembers_TierSpecificAdaptations()
         {
             // Unlike HttpMockInterfaceTest.cs in UnitTestEx.Xunit.Test (which exercises the shared IHttpMock* DIM "extras" - identical bytecode on both tiers), this exercises

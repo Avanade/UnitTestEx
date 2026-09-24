@@ -300,6 +300,15 @@ The following represents a YAML example for a request/response with sequences:
 
 _Note:_ Not all scenarios are currently available using YAML/JSON configuration.
 
+The same YAML/JSON schema/file can also be loaded via the shared [`IHttpMockClient.WithRequestsFromResourceAsync`](./src/UnitTestEx/Mocking/IHttpMockClient.cs) - so a single embedded resource can configure both Tier 1's `MockHttpClient` above *and* Tier 2/3's `AspireHttpMockClient` (see [Aspire multi-host testing](#Aspire-multi-host-testing) below) identically:
+
+``` csharp
+IHttpMockClient client = mcf.CreateClient("XXX", new Uri("https://unit-test")); // or tester.HttpMock("erp") for Aspire.
+await client.WithRequestsFromResourceAsync<MyTestClass>("my.mock.unittestex.yaml");
+```
+
+One intentional difference versus the native `WithRequestsFromResource` above: where a request entry omits `body` entirely, this shared loader matches *any* body (equivalent to `body: ^`), rather than Tier 1's native "no body at all" semantics - the shared interface has no means to express the latter.
+
 <br/>
 
 ## Aspire multi-host testing
@@ -358,7 +367,7 @@ tester.Http("api")
 await stub.VerifyAsync();
 ```
 
-The fluent configuration API is intentionally near-identical to Tier 1's `MockHttpClientFactory` above (both implement the shared [`IHttpMockClient`](./src/UnitTestEx/Mocking/IHttpMockClient.cs)/`IHttpMockRequest`/`IHttpMockResponse` interfaces) - a helper method written once against these interfaces can configure request/response stubbing identically regardless of which tier it's handed. The main differences are that the terminal `With*` methods here are asynchronous (`AspireHttpMockClient` performs a real HTTP call to the WireMock.Net server's admin API to register each mapping) and must be awaited, and the underlying JSON comparison/sequence-exhaustion semantics are WireMock.Net's own (not identical to Tier 1's).
+The fluent configuration API is intentionally near-identical to Tier 1's `MockHttpClientFactory` above (both implement the shared [`IHttpMockClient`](./src/UnitTestEx/Mocking/IHttpMockClient.cs)/`IHttpMockRequest`/`IHttpMockResponse` interfaces) - a helper method written once against these interfaces can configure request/response stubbing identically regardless of which tier it's handed. The main differences are that the terminal `With*` methods here are asynchronous (`AspireHttpMockClient` performs a real HTTP call to the WireMock.Net server's admin API to register each mapping) and must be awaited, and the underlying JSON comparison/sequence-exhaustion semantics are WireMock.Net's own (not identical to Tier 1's). The same shared interface also brings across Tier 1's [YAML/JSON configuration](#YAML/JSON-configuration) - `await tester.HttpMock("erp").WithRequestsFromResourceAsync<MyTestClass>("my.mock.unittestex.yaml")` loads the exact same embedded resource schema against a real WireMock.Net resource.
 
 _Note:_ Aspire-hosted resources are real OS processes/containers (Docker/Podman required for `AddWireMock` and similar container resources), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
 
