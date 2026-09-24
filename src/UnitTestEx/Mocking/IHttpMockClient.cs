@@ -9,8 +9,8 @@ namespace UnitTestEx.Mocking
     /// Tier 2/3's out-of-process <c>AspireHttpMockClient</c> (a thin wrapper over a real WireMock.Net server resource).
     /// </summary>
     /// <remarks>This abstraction allows a single piece of test-authoring code (e.g. a shared <c>static</c> helper method) to configure request/response stubbing identically regardless
-    /// of which tier is under test - only the concrete <see cref="IHttpMockClient"/> instance passed in differs. See the <c>docs/design/aspire-multi-host-testing.md</c> design note for
-    /// the tier-specific semantics that remain (JSON comparison engine, sequence-exhaustion behaviour) despite the shared surface.</remarks>
+    /// of which tier is under test - only the concrete <see cref="IHttpMockClient"/> instance passed in differs. The tier-specific semantics that remain (JSON comparison engine,
+    /// sequence-exhaustion behaviour) despite the shared surface are documented on each concrete implementation.</remarks>
     public interface IHttpMockClient
     {
         /// <summary>

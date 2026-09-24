@@ -18,7 +18,7 @@ namespace UnitTestEx.Aspire.HttpMock
     /// </summary>
     /// <remarks>Unlike Tier 1's in-memory, purely synchronous <see cref="Mocking.MockHttpClient"/> (a Moq-based <see cref="HttpMessageHandler"/> substitution), this issues genuine HTTP requests
     /// to the WireMock.Net server's admin API (a separate OS process, potentially in a container); every stub-defining and verification method is therefore asynchronous - there is no honest way
-    /// to hide that real network I/O behind a synchronous-looking API. See the <c>docs/design/aspire-multi-host-testing.md</c> design note for the rationale.
+    /// to hide that real network I/O behind a synchronous-looking API.
     /// <para>Implements the shared <see cref="IHttpMockClient"/> abstraction (see that type's remarks) so that test-authoring code can be written once against the interface and reused
     /// identically regardless of which tier applied it.</para></remarks>
     public sealed class AspireHttpMockClient : IHttpMockClient

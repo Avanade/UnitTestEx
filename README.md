@@ -306,7 +306,12 @@ _Note:_ Not all scenarios are currently available using YAML/JSON configuration.
 
 Everything above (`ApiTester`, `FunctionTester`, `GenericTester`, etc.) hosts a **single** system/service in-process via `WebApplicationFactory` - ideal for intra-domain testing where you want deep, per-component control (DI replacement, mocked `HttpClient`s) of one service in isolation.
 
-Sometimes, though, you genuinely need to prove that two or more **real**, separately-hosted services interact correctly over the network (inter-domain testing) - for example a [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) distributed application where a "shopping" API calls a "products" API. For this, the [`UnitTestEx.Aspire`](./src/UnitTestEx.Aspire) package provides `AspireTester`, which spins up the **entire AppHost** - every project, container and executable resource it declares - as separate, real OS processes wired together with Aspire's actual service discovery, exactly as they'd run in production. This is deliberately a second, opt-in tier rather than an extension of the first: pick the tier per test based on what you're actually trying to prove, don't force a hybrid. See the [design note](./docs/design/aspire-multi-host-testing.md) for the full rationale.
+Sometimes, though, you genuinely need to prove that two or more **real**, separately-hosted services interact correctly over the network (inter-domain testing) - for example a [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) distributed application where a "shopping" API calls a "products" API. For this, the [`UnitTestEx.Aspire`](./src/UnitTestEx.Aspire) package provides `AspireTester`, which spins up the **entire AppHost** - every project, container and executable resource it declares - as separate, real OS processes wired together with Aspire's actual service discovery, exactly as they'd run in production. This is deliberately a second, opt-in tier rather than an extension of the first: pick the tier per test based on what you're actually trying to prove, don't force a hybrid.
+
+This isn't a UnitTestEx-specific compromise - it matches Aspire's own guidance verbatim:
+
+> "If your goal is to test a single project in isolation, run components in-memory, or mock external dependencies, consider using `WebApplicationFactory<T>` instead."
+> — [aspire.dev/testing/overview](https://aspire.dev/testing/overview/)
 
 ``` csharp
 await using var tester = AspireTester.Create<Projects.MyAppHost>();
@@ -353,7 +358,7 @@ tester.Http("api")
 await stub.VerifyAsync();
 ```
 
-The fluent configuration API is intentionally near-identical to Tier 1's `MockHttpClientFactory` above (both implement the shared [`IHttpMockClient`](./src/UnitTestEx/Mocking/IHttpMockClient.cs)/`IHttpMockRequest`/`IHttpMockResponse` interfaces) - a helper method written once against these interfaces can configure request/response stubbing identically regardless of which tier it's handed. The main differences are that the terminal `With*` methods here are asynchronous (`AspireHttpMockClient` performs a real HTTP call to the WireMock.Net server's admin API to register each mapping) and must be awaited, and the underlying JSON comparison/sequence-exhaustion semantics are WireMock.Net's own (not identical to Tier 1's) - see the [design note](./docs/design/aspire-multi-host-testing.md) for the specifics.
+The fluent configuration API is intentionally near-identical to Tier 1's `MockHttpClientFactory` above (both implement the shared [`IHttpMockClient`](./src/UnitTestEx/Mocking/IHttpMockClient.cs)/`IHttpMockRequest`/`IHttpMockResponse` interfaces) - a helper method written once against these interfaces can configure request/response stubbing identically regardless of which tier it's handed. The main differences are that the terminal `With*` methods here are asynchronous (`AspireHttpMockClient` performs a real HTTP call to the WireMock.Net server's admin API to register each mapping) and must be awaited, and the underlying JSON comparison/sequence-exhaustion semantics are WireMock.Net's own (not identical to Tier 1's).
 
 _Note:_ Aspire-hosted resources are real OS processes/containers (Docker/Podman required for `AddWireMock` and similar container resources), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
 

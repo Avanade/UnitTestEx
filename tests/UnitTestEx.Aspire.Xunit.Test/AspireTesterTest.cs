@@ -90,7 +90,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
         public async Task HttpMock_StubsExternalGatewayDependency_Product()
         {
             // Note: this exercises a real WireMock.Net container resource (added via 'gateway' in the AppHost using the official WireMock.Net.Aspire package); it requires Docker/Podman to
-            // be available to the CI/dev machine running the test (see docs/design/aspire-multi-host-testing.md).
+            // be available to the CI/dev machine running the test.
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
 
@@ -114,7 +114,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
         [Fact]
         public async Task HttpMock_WithSequenceAsync_ReturnsResponsesInOrderThenExhausts()
         {
-            // Note: this exercises WireMock.Net's Scenario/state mechanism (see docs/design/aspire-multi-host-testing.md); each subsequent invocation returns the next configured
+            // Note: this exercises WireMock.Net's Scenario/state mechanism; each subsequent invocation returns the next configured
             // response. Unlike a single stub, a sequence's own completeness (exactly one invocation per configured response) IS the expectation - mirroring Tier 1's WithSequence -
             // so Times cannot be combined with it, and any invocation beyond the configured responses receives a distinct 500 "exhausted" response instead of silently repeating.
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
@@ -163,7 +163,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
         [Fact]
         public async Task HttpMock_WithJsonBody_PathsToIgnore_IgnoresSpecifiedProperty()
         {
-            // Note: exercises WireMock.Net's own JsonPartialMatcher (see docs/design/aspire-multi-host-testing.md) - a variable 'eTag' is ignored from the match pattern, while a
+            // Note: exercises WireMock.Net's own JsonPartialMatcher - a variable 'eTag' is ignored from the match pattern, while a
             // genuinely differing (non-ignored) 'id' still fails to match any stub (WireMock.Net's default "no mapping found" 404 response).
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>();
 
