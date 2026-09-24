@@ -168,7 +168,15 @@ namespace UnitTestEx.AspNetCore
         public TestServer GetTestServer() => HostExecutionWrapper(() => GetWebApplicationFactory().Server);
 
         /// <inheritdoc/>
-        public HttpClient CreateHttpClient(string? name = null) => new(GetTestServer().CreateHandler()) { BaseAddress = GetTestServer().BaseAddress };
+        /// <remarks>Deliberately bypasses <see cref="GetTestServer"/> (and therefore its <see cref="TestSharedState.Reset"/> side-effect) here: this is invoked per-request, potentially <i>after</i>
+        /// expectations (e.g. <c>ExpectEvents</c>) have already registered state into <see cref="TestSharedState.StateData"/> for the current request's <see cref="HttpTesterBase.RequestId"/>. Routing
+        /// through the resetting wrapper on every request wipes that state immediately before the request is sent, silently discarding registered expectation flags (causing false "no events published"
+        /// failures). <see cref="GetTestServer"/> itself is left untouched for its other (construction-time, pre-expectation) callers.</remarks>
+        public HttpClient CreateHttpClient(string? name = null)
+        {
+            var server = GetWebApplicationFactory().Server;
+            return new HttpClient(server.CreateHandler()) { BaseAddress = server.BaseAddress };
+        }
 
 
         /// <summary>

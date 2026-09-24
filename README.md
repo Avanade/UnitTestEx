@@ -393,6 +393,8 @@ The same shared interface also brings across Tier 1's [YAML/JSON configuration](
 
 _Note:_ Aspire-hosted resources are real OS processes (containers, where you opt into one), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
 
+_Note:_ Since Tier 2/3 resources are real, reachable URLs (not in-process fakes), a UI/frontend resource hosted in the `AppHost` can be driven directly with [Playwright](https://playwright.dev/dotnet/) - this is an ordinary consequence of the resources being real processes, not a UnitTestEx-specific feature; see Microsoft's own [Aspire + Playwright guide](https://learn.microsoft.com/en-us/dotnet/aspire/testing/write-your-first-test?tabs=xunit#creating-a-playwright-test) for the pattern.
+
 <br/>
 
 ## Expectations

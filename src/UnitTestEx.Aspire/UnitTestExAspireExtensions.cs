@@ -47,10 +47,8 @@ namespace Aspire.Hosting
         /// current <see cref="DistributedApplicationExecutionContext"/>, such as publish mode).</param>
         /// <param name="endpointName">The endpoint name to resolve from <paramref name="source"/> (e.g. <c>"http"</c>).</param>
         /// <returns><paramref name="builder"/>, for chaining.</returns>
-        public static IResourceBuilder<TDestination> WithMockHostEnvironment<TDestination, TSource>(
-            this IResourceBuilder<TDestination> builder, string name, IResourceBuilder<TSource>? source, string endpointName)
-            where TDestination : IResourceWithEnvironment
-            where TSource : IResourceWithEndpoints
+        public static IResourceBuilder<TDestination> WithMockHostEnvironment<TDestination, TSource>(this IResourceBuilder<TDestination> builder, string name, IResourceBuilder<TSource>? source, string endpointName)
+            where TDestination : IResourceWithEnvironment where TSource : IResourceWithEndpoints
             => source is null ? builder : builder.WithEnvironment(name, source.GetEndpoint(endpointName));
     }
 }

@@ -49,6 +49,7 @@ param(
     [string]$NugetCacheFolder = "$($env:USERPROFILE)\.nuget\packages",
     [String[]]$ProjectsToPublish = @(
         "src\UnitTestEx",
+        "src\UnitTestEx.Aspire",
         "src\UnitTestEx.Azure.Functions",
         "src\UnitTestEx.Azure.ServiceBus",
         "src\UnitTestEx.MSTest",
