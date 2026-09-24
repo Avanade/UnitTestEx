@@ -1,11 +1,13 @@
 // Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using UnitTestEx.Mocking;
+
 namespace UnitTestEx.Aspire.HttpMock
 {
     /// <summary>
     /// Represents the result of adding a body matcher to the <see cref="AspireHttpMockRequest"/> and to <see cref="Respond"/> accordingly.
     /// </summary>
-    public sealed class AspireHttpMockRequestBody
+    public sealed class AspireHttpMockRequestBody : IHttpMockRequestBody
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="AspireHttpMockRequestBody"/> class.
@@ -22,5 +24,8 @@ namespace UnitTestEx.Aspire.HttpMock
         /// Gets the <see cref="AspireHttpMockResponse"/> to configure the stubbed response.
         /// </summary>
         public AspireHttpMockResponse Respond => new(Request);
+
+        /// <inheritdoc/>
+        IHttpMockResponse IHttpMockRequestBody.Respond => Respond;
     }
 }

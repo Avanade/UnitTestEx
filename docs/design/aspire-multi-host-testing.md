@@ -162,6 +162,40 @@ authoring experience consistent with Tier 1's `MockHttpClientFactory`:
   equivalent of Tier 1's stricter bidirectional-deep-equal-minus-ignored-paths behavior. Left unchanged
   (strict `JsonMatcher`) when `pathsToIgnore` isn't supplied.
 
+### 5.2 Shared `IHttpMock*` interfaces — write the stubbing code once, use it on either tier
+
+Tier 1's `MockHttpClient*` (Moq-based, in-process) and Tier 2/3's `AspireHttpMock*` (WireMock.Net-based,
+out-of-process) both implement a common set of interfaces in `src/UnitTestEx/Mocking/`:
+`IHttpMockClient`, `IHttpMockRequest`, `IHttpMockRequestBody`, `IHttpMockResponse`,
+`IHttpMockResponseSequence`, `IHttpMockResponseSequenceItem`, and `IHttpMockedRequest`. A helper method
+written once against `IHttpMockClient` (e.g. `HttpMockSharedConfig.ConfigureProductStubAsync` in the test
+suites) configures request/response stubbing identically regardless of which concrete tier is passed in —
+only the `Times`/JSON-comparison/sequence-exhaustion *semantics* remain tier-specific (see 5.1 above); the
+authoring surface itself is unified.
+
+Each interface is deliberately kept to a minimal, irreducible core of abstract members; every convenience
+overload (a plain-text `WithBody(text)`, a raw-JSON-string `WithJsonAsync(json)`, the embedded-resource
+`WithJsonResource*` variants, `Headers(...)`, an integer-millisecond `Delay(int)`, etc.) is a C# default
+interface method (DIM) composed purely from those core members, so neither tier has to reimplement them.
+A DIM is only reached when called through a variable of the *interface* type — calling a same-named method
+directly on the concrete class invokes that class's own native method instead, an entirely separate code
+path. `tests/UnitTestEx.Xunit.Test/HttpMockInterfaceTest.cs` exercises every DIM extra via
+interface-typed variables (shared bytecode, so Tier-1-only coverage proves both tiers); a corresponding
+Aspire test (`HttpMock_InterfaceCoreMembers_TierSpecificAdaptations` in `AspireTesterTest.cs`) exercises
+the *core* members' hand-written, tier-specific explicit interface implementations instead (the 2-arg
+`WithBody`, `WithJsonBody<T>`, both branches of the `WithAsync` content/no-content adaptation, and the
+`Action<IHttpMockResponseSequence>`-wrapping adapter inside `WithSequenceAsync`).
+
+Retrofitting Tier 1 onto this shared surface surfaced one genuine cross-tier semantic gap:
+**`WithAnyBody()`**. Aspire's native implementation adds zero WireMock.Net body constraints — a true
+wildcard, matching a request with or without a body. Tier 1's native implementation, however, required
+`request.Content != null` before matching, so it could never match a body-less request (e.g. a `GET`) —
+inconsistent with both Aspire's behaviour and the interface's own documented contract ("matches regardless
+of the body content"). Tier 1 was changed to also be a true wildcard, aligning it with Aspire; this was a
+deliberate, user-approved behavior change to an existing native Tier 1 API (not just new interface-only
+code), so any test previously relying on "a body-less request after `WithAnyBody()` still fails to match"
+needed updating (see `UriAndAnyBody`/`DefaultHttpClient` in the Tier 1 test projects).
+
 ## 6. Mocking individual components case-by-case across processes
 
 Since there's no cross-process DI, "mock this one component in that other service" has to be solved

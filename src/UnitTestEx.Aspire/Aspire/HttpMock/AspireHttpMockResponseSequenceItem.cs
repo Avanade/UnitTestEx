@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Mime;
 using System.Reflection;
 using System.Text.Json;
+using UnitTestEx.Mocking;
 using WireMock.Admin.Mappings;
 
 namespace UnitTestEx.Aspire.HttpMock
@@ -15,8 +16,10 @@ namespace UnitTestEx.Aspire.HttpMock
     /// Represents a single response within a <see cref="AspireHttpMockResponseSequence"/>.
     /// </summary>
     /// <remarks>Unlike <see cref="AspireHttpMockResponse"/>'s terminal <c>With*Async</c> methods, these configuration methods are synchronous; the underlying mapping is only posted
-    /// once the whole sequence has been configured (see <see cref="AspireHttpMockResponse.WithSequenceAsync"/>).</remarks>
-    public sealed class AspireHttpMockResponseSequenceItem
+    /// once the whole sequence has been configured (see <see cref="AspireHttpMockResponse.WithSequenceAsync"/>).
+    /// <para>Implements the shared <see cref="IHttpMockResponseSequenceItem"/> abstraction (see that type's remarks) so that test-authoring code can be written once against the
+    /// interface and reused identically regardless of which tier applied it.</para></remarks>
+    public sealed class AspireHttpMockResponseSequenceItem : IHttpMockResponseSequenceItem
     {
         private readonly ResponseModel _response;
 
@@ -111,5 +114,23 @@ namespace UnitTestEx.Aspire.HttpMock
         /// <param name="assembly">The <see cref="Assembly"/> that contains the embedded resource; defaults to <see cref="Assembly.GetCallingAssembly"/>.</param>
         /// <param name="statusCode">The <see cref="HttpStatusCode"/>; defaults to <see cref="HttpStatusCode.OK"/>.</param>
         public void WithJsonResource(string resourceName, Assembly? assembly = null, HttpStatusCode statusCode = HttpStatusCode.OK) => WithJson(Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly()), statusCode);
+
+        /// <inheritdoc/>
+        IHttpMockResponseSequenceItem IHttpMockResponseSequenceItem.Header(string name, string value) => Header(name, value);
+
+        /// <inheritdoc/>
+        IHttpMockResponseSequenceItem IHttpMockResponseSequenceItem.Delay(TimeSpan timeSpan) => Delay(timeSpan);
+
+        /// <inheritdoc/>
+        void IHttpMockResponseSequenceItem.With(string? content, HttpStatusCode statusCode, string mediaType)
+        {
+            if (content is null)
+                With(statusCode);
+            else
+                With(content, statusCode, mediaType);
+        }
+
+        /// <inheritdoc/>
+        void IHttpMockResponseSequenceItem.WithJson<T>(T value, HttpStatusCode statusCode) => WithJson(value, statusCode);
     }
 }

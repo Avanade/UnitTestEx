@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using UnitTestEx.Mocking;
 using WireMock.Admin.Mappings;
 
 namespace UnitTestEx.Aspire.HttpMock
@@ -19,8 +20,10 @@ namespace UnitTestEx.Aspire.HttpMock
     /// Provides the stubbed response configuration for an <see cref="AspireHttpMockRequest"/>.
     /// </summary>
     /// <remarks>Unlike Tier 1's <see cref="Mocking.MockHttpClientResponse"/>, the terminal <c>With*</c> methods here are asynchronous (see <see cref="AspireHttpMockClient"/> remarks) as they perform
-    /// a real HTTP POST to the underlying WireMock.Net server resource's admin API to register the mapping; they must be awaited.</remarks>
-    public sealed class AspireHttpMockResponse
+    /// a real HTTP POST to the underlying WireMock.Net server resource's admin API to register the mapping; they must be awaited.
+    /// <para>Implements the shared <see cref="IHttpMockResponse"/> abstraction (see that type's remarks) so that test-authoring code can be written once against the interface and
+    /// reused identically regardless of which tier applied it.</para></remarks>
+    public sealed class AspireHttpMockResponse : IHttpMockResponse
     {
         private readonly AspireHttpMockRequest _request;
         private readonly ResponseModel _response = new();
@@ -208,6 +211,26 @@ namespace UnitTestEx.Aspire.HttpMock
         {
             var mapping = new MappingModel { Request = _request.Rule, Response = _response };
             return _request.Client.ApplyAsync(mapping, _request.ExpectedTimes, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        IHttpMockResponse IHttpMockResponse.Header(string name, string value) => Header(name, value);
+
+        /// <inheritdoc/>
+        IHttpMockResponse IHttpMockResponse.Delay(TimeSpan timeSpan) => Delay(timeSpan);
+
+        /// <inheritdoc/>
+        async Task<IHttpMockedRequest> IHttpMockResponse.WithAsync(string? content, HttpStatusCode statusCode, string mediaType, CancellationToken cancellationToken)
+            => content is null ? await WithAsync(statusCode, cancellationToken).ConfigureAwait(false) : await WithAsync(content, statusCode, mediaType, cancellationToken).ConfigureAwait(false);
+
+        /// <inheritdoc/>
+        async Task<IHttpMockedRequest> IHttpMockResponse.WithJsonAsync<T>(T value, HttpStatusCode statusCode, CancellationToken cancellationToken) => await WithJsonAsync(value, statusCode, cancellationToken).ConfigureAwait(false);
+
+        /// <inheritdoc/>
+        async Task<IHttpMockedRequest> IHttpMockResponse.WithSequenceAsync(Action<IHttpMockResponseSequence> sequence, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(sequence);
+            return await WithSequenceAsync(s => sequence(s), cancellationToken).ConfigureAwait(false);
         }
     }
 }

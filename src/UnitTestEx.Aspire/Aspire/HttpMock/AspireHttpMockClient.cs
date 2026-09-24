@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
+using UnitTestEx.Mocking;
 using WireMock.Admin.Mappings;
 using WireMock.Client;
 
@@ -17,8 +18,10 @@ namespace UnitTestEx.Aspire.HttpMock
     /// </summary>
     /// <remarks>Unlike Tier 1's in-memory, purely synchronous <see cref="Mocking.MockHttpClient"/> (a Moq-based <see cref="HttpMessageHandler"/> substitution), this issues genuine HTTP requests
     /// to the WireMock.Net server's admin API (a separate OS process, potentially in a container); every stub-defining and verification method is therefore asynchronous - there is no honest way
-    /// to hide that real network I/O behind a synchronous-looking API. See the <c>docs/design/aspire-multi-host-testing.md</c> design note for the rationale.</remarks>
-    public sealed class AspireHttpMockClient
+    /// to hide that real network I/O behind a synchronous-looking API. See the <c>docs/design/aspire-multi-host-testing.md</c> design note for the rationale.
+    /// <para>Implements the shared <see cref="IHttpMockClient"/> abstraction (see that type's remarks) so that test-authoring code can be written once against the interface and reused
+    /// identically regardless of which tier applied it.</para></remarks>
+    public sealed class AspireHttpMockClient : IHttpMockClient
     {
         private readonly Func<Task<IWireMockAdminApi>> _adminApiFactory;
 
@@ -42,6 +45,9 @@ namespace UnitTestEx.Aspire.HttpMock
         /// <param name="requestUri">The relative request URI (path) to match (exact match); where not specified any path will match.</param>
         /// <returns>The <see cref="AspireHttpMockRequest"/> to continue the fluent-style configuration.</returns>
         public AspireHttpMockRequest Request(HttpMethod? method = null, string? requestUri = null) => new(this, method, requestUri);
+
+        /// <inheritdoc/>
+        IHttpMockRequest IHttpMockClient.Request(HttpMethod? method, string? requestUri) => Request(method, requestUri);
 
         /// <summary>
         /// Removes <b>all</b> previously configured mappings and clears the recorded request log on the underlying WireMock.Net server resource.

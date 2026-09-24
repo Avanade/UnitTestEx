@@ -1,11 +1,14 @@
 using System;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using Moq;
 using UnitTestEx;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Api.Models;
+using UnitTestEx.Mocking;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -179,6 +182,81 @@ namespace UnitTestEx.Aspire.Xunit.Test
             tester.Http("gateway").Run(HttpMethod.Post, "/echo", new { id = "Xyz", eTag = "whatever" }).AssertNotFound();
 
             await stub.VerifyAsync();
+        }
+        [Fact]
+        public async Task HttpMock_SharedInterface_ConfiguresIdenticallyAcrossTiers()
+        {
+            // Proves that the exact same test-authoring code (HttpMockSharedConfig.ConfigureProductStubAsync, written once against IHttpMockClient) can configure Tier 2/3's
+            // AspireHttpMockClient identically to Tier 1's MockHttpClient (see the equivalent test in UnitTestEx.Xunit.Test).
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+
+            await tester.WaitForResourceAsync("api");
+            await tester.WaitForResourceAsync("gateway");
+
+            var stub = await HttpMockSharedConfig.ConfigureProductStubAsync(tester.HttpMock("gateway"), "/products/shared");
+
+            tester.Http("api")
+                .Run(HttpMethod.Get, "Product/shared")
+                .AssertOK()
+                .AssertValue(new { id = "Shared", description = "Configured via the shared IHttpMockClient interface." });
+
+            await stub.VerifyAsync();
+        }
+
+        [Fact]
+        public async Task HttpMock_InterfaceCoreMembers_TierSpecificAdaptations()
+        {
+            // Unlike HttpMockInterfaceTest.cs in UnitTestEx.Xunit.Test (which exercises the shared IHttpMock* DIM "extras" - identical bytecode on both tiers), this exercises
+            // AspireHttpMockRequest/AspireHttpMockResponse's own hand-written, tier-specific explicit interface implementations of the *core* (non-DIM) members via interface-typed
+            // variables: the 2-arg WithBody, WithJsonBody<T>, both branches (with/without content) of the WithAsync adaptation, and the Action<IHttpMockResponseSequence>-wrapping
+            // adapter within WithSequenceAsync.
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>();
+
+            await tester.WaitForResourceAsync("gateway");
+
+            IHttpMockClient client = tester.HttpMock("gateway");
+
+            var stub1 = await client.Request(HttpMethod.Post, "/interface/with-body")
+                .Times(Times.Once())
+                .WithBody("plain-text-body", MediaTypeNames.Text.Plain)
+                .Respond.WithAsync("received", HttpStatusCode.OK, MediaTypeNames.Text.Plain);
+
+            var stub2 = await client.Request(HttpMethod.Get, "/interface/no-content")
+                .Times(Times.Once())
+                .WithAnyBody()
+                .Respond.WithAsync(statusCode: HttpStatusCode.NoContent);
+
+            var stub3 = await client.Request(HttpMethod.Post, "/interface/json-body")
+                .Times(Times.Once())
+                .WithJsonBody(new { id = "Abc" })
+                .Respond.WithJsonAsync(new { id = "Abc", description = "Configured via IHttpMockRequest.WithJsonBody<T>." });
+
+            var stub4 = await client.Request(HttpMethod.Get, "/interface/sequence")
+                .WithAnyBody()
+                .Respond.WithSequenceAsync(seq =>
+                {
+                    seq.Respond().WithJson(new { id = "First" });
+                    seq.Respond().WithJson(new { id = "Second" });
+                });
+
+            tester.Http("gateway").Run(HttpMethod.Post, "/interface/with-body", "plain-text-body", MediaTypeNames.Text.Plain)
+                .AssertOK()
+                .AssertContent("received");
+
+            tester.Http("gateway").Run(HttpMethod.Get, "/interface/no-content").AssertNoContent();
+
+            tester.Http("gateway").Run(HttpMethod.Post, "/interface/json-body", new { id = "Abc" })
+                .AssertOK()
+                .AssertValue(new { id = "Abc", description = "Configured via IHttpMockRequest.WithJsonBody<T>." });
+
+            tester.Http("gateway").Run(HttpMethod.Get, "/interface/sequence").AssertOK().AssertValue(new { id = "First" });
+            tester.Http("gateway").Run(HttpMethod.Get, "/interface/sequence").AssertOK().AssertValue(new { id = "Second" });
+
+            await stub1.VerifyAsync();
+            await stub2.VerifyAsync();
+            await stub3.VerifyAsync();
+            await stub4.VerifyAsync();
         }
     }
 }

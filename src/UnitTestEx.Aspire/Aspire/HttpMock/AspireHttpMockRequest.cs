@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using UnitTestEx.Mocking;
 using WireMock.Admin.Mappings;
 
 namespace UnitTestEx.Aspire.HttpMock
@@ -14,7 +15,9 @@ namespace UnitTestEx.Aspire.HttpMock
     /// <summary>
     /// Represents the request-matching configuration for a stubbed <see cref="AspireHttpMockClient"/> mapping.
     /// </summary>
-    public sealed class AspireHttpMockRequest
+    /// <remarks>Implements the shared <see cref="IHttpMockRequest"/> abstraction (see that type's remarks) so that test-authoring code can be written once against the interface and
+    /// reused identically regardless of which tier applied it.</remarks>
+    public sealed class AspireHttpMockRequest : IHttpMockRequest
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="AspireHttpMockRequest"/> class.
@@ -74,6 +77,27 @@ namespace UnitTestEx.Aspire.HttpMock
         public AspireHttpMockRequestBody WithBody(string text)
         {
             Rule.Body = new BodyModel { Matcher = new MatcherModel { Name = "ExactMatcher", Pattern = text ?? throw new ArgumentNullException(nameof(text)) } };
+            return new(this);
+        }
+
+        /// <summary>
+        /// Indicates that the request body must match the specified <paramref name="text"/> exactly, with the specified <paramref name="mediaType"/> (via a Content-Type header match).
+        /// </summary>
+        /// <param name="text">The exact body text to match.</param>
+        /// <param name="mediaType">The media type of the request.</param>
+        /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
+        /// <remarks>Unlike <see cref="WithBody(string)"/>, which is media-type agnostic, this additionally adds a Content-Type header matcher (a wildcard match on <paramref name="mediaType"/>);
+        /// this is the member used to satisfy the shared <see cref="IHttpMockRequest.WithBody(string, string)"/> abstraction, mirroring Tier 1's stricter (media-type checked) behaviour there.</remarks>
+        public AspireHttpMockRequestBody WithBody(string text, string mediaType)
+        {
+            Rule.Body = new BodyModel { Matcher = new MatcherModel { Name = "ExactMatcher", Pattern = text ?? throw new ArgumentNullException(nameof(text)) } };
+            Rule.Headers ??= [];
+            Rule.Headers.Add(new HeaderModel
+            {
+                Name = "Content-Type",
+                Matchers = [new MatcherModel { Name = "WildcardMatcher", Pattern = $"{mediaType ?? throw new ArgumentNullException(nameof(mediaType))}*" }]
+            });
+
             return new(this);
         }
 
@@ -159,5 +183,20 @@ namespace UnitTestEx.Aspire.HttpMock
         /// <param name="pathsToIgnore">The simple property paths to exclude from the match pattern; see <see cref="WithJsonBody(string, string[])"/> remarks.</param>
         /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         public AspireHttpMockRequestBody WithJsonResourceBody(string resourceName, Assembly? assembly = null, params string[] pathsToIgnore) => WithJsonBody(Resource.GetJson(resourceName, assembly ?? Assembly.GetCallingAssembly()), pathsToIgnore);
+
+        /// <inheritdoc/>
+        IHttpMockRequest IHttpMockRequest.Times(Times times) => Times(times);
+
+        /// <inheritdoc/>
+        IHttpMockRequestBody IHttpMockRequest.WithAnyBody() => WithAnyBody();
+
+        /// <inheritdoc/>
+        IHttpMockRequestBody IHttpMockRequest.WithBody(string body, string mediaType) => WithBody(body, mediaType);
+
+        /// <inheritdoc/>
+        IHttpMockRequestBody IHttpMockRequest.WithJsonBody(string json, params string[] pathsToIgnore) => WithJsonBody(json, pathsToIgnore);
+
+        /// <inheritdoc/>
+        IHttpMockRequestBody IHttpMockRequest.WithJsonBody<T>(T value, params string[] pathsToIgnore) => WithJsonBody(value, pathsToIgnore);
     }
 }

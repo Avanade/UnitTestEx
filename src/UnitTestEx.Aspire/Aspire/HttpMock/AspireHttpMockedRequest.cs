@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using UnitTestEx.Mocking;
 using WireMock.Client;
 
 namespace UnitTestEx.Aspire.HttpMock
@@ -14,7 +15,9 @@ namespace UnitTestEx.Aspire.HttpMock
     /// Represents a stubbed mapping (or, for a <see cref="AspireHttpMockResponse.WithSequenceAsync">sequence</see>, the set of mappings) that has been applied (posted) to a
     /// WireMock.Net server resource, allowing its invocation to be verified after the fact.
     /// </summary>
-    public sealed class AspireHttpMockedRequest
+    /// <remarks>Implements the shared <see cref="IHttpMockedRequest"/> abstraction (see that type's remarks) so that test-authoring code can be written once against the interface
+    /// and reused identically regardless of which tier applied it.</remarks>
+    public sealed class AspireHttpMockedRequest : IHttpMockedRequest
     {
         private readonly IWireMockAdminApi _adminApi;
         private readonly IReadOnlyList<Guid> _mappingIds;
