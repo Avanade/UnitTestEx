@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Avanade/UnitTestEx/refs/heads/main/src/UnitTestEx/Schema/mock.unittestex.json
+- method: get
+  uri: /resource-config/simple
+  response:
+    status: 200
+    body: |
+      {"id":"FromResource","description":"Loaded from shared YAML resource."}
+
+- method: post
+  uri: /resource-config/echo
+  body: '{"id":"Abc","stamp":"ignore-me"}'
+  ignore: [ stamp ]
+  response:
+    status: 202
+    body: |
+      {"id":"Abc","description":"matched"}

@@ -19,7 +19,7 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Provides the <see cref="HttpRequestMessage"/> configuration for mocking.
     /// </summary>
-    public sealed class MockHttpClientRequest
+    public sealed class MockHttpClientRequest : IHttpMockRequest, IHttpMockedRequest
     {
         private readonly MockHttpClient _client;
         private readonly HttpMethod _method;
@@ -179,14 +179,14 @@ namespace UnitTestEx.Mocking
             else if (!WebUtility.UrlDecode(request.RequestUri!.PathAndQuery).EndsWith(WebUtility.UrlDecode(uri.OriginalString)))
                 return false;
 
+            if (_anyContent)
+                return true;
+
             if (_mediaType == null)
                 return request.Content == null;
 
             if (request?.Content == null)
                 return false;
-
-            if (_anyContent)
-                return true;
 
             if (string.Compare(_mediaType, request.Content?.Headers?.ContentType?.MediaType, StringComparison.InvariantCultureIgnoreCase) != 0)
                 return false;
@@ -256,7 +256,7 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Enables <i>any</i> request with <i>a</i> body (functionally equivalent to <see cref="ItExpr.IsAny{TValue}"/>).
+        /// Enables the request to match regardless of body content, including where no body is present at all (functionally equivalent to <see cref="ItExpr.IsAny{TValue}"/>).
         /// </summary>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithAnyBody()
@@ -419,5 +419,27 @@ namespace UnitTestEx.Mocking
         /// Gets the <see cref="MockHttpClientResponse"/>.
         /// </summary>
         public MockHttpClientResponse Respond => Rule.Response!;
+
+        /// <inheritdoc/>
+        IHttpMockRequest IHttpMockRequest.Times(Times times) => Times(times);
+
+        /// <inheritdoc/>
+        IHttpMockRequestBody IHttpMockRequest.WithAnyBody() => WithAnyBody();
+
+        /// <inheritdoc/>
+        IHttpMockRequestBody IHttpMockRequest.WithBody(string body, string mediaType) => WithBody(body, mediaType);
+
+        /// <inheritdoc/>
+        IHttpMockRequestBody IHttpMockRequest.WithJsonBody<T>(T value, params string[] pathsToIgnore) => WithJsonBody(value, pathsToIgnore);
+
+        /// <inheritdoc/>
+        IHttpMockRequestBody IHttpMockRequest.WithJsonBody(string json, params string[] pathsToIgnore) => WithJsonBody(json, pathsToIgnore);
+
+        /// <inheritdoc/>
+        Task IHttpMockedRequest.VerifyAsync(CancellationToken cancellationToken)
+        {
+            Verify();
+            return Task.CompletedTask;
+        }
     }
 }

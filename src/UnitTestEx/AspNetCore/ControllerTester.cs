@@ -2,7 +2,6 @@
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
-using Microsoft.AspNetCore.TestHost;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -21,9 +20,9 @@ namespace UnitTestEx.AspNetCore
     /// Enables the testing of a <see cref="ControllerBase"/> operation.
     /// </summary>
     /// <typeparam name="TController">The <see cref="ControllerBase"/> <see cref="Type"/>.</typeparam>
-    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
-    /// <param name="testServer">The <see cref="TestServer"/>.</param>
-    public class ControllerTester<TController>(TesterBase owner, TestServer testServer) : HttpTesterBase<ControllerTester<TController>>(owner, testServer) where TController : ControllerBase
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
+    /// <param name="httpClientSource">The <see cref="IHttpClientSource"/>.</param>
+    public class ControllerTester<TController>(TesterBaseCore owner, IHttpClientSource httpClientSource) : HttpTesterBase<ControllerTester<TController>>(owner, httpClientSource) where TController : ControllerBase
     {
         /// <summary>
         /// Provides the HTTP request body option.

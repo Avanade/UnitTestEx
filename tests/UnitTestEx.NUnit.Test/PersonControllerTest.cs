@@ -59,6 +59,7 @@ namespace UnitTestEx.NUnit.Test
         public void Get_Test4_WithResetHost()
         {
             using var test = ApiTester.Create<Startup>().ResetHost();
+            test.Reason("Need to reset the host.");
             test.Controller<PersonController>()
                 .Run(c => c.Get(4))
                 .AssertNotFound();

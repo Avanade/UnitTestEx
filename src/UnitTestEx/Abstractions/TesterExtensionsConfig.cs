@@ -31,11 +31,11 @@ namespace UnitTestEx.Abstractions
         /// Updates the <paramref name="value"/> from the <see cref="HttpResponseMessage"/> (where applicable).
         /// </summary>
         /// <typeparam name="TValue">The value <see cref="Type"/>.</typeparam>
-        /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+        /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
         /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
         /// <param name="value">The deserialized value (override where applicable).</param>
         /// <remarks>The value will have already been deserialized.</remarks>
-        public virtual void UpdateValueFromHttpResponseMessage<TValue>(TesterBase owner, HttpResponseMessage response, ref TValue? value) { }
+        public virtual void UpdateValueFromHttpResponseMessage<TValue>(TesterBaseCore owner, HttpResponseMessage response, ref TValue? value) { }
 
         /// <summary>
         /// Updates the <paramref name="value"/> from the <see cref="IActionResult"/> (where applicable).

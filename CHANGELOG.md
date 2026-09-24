@@ -2,6 +2,11 @@
 
 Represents the **NuGet** versions.
 
+## v5.12.0
+- *Enhancement:* Added `UnitTestEx.Aspire` (NET8+) to enable testing of [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) multi-host (inter-domain) testing alongside existing in-process `WebApplicationFactory`. The API surface between the two is consistent where appropriate. 
+  - Additionally, `HttpClient` mocking of external dependencies is supported via `AspireHttpMockClient`, which stubs a real, out-of-process [WireMock.Net](https://wiremock.org/dotnet/) server resource - see the README's [Aspire multi-host testing](./README.md#Aspire-multi-host-testing) section for the recommended, self-hosted (Docker-free) pattern.
+- *Fixed:* `ApiTesterBase.CreateHttpClient` no longer resets `TestSharedState` on every request. It previously routed through `GetTestServer()`'s reset-on-access semantics, which - since `CreateHttpClient` is invoked per-request, after any `Expect*()`-style call has already registered request-scoped state - silently wiped registered expectation flags (e.g. `ExpectEvents()`) immediately before the request was sent, causing false "expectation not met" failures.
+ 
 ## v5.11.1
 - *Fixed:* Wrapped `Assembly.LoadFrom` in `TestSetUp` with try-catch to log exceptions and prevent setup failures.
 

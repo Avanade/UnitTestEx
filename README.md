@@ -15,6 +15,7 @@ The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style te
 - [Service Bus-trigger Azure Function](#Service-Bus-trigger-Azure-Function)
 - [Generic Azure Function Type](#Generic-Azure-Function-Type)
 - [HTTP Client mocking](#HTTP-Client-mocking)
+- [Aspire multi-host testing](#Aspire-multi-host-testing)
 
 <br/>
 
@@ -22,9 +23,9 @@ The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style te
 
 The build and packaging status is as follows.
 
-CI | `UnitTestEx` | `UnitTestEx.MSTest` | `UnitTestEx.NUnit` | `UnitTestEx.Xunit`
--|-|-|-|-
-[![CI](https://github.com/Avanade/UnitTestEx/workflows/CI/badge.svg)](https://github.com/Avanade/UnitTestEx/actions?query=workflow%3ACI) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.svg)](https://badge.fury.io/nu/UnitTestEx) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.MSTest.svg)](https://badge.fury.io/nu/UnitTestEx.MSTest) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.NUnit.svg)](https://badge.fury.io/nu/UnitTestEx.NUnit) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Xunit.svg)](https://badge.fury.io/nu/UnitTestEx.Xunit)
+CI | `UnitTestEx` | `UnitTestEx.Aspire` | `UnitTestEx.MSTest` | `UnitTestEx.NUnit` | `UnitTestEx.Xunit`
+-|-|-|-|-|-
+[![CI](https://github.com/Avanade/UnitTestEx/workflows/CI/badge.svg)](https://github.com/Avanade/UnitTestEx/actions?query=workflow%3ACI) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.svg)](https://badge.fury.io/nu/UnitTestEx) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Aspire.svg)](https://badge.fury.io/nu/UnitTestEx.Aspire) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.MSTest.svg)](https://badge.fury.io/nu/UnitTestEx.MSTest) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.NUnit.svg)](https://badge.fury.io/nu/UnitTestEx.NUnit) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Xunit.svg)](https://badge.fury.io/nu/UnitTestEx.Xunit)
 
 The included [change log](CHANGELOG.md) details all key changes per published version.
 
@@ -299,6 +300,101 @@ The following represents a YAML example for a request/response with sequences:
 
 _Note:_ Not all scenarios are currently available using YAML/JSON configuration.
 
+The same YAML/JSON schema/file can also be loaded via the shared [`IHttpMockClient.WithRequestsFromResourceAsync`](./src/UnitTestEx/Mocking/IHttpMockClient.cs) - so a single embedded resource can configure both Tier 1's `MockHttpClient` above *and* Tier 2/3's `AspireHttpMockClient` (see [Aspire multi-host testing](#Aspire-multi-host-testing) below) identically:
+
+``` csharp
+IHttpMockClient client = mcf.CreateClient("XXX", new Uri("https://unit-test")); // or tester.HttpMock("erp") for Aspire.
+await client.WithRequestsFromResourceAsync<MyTestClass>("my.mock.unittestex.yaml");
+```
+
+One intentional difference versus the native `WithRequestsFromResource` above: where a request entry omits `body` entirely, this shared loader matches *any* body (equivalent to `body: ^`), rather than Tier 1's native "no body at all" semantics - the shared interface has no means to express the latter.
+
+<br/>
+
+## Aspire multi-host testing
+
+Everything above (`ApiTester`, `FunctionTester`, `GenericTester`, etc.) hosts a **single** system/service in-process via `WebApplicationFactory` - ideal for intra-domain testing where you want deep, per-component control (DI replacement, mocked `HttpClient`s) of one service in isolation.
+
+Sometimes, though, you genuinely need to prove that two or more **real**, separately-hosted services interact correctly over the network (inter-domain testing) - for example a [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) distributed application where a "shopping" API calls a "products" API. For this, the [`UnitTestEx.Aspire`](./src/UnitTestEx.Aspire) package provides `AspireTester`, which spins up the **entire AppHost** - every project, container and executable resource it declares - as separate, real OS processes wired together with Aspire's actual service discovery, exactly as they'd run in production. This is deliberately a second, opt-in tier rather than an extension of the first: pick the tier per test based on what you're actually trying to prove, don't force a hybrid.
+
+This isn't a UnitTestEx-specific compromise - it matches Aspire's own guidance verbatim:
+
+> "If your goal is to test a single project in isolation, run components in-memory, or mock external dependencies, consider using `WebApplicationFactory<T>` instead."
+> — [aspire.dev/testing/overview](https://aspire.dev/testing/overview/)
+
+``` csharp
+await using var tester = AspireTester.Create<Projects.MyAppHost>();
+
+await tester.WaitForResourceAsync("shopping");
+
+tester.Http("shopping")
+    .Run(HttpMethod.Get, "orders/123")
+    .AssertOK()
+    .AssertValue(new { id = "123", product = "Widget" });
+```
+
+External-to-the-solution dependencies (an email/notification provider, an identity/auth service, an ERP system, a payment gateway, etc.) still need to be mocked - a real inter-domain test proves *your* services talk to each other correctly, not that a third-party's sandbox environment is up. UnitTestEx's recommended pattern is to **self-host** [WireMock.Net](https://github.com/WireMock-Net/WireMock.Net) as an ordinary Aspire *project* resource (`AddProject`) - one small console app per external system, added to your own solution - rather than the official [`WireMock.Net.Aspire`](https://github.com/WireMock-Net/WireMock.Net-Aspire) package's *container* resource (`AddWireMock`). UnitTestEx does not ship this host as a package (there's nothing to install or version); [`UnitTestEx.Aspire.MockHost`](./tests/UnitTestEx.Aspire.MockHost) is a template you copy into your own solution (referencing `UnitTestEx.Aspire`, which ships both the `JsonElementComparerMatcher` type and the `WireMockConsole.RunAsync` helper used below, so there's no matcher code - or port/custom-matcher/graceful-shutdown boilerplate - to write yourself):
+
+``` csharp
+// MockApis/Program.cs
+await WireMockConsole.RunAsync(settings => WireMockServer.Start(settings));
+```
+
+`WireMockConsole.RunAsync` reads the `PORT` environment variable Aspire assigns, builds the `WireMockServerSettings` with `JsonElementComparerMatcher` already registered, invokes your factory to start the actual server (any `IWireMockServer` - typically `WireMockServer.Start`), then blocks gracefully until Aspire stops the process (Ctrl+C locally, SIGTERM in orchestration), disposing the server on the way out.
+
+``` csharp
+// AppHost.cs
+var email = builder.AddMockHostProject<Projects.MockApis>("email");
+var auth  = builder.AddMockHostProject<Projects.MockApis>("auth");
+var erp   = builder.AddMockHostProject<Projects.MockApis>("erp");
+
+builder.AddProject<Projects.MyApi>("api")
+    .WithMockHostEnvironment("Email__BaseUrl", email, "http")
+    .WithMockHostEnvironment("Auth__BaseUrl", auth, "http")
+    .WithMockHostEnvironment("Erp__BaseUrl", erp, "http");
+```
+
+`AddMockHostProject`/`WithMockHostEnvironment` (both extension methods on `UnitTestEx.Aspire`, in the `Aspire.Hosting` namespace alongside Aspire's own `AddProject`/`WithEnvironment`) exist because each mock resource is test-only and must never appear in a *published manifest* - the JSON resource graph `aspire publish` (or `dotnet run --publisher manifest`) emits for deployment tooling (e.g. Azure Developer CLI) to turn into real infrastructure; a mock host has no production equivalent, so including it there would make deployment tooling try to provision it as if it were real. `AddMockHostProject` only actually adds the resource when `IDistributedApplicationBuilder.ExecutionContext.IsRunMode` is `true` (returning `null` in publish mode instead), and `WithMockHostEnvironment` accepts that potentially-`null` result directly, no-op'ing rather than requiring an `if (email is not null)` guard at every call site.
+
+Being just our own process (not a published, off-the-shelf binary), it can register `JsonElementComparerMatcher` - a custom `IMatcher`, shipped as part of `UnitTestEx.Aspire`, that delegates JSON body matching to UnitTestEx's own [`JsonElementComparer`](./src/UnitTestEx/Json/JsonElementComparer.cs) - via `WireMockServerSettings.CustomMatcherMappings`. This gives Tier 2/3 JSON body matching genuine parity with Tier 1 (semantic value coercion for dates, GUIDs and numbers), rather than being limited to WireMock.Net's own textual `JsonMatcher`/`JsonPartialMatcher`. It also drops the Docker/Podman requirement entirely - it's an ordinary .NET console app, so there's nothing to pull or run as a container. The official `WireMock.Net.Aspire` container resource (`AddWireMock`) remains fully supported for teams already standardized on that package - `AspireTesterBase.HttpMock` works against either resource type identically, since request matching is driven by the resource's admin API rather than its hosting mechanism.
+
+Each mock resource is a genuine, isolated WireMock.Net process - one per external system, so stubs configured for `"email"` can never leak into `"auth"` or `"erp"`. Within a test, `AspireTesterBase.HttpMock(resourceName)` returns a fluent `AspireHttpMockClient` for the named resource:
+
+``` csharp
+await using var tester = AspireTester.Create<Projects.MyAppHost>();
+
+await tester.WaitForResourceAsync("api");
+await tester.WaitForResourceAsync("erp");
+
+var stub = await tester.HttpMock("erp")
+    .Request(HttpMethod.Get, "products/abc")
+    .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
+
+tester.Http("api")
+    .Run(HttpMethod.Get, "Product/abc")
+    .AssertOK()
+    .AssertValue(new { id = "Abc", description = "A blue carrot" });
+
+await stub.VerifyAsync();
+```
+
+The fluent configuration API is intentionally near-identical to Tier 1's `MockHttpClientFactory` above (both implement the shared [`IHttpMockClient`](./src/UnitTestEx/Mocking/IHttpMockClient.cs)/`IHttpMockRequest`/`IHttpMockResponse` interfaces) - a helper method written once against these interfaces can configure request/response stubbing identically regardless of which tier it's handed. The main differences are that the terminal `With*` methods here are asynchronous (`AspireHttpMockClient` performs a real HTTP call to the WireMock.Net server's admin API to register each mapping) and must be awaited, and the underlying JSON comparison/sequence-exhaustion semantics are WireMock.Net's own (not identical to Tier 1's) - unless you use `WithJsonBodyUsingUnitTestExComparer` instead of `WithJsonBody`:
+
+``` csharp
+var stub = await tester.HttpMock("erp")
+    .Request(HttpMethod.Post, "orders")
+    .WithJsonBodyUsingUnitTestExComparer(new { id = "Abc", occurredAt = "2024-01-01T00:00:00Z" }) // matches "2024-01-01T00:00:00.000+00:00" too - same instant, same as Tier 1
+    .Respond.WithJsonAsync(new { id = "Abc", status = "Accepted" });
+```
+
+_Note:_ `WithJsonBodyUsingUnitTestExComparer` requires the target resource to have registered `JsonElementComparerMatcher` (i.e. a self-hosted resource per the template above) - the official `WireMock.Net.Aspire` container resource has no way to load a custom .NET matcher type. Where WireMock's own strict, non-semantic textual matching is instead wanted against a self-hosted resource, configure `JsonElementComparerOptions.ValueComparison` to `JsonElementComparison.Exact` rather than falling back to `WithJsonBody`.
+
+The same shared interface also brings across Tier 1's [YAML/JSON configuration](#YAML/JSON-configuration) - `await tester.HttpMock("erp").WithRequestsFromResourceAsync<MyTestClass>("my.mock.unittestex.yaml")` loads the exact same embedded resource schema against a real WireMock.Net resource.
+
+_Note:_ Aspire-hosted resources are real OS processes (containers, where you opt into one), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
+
+_Note:_ Since Tier 2/3 resources are real, reachable URLs (not in-process fakes), a UI/frontend resource hosted in the `AppHost` can be driven directly with [Playwright](https://playwright.dev/dotnet/) - this is an ordinary consequence of the resources being real processes, not a UnitTestEx-specific feature; see Microsoft's own [Aspire + Playwright guide](https://learn.microsoft.com/en-us/dotnet/aspire/testing/write-your-first-test?tabs=xunit#creating-a-playwright-test) for the pattern.
+
 <br/>
 
 ## Expectations
@@ -339,6 +435,7 @@ As _UnitTestEx_ is intended for testing, look at the tests for further details o
 - [UnitTestEx.MSTest.Test](./tests/UnitTestEx.MSTest.Test)
 - [UnitTestEx.NUnit.Test](./tests/UnitTestEx.NUnit.Test)
 - [UnitTestEx.Xunit.Test](./tests/UnitTestEx.Xunit.Test)
+- [UnitTestEx.Aspire.Xunit.Test](./tests/UnitTestEx.Aspire.Xunit.Test) - Aspire multi-host testing (see [above](#Aspire-multi-host-testing))
 
 _Note:_ There may be some slight variations in how the tests are constructed per test capability, this is to account for any differences between the frameworks themselves. For the most part the code should be near identical.
 

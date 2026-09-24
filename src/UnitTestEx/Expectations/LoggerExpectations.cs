@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Microsoft.Extensions.Logging;
 using System;
@@ -12,9 +12,9 @@ namespace UnitTestEx.Expectations
     /// <summary>
     /// Provides log expectations.
     /// </summary>
-    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
     /// <param name="tester">The initiating tester.</param>
-    public class LoggerExpectations<TTester>(TesterBase owner, TTester tester) : ExpectationsBase<TTester>(owner, tester)
+    public class LoggerExpectations<TTester>(TesterBaseCore owner, TTester tester) : ExpectationsBase<TTester>(owner, tester)
     {
         private readonly List<string> _expectTexts = [];
 

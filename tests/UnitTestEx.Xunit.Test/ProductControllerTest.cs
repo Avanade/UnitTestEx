@@ -56,6 +56,25 @@ namespace UnitTestEx.Xunit.Test
         }
 
         [Fact]
+        public async Task HttpMock_SharedInterface_ConfiguresIdenticallyAcrossTiers()
+        {
+            // Proves that the exact same test-authoring code (HttpMockSharedConfig.ConfigureProductStubAsync, written once against IHttpMockClient) can configure Tier 1's
+            // MockHttpClient identically to Tier 2/3's AspireHttpMockClient (see the equivalent test in UnitTestEx.Aspire.Xunit.Test).
+            var mcf = MockHttpClientFactory.Create();
+            var client = mcf.CreateClient("XXX", new Uri("https://somesys/"));
+
+            var stub = await HttpMockSharedConfig.ConfigureProductStubAsync(client, "products/shared");
+
+            Test.ReplaceHttpClientFactory(mcf)
+                .Controller<ProductController>()
+                .Run(c => c.Get("shared"))
+                .AssertOK()
+                .AssertValue(new { id = "Shared", description = "Configured via the shared IHttpMockClient interface." });
+
+            await stub.VerifyAsync();
+        }
+
+        [Fact]
         public void To_HttpResponseMessage_Created()
         {
             Test.Type<ProductController>()

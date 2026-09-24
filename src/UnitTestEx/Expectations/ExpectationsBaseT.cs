@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
 using System.Threading.Tasks;
@@ -9,9 +9,9 @@ namespace UnitTestEx.Expectations
     /// <summary>
     /// Provides the base <b>Expectations</b> implementation.
     /// </summary>
-    /// <param name="owner">The owning <see cref="TesterBase"/></param>
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/></param>
     /// <param name="tester">The initiating tester.</param>
-    public abstract class ExpectationsBase<TTester>(TesterBase owner, TTester tester) : ExpectationsBase(owner)
+    public abstract class ExpectationsBase<TTester>(TesterBaseCore owner, TTester tester) : ExpectationsBase(owner)
     {
         /// <summary>
         /// Gets the initiating tester.

@@ -90,14 +90,14 @@ namespace UnitTestEx.Json
             foreach (var d in _differences!)
             {
                 if (sb.Length > 0)
-                    sb.AppendLine();
+                    sb.Append('\n');
 
                 sb.Append(d.ToString());
             }
 
             if (IsMaxDifferencesFound)
             {
-                sb.AppendLine();
+                sb.Append('\n');
                 sb.Append($"Maximum difference count of '{MaxDifferences}' found; comparison stopped.");
             }
 

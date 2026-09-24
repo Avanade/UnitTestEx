@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Microsoft.Net.Http.Headers;
 using System;
@@ -13,10 +13,10 @@ namespace UnitTestEx.Assertors
     /// <summary>
     /// Represents the <see cref="HttpResponseMessage"/> test assert helper.
     /// </summary>
-    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
     /// <param name="logs">The log messages captured during execution.</param>
     /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-    public class HttpResponseMessageAssertor(TesterBase owner, IEnumerable<string?>? logs, HttpResponseMessage response) : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor>(owner, logs, response)
+    public class HttpResponseMessageAssertor(TesterBaseCore owner, IEnumerable<string?>? logs, HttpResponseMessage response) : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor>(owner, logs, response)
     {
         /// <summary>
         /// Asserts the the <see cref="HttpResponseMessageAssertorBase.Response"/> <see cref="HttpResponseMessage.Headers"/> <see cref="HeaderNames.Location"/> matches the <paramref name="expectedUri"/>.
@@ -82,7 +82,7 @@ namespace UnitTestEx.Assertors
                 return this;
             }
 
-            if (!string.IsNullOrEmpty(Response.Content.Headers?.ContentType?.MediaType) && TesterBase.JsonMediaTypeNames.Contains(Response.Content.Headers.ContentType.MediaType!))
+            if (!string.IsNullOrEmpty(Response.Content.Headers?.ContentType?.MediaType) && TesterBaseCore.JsonMediaTypeNames.Contains(Response.Content.Headers.ContentType.MediaType!))
             {
                 var json = Response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 if (expectedValue == null)

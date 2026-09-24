@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -189,13 +189,13 @@ namespace UnitTestEx
         /// <summary>
         /// Gets or sets the function that enables the <see cref="HttpRequestMessage"/> to be updated before each send.
         /// </summary>
-        /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBase.UserName"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
+        /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBaseCore.UserName"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
         public Func<HttpRequestMessage, string?, CancellationToken, Task>? OnBeforeHttpRequestMessageSendAsync { get; set; }
 
         /// <summary>
         /// Gets or sets the function that enables the <see cref="HttpRequest"/> to be updated before each send.
         /// </summary>
-        /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBase.UserName"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
+        /// <remarks>The second parameter (<see cref="string"/>) is set to the <see cref="TesterBaseCore.UserName"/>. This provides an opportunity where needed to add the likes of <see href="https://oauth.net/2/access-tokens/">OAuth tokens</see>, etc.</remarks>
         public Func<HttpRequest, string?, CancellationToken, Task>? OnBeforeHttpRequestSendAsync { get; set; }
 
         /// <summary>

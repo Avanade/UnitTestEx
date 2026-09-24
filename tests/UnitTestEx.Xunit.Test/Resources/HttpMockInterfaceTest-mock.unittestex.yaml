@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Avanade/UnitTestEx/refs/heads/main/src/UnitTestEx/Schema/mock.unittestex.json
+- method: post
+  uri: products/xyz
+  body: '{"product":"xyz","quantity":1,"stamp":"ignore-me"}'
+  ignore: [ stamp ]
+  response:
+    status: 202
+    body: |
+      {"product":"xyz","quantity":1}
+
+- method: get
+  uri: people/123
+  response:
+    headers:
+      x-blah: [ abc ]
+    body: |
+      {
+        "first":"Bob",
+        "last":"Jane"
+      }
+
+- method: get
+  uri: sequence
+  sequence:
+    - status: 200
+      body: |
+        {"seq":1}
+    - status: 200
+      body: |
+        {"seq":2}
