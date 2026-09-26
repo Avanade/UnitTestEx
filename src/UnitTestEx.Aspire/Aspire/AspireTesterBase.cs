@@ -1,7 +1,6 @@
 // Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Aspire.Hosting;
-using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -23,18 +22,18 @@ using UnitTestEx.AspNetCore;
 namespace UnitTestEx.Aspire
 {
     /// <summary>
-    /// Provides the base .NET Aspire multi-host (distributed application) unit-testing capabilities.
+    /// Provides the non-generic, host-agnostic base for the .NET Aspire multi-host (distributed application) unit-testing capabilities - the Aspire-specific equivalent of
+    /// <see cref="TesterBase"/> (its single-host, dependency injection (DI) counterpart).
     /// </summary>
-    /// <typeparam name="TAppHost">The AppHost <see cref="Type"/> (a <c>Projects.*</c> type generated for the AppHost's <c>ProjectReference</c>).</typeparam>
-    /// <typeparam name="TSelf">The <see cref="AspireTesterBase{TAppHost, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     /// <remarks>This extends the host-agnostic <see cref="TesterBaseCore"/> directly (<i>not</i> <see cref="TesterBase"/>) as the underlying <see cref="DistributedApplication"/> is a real,
-    /// multi-process distributed application with no single, in-process dependency injection (DI) container to reach into. Where a Tier 1 (<see cref="AspNetCore.ApiTesterBase{TEntryPoint, TSelf}"/>) capability is genuinely shared in concept, it is exposed here via the
-    /// <see cref="IHttpClientSource"/> seam rather than by inheriting <see cref="TesterBase"/>'s dependency injection (DI) specific members.</remarks>
-    public abstract class AspireTesterBase<TAppHost, TSelf> : TesterBaseCore, IHttpClientSource, IAsyncDisposable
-        where TAppHost : class
-        where TSelf : AspireTesterBase<TAppHost, TSelf>
+    /// multi-process distributed application with no single, in-process dependency injection (DI) container to reach into.
+    /// <para>Exists primarily so an extension method (or any other code that does not know/care about the concrete AppHost or <c>TSelf</c> type parameters -
+    /// see <see cref="AspireTesterBase{TAppHost, TSelf}"/>) can still reach the capabilities that do not depend on either - e.g. <see cref="GetDistributedApplicationAsync"/>,
+    /// <see cref="Http(string, string?)"/>, <see cref="WaitForResourceAsync(string, TimeSpan?)"/>. Fluent, method-chaining configuration members that must return <c>TSelf</c>
+    /// (e.g. <see cref="AspireTesterBase{TAppHost, TSelf}.UseSetUp(TestSetUp)"/>/<see cref="AspireTesterBase{TAppHost, TSelf}.WithResourceEnvironment(string, string, string)"/>) necessarily
+    /// remain on <see cref="AspireTesterBase{TAppHost, TSelf}"/> only.</para></remarks>
+    public abstract class AspireTesterBase : TesterBaseCore, IHttpClientSource, IAsyncDisposable
     {
-        private readonly List<Action<IDistributedApplicationTestingBuilder>> _configureBuilder = [];
         private readonly ConcurrentDictionary<string, ConcurrentQueue<string?>> _resourceLogBuffers = new();
         private readonly ConcurrentDictionary<string, int> _elapsedLogLineCounts = new();
         private ResourceLogCaptureProvider? _resourceLogCaptureProvider;
@@ -42,87 +41,35 @@ namespace UnitTestEx.Aspire
         private bool _disposed;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="AspireTesterBase{TAppHost, TSelf}"/> class.
+        /// Initializes a new instance of the <see cref="AspireTesterBase"/> class.
         /// </summary>
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         protected AspireTesterBase(TestFrameworkImplementor implementor) : base(implementor) { }
 
         /// <summary>
-        /// Replaces the <see cref="TesterBaseCore.SetUp"/> by cloning the <paramref name="setUp"/>.
+        /// Gets the queued builder-configuration actions applied, in order, immediately before the underlying <see cref="DistributedApplication"/> is built.
         /// </summary>
-        /// <param name="setUp">The <see cref="TestSetUp"/></param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>Updates the <see cref="TesterBaseCore.JsonSerializer"/> and <see cref="TesterBaseCore.JsonComparerOptions"/> from the <paramref name="setUp"/>.
-        /// <para>Unlike <see cref="AspNetCore.ApiTesterBase{TEntryPoint, TSelf}"/>'s (and other Tier 1 testers') equivalent, this does <b>not</b> <see cref="OnResetHost">reset</see> the underlying
-        /// <see cref="DistributedApplication"/>: <see cref="TestSetUp.ConfigureServices"/> - the reason Tier 1 must rebuild its single, in-process dependency injection (DI) container host - has
-        /// no equivalent here, as the AppHost is a genuine, separately-built multi-process distributed application that <see cref="TestSetUp"/> does not configure. Where its properties are
-        /// consumed by a Tier 2 test (e.g. <see cref="TestSetUp.OnBeforeHttpRequestMessageSendAsync"/> when sending a request via <see cref="Http(string, string?)"/>, or
-        /// <see cref="TesterBaseCore.JsonSerializer"/>/<see cref="TesterBaseCore.JsonComparerOptions"/> when asserting a response), they are read live at request/assert time, so no reset is
-        /// required for a subsequent call to see the change.</para></remarks>
-        public TSelf UseSetUp(TestSetUp setUp)
-        {
-            SetUp = setUp?.Clone() ?? throw new ArgumentNullException(nameof(setUp));
-            JsonSerializer = SetUp.JsonSerializer;
-            JsonComparerOptions = SetUp.JsonComparerOptions;
-            return (TSelf)this;
-        }
+        /// <remarks>Populated by <see cref="AspireTesterBase{TAppHost, TSelf}.WithResourceEnvironment(string, string, string)"/>.</remarks>
+        protected List<Action<IDistributedApplicationTestingBuilder>> ConfigureBuilderActions { get; } = [];
 
         /// <summary>
-        /// Updates (replaces) the default test <see cref="TesterBaseCore.UserName"/>.
+        /// Gets a value indicating whether the underlying <see cref="DistributedApplication"/> has already started being built (see <see cref="GetDistributedApplicationAsync"/>).
         /// </summary>
-        /// <param name="userName">The test user name (a <c>null</c> value will reset to <see cref="TesterBaseCore.SetUp"/> <see cref="TestSetUp.DefaultUserName"/>).</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf UseUser(string? userName)
-        {
-            UserName = userName ?? SetUp.DefaultUserName;
-            return (TSelf)this;
-        }
+        /// <remarks>Used to guard configuration that must be applied before the underlying <see cref="DistributedApplication"/> is built (see
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.WithResourceEnvironment(string, string, string)"/>/<see cref="AspireTesterBase{TAppHost, TSelf}.EnableHostDiagnostics"/>).</remarks>
+        protected bool IsDistributedApplicationBuilding => _appTask is not null;
 
         /// <summary>
-        /// Updates (replaces) the default test <see cref="TesterBaseCore.UserName"/>.
-        /// </summary>
-        /// <param name="userIdentifier">The test user identifier (a <c>null</c> value will reset to <see cref="TesterBaseCore.SetUp"/> <see cref="TestSetUp.DefaultUserName"/>).</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>The <see cref="TestSetUp.UserNameConverter"/> is required for the conversion to take place.</remarks>
-        public TSelf UseUser(object? userIdentifier)
-        {
-            if (userIdentifier == null)
-                return UseUser(null);
-
-            if (SetUp.UserNameConverter == null)
-                throw new InvalidOperationException($"The {nameof(TestSetUp)}.{nameof(TestSetUp.UserNameConverter)} must be defined to support user identifier conversion.");
-
-            return UseUser(SetUp.UserNameConverter(userIdentifier));
-        }
-
-        /// <summary>
-        /// Updates the <see cref="TesterBaseCore.JsonSerializer"/> used by the <see cref="AspireTesterBase{TAppHost, TSelf}"/> itself, not any underlying resource which should be configured separately.
-        /// </summary>
-        /// <param name="jsonSerializer">The <see cref="Json.IJsonSerializer"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf UseJsonSerializer(Json.IJsonSerializer jsonSerializer)
-        {
-            JsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
-            return (TSelf)this;
-        }
-
-        /// <summary>
-        /// Updates the <see cref="TesterBaseCore.JsonComparerOptions"/> used by the <see cref="AspireTesterBase{TAppHost, TSelf}"/> itself, not any underlying resource which should be configured separately.
-        /// </summary>
-        /// <param name="options">The <see cref="Json.JsonElementComparerOptions"/>.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>Where the <see cref="Json.JsonElementComparerOptions.JsonSerializer"/> is <c>null</c> then the <see cref="TesterBaseCore.JsonSerializer"/> will be used.</remarks>
-        public TSelf UseJsonComparerOptions(Json.JsonElementComparerOptions options)
-        {
-            JsonComparerOptions = options ?? throw new ArgumentNullException(nameof(options));
-            return (TSelf)this;
-        }
-
-        /// <summary>
-        /// Gets the <see cref="DistributedApplication"/>; builds and starts on first access.
+        /// Gets the underlying <see cref="DistributedApplication"/>; builds and starts on first access.
         /// </summary>
         /// <returns>The started <see cref="DistributedApplication"/>.</returns>
-        protected Task<DistributedApplication> GetDistributedApplicationAsync()
+        /// <remarks>This is the escape hatch for anything not already surfaced by <see cref="AspireTesterBase"/> itself - e.g. resolving a resource's connection string via
+        /// Aspire's own <c>GetConnectionStringAsync(resourceName)</c>, inspecting <see cref="DistributedApplication.ResourceNotifications"/> directly, or reaching into
+        /// <see cref="DistributedApplication.Services"/> for the AppHost's own (not a resource's) dependency injection (DI) container.
+        /// <para><i>Important:</i> do <b>not</b> call <c>DisposeAsync()</c>/<c>StopAsync()</c> on the returned instance directly - this bypasses UnitTestEx's own lifecycle tracking (leaving it
+        /// believing the host is still instantiated when it is not) and will surface as confusing failures on a subsequent call. Use <see cref="TesterBaseCore.ResetHost"/> instead to tear down
+        /// and force a rebuild on next access.</para></remarks>
+        public Task<DistributedApplication> GetDistributedApplicationAsync()
         {
             lock (SyncRoot)
             {
@@ -131,11 +78,19 @@ namespace UnitTestEx.Aspire
         }
 
         /// <summary>
+        /// Creates the <see cref="IDistributedApplicationTestingBuilder"/> for the concrete AppHost.
+        /// </summary>
+        /// <returns>The <see cref="IDistributedApplicationTestingBuilder"/>.</returns>
+        /// <remarks>The only step of building the underlying <see cref="DistributedApplication"/> that depends on the concrete AppHost <see cref="Type"/> - a generic type parameter only
+        /// available on <see cref="AspireTesterBase{TAppHost, TSelf}"/>; every other build/start-up step is host-agnostic and lives here (see <see cref="GetDistributedApplicationAsync"/>).</remarks>
+        protected abstract Task<IDistributedApplicationTestingBuilder> CreateBuilderAsync();
+
+        /// <summary>
         /// Creates, builds and starts the underlying <see cref="DistributedApplication"/>.
         /// </summary>
         private async Task<DistributedApplication> CreateDistributedApplicationAsync()
         {
-            var builder = await DistributedApplicationTestingBuilder.CreateAsync<TAppHost>().ConfigureAwait(false);
+            var builder = await CreateBuilderAsync().ConfigureAwait(false);
 
             if (!HostDiagnosticsEnabled)
                 // By default the AppHost's own logging (its start-up banner, DCP process management, and - critically - each resource's own console output mirrored under a
@@ -152,7 +107,7 @@ namespace UnitTestEx.Aspire
 
             builder.Services.AddSingleton<ILoggerProvider>(_resourceLogCaptureProvider = new ResourceLogCaptureProvider($"{builder.Environment.ApplicationName}.Resources.", _resourceLogBuffers));
 
-            foreach (var configure in _configureBuilder)
+            foreach (var configure in ConfigureBuilderActions)
             {
                 configure(builder);
             }
@@ -194,56 +149,10 @@ namespace UnitTestEx.Aspire
         }
 
         /// <summary>
-        /// Overrides an environment variable for the named resource before the underlying <see cref="DistributedApplication"/> is built.
-        /// </summary>
-        /// <param name="resourceName">The resource name (as configured within the AppHost).</param>
-        /// <param name="key">The environment variable name.</param>
-        /// <param name="value">The environment variable value.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>This is the only override surface available for a Tier 2 tester as each resource runs in its own, separate process with no shared, in-process dependency injection
-        /// (DI) container to reach into; must be called before the underlying <see cref="DistributedApplication"/> has been built (see <see cref="GetDistributedApplicationAsync"/>).</remarks>
-        public TSelf WithResourceEnvironment(string resourceName, string key, string value)
-        {
-            if (resourceName is null) throw new ArgumentNullException(nameof(resourceName));
-            if (key is null) throw new ArgumentNullException(nameof(key));
-
-            lock (SyncRoot)
-            {
-                if (_appTask is not null)
-                    throw new InvalidOperationException($"{nameof(WithResourceEnvironment)} must be invoked before the underlying {nameof(DistributedApplication)} has been built (i.e. before any {nameof(Http)}/{nameof(WaitForResourceAsync)} call).");
-
-                _configureBuilder.Add(builder => builder.CreateResourceBuilder<IResourceWithEnvironment>(resourceName).WithEnvironment(key, value));
-            }
-
-            return (TSelf)this;
-        }
-
-        /// <summary>
         /// Gets a value indicating whether the AppHost's own raw logging (its start-up banner, DCP process management, and each resource's own console output mirrored via
-        /// 'EnableResourceLogging') is written to the test output, in addition to what UnitTestEx itself reports (see <see cref="EnableHostDiagnostics"/>).
+        /// 'EnableResourceLogging') is written to the test output, in addition to what UnitTestEx itself reports (see <see cref="AspireTesterBase{TAppHost, TSelf}.EnableHostDiagnostics"/>).
         /// </summary>
-        public bool HostDiagnosticsEnabled { get; private set; }
-
-        /// <summary>
-        /// Opts back into the AppHost's own raw logging (its start-up banner, DCP process management, and each resource's own console output) being written to the test output, in addition
-        /// to what UnitTestEx itself reports via <see cref="Reason"/>/<see cref="Delay(TimeSpan?, string?)"/>/the <see cref="Http(string, string?)"/> request-scoped "LOGGING &gt;" section.
-        /// </summary>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>By default this raw firehose is suppressed as it otherwise duplicates what UnitTestEx already surfaces cleanly (and correlated); enable it when troubleshooting an
-        /// AppHost/resource start-up failure that needs the full, unfiltered diagnostic output. Must be called before the underlying <see cref="DistributedApplication"/> has been built
-        /// (see <see cref="GetDistributedApplicationAsync"/>).</remarks>
-        public TSelf EnableHostDiagnostics()
-        {
-            lock (SyncRoot)
-            {
-                if (_appTask is not null)
-                    throw new InvalidOperationException($"{nameof(EnableHostDiagnostics)} must be invoked before the underlying {nameof(DistributedApplication)} has been built (i.e. before any {nameof(Http)}/{nameof(WaitForResourceAsync)} call).");
-
-                HostDiagnosticsEnabled = true;
-            }
-
-            return (TSelf)this;
-        }
+        public bool HostDiagnosticsEnabled { get; protected set; }
 
         /// <summary>
         /// Gets the default timeout used by <see cref="WaitForResourceAsync(string, TimeSpan?)"/> when none is specified.
@@ -265,37 +174,6 @@ namespace UnitTestEx.Aspire
             var wait = app.ResourceNotifications.WaitForResourceHealthyAsync(resourceName);
             await (effectiveTimeout == System.Threading.Timeout.InfiniteTimeSpan ? wait : wait.WaitAsync(effectiveTimeout)).ConfigureAwait(false);
         }
-
-        /// <summary>
-        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or wait, is being performed).
-        /// </summary>
-        /// <param name="reason">The reason text.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf Reason(string reason)
-        {
-            WriteReason(reason);
-            return (TSelf)this;
-        }
-
-        /// <summary>
-        /// Delays for the specified <paramref name="duration"/>, then writes any resource log messages captured (across <i>all</i> resources) during that time to the test output.
-        /// </summary>
-        /// <param name="duration">The duration to delay; defaults to <see cref="TesterBaseCore.DefaultDelayDuration"/> where not specified.</param>
-        /// <param name="reason">The reason for delaying (written to the test output for context); defaults to "No reason specified" where not specified.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>Useful when waiting on background/inter-resource activity (e.g. a message being processed by a downstream resource) that is not tied to a specific HTTP request/response (see
-        /// <see cref="Http(string, string?)"/> for the latter, request-scoped, correlation).</remarks>
-        public TSelf Delay(TimeSpan? duration = null, string? reason = null) => WriteDelay(reason, duration).ContinueWith(_ => (TSelf)this).Result;
-
-        /// <summary>
-        /// Delays for the specified <paramref name="durationInMilliseconds"/>, then writes any resource log messages captured (across <i>all</i> resources) during that time to the test output.
-        /// </summary>
-        /// <param name="durationInMilliseconds">The amount of time, in milliseconds, to delay. Must be a non-negative <see cref="int"/>.</param>
-        /// <param name="reason">The reason for delaying (written to the test output for context); defaults to "No reason specified" where not specified.</param>
-        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        /// <remarks>Useful when waiting on background/inter-resource activity (e.g. a message being processed by a downstream resource) that is not tied to a specific HTTP request/response (see
-        /// <see cref="Http(string, string?)"/> for the latter, request-scoped, correlation).</remarks>
-        public TSelf Delay(int durationInMilliseconds, string? reason = null) => Delay(TimeSpan.FromMilliseconds(durationInMilliseconds), reason);
 
         /// <inheritdoc/>
         /// <remarks>Combines the elapsed log messages captured (via <see cref="ResourceLogCaptureProvider"/>) across <i>all</i> resources since the last invocation, as background/inter-resource
@@ -350,9 +228,9 @@ namespace UnitTestEx.Aspire
         /// <see cref="HttpMock.AspireHttpMockRequest.WithJsonBody(string, string[])"/> remarks).
         /// <para>The admin API <see cref="WireMock.Client.IWireMockAdminApi"/> client is built directly from a resolved <see cref="HttpClient"/> (the same resolution path
         /// <see cref="Http(string, string?)"/> uses), rather than via the official package's own resource-type-specific helper - which keeps this resource-type-agnostic.</para>
-        /// <para>This tester's current <see cref="TesterBaseCore.JsonComparerOptions"/> (see <see cref="UseJsonComparerOptions"/>) is captured live at the point
+        /// <para>This tester's current <see cref="TesterBaseCore.JsonComparerOptions"/> (see <see cref="AspireTesterBase{TAppHost, TSelf}.UseJsonComparerOptions"/>) is captured live at the point
         /// <see cref="HttpMock.AspireHttpMockRequest.WithJsonBodyUsingUnitTestExComparer(string, string[])"/> is subsequently called - not at this method's call time - so a prior
-        /// <see cref="UseJsonComparerOptions"/> call is always honoured.</para></remarks>
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.UseJsonComparerOptions"/> call is always honoured.</para></remarks>
         public HttpMock.AspireHttpMockClient HttpMock(string resourceName, string? endpointName = null)
         {
             if (resourceName is null) throw new ArgumentNullException(nameof(resourceName));
@@ -420,7 +298,7 @@ namespace UnitTestEx.Aspire
             /// physical lines back into a single logical entry using the same style as an in-process (Tier 1) tester, re-using Aspire's own embedded timestamp (converted to local time) rather than
             /// substituting the capture time, so timestamps reflect when the resource itself actually logged the entry. The owning resource name is appended, in parentheses, inside the same
             /// trailing "<c>[...]</c>" bracket as the category - rather than as a separate leading prefix - so the timestamp/level/message stay column-aligned whether read via a single-resource
-            /// (<see cref="Http(string, string?)"/>) or multi-resource (<see cref="Delay(TimeSpan?, string?)"/>) report.
+            /// (<see cref="Http(string, string?)"/>) or multi-resource (<see cref="AspireTesterBase{TAppHost, TSelf}.Delay(TimeSpan?, string?)"/>) report.
             /// <para>A line that does not match the expected "<c>{lineNumber}: {timestamp}Z </c>" prefix (e.g. a resource that does not use the standard console logger format) is passed through
             /// unmodified, ANSI colour codes aside, so nothing is silently dropped.</para></remarks>
             private sealed class ResourceLogger(string resourceName, ConcurrentQueue<string?> buffer) : ILogger
@@ -518,9 +396,9 @@ namespace UnitTestEx.Aspire
         /// window of lines captured between <see cref="CreateHttpClient(string?)"/> (invoked immediately before the request is sent) and <see cref="GetRequestLogMessages(string)"/> (invoked
         /// immediately after the response is received) is used as a pragmatic proxy - this naturally excludes the resource's own start-up banner noise (already buffered by the time the first
         /// request is sent) and correlates correctly for the typical, sequential one-request-at-a-time usage pattern. The window's baseline/end-point is tracked via the <i>same</i> shared,
-        /// per-resource watermark (<see cref="_elapsedLogLineCounts"/>) that <see cref="DrainElapsedLogMessages"/> (used by <see cref="Delay(TimeSpan?, string?)"/>) advances, so a resource log line reported
-        /// here is claimed and will not also be re-reported by a subsequent <see cref="Delay(TimeSpan?, string?)"/> call (or vice versa).</remarks>
-        private sealed class ResourceHttpClientSource(AspireTesterBase<TAppHost, TSelf> owner, string resourceName, string? endpointName) : IHttpClientSource
+        /// per-resource watermark (<c>_elapsedLogLineCounts</c>) that <see cref="DrainElapsedLogMessages"/> (used by <see cref="AspireTesterBase{TAppHost, TSelf}.Delay(TimeSpan?, string?)"/>) advances, so a resource
+        /// log line reported here is claimed and will not also be re-reported by a subsequent <see cref="AspireTesterBase{TAppHost, TSelf}.Delay(TimeSpan?, string?)"/> call (or vice versa).</remarks>
+        private sealed class ResourceHttpClientSource(AspireTesterBase owner, string resourceName, string? endpointName) : IHttpClientSource
         {
             public HttpClient CreateHttpClient(string? name = null)
             {
@@ -564,6 +442,8 @@ namespace UnitTestEx.Aspire
         /// <summary>
         /// Releases all resources.
         /// </summary>
+        /// <remarks>Sealed by design - a derived tester that needs to release its own resources should override <see cref="DisposeAsyncCore"/> instead (matching the standard
+        /// .NET async-dispose pattern), not this method.</remarks>
         public async ValueTask DisposeAsync()
         {
             if (_disposed)
@@ -571,6 +451,18 @@ namespace UnitTestEx.Aspire
 
             _disposed = true;
 
+            await DisposeAsyncCore().ConfigureAwait(false);
+
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Releases the underlying <see cref="DistributedApplication"/> and any other managed resources.
+        /// </summary>
+        /// <remarks>Override this - not <see cref="DisposeAsync"/> - to release additional resources in a derived tester; always call <c>await base.DisposeAsyncCore()</c> to
+        /// ensure the underlying <see cref="DistributedApplication"/> is still released.</remarks>
+        protected virtual async ValueTask DisposeAsyncCore()
+        {
             Task<DistributedApplication>? appTask;
             lock (SyncRoot)
             {

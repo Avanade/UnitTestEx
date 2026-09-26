@@ -110,7 +110,7 @@ namespace UnitTestEx.Aspire.HttpMock
         /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         /// <remarks>See the <see cref="AspireHttpMockClient"/> remarks regarding WireMock.Net's JSON comparison semantics versus <see cref="Json.JsonElementComparer"/> (as used by, for
         /// example, <see cref="Assertors.HttpResponseMessageAssertor.AssertValue{TValue}(TValue, string[])"/>): they are <b>not</b> equivalent, and there is no semantic value coercion
-        /// (e.g. dates, GUIDs) here. Where that parity matters, target a self-hosted WireMock.Net project resource (see <see cref="AspireTesterBase{TAppHost, TSelf}.HttpMock"/> remarks)
+        /// (e.g. dates, GUIDs) here. Where that parity matters, target a self-hosted WireMock.Net project resource (see <see cref="AspireTesterBase.HttpMock"/> remarks)
         /// and use <see cref="WithJsonBodyUsingUnitTestExComparer(string, string[])"/> instead.
         /// <para>Where <paramref name="pathsToIgnore"/> is specified, the named properties are removed from the match pattern <i>and</i> the underlying matcher switches from an exact,
         /// bidirectional <c>JsonMatcher</c> to WireMock.Net's own <c>JsonPartialMatcher</c> (a subset match): properties present in the pattern must still match exactly, but the
@@ -177,7 +177,7 @@ namespace UnitTestEx.Aspire.HttpMock
         /// than switching to a looser subset/partial match.</param>
         /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         /// <remarks>Requires the target <see cref="AspireHttpMockClient"/> to have been resolved against a <i>self-hosted</i> WireMock.Net project resource (via
-        /// <see cref="AspireTesterBase{TAppHost, TSelf}.HttpMock"/>, targeting a small sample project the consumer copies into their own solution - see UnitTestEx's README
+        /// <see cref="AspireTesterBase.HttpMock"/>, targeting a small sample project the consumer copies into their own solution - see UnitTestEx's README
         /// "Aspire multi-host testing" section) that has registered <see cref="JsonElementComparerMatcher"/> - the official <c>WireMock.Net.Aspire</c> package's container resource has
         /// no way to load this custom matcher type and will reject the mapping with a "Matcher 'JsonElementComparerMatcher' is not supported" error.
         /// <para>The tester's current <see cref="Abstractions.TesterBaseCore.JsonComparerOptions"/> - specifically <see cref="Json.JsonElementComparerOptions.ValueComparison"/>,

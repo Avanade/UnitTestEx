@@ -14,7 +14,7 @@ namespace UnitTestEx.Aspire.HttpMock
 {
     /// <summary>
     /// Provides a thin fluent wrapper over a real, out-of-process WireMock.Net server resource - typically a self-hosted, ordinary Aspire project resource (see
-    /// <see cref="AspireTesterBase{TAppHost, TSelf}.HttpMock"/> remarks) - for stubbing HTTP responses from a Tier 2 (<see cref="AspireTesterBase{TAppHost, TSelf}"/>) multi-host test.
+    /// <see cref="AspireTesterBase.HttpMock"/> remarks) - for stubbing HTTP responses from a Tier 2 (<see cref="AspireTesterBase{TAppHost, TSelf}"/>) multi-host test.
     /// </summary>
     /// <remarks>Unlike Tier 1's in-memory, purely synchronous <see cref="Mocking.MockHttpClient"/> (a Moq-based <see cref="HttpMessageHandler"/> substitution), this issues genuine HTTP requests
     /// to the WireMock.Net server's admin API (a separate OS process, potentially in a container); every stub-defining and verification method is therefore asynchronous - there is no honest way
@@ -65,7 +65,7 @@ namespace UnitTestEx.Aspire.HttpMock
         /// Removes <b>all</b> previously configured mappings and clears the recorded request log on the underlying WireMock.Net server resource.
         /// </summary>
         /// <param name="cancellationToken">The <see cref="CancellationToken"/>.</param>
-        /// <remarks>As the underlying <see cref="global::Aspire.Hosting.DistributedApplication"/> is expensive to rebuild (see <see cref="AspireTesterBase{TAppHost, TSelf}.OnResetHost"/>), the mapped
+        /// <remarks>As the underlying <see cref="global::Aspire.Hosting.DistributedApplication"/> is expensive to rebuild (see <see cref="AspireTesterBase.OnResetHost"/>), the mapped
         /// server resource's state otherwise persists across all tests sharing the same host instance; call this (e.g. from a per-test setup) to isolate each test's stubs.</remarks>
         public async Task ResetAsync(CancellationToken cancellationToken = default)
         {
