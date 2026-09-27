@@ -256,10 +256,10 @@ namespace UnitTestEx.Abstractions
         /// Gets the log messages accumulated since the last time this was invoked (draining/resetting the starting point for the next invocation).
         /// </summary>
         /// <returns>The accumulated log messages; <c>null</c>/empty where none.</returns>
-        /// <remarks>Used by <see cref="WriteDelay(string?, TimeSpan?)"/> to correlate output that occurs during a delay period rather than a specific HTTP request/response (see
-        /// <see cref="AspNetCore.HttpTesterBase"/> for the latter, request-scoped, correlation). The default (Tier 1, single in-process host) implementation surfaces any <see cref="SharedState"/>
-        /// logging that was not attributed to a specific HTTP request (see <see cref="TestSharedState.GetLoggerMessages(string?)"/>) - e.g. from a background/hosted service. A Tier 2 (e.g. multi-host
-        /// Aspire) tester should override this to surface whatever is applicable to its own hosting model.</remarks>
+        /// <remarks>Used by <see cref="WriteCheckpoint(string)"/>/<see cref="WriteDelay(string?, TimeSpan?)"/> to correlate output that occurs since the last checkpoint/delay rather than a
+        /// specific HTTP request/response (see <see cref="AspNetCore.HttpTesterBase"/> for the latter, request-scoped, correlation). The default (Tier 1, single in-process host) implementation
+        /// surfaces any <see cref="SharedState"/> logging that was not attributed to a specific HTTP request (see <see cref="TestSharedState.GetLoggerMessages(string?)"/>) - e.g. from a
+        /// background/hosted service. A Tier 2 (e.g. multi-host Aspire) tester should override this to surface whatever is applicable to its own hosting model.</remarks>
         protected virtual IEnumerable<string?>? DrainElapsedLogMessages() => SharedState.GetLoggerMessages();
 
         /// <summary>
@@ -268,18 +268,22 @@ namespace UnitTestEx.Abstractions
         public static TimeSpan DefaultDelayDuration { get; } = TimeSpan.FromSeconds(1);
 
         /// <summary>
-        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or delay, is being performed).
+        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action is being performed), then writes any log messages
+        /// captured since the last checkpoint/delay (see <see cref="DrainElapsedLogMessages"/>) to the test output - i.e. a checkpoint acts as an immediate (zero-wait) flush point, the same
+        /// as <see cref="WriteDelay(string?, TimeSpan?)"/> without the actual waiting.
         /// </summary>
         /// <param name="reason">The reason text.</param>
-        protected void WriteReason(string reason)
+        protected void WriteCheckpoint(string reason)
         {
             if (string.IsNullOrEmpty(reason))
                 return;
 
             Implementor.WriteLine("");
             Implementor.WriteLine(new string('-', 80));
-            Implementor.WriteLine("REASON >");
+            Implementor.WriteLine("CHECKPOINT >");
             Implementor.WriteLine(reason);
+
+            WriteElapsedLogMessages();
         }
 
         /// <summary>
@@ -303,18 +307,25 @@ namespace UnitTestEx.Abstractions
 
             await Task.Delay(effectiveDuration).ConfigureAwait(false);
 
+            WriteElapsedLogMessages();
+        }
+
+        /// <summary>
+        /// Writes any log messages captured since the last checkpoint/delay (see <see cref="DrainElapsedLogMessages"/>) to the test output under a "LOGGING &gt;" section - but only where at
+        /// least one message was actually captured; stays silent (no section at all) where there is nothing to report, rather than a noisy "None." placeholder.
+        /// </summary>
+        private void WriteElapsedLogMessages()
+        {
+            var logs = DrainElapsedLogMessages();
+            if (logs is null || !logs.Any())
+                return;
+
             Implementor.WriteLine("");
             Implementor.WriteLine("LOGGING >");
-            var logs = DrainElapsedLogMessages();
-            if (logs is not null && logs.Any())
+            foreach (var msg in logs)
             {
-                foreach (var msg in logs)
-                {
-                    Implementor.WriteLine(msg);
-                }
+                Implementor.WriteLine(msg);
             }
-            else
-                Implementor.WriteLine("None.");
         }
 
         /// <summary>

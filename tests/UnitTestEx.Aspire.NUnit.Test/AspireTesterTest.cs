@@ -42,7 +42,7 @@ namespace UnitTestEx.Aspire.NUnit.Test
         }
 
         [Test]
-        public async Task Reason_And_Delay_AggregatesResourceLogs()
+        public async Task Checkpoint_And_Delay_AggregatesResourceLogs()
         {
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
@@ -52,7 +52,7 @@ namespace UnitTestEx.Aspire.NUnit.Test
             var spy = new SpyTestFrameworkImplementor(tester.Implementor);
             tester.ReplaceTestFrameworkImplementor(spy);
 
-            var reasonResult = tester.Reason("Confirming Reason() writes context for Aspire multi-host testers too.");
+            var checkpointResult = tester.Checkpoint("Confirming Checkpoint() writes context for Aspire multi-host testers too.");
 
             // Fire a raw (uninstrumented) request against the 'api' resource part-way through the delay window to simulate genuine background/inter-resource activity that is not
             // tied to a tester-driven request/response (which would otherwise claim - and so report - the resource's log line itself, rather than Delay).
@@ -70,10 +70,10 @@ namespace UnitTestEx.Aspire.NUnit.Test
 
             await backgroundCallTask;
 
-            Assert.That(reasonResult, Is.SameAs(tester));
+            Assert.That(checkpointResult, Is.SameAs(tester));
             Assert.That(delayResult, Is.SameAs(tester));
             Assert.That(sw.Elapsed, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(2) - TimeSpan.FromMilliseconds(200)), $"Expected to delay ~2s, actually waited {sw.Elapsed}.");
-            Assert.That(spy.Lines, Does.Contain("REASON >"));
+            Assert.That(spy.Lines, Does.Contain("CHECKPOINT >"));
             Assert.That(spy.Lines.Any(l => l != null && l.Contains("DELAY (00:00:02) >")), Is.True);
             Assert.That(spy.Lines.Any(l => l != null && l.Contains("Waiting for a background Person lookup to complete and log.")), Is.True);
             Assert.That(spy.Lines, Does.Contain("LOGGING >"));

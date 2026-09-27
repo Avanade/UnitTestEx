@@ -49,7 +49,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
         }
 
         [Fact]
-        public async Task Reason_And_Delay_AggregatesResourceLogs()
+        public async Task Checkpoint_And_Delay_AggregatesResourceLogs()
         {
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
@@ -59,7 +59,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
             var spy = new SpyTestFrameworkImplementor(tester.Implementor);
             tester.ReplaceTestFrameworkImplementor(spy);
 
-            var reasonResult = tester.Reason("Confirming Reason() writes context for Aspire multi-host testers too.");
+            var checkpointResult = tester.Checkpoint("Confirming Checkpoint() writes context for Aspire multi-host testers too.");
 
             // Fire a raw (uninstrumented) request against the 'api' resource part-way through the delay window to simulate genuine background/inter-resource activity that is not
             // tied to a tester-driven request/response (which would otherwise claim - and so report - the resource's log line itself, rather than Delay).
@@ -77,10 +77,10 @@ namespace UnitTestEx.Aspire.Xunit.Test
 
             await backgroundCallTask;
 
-            Assert.Same(tester, reasonResult);
+            Assert.Same(tester, checkpointResult);
             Assert.Same(tester, delayResult);
             Assert.True(sw.Elapsed >= TimeSpan.FromSeconds(2) - TimeSpan.FromMilliseconds(200), $"Expected to delay ~2s, actually waited {sw.Elapsed}.");
-            Assert.Contains("REASON >", spy.Lines);
+            Assert.Contains("CHECKPOINT >", spy.Lines);
             Assert.Contains(spy.Lines, l => l != null && l.Contains("DELAY (00:00:02) >"));
             Assert.Contains(spy.Lines, l => l != null && l.Contains("Waiting for a background Person lookup to complete and log."));
             Assert.Contains("LOGGING >", spy.Lines);
@@ -94,8 +94,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
 
-            await tester.WaitForResourceAsync("api");
-            await tester.WaitForResourceAsync("mockhost");
+            await tester.WaitForResourceAsync(["api", "mockhost"]);
 
             var stub = await tester.HttpMock("mockhost")
                 .Request(HttpMethod.Get, "/products/abc")
@@ -120,8 +119,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
 
-            await tester.WaitForResourceAsync("api");
-            await tester.WaitForResourceAsync("mockhost");
+            await tester.WaitForResourceAsync(["api", "mockhost"]);
 
             var stub = await tester.HttpMock("mockhost")
                 .Request(HttpMethod.Get, "/products/seq")
@@ -146,8 +144,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
 
-            await tester.WaitForResourceAsync("api");
-            await tester.WaitForResourceAsync("mockhost");
+            await tester.WaitForResourceAsync(["api", "mockhost"]);
 
             var stub = await tester.HttpMock("mockhost")
                 .Request(HttpMethod.Get, "/products/seq")
@@ -191,8 +188,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
 
-            await tester.WaitForResourceAsync("api");
-            await tester.WaitForResourceAsync("mockhost");
+            await tester.WaitForResourceAsync(["api", "mockhost"]);
 
             var stub = await HttpMockSharedConfig.ConfigureProductStubAsync(tester.HttpMock("mockhost"), "/products/shared");
 

@@ -11,20 +11,37 @@ using UnitTestEx.Api.Controllers;
 namespace UnitTestEx.MSTest.Test.Other
 {
     [TestClass]
-    public class ReasonAndDelayTest
+    public class CheckpointAndDelayTest
     {
         [TestMethod]
-        public void Reason_WritesReasonToOutput()
+        public void Checkpoint_WritesReasonAndFlushesLogsToOutput()
         {
             using var test = ApiTester.Create<Startup>();
             var spy = new SpyTestFrameworkImplementor(test.Implementor);
             test.ReplaceTestFrameworkImplementor(spy);
 
-            var result = test.Reason("Confirming Reason() writes context to the test output.");
+            var result = test.Checkpoint("Confirming Checkpoint() writes context to the test output.");
 
             Assert.AreSame(test, result);
-            Assert.IsTrue(spy.Lines.Contains("REASON >"));
-            Assert.IsTrue(spy.Lines.Contains("Confirming Reason() writes context to the test output."));
+            Assert.IsTrue(spy.Lines.Contains("CHECKPOINT >"));
+            Assert.IsTrue(spy.Lines.Contains("Confirming Checkpoint() writes context to the test output."));
+            Assert.IsFalse(spy.Lines.Contains("LOGGING >"));
+        }
+
+        [TestMethod]
+        public void Checkpoint_SurfacesLoggingCapturedSinceTheLastCheckpointOrDelay()
+        {
+            using var test = ApiTester.Create<Startup>();
+            var spy = new SpyTestFrameworkImplementor(test.Implementor);
+            test.ReplaceTestFrameworkImplementor(spy);
+
+            var logger = test.Services.GetRequiredService<ILogger<PersonController>>();
+            logger.LogInformation("Message logged before the checkpoint.");
+
+            test.Checkpoint("Confirming Checkpoint() also flushes background logging, like Delay() does.");
+
+            Assert.IsTrue(spy.Lines.Contains("LOGGING >"));
+            Assert.IsTrue(spy.Lines.Any(l => l != null && l.Contains("Message logged before the checkpoint.")));
         }
 
         [TestMethod]
@@ -69,8 +86,8 @@ namespace UnitTestEx.MSTest.Test.Other
 
             test.Delay(TimeSpan.FromMilliseconds(200), "Waiting with nothing new expected.");
 
-            Assert.IsTrue(spy.Lines.Contains("LOGGING >"));
-            Assert.IsTrue(spy.Lines.Contains("None."));
+            Assert.IsFalse(spy.Lines.Contains("LOGGING >"));
+            Assert.IsFalse(spy.Lines.Contains("None."));
             Assert.IsFalse(spy.Lines.Any(l => l != null && l.Contains("Stale message logged before the delay started.")));
         }
     }

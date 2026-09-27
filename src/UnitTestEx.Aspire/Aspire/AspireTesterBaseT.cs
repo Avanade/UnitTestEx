@@ -130,7 +130,7 @@ namespace UnitTestEx.Aspire
 
         /// <summary>
         /// Opts back into the AppHost's own raw logging (its start-up banner, DCP process management, and each resource's own console output) being written to the test output, in addition
-        /// to what UnitTestEx itself reports via <see cref="Reason"/>/<see cref="Delay(TimeSpan?, string?)"/>/the <see cref="AspireTesterBase.Http(string, string?)"/> request-scoped "LOGGING &gt;" section.
+        /// to what UnitTestEx itself reports via <see cref="Checkpoint"/>/<see cref="Delay(TimeSpan?, string?)"/>/the <see cref="AspireTesterBase.Http(string, string?)"/> request-scoped "LOGGING &gt;" section.
         /// </summary>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
         /// <remarks>By default this raw firehose is suppressed as it otherwise duplicates what UnitTestEx already surfaces cleanly (and correlated); enable it when troubleshooting an
@@ -150,13 +150,14 @@ namespace UnitTestEx.Aspire
         }
 
         /// <summary>
-        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or wait, is being performed).
+        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action is being performed), then immediately writes any
+        /// resource log messages captured (across <i>all</i> resources) since the last checkpoint/delay to the test output - i.e. a zero-wait equivalent of <see cref="Delay(TimeSpan?, string?)"/>.
         /// </summary>
         /// <param name="reason">The reason text.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf Reason(string reason)
+        public TSelf Checkpoint(string reason)
         {
-            WriteReason(reason);
+            WriteCheckpoint(reason);
             return (TSelf)this;
         }
 

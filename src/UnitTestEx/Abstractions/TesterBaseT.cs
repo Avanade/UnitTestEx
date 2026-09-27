@@ -405,13 +405,14 @@ namespace UnitTestEx.Abstractions
         public TSelf Delay(int durationInMilliseconds, string? reason = null) => Delay(TimeSpan.FromMilliseconds(durationInMilliseconds), reason);
 
         /// <summary>
-        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action, or delay, is being performed).
+        /// Writes the specified <paramref name="reason"/> to the test output to provide additional context (e.g. why a particular action is being performed), then immediately writes any log
+        /// messages captured since the last checkpoint/delay to the test output - i.e. a zero-wait equivalent of <see cref="Delay(TimeSpan?, string?)"/>.
         /// </summary>
         /// <param name="reason">The reason text.</param>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
-        public TSelf Reason(string reason)
+        public TSelf Checkpoint(string reason)
         {
-            WriteReason(reason);
+            WriteCheckpoint(reason);
             return (TSelf)this;
         }
 

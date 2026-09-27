@@ -11,20 +11,37 @@ using UnitTestEx.Api.Controllers;
 namespace UnitTestEx.NUnit.Test.Other
 {
     [TestFixture]
-    public class ReasonAndDelayTest
+    public class CheckpointAndDelayTest
     {
         [Test]
-        public void Reason_WritesReasonToOutput()
+        public void Checkpoint_WritesReasonAndFlushesLogsToOutput()
         {
             using var test = ApiTester.Create<Startup>();
             var spy = new SpyTestFrameworkImplementor(test.Implementor);
             test.ReplaceTestFrameworkImplementor(spy);
 
-            var result = test.Reason("Confirming Reason() writes context to the test output.");
+            var result = test.Checkpoint("Confirming Checkpoint() writes context to the test output.");
 
             Assert.That(result, Is.SameAs(test));
-            Assert.That(spy.Lines, Does.Contain("REASON >"));
-            Assert.That(spy.Lines, Does.Contain("Confirming Reason() writes context to the test output."));
+            Assert.That(spy.Lines, Does.Contain("CHECKPOINT >"));
+            Assert.That(spy.Lines, Does.Contain("Confirming Checkpoint() writes context to the test output."));
+            Assert.That(spy.Lines, Does.Not.Contain("LOGGING >"));
+        }
+
+        [Test]
+        public void Checkpoint_SurfacesLoggingCapturedSinceTheLastCheckpointOrDelay()
+        {
+            using var test = ApiTester.Create<Startup>();
+            var spy = new SpyTestFrameworkImplementor(test.Implementor);
+            test.ReplaceTestFrameworkImplementor(spy);
+
+            var logger = test.Services.GetRequiredService<ILogger<PersonController>>();
+            logger.LogInformation("Message logged before the checkpoint.");
+
+            test.Checkpoint("Confirming Checkpoint() also flushes background logging, like Delay() does.");
+
+            Assert.That(spy.Lines, Does.Contain("LOGGING >"));
+            Assert.That(spy.Lines.Any(l => l != null && l.Contains("Message logged before the checkpoint.")), Is.True);
         }
 
         [Test]
@@ -69,8 +86,8 @@ namespace UnitTestEx.NUnit.Test.Other
 
             test.Delay(TimeSpan.FromMilliseconds(200), "Waiting with nothing new expected.");
 
-            Assert.That(spy.Lines, Does.Contain("LOGGING >"));
-            Assert.That(spy.Lines, Does.Contain("None."));
+            Assert.That(spy.Lines, Does.Not.Contain("LOGGING >"));
+            Assert.That(spy.Lines, Does.Not.Contain("None."));
             Assert.That(spy.Lines.Any(l => l != null && l.Contains("Stale message logged before the delay started.")), Is.False);
         }
     }

@@ -10,22 +10,39 @@ using Xunit.Abstractions;
 
 namespace UnitTestEx.Xunit.Test.Other
 {
-    public class ReasonAndDelayTest : UnitTestBase
+    public class CheckpointAndDelayTest : UnitTestBase
     {
-        public ReasonAndDelayTest(ITestOutputHelper output) : base(output) { }
+        public CheckpointAndDelayTest(ITestOutputHelper output) : base(output) { }
 
         [Fact]
-        public void Reason_WritesReasonToOutput()
+        public void Checkpoint_WritesReasonAndFlushesLogsToOutput()
         {
             using var test = ApiTester.Create<Startup>();
             var spy = new SpyTestFrameworkImplementor(test.Implementor);
             test.ReplaceTestFrameworkImplementor(spy);
 
-            var result = test.Reason("Confirming Reason() writes context to the test output.");
+            var result = test.Checkpoint("Confirming Checkpoint() writes context to the test output.");
 
             Assert.Same(test, result);
-            Assert.Contains("REASON >", spy.Lines);
-            Assert.Contains("Confirming Reason() writes context to the test output.", spy.Lines);
+            Assert.Contains("CHECKPOINT >", spy.Lines);
+            Assert.Contains("Confirming Checkpoint() writes context to the test output.", spy.Lines);
+            Assert.DoesNotContain("LOGGING >", spy.Lines);
+        }
+
+        [Fact]
+        public void Checkpoint_SurfacesLoggingCapturedSinceTheLastCheckpointOrDelay()
+        {
+            using var test = ApiTester.Create<Startup>();
+            var spy = new SpyTestFrameworkImplementor(test.Implementor);
+            test.ReplaceTestFrameworkImplementor(spy);
+
+            var logger = test.Services.GetRequiredService<ILogger<PersonController>>();
+            logger.LogInformation("Message logged before the checkpoint.");
+
+            test.Checkpoint("Confirming Checkpoint() also flushes background logging, like Delay() does.");
+
+            Assert.Contains("LOGGING >", spy.Lines);
+            Assert.Contains(spy.Lines, l => l != null && l.Contains("Message logged before the checkpoint."));
         }
 
         [Fact]
@@ -70,8 +87,8 @@ namespace UnitTestEx.Xunit.Test.Other
 
             test.Delay(TimeSpan.FromMilliseconds(200), "Waiting with nothing new expected.");
 
-            Assert.Contains("LOGGING >", spy.Lines);
-            Assert.Contains("None.", spy.Lines);
+            Assert.DoesNotContain("LOGGING >", spy.Lines);
+            Assert.DoesNotContain("None.", spy.Lines);
             Assert.DoesNotContain(spy.Lines, l => l != null && l.Contains("Stale message logged before the delay started."));
         }
     }

@@ -95,7 +95,7 @@ namespace UnitTestEx.Aspire
             if (!HostDiagnosticsEnabled)
                 // By default the AppHost's own logging (its start-up banner, DCP process management, and - critically - each resource's own console output mirrored under a
                 // "{ApplicationName}.Resources.{resourceName}" category; see 'EnableResourceLogging') writes straight to the test's Standard Output via its default provider(s) (e.g. console),
-                // duplicating what UnitTestEx already captures and reports cleanly (and correlated) via Reason()/Delay()/the Http() request-scoped "LOGGING >" section. Remove the AppHost's
+                // duplicating what UnitTestEx already captures and reports cleanly (and correlated) via Checkpoint()/Delay()/the Http() request-scoped "LOGGING >" section. Remove the AppHost's
                 // own provider(s) so only what UnitTestEx explicitly writes reaches the test output; call EnableHostDiagnostics() before this point to opt back into the raw firehose (e.g. when
                 // troubleshooting an AppHost/resource start-up failure).
                 builder.Services.RemoveAll<ILoggerProvider>();
@@ -173,6 +173,21 @@ namespace UnitTestEx.Aspire
             var app = await GetDistributedApplicationAsync().ConfigureAwait(false);
             var wait = app.ResourceNotifications.WaitForResourceHealthyAsync(resourceName);
             await (effectiveTimeout == System.Threading.Timeout.InfiniteTimeSpan ? wait : wait.WaitAsync(effectiveTimeout)).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Waits for all of the named resources to report a healthy status, concurrently.
+        /// </summary>
+        /// <param name="resourceNames">The resource names (as configured within the AppHost).</param>
+        /// <param name="timeout">The timeout (defaults to <see cref="DefaultWaitForResourceTimeout"/>) applied to each resource independently; pass
+        /// <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> to wait indefinitely.</param>
+        /// <remarks>Equivalent to awaiting <see cref="WaitForResourceAsync(string, TimeSpan?)"/> for each resource in parallel; if any resource fails to become healthy within the
+        /// <paramref name="timeout"/>, the resulting exception is propagated once all waits have completed (or faulted).</remarks>
+        public async Task WaitForResourceAsync(string[] resourceNames, TimeSpan? timeout = null)
+        {
+            if (resourceNames is null) throw new ArgumentNullException(nameof(resourceNames));
+
+            await Task.WhenAll(resourceNames.Select(rn => WaitForResourceAsync(rn, timeout))).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>

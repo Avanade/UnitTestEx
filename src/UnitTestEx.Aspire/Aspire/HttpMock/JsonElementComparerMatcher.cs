@@ -8,18 +8,18 @@ using WireMock.Models;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 using UnitTestExJsonElementComparer = UnitTestEx.Json.JsonElementComparer;
 
-namespace UnitTestEx.Aspire
+namespace UnitTestEx.Aspire.HttpMock
 {
     /// <summary>
     /// A custom WireMock.Net <see cref="IStringMatcher"/> that delegates JSON body matching to UnitTestEx's own <see cref="UnitTestEx.Json.JsonElementComparer"/>, giving a
-    /// self-hosted WireMock.Net project resource (see <see cref="AspireTesterBase{TAppHost, TSelf}"/> remarks and the README's "Aspire multi-host testing" section) genuine JSON
+    /// self-hosted WireMock.Net project resource (see <see cref="Aspire.AspireTesterBase{TAppHost, TSelf}"/> remarks and the README's "Aspire multi-host testing" section) genuine JSON
     /// comparison-semantics parity with Tier 1's in-process <c>MockHttpClient</c> - notably semantic value coercion for dates, GUIDs and numbers (e.g. <c>"2024-01-01T00:00:00Z"</c>
     /// and <c>"2024-01-01T00:00:00+00:00"</c> are considered equal) - which WireMock.Net's own <c>JsonMatcher</c>/<c>JsonPartialMatcher</c> (a textual/structural comparison) does
     /// not provide.
     /// </summary>
     /// <remarks>Register this against the well-known matcher name <see cref="MatcherName"/> via <see cref="WireMock.Settings.WireMockServerSettings.CustomMatcherMappings"/> in the
     /// self-hosted WireMock.Net process (see <c>UnitTestEx.Aspire.MockHost</c>'s <c>Program.cs</c> template); the corresponding client-side mapping is produced by
-    /// <see cref="HttpMock.AspireHttpMockRequest.WithJsonBodyUsingUnitTestExComparer(string, string[])"/>, which encodes the JSON pattern, any <c>pathsToIgnore</c> and the calling
+    /// <see cref="AspireHttpMockRequest.WithJsonBodyUsingUnitTestExComparer(string, string[])"/>, which encodes the JSON pattern, any <c>pathsToIgnore</c> and the calling
     /// test's <see cref="Json.JsonElementComparerOptions"/> (the comparison-affecting subset of it - see <see cref="Envelope"/>) as a small <see cref="Envelope"/> carried in
     /// <see cref="MatcherModel.Pattern"/> (WireMock.Net's admin API has no other extensibility point for passing matcher-specific configuration through to a
     /// <c>CustomMatcherMappings</c> factory). This matcher instance runs in the self-hosted WireMock.Net process - a genuinely separate OS process from the test - so it has no
