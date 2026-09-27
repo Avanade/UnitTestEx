@@ -187,7 +187,7 @@ namespace UnitTestEx.Aspire
         {
             if (resourceNames is null) throw new ArgumentNullException(nameof(resourceNames));
 
-            await Task.WhenAll(resourceNames.Select(rn => WaitForResourceAsync(rn, timeout))).ConfigureAwait(false);
+            await Task.WhenAll(resourceNames.Distinct().Select(rn => WaitForResourceAsync(rn, timeout))).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
