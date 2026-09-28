@@ -1,11 +1,14 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Testing;
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Aspire;
+using UnitTestEx.Aspire.HttpMock;
+using UnitTestEx.Json;
 
 #pragma warning disable IDE0130 // Namespace does not match folder structure; by design.
 namespace Aspire.Hosting
@@ -94,6 +97,36 @@ namespace Aspire.Hosting
             ArgumentNullException.ThrowIfNull(resourceNames);
 
             await Task.WhenAll(resourceNames.Distinct().Select(rn => app.WaitForResourceAsync(rn, timeout))).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Enables a fluent <see cref="AspireHttpMockClient"/> to stub HTTP responses from a real, out-of-process WireMock.Net server resource, directly against a started
+        /// <paramref name="app"/> - i.e. without requiring an <see cref="AspireTesterBase"/>/Tier 2 test at all.
+        /// </summary>
+        /// <param name="app">The (already started - see <see cref="DistributedApplication.StartAsync"/>) <see cref="DistributedApplication"/>.</param>
+        /// <param name="resourceName">The WireMock.Net server resource name (as configured within the AppHost) to target.</param>
+        /// <param name="endpointName">The optional endpoint name; where not specified, the resource's default endpoint is used.</param>
+        /// <param name="jsonComparerOptions">The optional <see cref="JsonElementComparerOptions"/> used by <see cref="AspireHttpMockRequest.WithJsonBodyUsingUnitTestExComparer(string, string[])"/>;
+        /// defaults to a new <see cref="JsonElementComparerOptions"/> instance when not specified.</param>
+        /// <returns>The <see cref="AspireHttpMockClient"/>.</returns>
+        /// <remarks>Most useful for the AppHost project itself to pre-seed default request/response stubs - e.g. within its own entry point, after <c>await app.StartAsync()</c> - so an
+        /// exploratory/manual run of the AppHost (outside of any UnitTestEx test) does not fail against an external dependency that has not yet been stubbed for that run; this reuses the
+        /// exact same fluent syntax (<see cref="AspireHttpMockRequest.WithJsonBody(string, string[])"/>/<see cref="AspireHttpMockResponse"/> etc.) a Tier 2 test uses via
+        /// <see cref="AspireTesterBase.HttpMock(string, string?)"/>. Equally usable from within a <see cref="AspireTesterBase{TAppHost, TSelf}.BeforeStart"/>/
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.AfterStart"/> callback (most usefully the latter, once resources actually exist), or any other code already holding a
+        /// <see cref="DistributedApplication"/> instance directly. Unlike <see cref="AspireTesterBase.HttpMock(string, string?)"/>, <paramref name="jsonComparerOptions"/> is captured once
+        /// at call time (there being no owning tester's <see cref="UnitTestEx.Abstractions.TesterBaseCore.JsonComparerOptions"/> to read live from).</remarks>
+        public static AspireHttpMockClient HttpMock(this DistributedApplication app, string resourceName, string? endpointName = null, JsonElementComparerOptions? jsonComparerOptions = null)
+        {
+            ArgumentNullException.ThrowIfNull(app);
+            ArgumentException.ThrowIfNullOrEmpty(resourceName);
+
+            var options = jsonComparerOptions ?? new JsonElementComparerOptions();
+            return new AspireHttpMockClient(async () =>
+            {
+                var httpClient = app.CreateHttpClient(resourceName, endpointName);
+                return RestEase.RestClient.For<WireMock.Client.IWireMockAdminApi>(httpClient);
+            }, () => options);
         }
     }
 }

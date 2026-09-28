@@ -391,6 +391,25 @@ _Note:_ `WithJsonBodyUsingUnitTestExComparer` requires the target resource to ha
 
 The same shared interface also brings across Tier 1's [YAML/JSON configuration](#YAML/JSON-configuration) - `await tester.HttpMock("erp").WithRequestsFromResourceAsync<MyTestClass>("my.mock.unittestex.yaml")` loads the exact same embedded resource schema against a real WireMock.Net resource.
 
+### Pre-seeding stubs from `AppHost.cs`
+
+`tester.HttpMock(resourceName)` requires an `AspireTester` - fine for tests, but not when a developer just wants to `aspire run`/`dotnet run` the `AppHost` directly (exploratory/manual use, no test in sight) - any un-stubbed external dependency will simply fail with a connection error. The `DistributedApplication.HttpMock(resourceName, endpointName?, jsonComparerOptions?)` extension method (also on `UnitTestEx.Aspire`, alongside `AddMockHostProject`/`WithMockHostEnvironment`) exposes the exact same fluent `AspireHttpMockClient` API directly against a started `DistributedApplication` - no tester required - so `AppHost.cs` itself can pre-seed sensible default stubs:
+
+``` csharp
+// AppHost.cs
+var app = builder.Build();
+await app.StartAsync();
+
+await app.WaitForResourceAsync("erp");
+await app.HttpMock("erp")
+    .Request(HttpMethod.Get, "products/abc")
+    .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
+
+await app.WaitForShutdownAsync();
+```
+
+This replaces the simpler `await app.RunAsync();` one-liner with the equivalent `StartAsync`/`WaitForShutdownAsync` pair (standard, supported Aspire usage) so there's a point after start-up, but before the host blocks, to seed mappings. A test can still layer its own stubs over these defaults (or `ResetAsync()` first to clear them) via `tester.HttpMock(...)` as normal - the AppHost's stubs are just a starting point, not a constraint on what a test may configure.
+
 _Note:_ Aspire-hosted resources are real OS processes (containers, where you opt into one), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
 
 _Note:_ Since Tier 2/3 resources are real, reachable URLs (not in-process fakes), a UI/frontend resource hosted in the `AppHost` can be driven directly with [Playwright](https://playwright.dev/dotnet/) - this is an ordinary consequence of the resources being real processes, not a UnitTestEx-specific feature; see Microsoft's own [Aspire + Playwright guide](https://learn.microsoft.com/en-us/dotnet/aspire/testing/write-your-first-test?tabs=xunit#creating-a-playwright-test) for the pattern.

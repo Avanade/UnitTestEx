@@ -227,6 +227,32 @@ namespace UnitTestEx.Aspire.Xunit.Test
         }
 
         [Fact]
+        public async Task HttpMock_ViaDistributedApplicationExtensionMethod_WorksWithoutTester()
+        {
+            // Proves the standalone 'DistributedApplication.HttpMock' extension method (see UnitTestExAspireExtensions) configures the same underlying WireMock.Net resource
+            // as AspireTesterBase.HttpMock above, without needing a tester at all - e.g. usable directly from an AppHost.cs itself (after 'await app.StartAsync()') to pre-seed
+            // default stubs so an exploratory/manual run doesn't fail against an un-stubbed external dependency; AfterStart is used here purely to get at the raw 'app'.
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .AfterStart(async app =>
+                {
+                    await app.WaitForResourceAsync("mockhost");
+
+                    _ = await app.HttpMock("mockhost")
+                        .Request(HttpMethod.Get, "/products/xyz")
+                        .Times(Times.Once())
+                        .WithAnyBody()
+                        .Respond.WithJsonAsync(new { id = "Xyz", description = "Configured via the DistributedApplication.HttpMock extension method." });
+                });
+
+            await tester.WaitForResourceAsync(["api", "mockhost"]);
+
+            tester.Http("mockhost").Run(HttpMethod.Get, "/products/xyz")
+                .AssertOK()
+                .AssertValue(new { id = "Xyz", description = "Configured via the DistributedApplication.HttpMock extension method." });
+        }
+
+        [Fact]
         public async Task HttpMock_WithSequenceAsync_ReturnsResponsesInOrderThenExhausts()
         {
             // Note: this exercises WireMock.Net's Scenario/state mechanism; each subsequent invocation returns the next configured
