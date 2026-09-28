@@ -79,6 +79,22 @@ namespace UnitTestEx.Aspire.NUnit.Test
         }
 
         [Test]
+        public async Task BeforeStart_CanResolveConnectionStringResource()
+        {
+            string? connectionString = null;
+
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .BeforeStart(async app => connectionString = await AspireTesterBase.GetConnectionStringAsync(app, "test-db"));
+
+            // Triggers build+start; GetConnectionStringAsync must have already resolved the value above - Aspire's own testing extension
+            // of the same name would throw here as the application has not yet started (see AspireTesterBase.GetConnectionStringAsync's remarks).
+            await tester.WaitForResourceAsync("api");
+
+            Assert.That(connectionString, Is.EqualTo("Data Source=unit-test;"));
+        }
+
+        [Test]
         public async Task Checkpoint_And_Delay_AggregatesResourceLogs()
         {
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()

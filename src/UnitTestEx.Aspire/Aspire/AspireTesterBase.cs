@@ -1,6 +1,7 @@
 // Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Aspire.Hosting;
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -60,10 +61,44 @@ namespace UnitTestEx.Aspire
         /// details are only resolvable via the AppHost (e.g. a connection-string resource added via the AppHost's own <c>AddConnectionString</c>) - such as running database
         /// migrations/seeding, clearing a cache, or resetting a messaging topic/queue to a known state - <i>before</i> any project resource that depends on it starts running and
         /// potentially races against that very same setup (e.g. connecting to a not-yet-migrated database).
-        /// <para><i>Important:</i> a callback must operate directly against the <see cref="DistributedApplication"/> passed to it (e.g. <c>app.GetConnectionStringAsync(name)</c>) - it must
-        /// <b>not</b> call back into this tester's own <see cref="GetDistributedApplicationAsync"/> (or any extension method that does, e.g. a <c>MigrateXxxAsync</c> helper written against
-        /// the tester) as the underlying <see cref="DistributedApplication"/> is still being built/started at that point; doing so will recursively re-enter construction rather than reuse it.</para></remarks>
+        /// <para><i>Important:</i> a callback must operate directly against the <see cref="DistributedApplication"/> passed to it - it must <b>not</b> call back into this tester's own
+        /// <see cref="GetDistributedApplicationAsync"/> (or any extension method that does, e.g. a <c>MigrateXxxAsync</c> helper written against the tester) as the underlying
+        /// <see cref="DistributedApplication"/> is still being built/started at that point; doing so will recursively re-enter construction rather than reuse it. It also must <b>not</b>
+        /// call Aspire's own <c>DistributedApplication.GetConnectionStringAsync</c>/<c>GetEndpoint</c>/<c>CreateHttpClient</c> testing extensions (<c>Aspire.Hosting.Testing</c>) - these
+        /// throw <see cref="InvalidOperationException"/> at this point as they require the application to have already started; use <see cref="GetConnectionStringAsync"/> instead.</para></remarks>
         protected List<Func<DistributedApplication, Task>> BeforeStartActions { get; } = [];
+
+        /// <summary>
+        /// Resolves the connection string for the named resource directly against the <see cref="DistributedApplication"/>'s resource model.
+        /// </summary>
+        /// <param name="app">The <see cref="DistributedApplication"/>.</param>
+        /// <param name="resourceName">The resource name (as configured within the AppHost).</param>
+        /// <param name="cancellationToken">The <see cref="CancellationToken"/>.</param>
+        /// <returns>The connection string, or <c>null</c> if the resource has none configured.</returns>
+        /// <exception cref="ArgumentException">The resource was not found, or does not expose a connection string.</exception>
+        /// <remarks>Unlike Aspire's own <c>DistributedApplication.GetConnectionStringAsync(resourceName)</c> testing extension (<c>Aspire.Hosting.Testing</c>) - which throws
+        /// <see cref="InvalidOperationException"/> unless the application has already started (i.e. its underlying <c>IHostApplicationLifetime.ApplicationStarted</c> has fired) - this
+        /// resolves the resource directly via <see cref="DistributedApplicationModel"/>, so it is safe to call from a <see cref="AspireTesterBase{TAppHost, TSelf}.BeforeStart"/> callback
+        /// (i.e. before <c>StartAsync</c> has even been invoked), as well as at any other time.
+        /// <para>This only works for resources whose connection string does not depend on a dynamically-allocated endpoint - e.g. a static, externally-hosted dependency added via the
+        /// AppHost's own <c>AddConnectionString(name)</c> (the primary <see cref="AspireTesterBase{TAppHost, TSelf}.BeforeStart"/> use case), whose value is resolved directly from
+        /// configuration/parameters. For a resource whose connection string is only known once the resource itself has actually started and allocated an endpoint (e.g. a container
+        /// resource), calling this before the application has started will return an incomplete/unresolved value; use Aspire's own <c>GetConnectionStringAsync</c> after the application
+        /// has started for those instead.</para></remarks>
+        public static async Task<string?> GetConnectionStringAsync(DistributedApplication app, string resourceName, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(app);
+            ArgumentException.ThrowIfNullOrEmpty(resourceName);
+
+            var model = app.Services.GetRequiredService<DistributedApplicationModel>();
+            if (!model.Resources.TryGetByName(resourceName, out var resource))
+                throw new ArgumentException($"Resource '{resourceName}' not found.", nameof(resourceName));
+
+            if (resource is not IResourceWithConnectionString resourceWithConnectionString)
+                throw new ArgumentException($"Resource '{resourceName}' does not expose a connection string.", nameof(resourceName));
+
+            return await resourceWithConnectionString.GetConnectionStringAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         /// <summary>
         /// Gets a value indicating whether the underlying <see cref="DistributedApplication"/> has already started being built (see <see cref="GetDistributedApplicationAsync"/>).

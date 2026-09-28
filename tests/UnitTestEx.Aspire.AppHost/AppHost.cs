@@ -42,6 +42,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
+// A static, config-backed connection-string resource (no real backing service; a hardcoded value is enough) - exists solely so the
+// BeforeStart_*.Test can prove AspireTesterBase.GetConnectionStringAsync resolves it before the application has started (Aspire's own
+// DistributedApplication.GetConnectionStringAsync testing extension cannot - it requires the application to have already started).
+builder.Configuration["ConnectionStrings:test-db"] = "Data Source=unit-test;";
+var testDb = builder.AddConnectionString("test-db");
+
 // dotnet dev-certs https --trust is not fully supported on Linux, so the ASP.NET Core dev cert used by the
 // "api" resource's https endpoint is not OS-trusted on Linux CI runners. Both the health check probe above and
 // AspireTesterBase's CreateHttpClient() resolve their HttpClient via this same DI container's IHttpClientFactory,

@@ -4,6 +4,7 @@ using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 
@@ -114,9 +115,12 @@ namespace UnitTestEx.Aspire
         /// depends on it starts running and potentially races against that very same setup (e.g. connecting to a not-yet-migrated database). Registered callbacks run, in order, after
         /// <c>BuildAsync</c> and before <c>StartAsync</c>; an exception thrown by any callback aborts start-up (the partially-built <see cref="DistributedApplication"/> is disposed and the
         /// exception propagates), consistent with a resource failing to start.
-        /// <para><i>Important:</i> the callback must operate directly against the <see cref="DistributedApplication"/> passed to it (e.g. <c>app.GetConnectionStringAsync(name)</c>) - it must
-        /// <b>not</b> call back into <see cref="AspireTesterBase.GetDistributedApplicationAsync"/> (or any extension method that does, e.g. a <c>MigrateXxxAsync</c> helper written against the
-        /// tester) as the underlying <see cref="DistributedApplication"/> is still being built/started at that point; doing so will recursively re-enter construction rather than reuse it.</para>
+        /// <para><i>Important:</i> the callback must operate directly against the <see cref="DistributedApplication"/> passed to it - it must <b>not</b> call back into
+        /// <see cref="AspireTesterBase.GetDistributedApplicationAsync"/> (or any extension method that does, e.g. a <c>MigrateXxxAsync</c> helper written against the tester) as the
+        /// underlying <see cref="DistributedApplication"/> is still being built/started at that point; doing so will recursively re-enter construction rather than reuse it. It also must
+        /// <b>not</b> call Aspire's own <c>DistributedApplication.GetConnectionStringAsync</c>/<c>GetEndpoint</c>/<c>CreateHttpClient</c> testing extensions (<c>Aspire.Hosting.Testing</c>)
+        /// - these throw <see cref="InvalidOperationException"/> at this point as they require the application to have already started; use
+        /// <see cref="AspireTesterBase.GetConnectionStringAsync(DistributedApplication, string, CancellationToken)"/> instead to resolve a connection string.</para>
         /// <para>Must be called before the underlying <see cref="DistributedApplication"/> has been built (see <see cref="AspireTesterBase.GetDistributedApplicationAsync"/>).</para></remarks>
         public TSelf BeforeStart(Func<DistributedApplication, Task> beforeStart)
         {
