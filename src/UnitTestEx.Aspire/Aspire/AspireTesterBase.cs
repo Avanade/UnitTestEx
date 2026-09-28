@@ -53,6 +53,19 @@ namespace UnitTestEx.Aspire
         protected List<Action<IDistributedApplicationTestingBuilder>> ConfigureBuilderActions { get; } = [];
 
         /// <summary>
+        /// Gets the queued callbacks invoked, in order, once the underlying <see cref="DistributedApplication"/> has been built but before it is started - i.e. before any resource
+        /// (project, container, executable, etc.) begins running.
+        /// </summary>
+        /// <remarks>Populated by <see cref="AspireTesterBase{TAppHost, TSelf}.BeforeStart(Func{DistributedApplication, Task})"/>. Useful to prepare an external dependency whose connection
+        /// details are only resolvable via the AppHost (e.g. a connection-string resource added via the AppHost's own <c>AddConnectionString</c>) - such as running database
+        /// migrations/seeding, clearing a cache, or resetting a messaging topic/queue to a known state - <i>before</i> any project resource that depends on it starts running and
+        /// potentially races against that very same setup (e.g. connecting to a not-yet-migrated database).
+        /// <para><i>Important:</i> a callback must operate directly against the <see cref="DistributedApplication"/> passed to it (e.g. <c>app.GetConnectionStringAsync(name)</c>) - it must
+        /// <b>not</b> call back into this tester's own <see cref="GetDistributedApplicationAsync"/> (or any extension method that does, e.g. a <c>MigrateXxxAsync</c> helper written against
+        /// the tester) as the underlying <see cref="DistributedApplication"/> is still being built/started at that point; doing so will recursively re-enter construction rather than reuse it.</para></remarks>
+        protected List<Func<DistributedApplication, Task>> BeforeStartActions { get; } = [];
+
+        /// <summary>
         /// Gets a value indicating whether the underlying <see cref="DistributedApplication"/> has already started being built (see <see cref="GetDistributedApplicationAsync"/>).
         /// </summary>
         /// <remarks>Used to guard configuration that must be applied before the underlying <see cref="DistributedApplication"/> is built (see
@@ -118,6 +131,13 @@ namespace UnitTestEx.Aspire
 
             try
             {
+                // Give any queued BeforeStartActions (see AspireTesterBase{TAppHost, TSelf}.BeforeStart) the chance to prepare an external dependency (e.g. migrate/seed a database resolved
+                // via app.GetConnectionStringAsync) before any resource is actually started/kicked off below, so it cannot race against that very same setup.
+                foreach (var beforeStart in BeforeStartActions)
+                {
+                    await beforeStart(app).ConfigureAwait(false);
+                }
+
                 await app.StartAsync().ConfigureAwait(false);
             }
             catch

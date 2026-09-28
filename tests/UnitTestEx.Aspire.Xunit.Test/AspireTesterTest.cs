@@ -49,6 +49,43 @@ namespace UnitTestEx.Aspire.Xunit.Test
         }
 
         [Fact]
+        public async Task BeforeStart_InvokedInOrder_BeforeAnyResourceStarts()
+        {
+            var order = new System.Collections.Generic.List<string>();
+
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .BeforeStart(app =>
+                {
+                    Assert.NotNull(app);
+                    order.Add("first");
+                    return Task.CompletedTask;
+                })
+                .BeforeStart(app =>
+                {
+                    Assert.NotNull(app);
+                    order.Add("second");
+                    return Task.CompletedTask;
+                });
+
+            // Triggers build+start; both BeforeStart callbacks must already have run (in registration order) before this returns.
+            await tester.WaitForResourceAsync("api");
+
+            Assert.Equal(["first", "second"], order);
+        }
+
+        [Fact]
+        public async Task BeforeStart_Throws_AbortsStartUpAndPropagates()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .BeforeStart(_ => throw new InvalidOperationException("Simulated pre-start failure."));
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => tester.WaitForResourceAsync("api"));
+            Assert.Equal("Simulated pre-start failure.", ex.Message);
+        }
+
+        [Fact]
         public async Task Checkpoint_And_Delay_AggregatesResourceLogs()
         {
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()

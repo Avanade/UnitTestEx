@@ -6,6 +6,7 @@ Represents the **NuGet** versions.
 - *Enhancement:* Added `UnitTestEx.Aspire` (NET8+) to enable testing of [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) multi-host (inter-domain) testing alongside existing in-process `WebApplicationFactory`. The API surface between the two is consistent where appropriate. 
   - `HttpClient` mocking of external dependencies is supported via `AspireHttpMockClient`, which stubs a real, out-of-process [WireMock.Net](https://wiremock.org/dotnet/) server resource - see the README's [Aspire multi-host testing](./README.md#Aspire-multi-host-testing) section for the recommended, self-hosted (Docker-free) pattern.
   - `AspireTesterBase.WaitForResourceAsync(string[], TimeSpan?)` waits for multiple named resources to become healthy concurrently.
+  - `AspireTesterBase<TAppHost, TSelf>.BeforeStart(Func<DistributedApplication, Task>)` registers a callback that runs after the `DistributedApplication` is built, but before any resource is started; this enables use cases such as running database migrations/seeding, or clearing a cache, against a pre-existing (e.g. `AddConnectionString`) resource before dependent project resources come online.
 - *Enhancement:* Extended `TesterBase`/`AspireTesterBase.Delay` to accept an optional `reason` and to write any log messages captured since the last `Checkpoint()`/`Delay()` call to the test output (staying silent when there is nothing new to report). Added a new `Checkpoint(string reason)` method that provides the same reporting/log-flushing behavior without pausing.
  
 ## v5.11.1

@@ -104,6 +104,36 @@ namespace UnitTestEx.Aspire
         }
 
         /// <summary>
+        /// Registers a callback to invoke once the underlying <see cref="DistributedApplication"/> has been built but before it is started - i.e. before any resource (project, container,
+        /// executable, etc.) begins running.
+        /// </summary>
+        /// <param name="beforeStart">The callback, given the built (not yet started) <see cref="DistributedApplication"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Useful to prepare an external dependency whose connection details are only resolvable via the AppHost (e.g. a connection-string resource added via the AppHost's own
+        /// <c>AddConnectionString</c>) - such as running database migrations/seeding, clearing a cache, or resetting a messaging topic/queue - <i>before</i> any project resource that
+        /// depends on it starts running and potentially races against that very same setup (e.g. connecting to a not-yet-migrated database). Registered callbacks run, in order, after
+        /// <c>BuildAsync</c> and before <c>StartAsync</c>; an exception thrown by any callback aborts start-up (the partially-built <see cref="DistributedApplication"/> is disposed and the
+        /// exception propagates), consistent with a resource failing to start.
+        /// <para><i>Important:</i> the callback must operate directly against the <see cref="DistributedApplication"/> passed to it (e.g. <c>app.GetConnectionStringAsync(name)</c>) - it must
+        /// <b>not</b> call back into <see cref="AspireTesterBase.GetDistributedApplicationAsync"/> (or any extension method that does, e.g. a <c>MigrateXxxAsync</c> helper written against the
+        /// tester) as the underlying <see cref="DistributedApplication"/> is still being built/started at that point; doing so will recursively re-enter construction rather than reuse it.</para>
+        /// <para>Must be called before the underlying <see cref="DistributedApplication"/> has been built (see <see cref="AspireTesterBase.GetDistributedApplicationAsync"/>).</para></remarks>
+        public TSelf BeforeStart(Func<DistributedApplication, Task> beforeStart)
+        {
+            if (beforeStart is null) throw new ArgumentNullException(nameof(beforeStart));
+
+            lock (SyncRoot)
+            {
+                if (IsDistributedApplicationBuilding)
+                    throw new InvalidOperationException($"{nameof(BeforeStart)} must be invoked before the underlying {nameof(DistributedApplication)} has been built (i.e. before any {nameof(Http)}/{nameof(WaitForResourceAsync)} call).");
+
+                BeforeStartActions.Add(beforeStart);
+            }
+
+            return (TSelf)this;
+        }
+
+        /// <summary>
         /// Overrides an environment variable for the named resource before the underlying <see cref="DistributedApplication"/> is built.
         /// </summary>
         /// <param name="resourceName">The resource name (as configured within the AppHost).</param>

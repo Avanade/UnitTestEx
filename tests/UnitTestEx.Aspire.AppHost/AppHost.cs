@@ -64,4 +64,3 @@ builder.AddProject<Projects.UnitTestEx_Api>("api", launchProfileName: null)
     .WithMockHostEnvironment("XXX__BaseUrl", mockhost, "http");
 
 builder.Build().Run();
-
