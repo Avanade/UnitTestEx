@@ -1,6 +1,11 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Aspire.Hosting.ApplicationModel;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using UnitTestEx.Aspire;
 
 #pragma warning disable IDE0130 // Namespace does not match folder structure; by design.
 namespace Aspire.Hosting
@@ -8,9 +13,10 @@ namespace Aspire.Hosting
 {
     /// <summary>
     /// Provides <see cref="IDistributedApplicationBuilder"/>/<see cref="IResourceBuilder{T}"/> extension methods for AppHost projects that use UnitTestEx's recommended
-    /// self-hosted WireMock.Net "mockhost" pattern (see the README's "Aspire multi-host testing" section and <c>UnitTestEx.Aspire.MockHost</c>). Deliberately placed in the
-    /// <see cref="Aspire.Hosting"/> namespace (matching Aspire's own extension method convention) so these methods are discoverable alongside <c>AddProject</c>/<c>WithEnvironment</c>
-    /// without an extra <c>using</c>.
+    /// self-hosted WireMock.Net "mockhost" pattern (see the README's "Aspire multi-host testing" section and <c>UnitTestEx.Aspire.MockHost</c>), as well as
+    /// <see cref="DistributedApplication"/> extension methods useful from test code (e.g. within a <see cref="AspireTesterBase{TAppHost, TSelf}.BeforeStart"/>/
+    /// <see cref="AspireTesterBase{TAppHost, TSelf}.AfterStart"/> callback). Deliberately placed in the <see cref="Aspire.Hosting"/> namespace (matching Aspire's own extension method
+    /// convention) so these methods are discoverable alongside <c>AddProject</c>/<c>WithEnvironment</c> without an extra <c>using</c>.
     /// </summary>
     public static class UnitTestExAspireExtensions
     {
@@ -50,5 +56,44 @@ namespace Aspire.Hosting
         public static IResourceBuilder<TDestination> WithMockHostEnvironment<TDestination, TSource>(this IResourceBuilder<TDestination> builder, string name, IResourceBuilder<TSource>? source, string endpointName)
             where TDestination : IResourceWithEnvironment where TSource : IResourceWithEndpoints
             => source is null ? builder : builder.WithEnvironment(name, source.GetEndpoint(endpointName));
+
+        /// <summary>
+        /// Waits for the named resource, within <paramref name="app"/>, to report a healthy status.
+        /// </summary>
+        /// <param name="app">The <see cref="DistributedApplication"/>.</param>
+        /// <param name="resourceName">The resource name (as configured within the AppHost).</param>
+        /// <param name="timeout">The timeout (defaults to <see cref="AspireTesterBase.DefaultWaitForResourceTimeout"/>); pass <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.</param>
+        /// <remarks>Operates directly against <paramref name="app"/> (via <see cref="DistributedApplication.ResourceNotifications"/>) rather than a tester's own
+        /// <see cref="AspireTesterBase.GetDistributedApplicationAsync"/>, so - unlike <see cref="AspireTesterBase.WaitForResourceAsync(string, TimeSpan?)"/> - it is safe to call from within
+        /// a <see cref="AspireTesterBase{TAppHost, TSelf}.BeforeStart"/>/<see cref="AspireTesterBase{TAppHost, TSelf}.AfterStart"/> callback (most usefully the latter, once every resource
+        /// has actually been started/kicked off), as well as at any other time.</remarks>
+        public static async Task WaitForResourceAsync(this DistributedApplication app, string resourceName, TimeSpan? timeout = null)
+        {
+            ArgumentNullException.ThrowIfNull(app);
+            ArgumentException.ThrowIfNullOrEmpty(resourceName);
+
+            var effectiveTimeout = timeout ?? AspireTesterBase.DefaultWaitForResourceTimeout;
+            var wait = app.ResourceNotifications.WaitForResourceHealthyAsync(resourceName);
+            await (effectiveTimeout == Timeout.InfiniteTimeSpan ? wait : wait.WaitAsync(effectiveTimeout)).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Waits for all of the named resources, within <paramref name="app"/>, to report a healthy status, concurrently.
+        /// </summary>
+        /// <param name="app">The <see cref="DistributedApplication"/>.</param>
+        /// <param name="resourceNames">The resource names (as configured within the AppHost).</param>
+        /// <param name="timeout">The timeout (defaults to <see cref="AspireTesterBase.DefaultWaitForResourceTimeout"/>) applied to each resource independently; pass
+        /// <see cref="Timeout.InfiniteTimeSpan"/> to wait indefinitely.</param>
+        /// <remarks>Equivalent to awaiting <see cref="WaitForResourceAsync(DistributedApplication, string, TimeSpan?)"/> for each resource in parallel; if any resource fails to become
+        /// healthy within the <paramref name="timeout"/>, the resulting exception is propagated once all waits have completed (or faulted). See
+        /// <see cref="WaitForResourceAsync(DistributedApplication, string, TimeSpan?)"/> remarks regarding safe use from a <see cref="AspireTesterBase{TAppHost, TSelf}.BeforeStart"/>/
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.AfterStart"/> callback.</remarks>
+        public static async Task WaitForResourceAsync(this DistributedApplication app, string[] resourceNames, TimeSpan? timeout = null)
+        {
+            ArgumentNullException.ThrowIfNull(app);
+            ArgumentNullException.ThrowIfNull(resourceNames);
+
+            await Task.WhenAll(resourceNames.Distinct().Select(rn => app.WaitForResourceAsync(rn, timeout))).ConfigureAwait(false);
+        }
     }
 }

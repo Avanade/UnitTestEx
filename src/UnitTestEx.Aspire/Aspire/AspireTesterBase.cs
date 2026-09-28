@@ -62,11 +62,25 @@ namespace UnitTestEx.Aspire
         /// migrations/seeding, clearing a cache, or resetting a messaging topic/queue to a known state - <i>before</i> any project resource that depends on it starts running and
         /// potentially races against that very same setup (e.g. connecting to a not-yet-migrated database).
         /// <para><i>Important:</i> a callback must operate directly against the <see cref="DistributedApplication"/> passed to it - it must <b>not</b> call back into this tester's own
-        /// <see cref="GetDistributedApplicationAsync"/> (or any extension method that does, e.g. a <c>MigrateXxxAsync</c> helper written against the tester) as the underlying
-        /// <see cref="DistributedApplication"/> is still being built/started at that point; doing so will recursively re-enter construction rather than reuse it. It also must <b>not</b>
+        /// <see cref="GetDistributedApplicationAsync"/> (or any extension method that does, e.g. a <c>MigrateXxxAsync</c> helper written against the tester): that method's own construction
+        /// is still in-flight at this point, so awaiting it from within the callback that is part of that very construction will deadlock/hang rather than reuse it. It also must <b>not</b>
         /// call Aspire's own <c>DistributedApplication.GetConnectionStringAsync</c>/<c>GetEndpoint</c>/<c>CreateHttpClient</c> testing extensions (<c>Aspire.Hosting.Testing</c>) - these
         /// throw <see cref="InvalidOperationException"/> at this point as they require the application to have already started; use <see cref="GetConnectionStringAsync"/> instead.</para></remarks>
         protected List<Func<DistributedApplication, Task>> BeforeStartActions { get; } = [];
+
+        /// <summary>
+        /// Gets the queued callbacks invoked, in order, once the underlying <see cref="DistributedApplication"/> has been started - i.e. after every resource (project, container,
+        /// executable, etc.) has been kicked off (though not necessarily healthy/ready yet - see <see cref="UnitTestExAspireExtensions.WaitForResourceAsync(DistributedApplication, string, TimeSpan?)"/>).
+        /// </summary>
+        /// <remarks>Populated by <see cref="AspireTesterBase{TAppHost, TSelf}.AfterStart(Func{DistributedApplication, Task})"/>. This is the natural place to wait for one or more resources
+        /// to become healthy (e.g. via the <see cref="UnitTestExAspireExtensions.WaitForResourceAsync(DistributedApplication, string, TimeSpan?)"/>/<see cref="UnitTestExAspireExtensions.WaitForResourceAsync(DistributedApplication, string[], TimeSpan?)"/>
+        /// extension methods) before a test's own set-up (e.g. <c>OneTimeSetUp</c>) proceeds to use them.
+        /// <para><i>Important:</i> a callback must operate directly against the <see cref="DistributedApplication"/> passed to it - it must <b>not</b> call back into this tester's own
+        /// <see cref="GetDistributedApplicationAsync"/> (or any instance method that does, e.g. the instance <see cref="WaitForResourceAsync(string, TimeSpan?)"/>): that method's own
+        /// construction is still in-flight at this point, so awaiting it from within the callback that is part of that very construction will deadlock/hang rather than reuse it; use the
+        /// <see cref="UnitTestExAspireExtensions.WaitForResourceAsync(DistributedApplication, string, TimeSpan?)"/> extension method (which operates directly against the passed-in
+        /// <see cref="DistributedApplication"/>) instead.</para></remarks>
+        protected List<Func<DistributedApplication, Task>> AfterStartActions { get; } = [];
 
         /// <summary>
         /// Resolves the connection string for the named resource directly against the <see cref="DistributedApplication"/>'s resource model.
@@ -174,6 +188,13 @@ namespace UnitTestEx.Aspire
                 }
 
                 await app.StartAsync().ConfigureAwait(false);
+
+                // Give any queued AfterStartActions (see AspireTesterBase{TAppHost, TSelf}.AfterStart) the chance to act now every resource has been kicked off (e.g. waiting for one or
+                // more to become healthy via the WaitForResourceAsync extension method) before the tester itself is handed back to the caller.
+                foreach (var afterStart in AfterStartActions)
+                {
+                    await afterStart(app).ConfigureAwait(false);
+                }
             }
             catch
             {
@@ -183,6 +204,12 @@ namespace UnitTestEx.Aspire
 
             return app;
         }
+
+        /// <inheritdoc/>
+        /// <remarks>Sealed as the Aspire-specific extensibility point for logic that must run around start-up is the <see cref="AspireTesterBase{TAppHost, TSelf}.BeforeStart"/>/
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.AfterStart"/> fluent pair - unlike this virtual hook (inherited from <see cref="TesterBaseCore"/>), both receive the actual
+        /// <see cref="DistributedApplication"/> instance and run at a precisely-defined point (immediately before/after <c>StartAsync</c>); prefer those instead.</remarks>
+        protected sealed override void OnHostStartUp() => base.OnHostStartUp();
 
         /// <inheritdoc/>
         protected override void OnResetHost()
@@ -219,15 +246,17 @@ namespace UnitTestEx.Aspire
         /// </summary>
         /// <param name="resourceName">The resource name (as configured within the AppHost).</param>
         /// <param name="timeout">The timeout (defaults to <see cref="DefaultWaitForResourceTimeout"/>); pass <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> to wait indefinitely.</param>
-        /// <remarks>A resource that never becomes healthy (e.g. a misconfigured health check) should fail the test fast rather than hang it indefinitely, hence the default timeout.</remarks>
+        /// <remarks>A resource that never becomes healthy (e.g. a misconfigured health check) should fail the test fast rather than hang it indefinitely, hence the default timeout.
+        /// <para><i>Important:</i> do <b>not</b> call this from within a <see cref="AspireTesterBase{TAppHost, TSelf}.BeforeStart"/>/<see cref="AspireTesterBase{TAppHost, TSelf}.AfterStart"/>
+        /// callback - it calls <see cref="GetDistributedApplicationAsync"/>, whose own construction is still in-flight at that point, so awaiting it will deadlock/hang; use the
+        /// <see cref="UnitTestExAspireExtensions.WaitForResourceAsync(DistributedApplication, string, TimeSpan?)"/> extension method (against the callback's own <see cref="DistributedApplication"/>
+        /// parameter) instead.</para></remarks>
         public async Task WaitForResourceAsync(string resourceName, TimeSpan? timeout = null)
         {
-            if (resourceName is null) throw new ArgumentNullException(nameof(resourceName));
+            ArgumentException.ThrowIfNullOrEmpty(resourceName);
 
-            var effectiveTimeout = timeout ?? DefaultWaitForResourceTimeout;
             var app = await GetDistributedApplicationAsync().ConfigureAwait(false);
-            var wait = app.ResourceNotifications.WaitForResourceHealthyAsync(resourceName);
-            await (effectiveTimeout == System.Threading.Timeout.InfiniteTimeSpan ? wait : wait.WaitAsync(effectiveTimeout)).ConfigureAwait(false);
+            await app.WaitForResourceAsync(resourceName, timeout).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -237,7 +266,10 @@ namespace UnitTestEx.Aspire
         /// <param name="timeout">The timeout (defaults to <see cref="DefaultWaitForResourceTimeout"/>) applied to each resource independently; pass
         /// <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> to wait indefinitely.</param>
         /// <remarks>Equivalent to awaiting <see cref="WaitForResourceAsync(string, TimeSpan?)"/> for each resource in parallel; if any resource fails to become healthy within the
-        /// <paramref name="timeout"/>, the resulting exception is propagated once all waits have completed (or faulted).</remarks>
+        /// <paramref name="timeout"/>, the resulting exception is propagated once all waits have completed (or faulted).
+        /// <para><i>Important:</i> do <b>not</b> call this from within a <see cref="AspireTesterBase{TAppHost, TSelf}.BeforeStart"/>/<see cref="AspireTesterBase{TAppHost, TSelf}.AfterStart"/>
+        /// callback - see <see cref="WaitForResourceAsync(string, TimeSpan?)"/> remarks; use the
+        /// <see cref="UnitTestExAspireExtensions.WaitForResourceAsync(DistributedApplication, string[], TimeSpan?)"/> extension method instead.</para></remarks>
         public async Task WaitForResourceAsync(string[] resourceNames, TimeSpan? timeout = null)
         {
             if (resourceNames is null) throw new ArgumentNullException(nameof(resourceNames));

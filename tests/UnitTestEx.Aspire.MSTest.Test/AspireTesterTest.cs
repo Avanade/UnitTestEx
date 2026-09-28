@@ -1,3 +1,4 @@
+using Aspire.Hosting;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -92,6 +93,68 @@ namespace UnitTestEx.Aspire.MSTest.Test
             await tester.WaitForResourceAsync("api");
 
             Assert.AreEqual("Data Source=unit-test;", connectionString);
+        }
+
+        [TestMethod]
+        public async Task AfterStart_InvokedInOrder_AfterBeforeStartAndResourcesStarted()
+        {
+            var order = new System.Collections.Generic.List<string>();
+
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .BeforeStart(app =>
+                {
+                    Assert.IsNotNull(app);
+                    order.Add("before");
+                    return Task.CompletedTask;
+                })
+                .AfterStart(app =>
+                {
+                    Assert.IsNotNull(app);
+                    order.Add("first");
+                    return Task.CompletedTask;
+                })
+                .AfterStart(app =>
+                {
+                    Assert.IsNotNull(app);
+                    order.Add("second");
+                    return Task.CompletedTask;
+                });
+
+            // Triggers build+start; BeforeStart, then both AfterStart callbacks (in registration order), must already have run before this returns.
+            await tester.WaitForResourceAsync("api");
+
+            CollectionAssert.AreEqual(new[] { "before", "first", "second" }, order);
+        }
+
+        [TestMethod]
+        public async Task AfterStart_Throws_AbortsStartUpAndPropagates()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .AfterStart(_ => throw new InvalidOperationException("Simulated post-start failure."));
+
+            var ex = await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => tester.WaitForResourceAsync("api"));
+            Assert.AreEqual("Simulated post-start failure.", ex.Message);
+        }
+
+        [TestMethod]
+        public async Task AfterStart_CanWaitForResourceHealthy_UsingExtensionMethod()
+        {
+            var waited = false;
+
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .AfterStart(async app =>
+                {
+                    // Safe to call from within AfterStart as it operates directly against 'app', unlike the instance WaitForResourceAsync which would deadlock here.
+                    await app.WaitForResourceAsync("api");
+                    waited = true;
+                });
+
+            await tester.WaitForResourceAsync("api");
+
+            Assert.IsTrue(waited);
         }
 
         [TestMethod]

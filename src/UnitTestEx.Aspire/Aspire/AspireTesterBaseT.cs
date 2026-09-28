@@ -116,10 +116,10 @@ namespace UnitTestEx.Aspire
         /// <c>BuildAsync</c> and before <c>StartAsync</c>; an exception thrown by any callback aborts start-up (the partially-built <see cref="DistributedApplication"/> is disposed and the
         /// exception propagates), consistent with a resource failing to start.
         /// <para><i>Important:</i> the callback must operate directly against the <see cref="DistributedApplication"/> passed to it - it must <b>not</b> call back into
-        /// <see cref="AspireTesterBase.GetDistributedApplicationAsync"/> (or any extension method that does, e.g. a <c>MigrateXxxAsync</c> helper written against the tester) as the
-        /// underlying <see cref="DistributedApplication"/> is still being built/started at that point; doing so will recursively re-enter construction rather than reuse it. It also must
-        /// <b>not</b> call Aspire's own <c>DistributedApplication.GetConnectionStringAsync</c>/<c>GetEndpoint</c>/<c>CreateHttpClient</c> testing extensions (<c>Aspire.Hosting.Testing</c>)
-        /// - these throw <see cref="InvalidOperationException"/> at this point as they require the application to have already started; use
+        /// <see cref="AspireTesterBase.GetDistributedApplicationAsync"/> (or any instance method that does, e.g. the instance <see cref="AspireTesterBase.WaitForResourceAsync(string, TimeSpan?)"/>):
+        /// that method's own construction is still in-flight at this point, so awaiting it from within the callback that is part of that very construction will deadlock/hang rather than
+        /// reuse it. It also must <b>not</b> call Aspire's own <c>DistributedApplication.GetConnectionStringAsync</c>/<c>GetEndpoint</c>/<c>CreateHttpClient</c> testing extensions
+        /// (<c>Aspire.Hosting.Testing</c>) - these throw <see cref="InvalidOperationException"/> at this point as they require the application to have already started; use
         /// <see cref="AspireTesterBase.GetConnectionStringAsync(DistributedApplication, string, CancellationToken)"/> instead to resolve a connection string.</para>
         /// <para>Must be called before the underlying <see cref="DistributedApplication"/> has been built (see <see cref="AspireTesterBase.GetDistributedApplicationAsync"/>).</para></remarks>
         public TSelf BeforeStart(Func<DistributedApplication, Task> beforeStart)
@@ -132,6 +132,38 @@ namespace UnitTestEx.Aspire
                     throw new InvalidOperationException($"{nameof(BeforeStart)} must be invoked before the underlying {nameof(DistributedApplication)} has been built (i.e. before any {nameof(Http)}/{nameof(WaitForResourceAsync)} call).");
 
                 BeforeStartActions.Add(beforeStart);
+            }
+
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Registers a callback to invoke once the underlying <see cref="DistributedApplication"/> has been started - i.e. after every resource (project, container, executable, etc.)
+        /// has been kicked off.
+        /// </summary>
+        /// <param name="afterStart">The callback, given the started <see cref="DistributedApplication"/>.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>The natural place to wait for one or more resources to become healthy (e.g. via the
+        /// <see cref="UnitTestExAspireExtensions.WaitForResourceAsync(DistributedApplication, string, TimeSpan?)"/>/<see cref="UnitTestExAspireExtensions.WaitForResourceAsync(DistributedApplication, string[], TimeSpan?)"/>
+        /// extension methods) - or perform any other post-start-up set-up dependent on every resource already running - before a test's own set-up (e.g. <c>OneTimeSetUp</c>) proceeds to use them.
+        /// Registered callbacks run, in order, immediately after <c>StartAsync</c> succeeds; an exception thrown by any callback aborts start-up (the started <see cref="DistributedApplication"/>
+        /// is disposed and the exception propagates), consistent with <see cref="BeforeStart"/>'s behaviour.
+        /// <para><i>Important:</i> the callback must operate directly against the <see cref="DistributedApplication"/> passed to it - it must <b>not</b> call back into
+        /// <see cref="AspireTesterBase.GetDistributedApplicationAsync"/> (or any instance method that does, e.g. the instance <see cref="AspireTesterBase.WaitForResourceAsync(string, TimeSpan?)"/>):
+        /// that method's own construction is still in-flight at this point, so awaiting it from within the callback that is part of that very construction will deadlock/hang rather than
+        /// reuse it; use the <see cref="UnitTestExAspireExtensions.WaitForResourceAsync(DistributedApplication, string, TimeSpan?)"/> extension method (which operates directly against the
+        /// callback's own <see cref="DistributedApplication"/> parameter) instead.</para>
+        /// <para>Must be called before the underlying <see cref="DistributedApplication"/> has been built (see <see cref="AspireTesterBase.GetDistributedApplicationAsync"/>).</para></remarks>
+        public TSelf AfterStart(Func<DistributedApplication, Task> afterStart)
+        {
+            if (afterStart is null) throw new ArgumentNullException(nameof(afterStart));
+
+            lock (SyncRoot)
+            {
+                if (IsDistributedApplicationBuilding)
+                    throw new InvalidOperationException($"{nameof(AfterStart)} must be invoked before the underlying {nameof(DistributedApplication)} has been built (i.e. before any {nameof(Http)}/{nameof(WaitForResourceAsync)} call).");
+
+                AfterStartActions.Add(afterStart);
             }
 
             return (TSelf)this;
