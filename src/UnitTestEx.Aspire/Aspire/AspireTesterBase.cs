@@ -317,8 +317,12 @@ namespace UnitTestEx.Aspire
             foreach (var (resourceName, buffer) in _resourceLogBuffers)
             {
                 var lastCount = _elapsedLogLineCounts.GetOrAdd(resourceName, 0);
-                var newEntries = buffer.Skip(lastCount).ToArray();
-                _elapsedLogLineCounts[resourceName] = buffer.Count;
+
+                // Derive the new entries and the advanced watermark from the *same* snapshot rather than a separate enumeration and Count read; otherwise a resource log enqueued in the gap
+                // between the two could advance the watermark past an entry that was never included in newEntries, silently and permanently skipping it from all future drains.
+                var snapshot = buffer.ToArray();
+                var newEntries = snapshot.Skip(lastCount).ToArray();
+                _elapsedLogLineCounts[resourceName] = snapshot.Length;
 
                 AssertNoErrorWhenLogContainsViolation(newEntries, resourceName);
                 lines.AddRange(newEntries.Select(e => e.Text));
@@ -697,8 +701,11 @@ namespace UnitTestEx.Aspire
                 // (often the interesting one, e.g. the endpoint's own logging for this very request) is not lost while waiting for a line that may never come.
                 owner._resourceLogCaptureProvider?.FlushPendingEntries();
 
-                var newEntries = buffer.Skip(baseline).ToArray();
-                owner._elapsedLogLineCounts[resourceName] = buffer.Count;
+                // Derive the new entries and the advanced watermark from the *same* snapshot rather than a separate enumeration and Count read; see DrainElapsedLogMessages for why the
+                // split form is racy against a concurrently-enqueued entry.
+                var snapshot = buffer.ToArray();
+                var newEntries = snapshot.Skip(baseline).ToArray();
+                owner._elapsedLogLineCounts[resourceName] = snapshot.Length;
 
                 owner.AssertNoErrorWhenLogContainsViolation(newEntries, resourceName);
                 return newEntries.Select(e => e.Text).ToArray();
