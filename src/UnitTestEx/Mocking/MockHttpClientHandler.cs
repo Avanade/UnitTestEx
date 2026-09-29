@@ -10,6 +10,8 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Provides a <see cref="HttpMessageHandler"/> that will log success and failure.
     /// </summary>
+    /// <remarks>Logs each mocked request/response pair at <see cref="MockHttpClientFactory.LogLevel"/> (defaults to <see cref="LogLevel.Debug"/>; configurable via
+    /// <see cref="MockHttpClientFactory.UseLogLevel(LogLevel)"/>) - set to <see cref="LogLevel.None"/> to disable this logging entirely.</remarks>
     public class MockHttpClientHandler : DelegatingHandler
     {
         private readonly MockHttpClientFactory _factory;
@@ -25,11 +27,16 @@ namespace UnitTestEx.Mocking
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var logger = _factory.Logger ?? _factory.Implementor.CreateLoggerProvider().CreateLogger(nameof(MockHttpClientFactory));
-            logger.LogDebug($"UnitTestEx > Sending HTTP request {request.Method} {request.RequestUri} {LogContent(request.Content)}");
+            var logLevel = _factory.LogLevel;
+
+            if (logLevel != LogLevel.None)
+                logger.Log(logLevel, $"UnitTestEx > Sending HTTP request {request.Method} {request.RequestUri} {LogContent(request.Content)}");
 
             var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false) ?? throw new MockHttpClientException($"No corresponding MockHttpClient response found for HTTP request {request.Method} {request.RequestUri} {LogContent(request.Content)}");
 
-            logger.LogDebug($"UnitTestEx > Received HTTP response {response.StatusCode} ({(int)response.StatusCode}) {LogContent(response.Content)}");
+            if (logLevel != LogLevel.None)
+                logger.Log(logLevel, $"UnitTestEx > Received HTTP response {response.StatusCode} ({(int)response.StatusCode}) {LogContent(response.Content)}");
+           
             return response;
         }
 

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Microsoft.Extensions.Logging;
 using System;
@@ -12,11 +12,12 @@ namespace UnitTestEx.Expectations
     /// <summary>
     /// Provides log expectations.
     /// </summary>
-    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
     /// <param name="tester">The initiating tester.</param>
-    public class LoggerExpectations<TTester>(TesterBase owner, TTester tester) : ExpectationsBase<TTester>(owner, tester)
+    public class LoggerExpectations<TTester>(TesterBaseCore owner, TTester tester) : ExpectationsBase<TTester>(owner, tester)
     {
         private readonly List<string> _expectTexts = [];
+        private readonly List<string> _expectNotTexts = [];
 
         /// <inheritdoc/>
         public override string Title => "Logger expectations";
@@ -26,6 +27,12 @@ namespace UnitTestEx.Expectations
         /// </summary>
         /// <param name="texts">The text(s) that should appear in at least one log message line.</param>
         public void SetExpectLogContains(params string[] texts) => _expectTexts.AddRange(texts.Where(t => !string.IsNullOrEmpty(t)));
+
+        /// <summary>
+        /// Expects that the <see cref="ILogger"/> will <b>not</b> have logged a message that contains any of the specified <paramref name="texts"/>.
+        /// </summary>
+        /// <param name="texts">The text(s) that should not appear in any log message line.</param>
+        public void SetExpectLogNotContains(params string[] texts) => _expectNotTexts.AddRange(texts.Where(t => !string.IsNullOrEmpty(t)));
 
         /// <inheritdoc/>
         protected override Task OnAssertAsync(AssertArgs args)
@@ -39,6 +46,12 @@ namespace UnitTestEx.Expectations
                     continue;
 
                 args.Tester.Implementor.AssertFail($"Expected a log text to contain '{et}' that was not found.");
+            }
+
+            foreach (var ent in _expectNotTexts)
+            {
+                if (args.Logs is not null && args.Logs.Any(l => !string.IsNullOrEmpty(l) && l.Contains(ent, StringComparison.InvariantCultureIgnoreCase)))
+                    args.Tester.Implementor.AssertFail($"Expected no log text to contain '{ent}' but one was found.");
             }
 
             return Task.CompletedTask;

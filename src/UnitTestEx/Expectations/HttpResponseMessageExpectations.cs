@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
 using System.Net;
@@ -11,9 +11,9 @@ namespace UnitTestEx.Expectations
     /// <summary>
     /// Provides <see cref="HttpResponseMessage"/> expectations.
     /// </summary>
-    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
     /// <param name="tester">The initiating tester.</param>
-    public class HttpResponseMessageExpectations<TTester>(TesterBase owner, TTester tester) : ExpectationsBase<TTester>(owner, tester)
+    public class HttpResponseMessageExpectations<TTester>(TesterBaseCore owner, TTester tester) : ExpectationsBase<TTester>(owner, tester)
     {
         private HttpStatusCode? _httpStatusCode;
 

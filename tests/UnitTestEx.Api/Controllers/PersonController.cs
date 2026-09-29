@@ -47,6 +47,31 @@ namespace UnitTestEx.Api.Controllers
             return new ObjectResult($"{firstName}-{lastName}-{(id is null ? "" : string.Join(",", id))}");
         }
 
+        // Purely a test aid (see AspireTesterBase's ErrorWhenLogContains) - logs a single message at the requested level so a resource's own log capture pipeline can be exercised end-to-end.
+        [HttpGet("test/log/{level}")]
+        public IActionResult TestLog(string level, [FromQuery] string? message = null)
+        {
+            var text = message ?? $"Simulated {level} log entry.";
+
+            switch (level.ToLowerInvariant())
+            {
+                case "critical":
+                    _logger.LogCritical("{Content}", text);
+                    break;
+                case "error":
+                    _logger.LogError("{Content}", text);
+                    break;
+                case "warning":
+                    _logger.LogWarning("{Content}", text);
+                    break;
+                default:
+                    _logger.LogInformation("{Content}", text);
+                    break;
+            }
+
+            return Ok();
+        }
+
         [HttpPost("{id}")]
         public IActionResult Update(int id, [FromBody] Person person)
         {

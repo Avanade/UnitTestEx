@@ -29,6 +29,13 @@ namespace UnitTestEx.Mocking
         internal ILogger? Logger { get; set; }
 
         /// <summary>
+        /// Gets or sets the <see cref="Microsoft.Extensions.Logging.LogLevel"/> that <see cref="MockHttpClientHandler"/> logs each mocked request/response pair at.
+        /// </summary>
+        /// <remarks>Defaults to <see cref="LogLevel.Debug"/>. Set to <see cref="LogLevel.None"/> to disable this logging entirely, or use <see cref="UseLogLevel(LogLevel)"/> to set it via
+        /// fluent-style method-chaining.</remarks>
+        public LogLevel LogLevel { get; set; } = LogLevel.Debug;
+
+        /// <summary>
         /// Gets the <see cref="Mock"/> <see cref="IHttpClientFactory"/>.
         /// </summary>
         public Mock<IHttpClientFactory> HttpClientFactory { get; } = new Mock<IHttpClientFactory>();
@@ -65,6 +72,17 @@ namespace UnitTestEx.Mocking
         public MockHttpClientFactory UseJsonComparerOptions(JsonElementComparerOptions options)
         {
             JsonComparerOptions = options ?? throw new ArgumentNullException(nameof(options));
+            return this;
+        }
+
+        /// <summary>
+        /// Updates the <see cref="LogLevel"/> that <see cref="MockHttpClientHandler"/> logs each mocked request/response pair at.
+        /// </summary>
+        /// <param name="logLevel">The <see cref="LogLevel"/>.</param>
+        /// <returns>The current instance to support fluent-style method-chaining.</returns>
+        public MockHttpClientFactory UseLogLevel(LogLevel logLevel)
+        {
+            LogLevel = logLevel;
             return this;
         }
 

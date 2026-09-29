@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.AspNetCore.TestHost;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
@@ -14,9 +13,9 @@ namespace UnitTestEx.AspNetCore
     /// <summary>
     /// Provides <see cref="HttpRequestMessage"/> send testing.
     /// </summary>
-    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
-    /// <param name="testServer">The <see cref="TestServer"/>.</param>
-    public class HttpTester(TesterBase owner, TestServer testServer) : HttpTesterBase<HttpTester>(owner, testServer)
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
+    /// <param name="httpClientSource">The <see cref="IHttpClientSource"/>.</param>
+    public class HttpTester(TesterBaseCore owner, IHttpClientSource httpClientSource) : HttpTesterBase<HttpTester>(owner, httpClientSource)
     {
         /// <summary>
         /// Runs the test by sending an <see cref="HttpRequestMessage"/> with no body.

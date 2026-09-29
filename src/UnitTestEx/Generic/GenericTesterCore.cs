@@ -147,7 +147,7 @@ namespace UnitTestEx.Generic
         }
 
         /// <inheritdoc/>
-        protected override void ResetHost()
+        protected override void OnResetHost()
         {
             lock (SyncRoot)
             {

@@ -1,6 +1,5 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.AspNetCore.TestHost;
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -19,9 +18,9 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Initializes a new <see cref="HttpTesterBase{TSelf}"/> class.
         /// </summary>
-        /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
-        /// <param name="testServer">The <see cref="TestServer"/>.</param>
-        public HttpTesterBase(TesterBase owner, TestServer testServer) : base(owner, testServer) => ExpectationsArranger = new ExpectationsArranger<TSelf>(owner, (TSelf)this);
+        /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
+        /// <param name="httpClientSource">The <see cref="IHttpClientSource"/>.</param>
+        public HttpTesterBase(TesterBaseCore owner, IHttpClientSource httpClientSource) : base(owner, httpClientSource) => ExpectationsArranger = new ExpectationsArranger<TSelf>(owner, (TSelf)this);
 
         /// <summary>
         /// Gets the <see cref="ExpectationsArranger{TSelf}"/>.
@@ -29,7 +28,7 @@ namespace UnitTestEx.AspNetCore
         public ExpectationsArranger<TSelf> ExpectationsArranger { get; }
 
         /// <summary>
-        /// Sets (overrides) the test user name (defaults to <see cref="TesterBase.UserName"/>).
+        /// Sets (overrides) the test user name (defaults to <see cref="TesterBaseCore.UserName"/>).
         /// </summary>
         /// <param name="userName">The test user name.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>
@@ -40,7 +39,7 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <summary>
-        /// Sets (overrides) the test user name (defaults to <see cref="TesterBase.UserName"/>).
+        /// Sets (overrides) the test user name (defaults to <see cref="TesterBaseCore.UserName"/>).
         /// </summary>
         /// <param name="userIdentifier">The test user identifier.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns>

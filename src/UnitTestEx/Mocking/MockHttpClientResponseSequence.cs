@@ -5,7 +5,7 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Mocks the <see cref="MockHttpClientResponse"/> within a sequence.
     /// </summary>
-    public sealed class MockHttpClientResponseSequence
+    public sealed class MockHttpClientResponseSequence : IHttpMockResponseSequence
     {
         private readonly MockHttpClientRequest _clientRequest;
         private readonly MockHttpClientRequestRule _rule;
@@ -31,5 +31,8 @@ namespace UnitTestEx.Mocking
             _rule.Responses!.Add(resp);
             return resp;
         }
+
+        /// <inheritdoc/>
+        IHttpMockResponseSequenceItem IHttpMockResponseSequence.Respond() => Respond();
     }
 }

@@ -23,7 +23,12 @@ namespace UnitTestEx.Api
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers().AddNewtonsoftJson();
-            services.AddHttpClient("XXX", hc => hc.BaseAddress = new System.Uri("https://somesys"))
+
+            // The base address defaults to a bogus, unreachable address as Tier 1 (WebApplicationFactory) tests always replace the whole IHttpClientFactory via MockHttpClientFactory, so the
+            // configured value is never actually dialled. It is overridable via configuration (e.g. an Aspire AppHost-supplied "XXX__BaseUrl" environment variable) so that Tier 2 (Aspire
+            // multi-host) tests can point this client at a real resource - e.g. a WireMock.Net.Aspire resource standing in for an external dependency - since there is no DI container to
+            // reach into and replace across process boundaries.
+            services.AddHttpClient("XXX", hc => hc.BaseAddress = new System.Uri(Configuration["XXX:BaseUrl"] ?? "https://somesys"))
                 .AddHttpMessageHandler(_ => new MessageProcessingHandler())
                 .ConfigureHttpClient(hc => hc.DefaultRequestVersion = new Version(1, 2));
         }

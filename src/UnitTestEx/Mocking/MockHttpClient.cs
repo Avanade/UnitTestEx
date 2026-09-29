@@ -20,7 +20,7 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Provides the <see cref="System.Net.Http.HttpClient"/> (more specifically <see cref="HttpMessageHandler"/>) mocking.
     /// </summary>
-    public sealed class MockHttpClient : IDisposable
+    public sealed class MockHttpClient : IDisposable, IHttpMockClient
     {
         /// <summary>
         /// Gets the default <see cref="HttpClient.BaseAddress"/> being '<c>https://unittest</c>'.
@@ -255,6 +255,9 @@ namespace UnitTestEx.Mocking
 
             return r;
         }
+
+        /// <inheritdoc/>
+        IHttpMockRequest IHttpMockClient.Request(HttpMethod? method, string? requestUri) => Request(method, requestUri);
 
         /// <summary>
         /// Indicates whether the request content comparison differences should be trace logged to aid in debugging/troubleshooting.

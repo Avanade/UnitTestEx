@@ -27,6 +27,31 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
+        public async Task Get_Test1_ExpectLogNotContains_Succeeds()
+        {
+            using var test = ApiTester.Create<Startup>().Delay(1000);
+            (await test.Controller<PersonController>()
+                .ExpectLogNotContains("This text is never logged.")
+                .RunAsync(c => c.Get(1)))
+                .AssertOK()
+                .AssertValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [Test]
+        public void Get_Test1_ExpectLogNotContains_Failure()
+        {
+            var ex = Assert.Throws<AssertionException>(() =>
+            {
+                using var test = ApiTester.Create<Startup>();
+                test.Controller<PersonController>()
+                    .ExpectLogNotContains("Get using identifier 1")
+                    .Run(c => c.Get(1));
+            });
+
+            Assert.That(ex.Message, Does.Contain("Expected no log text to contain 'Get using identifier 1' but one was found."));
+        }
+
+        [Test]
         public void Get_Test2()
         {
             int id = 2;
@@ -59,6 +84,7 @@ namespace UnitTestEx.NUnit.Test
         public void Get_Test4_WithResetHost()
         {
             using var test = ApiTester.Create<Startup>().ResetHost();
+            test.Checkpoint("Need to reset the host.");
             test.Controller<PersonController>()
                 .Run(c => c.Get(4))
                 .AssertNotFound();

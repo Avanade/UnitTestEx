@@ -24,7 +24,7 @@ namespace UnitTestEx.AspNetCore
     /// </summary>
     /// <typeparam name="TEntryPoint">The API startup <see cref="System.Type"/>.</typeparam>
     /// <typeparam name="TSelf">The <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
-    public abstract class ApiTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : class where TSelf : ApiTesterBase<TEntryPoint, TSelf> 
+    public abstract class ApiTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IHttpClientSource, IDisposable where TEntryPoint : class where TSelf : ApiTesterBase<TEntryPoint, TSelf> 
     {
         private bool _disposed;
         private WebApplicationFactory<TEntryPoint>? _waf;
@@ -95,7 +95,7 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <inheritdoc/>
-        protected override void ResetHost()
+        protected override void OnResetHost()
         {
             lock (SyncRoot)
             {
@@ -146,26 +146,38 @@ namespace UnitTestEx.AspNetCore
         /// </summary>
         /// <typeparam name="TController">The API Controller <see cref="System.Type"/>.</typeparam>
         /// <returns>The <see cref="ControllerTester{TController}"/>.</returns>
-        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, GetTestServer());
+        public ControllerTester<TController> Controller<TController>() where TController : ControllerBase => new(this, this);
 
         /// <summary>
         /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/>.
         /// </summary>
         /// <returns>The <see cref="HttpTester"/>.</returns>
-        public HttpTester Http() => new(this, GetTestServer());
+        public HttpTester Http() => new(this, this);
 
         /// <summary>
         /// Enables a test <see cref="HttpRequestMessage"/> to be sent to the underlying <see cref="TestServer"/> with an expected response value <see cref="System.Type"/>.
         /// </summary>
         /// <typeparam name="TResponse">The response value <see cref="System.Type"/>.</typeparam>
         /// <returns>The <see cref="HttpTester{TResponse}"/>.</returns>
-        public HttpTester<TResponse> Http<TResponse>() => new(this, GetTestServer());
+        public HttpTester<TResponse> Http<TResponse>() => new(this, this);
 
         /// <summary>
         /// Gets the underlying <see cref="TestServer"/>.
         /// </summary>
         /// <returns>The <see cref="TestServer"/>.</returns>
         public TestServer GetTestServer() => HostExecutionWrapper(() => GetWebApplicationFactory().Server);
+
+        /// <inheritdoc/>
+        /// <remarks>Deliberately bypasses <see cref="GetTestServer"/> (and therefore its <see cref="TestSharedState.Reset"/> side-effect) here: this is invoked per-request, potentially <i>after</i>
+        /// expectations (e.g. <c>ExpectEvents</c>) have already registered state into <see cref="TestSharedState.StateData"/> for the current request's <see cref="HttpTesterBase.RequestId"/>. Routing
+        /// through the resetting wrapper on every request wipes that state immediately before the request is sent, silently discarding registered expectation flags (causing false "no events published"
+        /// failures). <see cref="GetTestServer"/> itself is left untouched for its other (construction-time, pre-expectation) callers.</remarks>
+        public HttpClient CreateHttpClient(string? name = null)
+        {
+            var server = GetWebApplicationFactory().Server;
+            return new HttpClient(server.CreateHandler()) { BaseAddress = server.BaseAddress };
+        }
+
 
         /// <summary>
         /// Sets the content root to be relative to the solution directory (i.e. the directory containing the .sln file). 

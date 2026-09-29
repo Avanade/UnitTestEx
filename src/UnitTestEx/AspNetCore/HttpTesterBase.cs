@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -33,24 +32,24 @@ namespace UnitTestEx.AspNetCore
         /// <summary>
         /// Initializes a new <see cref="HttpTesterBase"/> class.
         /// </summary>
-        /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
-        /// <param name="testServer">The <see cref="TestServer"/>.</param>
-        public HttpTesterBase(TesterBase owner, TestServer testServer)
+        /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
+        /// <param name="httpClientSource">The <see cref="IHttpClientSource"/>.</param>
+        public HttpTesterBase(TesterBaseCore owner, IHttpClientSource httpClientSource)
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
-            TestServer = testServer ?? throw new ArgumentNullException(nameof(testServer));
+            HttpClientSource = httpClientSource ?? throw new ArgumentNullException(nameof(httpClientSource));
             UserName = Owner.UserName;
         }
 
         /// <summary>
-        /// Gets the owning <see cref="TesterBase"/>.
+        /// Gets the owning <see cref="TesterBaseCore"/>.
         /// </summary>
-        public TesterBase Owner { get; }
+        public TesterBaseCore Owner { get; }
 
         /// <summary>
-        /// Gets the underlying <see cref="TestServer"/>.
+        /// Gets the <see cref="IHttpClientSource"/> used to create the underlying <see cref="HttpClient"/>.
         /// </summary>
-        public TestServer TestServer { get; }
+        public IHttpClientSource HttpClientSource { get; }
 
         /// <summary>
         /// Gets the <see cref="TestFrameworkImplementor"/>.
@@ -63,7 +62,7 @@ namespace UnitTestEx.AspNetCore
         public IJsonSerializer JsonSerializer => Owner.JsonSerializer;
 
         /// <summary>
-        /// Gets or sets the test user name (defaults to <see cref="TesterBase.UserName"/>).
+        /// Gets or sets the test user name (defaults to <see cref="TesterBaseCore.UserName"/>).
         /// </summary>
         public string? UserName { get; protected set; }
 
@@ -95,7 +94,7 @@ namespace UnitTestEx.AspNetCore
             {
                 Owner.ExecutePreRunActions(this);
                 using var client = CreateHttpClient();
-                var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, requestModifier).ConfigureAwait(false);
+                var res = await new TypedHttpClient(this, client).SendAsync(httpMethod, requestUri, requestModifier).ConfigureAwait(false);
                 await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
                 Owner.ExecutePostRunBeforeExpectationsActions(this);
                 await AssertExpectationsAsync(res).ConfigureAwait(false);
@@ -131,7 +130,7 @@ namespace UnitTestEx.AspNetCore
                     Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
                 using var client = CreateHttpClient();
-                var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, content, contentType, requestModifier).ConfigureAwait(false);
+                var res = await new TypedHttpClient(this, client).SendAsync(httpMethod, requestUri, content, contentType, requestModifier).ConfigureAwait(false);
                 await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
                 Owner.ExecutePostRunBeforeExpectationsActions(this);
                 await AssertExpectationsAsync(res).ConfigureAwait(false);
@@ -166,7 +165,7 @@ namespace UnitTestEx.AspNetCore
                     Owner.LoggerProvider.CreateLogger("ApiTester").LogWarning("A payload within a GET request message has no defined semantics; sending a payload body on a GET request might cause some existing implementations to reject the request (see https://www.rfc-editor.org/rfc/rfc7231).");
 
                 using var client = CreateHttpClient();
-                var res = await new TypedHttpClient(client, JsonSerializer).SendAsync(httpMethod, requestUri, value, requestModifier).ConfigureAwait(false);
+                var res = await new TypedHttpClient(this, client).SendAsync(httpMethod, requestUri, value, requestModifier).ConfigureAwait(false);
                 await Task.Delay(TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
                 Owner.ExecutePostRunBeforeExpectationsActions(this);
                 await AssertExpectationsAsync(res).ConfigureAwait(false);
@@ -181,51 +180,20 @@ namespace UnitTestEx.AspNetCore
         }
 
         /// <summary>
-        /// Creates an <see cref="HttpClient"/> for the <see cref="TestServer"/> that logs the request and response to the test output.
+        /// Creates an <see cref="HttpClient"/> (via the <see cref="HttpClientSource"/>) that logs the request and response to the test output.
         /// </summary>
         /// <returns>The <see cref="HttpClient"/>.</returns>
-        public HttpClient CreateHttpClient() => new(new HttpDelegatingHandler(this, TestServer.CreateHandler())) { BaseAddress = TestServer.BaseAddress };
-
-        /// <summary>
-        /// Orchestrates the HTTP request send including logging and <see cref="TestSetUp.OnBeforeHttpRequestMessageSendAsync"/>.
-        /// </summary>
-        /// <param name="httpTester">The <see cref="HttpTesterBase"/>.</param>
-        /// <param name="innerHandler">The inner <see cref="HttpMessageHandler"/>.</param>
-        public class HttpDelegatingHandler(HttpTesterBase httpTester, HttpMessageHandler innerHandler) : DelegatingHandler(innerHandler)
-        {
-            private readonly HttpTesterBase _httpTester = httpTester;
-
-            /// <inheritdoc/>
-            protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                TestSetUp.LogAutoSetUpOutputs(_httpTester.Owner.Implementor);
-
-                if (_httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync != null)
-                    await _httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync(request, _httpTester.UserName, cancellationToken);
-
-                request.Headers.Add(RequestIdName, _httpTester.RequestId);
-
-                _httpTester.LogRequest(request);
-                var sw = Stopwatch.StartNew();
-                var res = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
-                sw.Stop();
-
-                await Task.Delay(0, cancellationToken).ConfigureAwait(false);
-                _httpTester.LastLogs = _httpTester.Owner.SharedState.GetLoggerMessages(_httpTester.RequestId);
-                _httpTester.LogResponse(res, sw, _httpTester.LastLogs);
-                return res;
-            }
-        }
+        public HttpClient CreateHttpClient() => HttpClientSource.CreateHttpClient();
 
         /// <summary>
         /// Provides the requisite <see cref="HttpClient"/> sending capabilities.
         /// </summary>
+        /// <param name="httpTester">The owning <see cref="HttpTesterBase"/>.</param>
         /// <param name="client">The <see cref="HttpClient"/>.</param>
-        /// <param name="jsonSerializer">The <see cref="IJsonSerializer"/>.</param>
-        public class TypedHttpClient(HttpClient client, IJsonSerializer jsonSerializer)
+        public class TypedHttpClient(HttpTesterBase httpTester, HttpClient client)
         {
+            private readonly HttpTesterBase _httpTester = httpTester ?? throw new ArgumentNullException(nameof(httpTester));
             private readonly HttpClient _client = client ?? throw new ArgumentNullException(nameof(client));
-            private readonly IJsonSerializer _jsonSerializer = jsonSerializer ?? throw new ArgumentNullException(nameof(jsonSerializer));
 
             /// <summary>
             /// Sends with no content.
@@ -255,18 +223,38 @@ namespace UnitTestEx.AspNetCore
 #else
             public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
 #endif
-                => await SendAsync(CreateRequest(method, requestUri ?? "", new StringContent(_jsonSerializer.Serialize(value), Encoding.UTF8, MediaTypeNames.Application.Json), requestModifier), default).ConfigureAwait(false);
+                => await SendAsync(CreateRequest(method, requestUri ?? "", new StringContent(_httpTester.JsonSerializer.Serialize(value), Encoding.UTF8, MediaTypeNames.Application.Json), requestModifier), default).ConfigureAwait(false);
 
-            /// <inheritdoc/>
-            private Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => _client.SendAsync(request, cancellationToken);
+            /// <summary>
+            /// Orchestrates the HTTP request send including logging and <see cref="TestSetUp.OnBeforeHttpRequestMessageSendAsync"/>.
+            /// </summary>
+            private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                TestSetUp.LogAutoSetUpOutputs(_httpTester.Owner.Implementor);
+
+                if (_httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync != null)
+                    await _httpTester.Owner.SetUp.OnBeforeHttpRequestMessageSendAsync(request, _httpTester.UserName, cancellationToken);
+
+                request.Headers.Add(RequestIdName, _httpTester.RequestId);
+
+                _httpTester.LogRequest(request);
+                var sw = Stopwatch.StartNew();
+                var res = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                sw.Stop();
+
+                await Task.Delay(0, cancellationToken).ConfigureAwait(false);
+                _httpTester.LastLogs = _httpTester.HttpClientSource.GetRequestLogMessages(_httpTester.RequestId) ?? _httpTester.Owner.SharedState.GetLoggerMessages(_httpTester.RequestId);
+                _httpTester.LogResponse(res, sw, _httpTester.LastLogs);
+                return res;
+            }
 
             /// <summary>
             /// Create the request.
             /// </summary>
-            private static HttpRequestMessage CreateRequest(HttpMethod method, string requestUri, HttpContent? content, Action<HttpRequestMessage>? requestModifier)
+            private HttpRequestMessage CreateRequest(HttpMethod method, string requestUri, HttpContent? content, Action<HttpRequestMessage>? requestModifier)
             {
                 var uri = new Uri(requestUri, UriKind.RelativeOrAbsolute);
-                var ub = new UriBuilder(uri.IsAbsoluteUri ? uri : new Uri(MockHttpClient.DefaultBaseAddress, requestUri));
+                var ub = new UriBuilder(uri.IsAbsoluteUri ? uri : new Uri(_client.BaseAddress ?? MockHttpClient.DefaultBaseAddress, requestUri));
 
                 var request = new HttpRequestMessage(method, ub.Uri);
                 if (content != null)

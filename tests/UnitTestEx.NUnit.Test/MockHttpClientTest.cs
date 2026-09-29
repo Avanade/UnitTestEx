@@ -316,7 +316,15 @@ namespace UnitTestEx.NUnit.Test
                 Assert.That(res.RequestMessage, Is.Not.Null);
             });
 
-            Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
+            // WithAnyBody is a true wildcard - it also matches a request with no body at all.
+            var res2 = await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")).ConfigureAwait(false);
+            Assert.Multiple(async () =>
+            {
+                Assert.That(res2.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+                Assert.That(await res2.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
+            });
+
+            Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Get, "products/xyz")));
         }
 
         [Test]
@@ -539,7 +547,15 @@ namespace UnitTestEx.NUnit.Test
                 Assert.That(res.Headers.Age, Is.EqualTo(TimeSpan.FromSeconds(55)));
             });
 
-            Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
+            // WithAnyBody is a true wildcard - it also matches a request with no body at all.
+            var res2 = await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")).ConfigureAwait(false);
+            Assert.Multiple(async () =>
+            {
+                Assert.That(res2.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+                Assert.That(await res2.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
+            });
+
+            Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Get, "products/xyz")));
         }
 
         [Test]

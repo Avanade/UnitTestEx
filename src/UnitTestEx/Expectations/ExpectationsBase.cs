@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
 using System.Collections.Generic;
@@ -10,15 +10,15 @@ namespace UnitTestEx.Expectations
     /// <summary>
     /// Provides the base <b>Expectations</b> implementation.
     /// </summary>
-    /// <param name="owner">The owning <see cref="TesterBase"/></param>
-    public abstract class ExpectationsBase(TesterBase owner)
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/></param>
+    public abstract class ExpectationsBase(TesterBaseCore owner)
     {
         private List<Func<AssertArgs, Task<bool>>>? _extendedActions;
 
         /// <summary>
-        /// Gets the owning <see cref="TesterBase"/>.
+        /// Gets the owning <see cref="TesterBaseCore"/>.
         /// </summary>
-        public TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
+        public TesterBaseCore Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
 
         /// <summary>
         /// Gets or sets the title used in the assertion output.

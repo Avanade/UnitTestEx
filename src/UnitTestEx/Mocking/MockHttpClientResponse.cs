@@ -18,7 +18,7 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Provides the <see cref="HttpResponseMessage"/> configuration for mocking.
     /// </summary>
-    public sealed class MockHttpClientResponse
+    public sealed class MockHttpClientResponse : IHttpMockResponse, IHttpMockResponseSequenceItem
     {
         private readonly MockHttpClientRequest _clientRequest;
         private readonly MockHttpClientRequestRule? _rule;
@@ -262,5 +262,63 @@ namespace UnitTestEx.Mocking
             if (_rule.Responses.Count > 0)
                 _clientRequest.MockResponse();
         }
+
+        #region IHttpMockResponse
+
+        /// <inheritdoc/>
+        IHttpMockResponse IHttpMockResponse.Header(string name, string value) => Header(name, value);
+
+        /// <inheritdoc/>
+        IHttpMockResponse IHttpMockResponse.Delay(TimeSpan timeSpan) => Delay(timeSpan);
+
+        /// <inheritdoc/>
+        Task<IHttpMockedRequest> IHttpMockResponse.WithAsync(string? content, HttpStatusCode statusCode, string mediaType, CancellationToken cancellationToken)
+        {
+            if (content is null)
+                With((HttpContent?)null, statusCode);
+            else
+                With(content, statusCode, mediaType);
+
+            return Task.FromResult<IHttpMockedRequest>(_clientRequest);
+        }
+
+        /// <inheritdoc/>
+        Task<IHttpMockedRequest> IHttpMockResponse.WithJsonAsync<T>(T value, HttpStatusCode statusCode, CancellationToken cancellationToken)
+        {
+            WithJson(value, statusCode);
+            return Task.FromResult<IHttpMockedRequest>(_clientRequest);
+        }
+
+        /// <inheritdoc/>
+        Task<IHttpMockedRequest> IHttpMockResponse.WithSequenceAsync(Action<IHttpMockResponseSequence> sequence, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(sequence);
+            WithSequence(s => sequence(s));
+            return Task.FromResult<IHttpMockedRequest>(_clientRequest);
+        }
+
+        #endregion
+
+        #region IHttpMockResponseSequenceItem
+
+        /// <inheritdoc/>
+        IHttpMockResponseSequenceItem IHttpMockResponseSequenceItem.Header(string name, string value) => Header(name, value);
+
+        /// <inheritdoc/>
+        IHttpMockResponseSequenceItem IHttpMockResponseSequenceItem.Delay(TimeSpan timeSpan) => Delay(timeSpan);
+
+        /// <inheritdoc/>
+        void IHttpMockResponseSequenceItem.With(string? content, HttpStatusCode statusCode, string mediaType)
+        {
+            if (content is null)
+                With((HttpContent?)null, statusCode);
+            else
+                With(content, statusCode, mediaType);
+        }
+
+        /// <inheritdoc/>
+        void IHttpMockResponseSequenceItem.WithJson<T>(T value, HttpStatusCode statusCode) => WithJson(value, statusCode);
+
+        #endregion
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
 using System.Linq;
@@ -12,9 +12,9 @@ namespace UnitTestEx.Expectations
     /// <summary>
     /// Provides value expectations.
     /// </summary>
-    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
     /// <param name="tester">The initiating tester.</param>
-    public class ValueExpectations<TTester>(TesterBase owner, TTester tester) : ExpectationsBase<TTester>(owner, tester)
+    public class ValueExpectations<TTester>(TesterBaseCore owner, TTester tester) : ExpectationsBase<TTester>(owner, tester)
     {
         private const string NullJson = "null";
         private Func<TTester, string>? _json;

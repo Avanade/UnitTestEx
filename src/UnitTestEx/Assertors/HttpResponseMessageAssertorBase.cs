@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using System;
 using System.Collections.Generic;
@@ -15,15 +15,15 @@ namespace UnitTestEx.Assertors
     /// <remarks>
     /// Initializes a new instance of the <see cref="HttpResponseMessageAssertorBase{TSelf}"/> class.
     /// </remarks>
-    /// <param name="owner">The owning <see cref="TesterBase"/>.</param>
+    /// <param name="owner">The owning <see cref="TesterBaseCore"/>.</param>
     /// <param name="logs">The log messages captured during execution.</param>
     /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
-    public abstract class HttpResponseMessageAssertorBase(TesterBase owner, IEnumerable<string?>? logs, HttpResponseMessage response)
+    public abstract class HttpResponseMessageAssertorBase(TesterBaseCore owner, IEnumerable<string?>? logs, HttpResponseMessage response)
     {
         /// <summary>
-        /// Gets the owning <see cref="TesterBase"/>.
+        /// Gets the owning <see cref="TesterBaseCore"/>.
         /// </summary>
-        public TesterBase Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
+        public TesterBaseCore Owner { get; } = owner ?? throw new ArgumentNullException(nameof(owner));
 
         /// <summary>
         /// Gets the log messages captured during execution.

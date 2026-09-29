@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- This project is UnitTestEx's recommended, self-hosted pattern for Aspire multi-host WireMock.Net mocking - see the README's "Aspire multi-host testing" section. It runs
+       WireMock.Net as an ordinary Aspire *project* resource (AddProject) rather than the official WireMock.Net.Aspire *container* resource (AddWireMock). A container resource can
+       only run a published, off-the-shelf WireMock.Net binary - it has no way to load a custom .NET IMatcher type. A project resource is just our own process, so it can register
+       UnitTestEx.Aspire's JsonElementComparerMatcher (see that type) via WireMockServerSettings.CustomMatcherMappings, giving Tier 2/3 JSON body matching genuine parity with UnitTestEx's
+       own JsonElementComparer (semantic date/GUID/decimal coercion, etc.) instead of WireMock.Net's own textual JSON comparison. As a bonus, this also drops the Docker/Podman
+       requirement entirely - this test suite's AppHost has no container-based WireMock.Net resource at all.
+
+       This project is deliberately kept small and test-only (IsPackable=false, not shipped as a NuGet package): it is a *template* for consumers to copy into their own
+       solution's AppHost, not a product UnitTestEx.Aspire owns or ships. It does, however, reference UnitTestEx.Aspire itself (a package reference in a consumer's own copy) for
+       JsonElementComparerMatcher and WireMockConsole (which encapsulates all the port/custom-matcher/graceful-shutdown boilerplate), so there is no matcher code - or boilerplate -
+       left to copy; Program.cs is a one-liner. The official WireMock.Net.Aspire container resource remains fully supported
+       as an alternative for teams already invested in that ecosystem. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WireMock.Net" Version="2.18.0" />
+    <!-- Pins the winning Humanizer version (see UnitTestEx.Aspire.csproj's matching comment) to resolve the NU1608 warning caused by WireMock.Net.Shared's
+         Handlebars.Net.Helpers.Humanizer (wants Humanizer 2.14.1) conflicting with Aspire.Hosting's Humanizer.Core 3.0.10, pulled in transitively via the
+         UnitTestEx.Aspire project reference below. -->
+    <PackageReference Include="Humanizer" Version="3.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Consumers copying this template into their own solution should replace this with a PackageReference to UnitTestEx.Aspire instead (for JsonElementComparerMatcher). -->
+    <ProjectReference Include="..\..\src\UnitTestEx.Aspire\UnitTestEx.Aspire.csproj" />
+  </ItemGroup>
+
+</Project>

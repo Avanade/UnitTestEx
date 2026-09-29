@@ -5,7 +5,7 @@ namespace UnitTestEx.Mocking
     /// <summary>
     /// Represents the result of adding a body to the <see cref="MockHttpClientRequest"/> and to <see cref="Respond"/> accordingly.
     /// </summary>
-    public sealed class MockHttpClientRequestBody
+    public sealed class MockHttpClientRequestBody : IHttpMockRequestBody
     {
         private readonly MockHttpClientRequestRule _rule;
 
@@ -19,5 +19,8 @@ namespace UnitTestEx.Mocking
         /// Gets the <see cref="MockHttpClientResponse"/>.
         /// </summary>
         public MockHttpClientResponse Respond => _rule.Response!;
+
+        /// <inheritdoc/>
+        IHttpMockResponse IHttpMockRequestBody.Respond => Respond;
     }
 }
