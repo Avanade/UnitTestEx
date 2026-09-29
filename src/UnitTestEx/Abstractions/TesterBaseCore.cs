@@ -292,13 +292,17 @@ namespace UnitTestEx.Abstractions
         /// </summary>
         /// <param name="reason">The reason for delaying (written to the test output for context); defaults to "No reason specified" where not specified.</param>
         /// <param name="duration">The duration to delay; defaults to <see cref="DefaultDelayDuration"/> where not specified.</param>
+        /// <remarks>Reports (rather than silently discards) any pre-existing backlog first - i.e. anything captured since the last checkpoint/delay but not yet reported - under its own,
+        /// preceding "LOGGING &gt;" section, so it is not misattributed to <i>this</i> delay's window (it happened before the wait started) but is also never permanently lost; for a Tier 2/3
+        /// tester (e.g. Aspire), the reported "LOGGING &gt;" sections are the only reliable way a resource's own forwarded logging is ever surfaced to the test output, so silently discarding
+        /// this backlog (as opposed to merely reporting it under a different heading) would mean genuinely losing it. <see cref="WriteElapsedLogMessages"/> already stays silent when there is
+        /// nothing to report, so this is a no-op in the (typical) case where there is no such backlog.</remarks>
         protected async Task WriteDelay(string? reason, TimeSpan? duration)
         {
             var effectiveReason = string.IsNullOrEmpty(reason) ? "No reason specified" : reason;
             var effectiveDuration = duration ?? DefaultDelayDuration;
 
-            // Drain any pre-existing/stale backlog first so only messages logged during the delay window itself are reported.
-            DrainElapsedLogMessages();
+            WriteElapsedLogMessages();
 
             Implementor.WriteLine("");
             Implementor.WriteLine(new string('-', 80));

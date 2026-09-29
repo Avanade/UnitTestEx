@@ -25,13 +25,14 @@ namespace UnitTestEx.Aspire.HttpMock
         /// <param name="client">The owning <see cref="AspireHttpMockClient"/>.</param>
         /// <param name="method">The <see cref="HttpMethod"/> to match; where not specified any method will match.</param>
         /// <param name="requestUri">The relative request URI (path) to match (exact match); where not specified any path will match.</param>
+        /// <remarks>A leading '/' is not required; where absent one is added automatically, consistent with Tier 1 (<see cref="MockHttpClientRequest"/>), as WireMock.Net's admin API mandates a leading '/'.</remarks>
         internal AspireHttpMockRequest(AspireHttpMockClient client, HttpMethod? method, string? requestUri)
         {
             Client = client ?? throw new ArgumentNullException(nameof(client));
             Rule = new RequestModel
             {
                 Methods = method is null ? null : [method.Method],
-                Path = requestUri
+                Path = string.IsNullOrEmpty(requestUri) || requestUri[0] == '/' ? requestUri : $"/{requestUri}"
             };
         }
 

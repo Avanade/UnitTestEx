@@ -342,6 +342,95 @@ namespace UnitTestEx.Aspire.Xunit.Test
         }
 
         [Fact]
+        public async Task AssertLogContains_FindsExpectedText_AcrossAllOrASpecificResource()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(LogLevel.None); // Deliberately induces an Error-level resource log as the very thing under test.
+
+            await tester.WaitForResourceAsync("api");
+
+            tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error").AssertOK();
+
+            tester.AssertLogContains("Simulated error log*"); // Across every resource.
+            tester.AssertLogContains("Simulated error log*", "api"); // Scoped to just the 'api' resource.
+            tester.AssertLogNotContains("This text was never logged.");
+        }
+
+        [Fact]
+        public async Task AssertLogContains_ThrowsWhenTextNotFound()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+
+            await tester.WaitForResourceAsync("api");
+
+            var ex = Assert.Throws<XunitException>(() => tester.AssertLogContains("This text was never logged."));
+            Assert.Contains("Expected a resource log entry to contain", ex.Message);
+        }
+
+        [Fact]
+        public async Task AssertLogNotContains_ThrowsWhenTextFound()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(LogLevel.None);
+
+            await tester.WaitForResourceAsync("api");
+
+            tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error").AssertOK();
+
+            var ex = Assert.Throws<XunitException>(() => tester.AssertLogNotContains("Simulated error*"));
+            Assert.Contains("Simulated error log entry.", ex.Message);
+        }
+
+        [Fact]
+        public async Task AssertLogContains_FindsUndrainedActivity_WithoutRequiringCheckpoint()
+        {
+            // Unlike ErrorWhenLogContains (only checked as entries are subsequently drained via Checkpoint/Delay/Http), AssertLogContains checks every resource log entry captured so
+            // far regardless of whether it has already been drained - so, unlike ErrorWhenLogContains_ChecksOnFinalCheckpoint_ForActivityNotDrainedByHttp above, no trailing Checkpoint
+            // is needed to "see" a raw, uninstrumented request's resulting log line.
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(LogLevel.None);
+
+            await tester.WaitForResourceAsync("api");
+
+            using (var client = ((IHttpClientSource)tester).CreateHttpClient("api"))
+            {
+                using var response = await client.GetAsync("Person/test/log/error");
+                response.EnsureSuccessStatusCode();
+            }
+
+            await Task.Delay(300); // Allow the forwarded resource log line time to arrive/be captured.
+
+            tester.AssertLogContains("Simulated error log entry.");
+        }
+
+        [Fact]
+        public async Task ResetLogs_DiscardsPreviouslyCapturedEntries()
+        {
+            // Simulates a shared-host scenario: log activity from "before" the reset (e.g. a prior test sharing the same host) must not be visible to any check performed "after" it.
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(LogLevel.None);
+
+            await tester.WaitForResourceAsync("api");
+
+            tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error").AssertOK();
+            tester.AssertLogContains("Simulated error log entry.");
+
+            tester.ResetLogs();
+
+            var ex = Assert.Throws<XunitException>(() => tester.AssertLogContains("Simulated error log entry."));
+            Assert.Contains("Expected a resource log entry to contain", ex.Message);
+
+            // Fresh activity logged after the reset must still be captured/found as normal.
+            tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error").AssertOK();
+            tester.AssertLogContains("Simulated error log entry.");
+        }
+
+        [Fact]
         public async Task HttpMock_StubsExternalMockHostDependency_Product()
         {
             // Note: this exercises the self-hosted WireMock.Net project resource (added via 'mockhost' in the AppHost - see AppHost.cs's header comment); no Docker/Podman is required.
@@ -362,6 +451,62 @@ namespace UnitTestEx.Aspire.Xunit.Test
                 .AssertValue(new { id = "Abc", description = "A blue carrot" });
 
             await stub.VerifyAsync();
+        }
+
+        [Fact]
+        public async Task HttpMock_StubsExternalMockHostDependency_RequestUriWithoutLeadingSlash_IsNormalized()
+        {
+            // WireMock.Net's admin API rejects a mapping path lacking a leading '/'; AspireHttpMockRequest must add one automatically (consistent with Tier 1's MockHttpClientRequest,
+            // which does not require one either) so callers do not need to remember to prefix every requestUri themselves.
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+
+            await tester.WaitForResourceAsync(["api", "mockhost"]);
+
+            var stub = await tester.HttpMock("mockhost")
+                .Request(HttpMethod.Get, "products/abc") // Deliberately no leading '/'.
+                .Times(Times.Once())
+                .WithAnyBody()
+                .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
+
+            tester.Http("api")
+                .Run(HttpMethod.Get, "Product/abc")
+                .AssertOK()
+                .AssertValue(new { id = "Abc", description = "A blue carrot" });
+
+            await stub.VerifyAsync();
+        }
+
+        [Fact]
+        public async Task HttpMock_StubbedTraffic_LogsRequestAndResponse()
+        {
+            // WireMockRequestResponseLogger gives Tier 2/3 parity with Tier 1's MockHttpClientHandler LogDebug request/response logging - here at its default (Information) LogLevel, since
+            // this resource logging drains through the same captured resource-log mechanism used by Checkpoint/Delay/ErrorWhenLogContains.
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+
+            await tester.WaitForResourceAsync(["api", "mockhost"]);
+
+            var spy = new SpyTestFrameworkImplementor(tester.Implementor);
+            tester.ReplaceTestFrameworkImplementor(spy);
+
+            var stub = await tester.HttpMock("mockhost")
+                .Request(HttpMethod.Get, "/products/abc")
+                .Times(Times.Once())
+                .WithAnyBody()
+                .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
+
+            tester.Http("api")
+                .Run(HttpMethod.Get, "Product/abc")
+                .AssertOK()
+                .AssertValue(new { id = "Abc", description = "A blue carrot" });
+
+            await stub.VerifyAsync();
+
+            tester.Checkpoint("Final log check.");
+
+            Assert.Contains(spy.Lines, l => l != null && l.Contains("UnitTestEx > Sending HTTP request GET /products/abc") && l.Contains("(mockhost)]"));
+            Assert.Contains(spy.Lines, l => l != null && l.Contains("UnitTestEx > Received HTTP response 200") && l.Contains("(mockhost)]"));
         }
 
         [Fact]

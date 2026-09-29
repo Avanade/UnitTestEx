@@ -328,6 +328,79 @@ namespace UnitTestEx.Aspire
         }
 
         /// <summary>
+        /// Asserts (via <see cref="TesterBaseCore.Implementor"/>) that at least one resource log entry captured so far - across every resource, or only <paramref name="resourceName"/>
+        /// where specified - contains the wildcard (<c>*</c>/<c>?</c>) <paramref name="pattern"/>.
+        /// </summary>
+        /// <param name="pattern">The wildcard (<c>*</c>/<c>?</c>), case-insensitive "contains" pattern that at least one log entry's fully formatted text must match.</param>
+        /// <param name="resourceName">The optional resource name (as configured within the AppHost) to scope the check to; where not specified, every resource is checked.</param>
+        /// <remarks>Unlike <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/> - a continuous, streaming check applied only as entries are
+        /// subsequently <i>drained</i> - this is an immediate, one-shot check against every resource log entry captured for the lifetime of the test so far, whether already drained/reported
+        /// or not (any still-pending entry not yet terminated by its own subsequent header line is flushed first). There is no "was this seen by the end of the test" ambiguity to reason
+        /// about - call this whenever (and as many times as) needed, typically right after whatever action is expected to have produced the entry.</remarks>
+        protected void AssertResourceLogContains(string pattern, string? resourceName)
+        {
+            if (string.IsNullOrEmpty(pattern)) throw new ArgumentException("Pattern must not be null or empty.", nameof(pattern));
+
+            if (!GetResourceLogEntries(resourceName).Any(e => IsWildcardMatch(e.Text, pattern)))
+                Implementor.AssertFail($"Expected a{(resourceName is null ? string.Empty : $" '{resourceName}'")} resource log entry to contain '{pattern}' that was not found.");
+        }
+
+        /// <summary>
+        /// Asserts (via <see cref="TesterBaseCore.Implementor"/>) that <b>no</b> resource log entry captured so far - across every resource, or only <paramref name="resourceName"/>
+        /// where specified - contains the wildcard (<c>*</c>/<c>?</c>) <paramref name="pattern"/>.
+        /// </summary>
+        /// <param name="pattern">The wildcard (<c>*</c>/<c>?</c>), case-insensitive "contains" pattern that no log entry's fully formatted text may match.</param>
+        /// <param name="resourceName">The optional resource name (as configured within the AppHost) to scope the check to; where not specified, every resource is checked.</param>
+        /// <remarks>See <see cref="AssertResourceLogContains(string, string?)"/> remarks - the same immediate, one-shot semantics apply here (inverted).</remarks>
+        protected void AssertResourceLogNotContains(string pattern, string? resourceName)
+        {
+            if (string.IsNullOrEmpty(pattern)) throw new ArgumentException("Pattern must not be null or empty.", nameof(pattern));
+
+            var matches = GetResourceLogEntries(resourceName).Where(e => IsWildcardMatch(e.Text, pattern)).ToArray();
+            if (matches.Length > 0)
+                Implementor.AssertFail($"Expected no{(resourceName is null ? string.Empty : $" '{resourceName}'")} resource log entry to contain '{pattern}' but one was found: {matches[0].Text}");
+        }
+
+        /// <summary>
+        /// Discards every <see cref="ResourceLogEntry"/> captured so far, across all resources, along with the per-resource watermarks used by <see cref="DrainElapsedLogMessages"/> - i.e.
+        /// puts resource log capture back into the same state as immediately after start-up.
+        /// </summary>
+        /// <remarks>Only relevant where a <see cref="DistributedApplication"/> host is deliberately reused across multiple tests (e.g. via a shared fixture, to avoid repeatedly paying its
+        /// start-up cost) - since the captured log buffers otherwise accumulate for the instance's entire lifetime, a later test would otherwise still see (and could be tripped up or falsely
+        /// satisfied by) an earlier test's log activity when using <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/>/
+        /// <see cref="AssertResourceLogContains(string, string?)"/>/<see cref="AssertResourceLogNotContains(string, string?)"/>.
+        /// <para>Deliberately explicit rather than automatic - unlike Tier 1's <c>TesterBaseT{TSelf}.HostExecutionWrapper{T}(Func{T})</c> reset of <see cref="TesterBaseCore.SharedState"/> -
+        /// since here there is no single per-test Act boundary to hang an automatic reset off, and background/hosted-service activity occurring between calls is exactly what this capture
+        /// exists to surface; call this explicitly (typically as the first line of a test that reuses a shared host) instead.</para>
+        /// <para>Does not reset any <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/> configuration - only previously captured log data.</para></remarks>
+        protected void ResetResourceLogs()
+        {
+            _resourceLogCaptureProvider?.FlushPendingEntries();
+
+            // Note: each resource's ConcurrentQueue<ResourceLogEntry> instance is bound for the lifetime of the underlying ILogger (see ResourceLogCaptureProvider.CreateLogger, only ever
+            // invoked once per category by the logging infrastructure) - so the queue itself must be emptied in place rather than the dictionary entry replaced/removed, otherwise any
+            // already-created logger would keep writing into an orphaned queue no longer reachable via _resourceLogBuffers.
+            foreach (var buffer in _resourceLogBuffers.Values)
+                buffer.Clear();
+
+            _elapsedLogLineCounts.Clear();
+        }
+
+        /// <summary>
+        /// Gets every <see cref="ResourceLogEntry"/> captured so far - across every resource, or only <paramref name="resourceName"/> where specified - flushing any still-pending (not yet
+        /// terminated by a subsequent header line) entry first so "everything captured so far" genuinely means everything, regardless of whether it has already been drained/reported via
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.Checkpoint"/>/<see cref="AspireTesterBase{TAppHost, TSelf}.Delay(TimeSpan?, string?)"/>/<see cref="Http(string, string?)"/>.
+        /// </summary>
+        private IEnumerable<ResourceLogEntry> GetResourceLogEntries(string? resourceName)
+        {
+            _resourceLogCaptureProvider?.FlushPendingEntries();
+
+            return resourceName is null
+                ? _resourceLogBuffers.Values.SelectMany(buffer => buffer.ToArray()).ToArray()
+                : _resourceLogBuffers.TryGetValue(resourceName, out var buffer) ? buffer.ToArray() : [];
+        }
+
+        /// <summary>
         /// Fails the test (via <see cref="TesterBaseCore.Implementor"/>) on the first <paramref name="entries"/> entry at or above <see cref="ErrorWhenLogContainsMinimumLevel"/> that (where
         /// any <see cref="ErrorWhenLogContainsIncludePatterns"/> are configured) matches at least one of them, and does not match any of the wildcard
         /// <see cref="ErrorWhenLogContainsExcludePatterns"/> - a no-op where <see cref="ErrorWhenLogContainsMinimumLevel"/> is <see cref="LogLevel.None"/> (the explicit opt-out), since no

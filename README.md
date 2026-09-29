@@ -159,6 +159,12 @@ test.ReplaceHttpClientFactory(mcf)
 
 The `ReplaceHttpClientFactory` leverages the `Replace*` capabilities discussed earlier in [DI Mocking](#di-mocking).
 
+Every mocked request/response pair is also logged (via `MockHttpClientHandler`) at `MockHttpClientFactory.LogLevel` - `LogLevel.Debug` by default; change it via `UseLogLevel(LogLevel)` (or set `LogLevel.None` to disable this logging entirely):
+
+``` csharp
+var mcf = MockHttpClientFactory.Create().UseLogLevel(LogLevel.Information);
+```
+
 <br/>
 
 ### HTTP Client configurations
@@ -340,7 +346,15 @@ External-to-the-solution dependencies (an email/notification provider, an identi
 await WireMockConsole.RunAsync(settings => WireMockServer.Start(settings));
 ```
 
-`WireMockConsole.RunAsync` reads the `PORT` environment variable Aspire assigns, builds the `WireMockServerSettings` with `JsonElementComparerMatcher` already registered, invokes your factory to start the actual server (any `IWireMockServer` - typically `WireMockServer.Start`), then blocks gracefully until Aspire stops the process (Ctrl+C locally, SIGTERM in orchestration), disposing the server on the way out.
+`WireMockConsole.RunAsync` reads the `PORT` environment variable Aspire assigns, builds an `AspireWireMockServerSettings` (a plain `WireMockServerSettings` subclass - `WireMock.Net` deliberately leaves it unsealed - that adds UnitTestEx-specific configuration as a single, discoverable extension point rather than an ever-growing list of `RunAsync` parameters) with `JsonElementComparerMatcher` already registered, invokes your factory to start the actual server (any `IWireMockServer` - typically `WireMockServer.Start`), then blocks gracefully until Aspire stops the process (Ctrl+C locally, SIGTERM in orchestration), disposing the server on the way out. It also registers a `WireMockRequestResponseLogger` (giving Tier 2/3 parity with Tier 1's `MockHttpClientHandler` request/response logging above) that logs every genuine stubbed request/response pair - not the admin API calls used to configure mappings - through the resource's own console output at `AspireWireMockServerSettings.RequestResponseLogLevel` (`LogLevel.Information` by default), so it is captured and drained the same way as any other resource log entry (see `Checkpoint`/`Delay`/`ErrorWhenLogContains` below). Set a different level (or `LogLevel.None` to disable) directly on the settings your factory receives:
+
+``` csharp
+await WireMockConsole.RunAsync(settings =>
+{
+    settings.RequestResponseLogLevel = LogLevel.Debug;
+    return WireMockServer.Start(settings);
+});
+```
 
 ``` csharp
 // AppHost.cs
@@ -378,7 +392,7 @@ tester.Http("api")
 await stub.VerifyAsync();
 ```
 
-The fluent configuration API is intentionally near-identical to Tier 1's `MockHttpClientFactory` above (both implement the shared [`IHttpMockClient`](./src/UnitTestEx/Mocking/IHttpMockClient.cs)/`IHttpMockRequest`/`IHttpMockResponse` interfaces) - a helper method written once against these interfaces can configure request/response stubbing identically regardless of which tier it's handed. The main differences are that the terminal `With*` methods here are asynchronous (`AspireHttpMockClient` performs a real HTTP call to the WireMock.Net server's admin API to register each mapping) and must be awaited, and the underlying JSON comparison/sequence-exhaustion semantics are WireMock.Net's own (not identical to Tier 1's) - unless you use `WithJsonBodyUsingUnitTestExComparer` instead of `WithJsonBody`:
+The fluent configuration API is intentionally near-identical to Tier 1's `MockHttpClientFactory` above (both implement the shared [`IHttpMockClient`](./src/UnitTestEx/Mocking/IHttpMockClient.cs)/`IHttpMockRequest`/`IHttpMockResponse` interfaces) - a helper method written once against these interfaces can configure request/response stubbing identically regardless of which tier it's handed. The main differences are that the terminal `With*` methods here are asynchronous (`AspireHttpMockClient` performs a real HTTP call to the WireMock.Net server's admin API to register each mapping) and must be awaited, and the underlying JSON comparison/sequence-exhaustion semantics are WireMock.Net's own (not identical to Tier 1's) - unless you use `WithJsonBodyUsingUnitTestExComparer` instead of `WithJsonBody`. As with Tier 1, `Request`'s `requestUri` does not need a leading `/` - one is added automatically where absent, since WireMock.Net's admin API rejects a path that doesn't start with one:
 
 ``` csharp
 var stub = await tester.HttpMock("erp")
@@ -410,6 +424,19 @@ await app.WaitForShutdownAsync();
 
 This replaces the simpler `await app.RunAsync();` one-liner with the equivalent `StartAsync`/`WaitForShutdownAsync` pair (standard, supported Aspire usage) so there's a point after start-up, but before the host blocks, to seed mappings. A test can still layer its own stubs over these defaults (or `ResetAsync()` first to clear them) via `tester.HttpMock(...)` as normal - the AppHost's stubs are just a starting point, not a constraint on what a test may configure.
 
+_Important:_ this pre-seeding code only ever runs for a real `aspire run`/`dotnet run` of the AppHost - it does **not** run under an `AspireTester`-driven test. `AspireTester`/`AspireTesterBase` build the AppHost via Aspire's own `DistributedApplicationTestingBuilder.CreateAsync<TAppHost>()`, which intercepts the AppHost's `Program.cs` at `builder.Build()` and hands the (still-unbuilt) builder straight back to the test - none of `AppHost.cs`'s own code *after* that line (the `StartAsync`/`HttpMock`/`WaitForShutdownAsync` block above) is ever reached when driven via a test, so a test relying solely on it for a stub it actually depends on will fail with a genuine (not un-stubbed-but-otherwise-passing, and not flaky/racy) connection or 404 error every time. A test that needs the same stub must register it itself, most naturally via `BeforeStart`/`AfterStart` (the latter, once the mock host resource is actually up):
+
+``` csharp
+await using var tester = AspireTester.Create<Projects.MyAppHost>()
+    .AfterStart(async app =>
+    {
+        await app.WaitForResourceAsync("erp");
+        await app.HttpMock("erp")
+            .Request(HttpMethod.Get, "products/abc")
+            .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
+    });
+```
+
 ### Failing on unexpected resource error logs
 
 A real inter-domain test can pass its own assertions while a background/hosted service (or a request that was never explicitly checked via `Http`) quietly logs an error or worse elsewhere in the `DistributedApplication` - `ErrorWhenLogContains` catches this by continuously watching every resource's forwarded log output for entries at or above a given `LogLevel` (`Error` by default) and failing the test the moment one appears:
@@ -426,6 +453,40 @@ tester.Checkpoint("Final log check."); // Recommended: drains and checks any act
 ```
 
 This is **enabled by default** at `LogLevel.Error` for every `AspireTester` - there is no need to call `ErrorWhenLogContains` at all unless you want to change the `minimumLevel`, add wildcard (`*`/`?`) `exclude`/`include` patterns, or opt out entirely via `ErrorWhenLogContains(LogLevel.None)` (needed for a test that deliberately induces a resource-level error as its own subject, e.g. asserting a `500` response). `exclude` is the common case - known/expected noise that should not trigger a failure despite otherwise qualifying; a match here always wins. `include` is the rarer, opposite case - it *narrows* rather than widens what is checked, requiring an otherwise-qualifying entry to also match at least one `include` pattern to be reported (leave it `null`/empty, the default, to check every qualifying entry regardless of text). Each call fully **replaces** the prior configuration (level, `exclude` and `include` alike) rather than merging with it - pass the complete desired state each time. A resource log entry is only checked once *drained* - by `Checkpoint`, `Delay` or `Http` - so a trailing `Test.Checkpoint("Final log check.")` at the end of a test is recommended to also catch activity (e.g. shutdown-time logging) that nothing else happens to drain.
+
+_Important:_ `include`/`exclude` only ever **narrow what counts as a violation** of the streaming check above - they are not a "was this text logged" positive assertion, and there is no aggregate, end-of-test tally of `include` patterns. If an `include` pattern never matches anything, the test simply never fails because of it; nothing confirms it was actually hit. For that - "assert this text *was* (or was *not*) logged, by any resource, at any point" - use `AssertLogContains`/`AssertLogNotContains` instead (below).
+
+### Asserting expected resource log content
+
+Unlike `ErrorWhenLogContains` above (a continuous check applied only as entries are subsequently *drained*), `AssertLogContains`/`AssertLogNotContains` are immediate, one-shot checks against **every** resource log entry captured for the lifetime of the test so far - drained or not, across every resource by default (or scoped to one via the optional `resourceName`):
+
+``` csharp
+await using var tester = AspireTester.Create<Projects.MyAppHost>();
+
+await tester.WaitForResourceAsync("shopping");
+
+tester.Http("shopping").Run(HttpMethod.Get, "orders/123").AssertOK();
+
+tester.AssertLogContains("Order 123 processed successfully."); // Across every resource.
+tester.AssertLogContains("Order 123 processed successfully.", "shopping"); // Scoped to just the 'shopping' resource.
+tester.AssertLogNotContains("*unexpected*");
+```
+
+Because every resource log entry is retained for the whole test (not just what has been drained), there is no "did I check at the right moment" ambiguity to reason about - call this whenever (and as many times as) needed, typically right after whatever action is expected to have produced the entry; no trailing `Checkpoint` is required first (though calling it after one is perfectly fine too). Both accept the same wildcard (`*`/`?`), case-insensitive "contains" pattern matching as `ErrorWhenLogContains`'s `exclude`/`include`.
+
+### Resetting captured logs
+
+Every resource log entry captured is retained for the lifetime of the underlying `AspireTester` instance, not just a single test - normally a non-issue, since each test creates and disposes its own instance. If instead you deliberately **reuse** one `AspireTester`/`DistributedApplication` host across multiple tests (e.g. via a shared fixture, to avoid repeatedly paying its start-up cost), an earlier test's log activity would otherwise still be visible to a later test's `ErrorWhenLogContains`/`AssertLogContains`/`AssertLogNotContains` checks. Call `ResetLogs()` to discard everything captured so far - typically as the first line of such a test:
+
+``` csharp
+tester.ResetLogs(); // Discards all previously captured resource log entries (e.g. from a prior test sharing this host).
+
+tester.Http("shopping").Run(HttpMethod.Get, "orders/123").AssertOK();
+
+tester.AssertLogContains("Order 123 processed successfully."); // Only sees activity logged since the reset above.
+```
+
+This is deliberately explicit rather than automatic - unlike Tier 1, which resets its equivalent captured state automatically per Act (there being a single, well-defined Act boundary to hang it off), Tier 2/3 has no such boundary, and background/hosted-service activity occurring between calls is exactly what this capture exists to surface; an automatic reset would risk silently discarding it. `ResetLogs()` only clears previously captured log data - it does not reset any `ErrorWhenLogContains` configuration (level, `exclude`, `include`).
 
 _Note:_ Aspire-hosted resources are real OS processes (containers, where you opt into one), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
 

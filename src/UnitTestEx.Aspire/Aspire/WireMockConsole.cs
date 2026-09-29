@@ -22,16 +22,18 @@ namespace UnitTestEx.Aspire
     public static class WireMockConsole
     {
         /// <summary>
-        /// Reads the <c>PORT</c> environment variable, builds a <see cref="WireMockServerSettings"/> with <see cref="JsonElementComparerMatcher"/> registered against
+        /// Reads the <c>PORT</c> environment variable, builds an <see cref="AspireWireMockServerSettings"/> with <see cref="JsonElementComparerMatcher"/> registered against
         /// <see cref="JsonElementComparerMatcher.MatcherName"/>, invokes <paramref name="server"/> to start the actual WireMock.Net server, then blocks until the process is asked
         /// to shut down (Ctrl+C or SIGTERM), disposing the returned <see cref="IWireMockServer"/> before returning.
         /// </summary>
         /// <param name="server">A factory that starts and returns the <see cref="IWireMockServer"/> - typically <c>settings =&gt; WireMockServer.Start(settings)</c>. The caller's
         /// own project must reference the full <c>WireMock.Net</c> (or <c>WireMock.Net.StandAlone</c>) package for <c>WireMock.Server.WireMockServer</c> itself; this method
-        /// only depends on <c>WireMock.Net.Abstractions</c>' <see cref="IWireMockServer"/>/<see cref="WireMockServerSettings"/>, which <c>UnitTestEx.Aspire</c> already brings in.</param>
+        /// only depends on <c>WireMock.Net.Abstractions</c>' <see cref="IWireMockServer"/>/<see cref="WireMockServerSettings"/>, which <c>UnitTestEx.Aspire</c> already brings in.
+        /// The supplied <see cref="AspireWireMockServerSettings"/> may be further customized before starting the server - e.g. <see cref="AspireWireMockServerSettings.RequestResponseLogLevel"/>
+        /// is read live at log time, so it can be changed here too.</param>
         /// <param name="cancellationToken">An optional additional <see cref="CancellationToken"/> that also triggers shutdown (e.g. to host this in-process for a test); shutdown
         /// otherwise occurs on Ctrl+C or process exit.</param>
-        public static async Task RunAsync(Func<WireMockServerSettings, IWireMockServer> server, CancellationToken cancellationToken = default)
+        public static async Task RunAsync(Func<AspireWireMockServerSettings, IWireMockServer> server, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(server);
 
@@ -39,7 +41,7 @@ namespace UnitTestEx.Aspire
             if (!int.TryParse(portText, out var port))
                 throw new InvalidOperationException($"The 'PORT' environment variable value '{portText}' is not a valid port number.");
 
-            var settings = new WireMockServerSettings
+            var settings = new AspireWireMockServerSettings
             {
                 Port = port,
                 StartAdminInterface = true,
@@ -48,6 +50,8 @@ namespace UnitTestEx.Aspire
                     [JsonElementComparerMatcher.MatcherName] = model => new JsonElementComparerMatcher(model)
                 }
             };
+
+            settings.Logger = new WireMockRequestResponseLogger(settings);
 
             using var wireMockServer = server(settings);
 

@@ -54,7 +54,7 @@ namespace UnitTestEx.Aspire.HttpMock
         /// Begins configuration of a stubbed request/response mapping.
         /// </summary>
         /// <param name="method">The <see cref="HttpMethod"/> to match; where not specified any method will match.</param>
-        /// <param name="requestUri">The relative request URI (path) to match (exact match); where not specified any path will match.</param>
+        /// <param name="requestUri">The relative request URI (path) to match (exact match); where not specified any path will match. A leading '/' is not required; where absent one is added automatically.</param>
         /// <returns>The <see cref="AspireHttpMockRequest"/> to continue the fluent-style configuration.</returns>
         public AspireHttpMockRequest Request(HttpMethod? method = null, string? requestUri = null) => new(this, method, requestUri);
 

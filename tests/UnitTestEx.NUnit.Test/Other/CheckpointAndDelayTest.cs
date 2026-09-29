@@ -75,7 +75,7 @@ namespace UnitTestEx.NUnit.Test.Other
         }
 
         [Test]
-        public void Delay_ExcludesLoggingThatOccurredBeforeTheDelayStarted()
+        public void Delay_ReportsPreExistingBacklogBeforeItsOwnWindow()
         {
             using var test = ApiTester.Create<Startup>();
             var spy = new SpyTestFrameworkImplementor(test.Implementor);
@@ -86,9 +86,15 @@ namespace UnitTestEx.NUnit.Test.Other
 
             test.Delay(TimeSpan.FromMilliseconds(200), "Waiting with nothing new expected.");
 
-            Assert.That(spy.Lines, Does.Not.Contain("LOGGING >"));
-            Assert.That(spy.Lines, Does.Not.Contain("None."));
-            Assert.That(spy.Lines.Any(l => l != null && l.Contains("Stale message logged before the delay started.")), Is.False);
+            // Pre-existing backlog is reported (never silently lost) rather than discarded - but under its own, preceding "LOGGING >" section, ahead of this delay's own "DELAY (...) >"
+            // marker, so it is not misattributed to having occurred during the delay's wait.
+            var loggingIndex = spy.Lines.FindIndex(l => l == "LOGGING >");
+            var delayIndex = spy.Lines.FindIndex(l => l != null && l.StartsWith("DELAY (", StringComparison.Ordinal));
+
+            Assert.That(loggingIndex, Is.GreaterThanOrEqualTo(0), "Expected a LOGGING > section reporting the pre-existing backlog.");
+            Assert.That(delayIndex, Is.GreaterThanOrEqualTo(0), "Expected a DELAY (...) > marker.");
+            Assert.That(loggingIndex, Is.LessThan(delayIndex), "Expected the pre-existing backlog's LOGGING > section to precede the DELAY (...) > marker, not be attributed to it.");
+            Assert.That(spy.Lines.Any(l => l != null && l.Contains("Stale message logged before the delay started.")), Is.True);
         }
     }
 }

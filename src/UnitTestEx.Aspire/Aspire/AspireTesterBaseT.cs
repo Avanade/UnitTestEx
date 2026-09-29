@@ -280,5 +280,51 @@ namespace UnitTestEx.Aspire
         /// <remarks>Useful when waiting on background/inter-resource activity (e.g. a message being processed by a downstream resource) that is not tied to a specific HTTP request/response (see
         /// <see cref="AspireTesterBase.Http(string, string?)"/> for the latter, request-scoped, correlation).</remarks>
         public TSelf Delay(int durationInMilliseconds, string? reason = null) => Delay(TimeSpan.FromMilliseconds(durationInMilliseconds), reason);
+
+        /// <summary>
+        /// Asserts that at least one resource log entry captured so far - across every resource, or only <paramref name="resourceName"/> where specified - contains the wildcard
+        /// (<c>*</c>/<c>?</c>) <paramref name="pattern"/>.
+        /// </summary>
+        /// <param name="pattern">The wildcard (<c>*</c>/<c>?</c>), case-insensitive "contains" pattern that at least one log entry's fully formatted text must match.</param>
+        /// <param name="resourceName">The optional resource name (as configured within the AppHost) to scope the check to; where not specified, every resource is checked.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>An immediate, one-shot check against every resource log entry captured for the lifetime of the test so far - whether already drained/reported via <see cref="Checkpoint"/>/
+        /// <see cref="Delay(TimeSpan?, string?)"/>/<see cref="AspireTesterBase.Http(string, string?)"/> or not - unlike <see cref="ErrorWhenLogContains"/>'s continuous, drain-only streaming
+        /// check. Call it whenever (and as many times as) needed, typically right after whatever action is expected to have produced the entry - there is no "was this seen by the end of the
+        /// test" ambiguity to reason about.</remarks>
+        public TSelf AssertLogContains(string pattern, string? resourceName = null)
+        {
+            AssertResourceLogContains(pattern, resourceName);
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Asserts that <b>no</b> resource log entry captured so far - across every resource, or only <paramref name="resourceName"/> where specified - contains the wildcard
+        /// (<c>*</c>/<c>?</c>) <paramref name="pattern"/>.
+        /// </summary>
+        /// <param name="pattern">The wildcard (<c>*</c>/<c>?</c>), case-insensitive "contains" pattern that no log entry's fully formatted text may match.</param>
+        /// <param name="resourceName">The optional resource name (as configured within the AppHost) to scope the check to; where not specified, every resource is checked.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>See <see cref="AssertLogContains(string, string?)"/> remarks - the same immediate, one-shot semantics apply here (inverted).</remarks>
+        public TSelf AssertLogNotContains(string pattern, string? resourceName = null)
+        {
+            AssertResourceLogNotContains(pattern, resourceName);
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Discards every resource log entry captured so far, across all resources, along with the per-resource watermarks used by <see cref="Checkpoint"/>/<see cref="Delay(TimeSpan?, string?)"/>
+        /// - i.e. puts resource log capture back into the same state as immediately after start-up.
+        /// </summary>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Only relevant where the underlying <see cref="DistributedApplication"/> host is deliberately reused across multiple tests (e.g. via a shared fixture, to
+        /// avoid repeatedly paying its start-up cost) - otherwise call this explicitly, typically as the first line of such a test, so <see cref="ErrorWhenLogContains"/>/
+        /// <see cref="AssertLogContains(string, string?)"/>/<see cref="AssertLogNotContains(string, string?)"/> only ever see that test's own activity. Does not reset any
+        /// <see cref="ErrorWhenLogContains"/> configuration - only previously captured log data.</remarks>
+        public TSelf ResetLogs()
+        {
+            ResetResourceLogs();
+            return (TSelf)this;
+        }
     }
 }
