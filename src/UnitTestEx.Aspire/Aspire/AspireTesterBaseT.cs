@@ -3,6 +3,7 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -210,6 +211,39 @@ namespace UnitTestEx.Aspire
                     throw new InvalidOperationException($"{nameof(EnableHostDiagnostics)} must be invoked before the underlying {nameof(DistributedApplication)} has been built (i.e. before any {nameof(Http)}/{nameof(WaitForResourceAsync)} call).");
 
                 HostDiagnosticsEnabled = true;
+            }
+
+            return (TSelf)this;
+        }
+
+        /// <summary>
+        /// Registers a continuous, streaming check that immediately fails the test the moment any resource logs an entry at or above <paramref name="minimumLevel"/> - checked every time
+        /// resource log activity is drained, i.e. by every <see cref="Checkpoint"/>, <see cref="Delay(TimeSpan?, string?)"/> and <see cref="AspireTesterBase.Http(string, string?)"/> call from
+        /// this point forward (not a single, one-shot, end-of-test scan).
+        /// </summary>
+        /// <param name="minimumLevel">The minimum <see cref="LogLevel"/> that triggers a failure; defaults to <see cref="LogLevel.Error"/> - which is also the effective default even where
+        /// this method is never called at all (see <see cref="AspireTesterBase.ErrorWhenLogContainsMinimumLevel"/>). Pass <see cref="LogLevel.None"/> to opt out entirely.</param>
+        /// <param name="exclude">Zero or more <c>*</c>/<c>?</c> wildcard, case-insensitive patterns (matched as a "contains" against the entry's fully formatted text) for known/expected noise
+        /// that should not trigger a failure despite otherwise qualifying; a match here always wins, even where <paramref name="include"/> also matches.</param>
+        /// <param name="include">Zero or more <c>*</c>/<c>?</c> wildcard, case-insensitive patterns that narrow (rather than widen) what is checked - where specified, an otherwise-qualifying
+        /// entry must match at least one of these to trigger a failure. Leave <c>null</c>/empty (the default) to check every qualifying entry regardless of its text.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        /// <remarks>Enabled by default at <see cref="LogLevel.Error"/> without needing to call this at all; calling it is only required to change the <paramref name="minimumLevel"/>, add
+        /// <paramref name="exclude"/>/<paramref name="include"/> patterns, or opt out entirely (via <see cref="LogLevel.None"/>). Can be called at any time (unlike e.g.
+        /// <see cref="WithResourceEnvironment"/>/<see cref="EnableHostDiagnostics"/>, this has no bearing on how the underlying <see cref="DistributedApplication"/> is built, so there is no
+        /// "must be called before start" restriction); each call fully <i>replaces</i> the prior configuration (all three parameters) rather than merging with it - pass the complete desired
+        /// state each time.
+        /// <para>Only a resource log entry that is subsequently <i>drained</i> (via <see cref="Checkpoint"/>/<see cref="Delay(TimeSpan?, string?)"/>/<see cref="AspireTesterBase.Http(string, string?)"/>)
+        /// is checked; anything still buffered (or still pending completion by its own terminating header line) when the test ends is never seen unless a final <see cref="Checkpoint"/> call is
+        /// made - so a trailing <c>Test.Checkpoint("Final log check.")</c> is recommended at the end of a test that relies on this to also catch background/hosted-service-only activity that no
+        /// other call happens to drain.</para></remarks>
+        public TSelf ErrorWhenLogContains(LogLevel minimumLevel = LogLevel.Error, string[]? exclude = null, string[]? include = null)
+        {
+            lock (SyncRoot)
+            {
+                ErrorWhenLogContainsMinimumLevel = minimumLevel;
+                ErrorWhenLogContainsExcludePatterns = exclude ?? [];
+                ErrorWhenLogContainsIncludePatterns = include ?? [];
             }
 
             return (TSelf)this;

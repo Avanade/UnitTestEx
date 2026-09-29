@@ -35,11 +35,34 @@ namespace UnitTestEx.Aspire
     /// remain on <see cref="AspireTesterBase{TAppHost, TSelf}"/> only.</para></remarks>
     public abstract class AspireTesterBase : TesterBaseCore, IHttpClientSource, IAsyncDisposable
     {
-        private readonly ConcurrentDictionary<string, ConcurrentQueue<string?>> _resourceLogBuffers = new();
+        private readonly ConcurrentDictionary<string, ConcurrentQueue<ResourceLogEntry>> _resourceLogBuffers = new();
         private readonly ConcurrentDictionary<string, int> _elapsedLogLineCounts = new();
         private ResourceLogCaptureProvider? _resourceLogCaptureProvider;
         private Task<DistributedApplication>? _appTask;
         private bool _disposed;
+
+        /// <summary>
+        /// Gets or sets the minimum <see cref="LogLevel"/> that triggers an immediate test failure when a resource log entry at (or above) it is subsequently drained - see
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/>.
+        /// </summary>
+        /// <remarks>Enabled by default at <see cref="LogLevel.Error"/> - this is a brand-new capability with no existing tests relying on it being off, and catching an unexpected resource
+        /// error is almost always preferable to silently letting it slide. To opt out entirely, call <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/>
+        /// with <see cref="LogLevel.None"/> (which, being numerically above <see cref="LogLevel.Critical"/>, no resource log entry can ever meet or exceed).</remarks>
+        protected LogLevel ErrorWhenLogContainsMinimumLevel { get; set; } = LogLevel.Error;
+
+        /// <summary>
+        /// Gets or sets the wildcard (<c>*</c>/<c>?</c>) exclude patterns checked (case-insensitively, as a "contains" match) against an otherwise-violating resource log entry's text - a
+        /// match here always suppresses the entry, even where it also matches <see cref="ErrorWhenLogContainsIncludePatterns"/> - see
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/>.
+        /// </summary>
+        protected IReadOnlyList<string> ErrorWhenLogContainsExcludePatterns { get; set; } = [];
+
+        /// <summary>
+        /// Gets or sets the wildcard (<c>*</c>/<c>?</c>) include patterns that an otherwise-qualifying resource log entry's text must match at least one of (case-insensitively, as a
+        /// "contains" match) to be reported - see <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/>. An empty list (the default) means
+        /// every entry that meets <see cref="ErrorWhenLogContainsMinimumLevel"/> qualifies; i.e. this narrows rather than widens what is checked.
+        /// </summary>
+        protected IReadOnlyList<string> ErrorWhenLogContainsIncludePatterns { get; set; } = [];
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AspireTesterBase"/> class.
@@ -280,7 +303,12 @@ namespace UnitTestEx.Aspire
         /// <inheritdoc/>
         /// <remarks>Combines the elapsed log messages captured (via <see cref="ResourceLogCaptureProvider"/>) across <i>all</i> resources since the last invocation, as background/inter-resource
         /// activity is not necessarily confined to a single resource; each line already carries its own owning resource name as a trailing suffix (see <see cref="ResourceLogCaptureProvider"/>),
-        /// so no further attribution is added here.</remarks>
+        /// so no further attribution is added here.
+        /// <para>Also where <see cref="ErrorWhenLogContainsMinimumLevel"/> is set (see <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/>), every entry
+        /// drained here - across every resource, not just one directly interacted with - is checked and immediately fails the test if it violates it; a resource that never has an
+        /// <see cref="Http(string, string?)"/> call made against it (e.g. a background/hosted-service-only resource) is still checked here, as long as a subsequent
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.Checkpoint"/>/<see cref="AspireTesterBase{TAppHost, TSelf}.Delay(TimeSpan?, string?)"/> call drains it - hence a final
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.Checkpoint"/> call is recommended at the end of a test to verify whatever log activity remains un-drained.</para></remarks>
         protected override IEnumerable<string?>? DrainElapsedLogMessages()
         {
             _resourceLogCaptureProvider?.FlushPendingEntries();
@@ -289,13 +317,50 @@ namespace UnitTestEx.Aspire
             foreach (var (resourceName, buffer) in _resourceLogBuffers)
             {
                 var lastCount = _elapsedLogLineCounts.GetOrAdd(resourceName, 0);
-                var newLines = buffer.Skip(lastCount).ToArray();
+                var newEntries = buffer.Skip(lastCount).ToArray();
                 _elapsedLogLineCounts[resourceName] = buffer.Count;
 
-                lines.AddRange(newLines);
+                AssertNoErrorWhenLogContainsViolation(newEntries, resourceName);
+                lines.AddRange(newEntries.Select(e => e.Text));
             }
 
             return lines;
+        }
+
+        /// <summary>
+        /// Fails the test (via <see cref="TesterBaseCore.Implementor"/>) on the first <paramref name="entries"/> entry at or above <see cref="ErrorWhenLogContainsMinimumLevel"/> that (where
+        /// any <see cref="ErrorWhenLogContainsIncludePatterns"/> are configured) matches at least one of them, and does not match any of the wildcard
+        /// <see cref="ErrorWhenLogContainsExcludePatterns"/> - a no-op where <see cref="ErrorWhenLogContainsMinimumLevel"/> is <see cref="LogLevel.None"/> (the explicit opt-out), since no
+        /// entry can ever meet or exceed it.
+        /// </summary>
+        private void AssertNoErrorWhenLogContainsViolation(IEnumerable<ResourceLogEntry> entries, string resourceName)
+        {
+            foreach (var entry in entries)
+            {
+                if (entry.Level < ErrorWhenLogContainsMinimumLevel)
+                    continue;
+
+                if (ErrorWhenLogContainsIncludePatterns.Count > 0 && !ErrorWhenLogContainsIncludePatterns.Any(pattern => IsWildcardMatch(entry.Text, pattern)))
+                    continue;
+
+                if (ErrorWhenLogContainsExcludePatterns.Any(pattern => IsWildcardMatch(entry.Text, pattern)))
+                    continue;
+
+                Implementor.AssertFail($"Resource '{resourceName}' logged an entry at '{entry.Level}' level, which is at or above the '{ErrorWhenLogContainsMinimumLevel}' level configured via ErrorWhenLogContains: {entry.Text}");
+            }
+        }
+
+        /// <summary>
+        /// Determines whether <paramref name="text"/> contains <paramref name="pattern"/> - a simple <c>*</c> (any run of characters)/<c>?</c> (any single character) wildcard match,
+        /// case-insensitive, applied anywhere within <paramref name="text"/> (i.e. a wildcard-aware equivalent of <see cref="string.Contains(string, StringComparison)"/>).
+        /// </summary>
+        private static bool IsWildcardMatch(string? text, string pattern)
+        {
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(pattern))
+                return false;
+
+            var regexPattern = string.Join(".*", pattern.Split('*').Select(segment => Regex.Escape(segment).Replace(@"\?", ".")));
+            return Regex.IsMatch(text, regexPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
         }
 
         /// <summary>
@@ -358,7 +423,7 @@ namespace UnitTestEx.Aspire
         /// </summary>
         /// <remarks>Under <see cref="DistributedApplicationTestingBuilder"/>, <see cref="ResourceLoggerService.GetAllAsync(string)"/>/<see cref="ResourceLoggerService.WatchAsync(string)"/>
         /// are not populated (a known limitation of the testing host), so this is the only reliable way to observe a resource's own logging from a test.</remarks>
-        private sealed class ResourceLogCaptureProvider(string resourceCategoryPrefix, ConcurrentDictionary<string, ConcurrentQueue<string?>> buffers) : ILoggerProvider
+        private sealed class ResourceLogCaptureProvider(string resourceCategoryPrefix, ConcurrentDictionary<string, ConcurrentQueue<ResourceLogEntry>> buffers) : ILoggerProvider
         {
             private readonly ConcurrentBag<ResourceLogger> _loggers = [];
 
@@ -368,7 +433,7 @@ namespace UnitTestEx.Aspire
                     return NullLogger.Instance;
 
                 var resourceName = categoryName[resourceCategoryPrefix.Length..];
-                var logger = new ResourceLogger(resourceName, buffers.GetOrAdd(resourceName, _ => new ConcurrentQueue<string?>()));
+                var logger = new ResourceLogger(resourceName, buffers.GetOrAdd(resourceName, _ => new ConcurrentQueue<ResourceLogEntry>()));
                 _loggers.Add(logger);
                 return logger;
             }
@@ -403,7 +468,7 @@ namespace UnitTestEx.Aspire
             /// (<see cref="Http(string, string?)"/>) or multi-resource (<see cref="AspireTesterBase{TAppHost, TSelf}.Delay(TimeSpan?, string?)"/>) report.
             /// <para>A line that does not match the expected "<c>{lineNumber}: {timestamp}Z </c>" prefix (e.g. a resource that does not use the standard console logger format) is passed through
             /// unmodified, ANSI colour codes aside, so nothing is silently dropped.</para></remarks>
-            private sealed class ResourceLogger(string resourceName, ConcurrentQueue<string?> buffer) : ILogger
+            private sealed class ResourceLogger(string resourceName, ConcurrentQueue<ResourceLogEntry> buffer) : ILogger
             {
                 private static readonly Regex _ansiPattern = new(@"\x1b\[[0-9;]*m", RegexOptions.Compiled);
                 private static readonly Regex _linePrefixPattern = new(@"^\d+:\s+(?<ts>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+)Z\s?(?<rest>.*)$", RegexOptions.Compiled);
@@ -415,7 +480,8 @@ namespace UnitTestEx.Aspire
                 private readonly object _lock = new();
 #endif
                 private string? _pendingTimestamp;
-                private string? _pendingLevel;
+                private string? _pendingLevelText;
+                private LogLevel _pendingLevel;
                 private string? _pendingCategory;
                 private readonly List<string> _pendingMessageLines = [];
 
@@ -432,9 +498,10 @@ namespace UnitTestEx.Aspire
                     {
                         if (!prefixMatch.Success)
                         {
-                            // Not a recognized Aspire-forwarded console line; flush anything pending and pass this through as-is rather than silently dropping it.
+                            // Not a recognized Aspire-forwarded console line; flush anything pending and pass this through as-is rather than silently dropping it. Its own severity cannot be
+                            // determined (there is no "{level}: " header to parse it from), so it is treated as Information - safely below any sensible ErrorWhenLogContains threshold.
                             FlushPendingNoLock();
-                            buffer.Enqueue(line);
+                            buffer.Enqueue(new ResourceLogEntry(LogLevel.Information, line));
                             return;
                         }
 
@@ -445,15 +512,31 @@ namespace UnitTestEx.Aspire
                             // A new header line always terminates any previously pending entry.
                             FlushPendingNoLock();
                             _pendingTimestamp = prefixMatch.Groups["ts"].Value;
-                            _pendingLevel = headerMatch.Groups["level"].Value;
+                            _pendingLevelText = headerMatch.Groups["level"].Value;
+                            _pendingLevel = ParseLevel(_pendingLevelText);
                             _pendingCategory = headerMatch.Groups["category"].Value;
                         }
                         else if (_pendingTimestamp is not null)
                             _pendingMessageLines.Add(rest.TrimStart()); // A message/continuation line for the currently pending header.
                         else
-                            buffer.Enqueue(rest); // A line with no preceding header (unexpected); pass through as-is.
+                            buffer.Enqueue(new ResourceLogEntry(LogLevel.Information, rest)); // A line with no preceding header (unexpected); pass through as-is.
                     }
                 }
+
+                /// <summary>
+                /// Maps Aspire's forwarded console-formatter level abbreviation (see <see cref="_headerPattern"/>) back to its corresponding <see cref="LogLevel"/> - the exact reverse of the
+                /// standard ASP.NET Core console formatter's own abbreviation convention.
+                /// </summary>
+                private static LogLevel ParseLevel(string levelText) => levelText switch
+                {
+                    "trce" => LogLevel.Trace,
+                    "dbug" => LogLevel.Debug,
+                    "info" => LogLevel.Information,
+                    "warn" => LogLevel.Warning,
+                    "fail" => LogLevel.Error,
+                    "crit" => LogLevel.Critical,
+                    _ => LogLevel.Information
+                };
 
                 /// <summary>
                 /// Flushes any pending entry to the buffer, reformatted to match <see cref="Logging.LoggerBase"/>'s output style.
@@ -473,22 +556,29 @@ namespace UnitTestEx.Aspire
 
                     var ts = DateTime.Parse(_pendingTimestamp, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal).ToLocalTime();
                     var sb = new StringBuilder();
-                    sb.Append($"{ts.ToString("yyyy-MM-ddTHH:mm:ss.fffff", DateTimeFormatInfo.InvariantInfo)} {_pendingLevel}: {(_pendingMessageLines.Count > 0 ? _pendingMessageLines[0] : string.Empty)} [{_pendingCategory} ({resourceName})]");
+                    sb.Append($"{ts.ToString("yyyy-MM-ddTHH:mm:ss.fffff", DateTimeFormatInfo.InvariantInfo)} {_pendingLevelText}: {(_pendingMessageLines.Count > 0 ? _pendingMessageLines[0] : string.Empty)} [{_pendingCategory} ({resourceName})]");
                     for (var i = 1; i < _pendingMessageLines.Count; i++)
                     {
                         sb.AppendLine();
                         sb.Append($"{new string(' ', 32)}{_pendingMessageLines[i]}");
                     }
 
-                    buffer.Enqueue(sb.ToString());
+                    buffer.Enqueue(new ResourceLogEntry(_pendingLevel, sb.ToString()));
 
                     _pendingTimestamp = null;
-                    _pendingLevel = null;
+                    _pendingLevelText = null;
                     _pendingCategory = null;
                     _pendingMessageLines.Clear();
                 }
             }
         }
+
+        /// <summary>
+        /// A single captured resource log entry - the parsed <see cref="Microsoft.Extensions.Logging.LogLevel"/> (see <see cref="ErrorWhenLogContainsMinimumLevel"/>) alongside the fully
+        /// formatted text (matching <see cref="Logging.LoggerBase"/>'s output style) that every existing consumer (<see cref="DrainElapsedLogMessages"/>, <see cref="ResourceHttpClientSource"/>)
+        /// continues to see.
+        /// </summary>
+        private readonly record struct ResourceLogEntry(LogLevel Level, string? Text);
 
         /// <summary>
         /// An <see cref="IHttpClientSource"/> bound to a specific named resource (and optional endpoint).
@@ -534,10 +624,11 @@ namespace UnitTestEx.Aspire
                 // (often the interesting one, e.g. the endpoint's own logging for this very request) is not lost while waiting for a line that may never come.
                 owner._resourceLogCaptureProvider?.FlushPendingEntries();
 
-                var newLines = buffer.Skip(baseline).ToArray();
+                var newEntries = buffer.Skip(baseline).ToArray();
                 owner._elapsedLogLineCounts[resourceName] = buffer.Count;
 
-                return newLines;
+                owner.AssertNoErrorWhenLogContainsViolation(newEntries, resourceName);
+                return newEntries.Select(e => e.Text).ToArray();
             }
         }
 

@@ -152,6 +152,19 @@ namespace UnitTestEx.Expectations
             return (TSelf)expectations;
         }
 
+        /// <summary>
+        /// Expects that the <see cref="ILogger"/> will <b>not</b> have logged a message that contains any of the specified <paramref name="texts"/>.
+        /// </summary>
+        /// <typeparam name="TSelf">The expectations <see cref="Type"/>.</typeparam>
+        /// <param name="expectations">The <see cref="IExpectations{TSelf}"/>.</param>
+        /// <param name="texts">The text(s) that should not appear in any log message.</param>
+        /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns> 
+        public static TSelf ExpectLogNotContains<TSelf>(this IExpectations<TSelf> expectations, params string[] texts) where TSelf : IExpectations<TSelf>
+        {
+            expectations.ExpectationsArranger.GetOrAdd(() => new LoggerExpectations<TSelf>(expectations.ExpectationsArranger.Owner, (TSelf)expectations)).SetExpectLogNotContains(texts);
+            return (TSelf)expectations;
+        }
+
         #endregion
 
         #region HttpResponseMessageExpectations

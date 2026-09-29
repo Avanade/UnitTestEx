@@ -1,4 +1,5 @@
 using Aspire.Hosting;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Diagnostics;
 using System.Net;
@@ -13,6 +14,7 @@ using UnitTestEx.Json;
 using UnitTestEx.Mocking;
 using Xunit;
 using Xunit.Abstractions;
+using Xunit.Sdk;
 
 namespace UnitTestEx.Aspire.Xunit.Test
 {
@@ -204,6 +206,142 @@ namespace UnitTestEx.Aspire.Xunit.Test
         }
 
         [Fact]
+        public async Task ErrorWhenLogContains_DefaultsToEnabled_ThrowsWithoutExplicitRegistration()
+        {
+            // ErrorWhenLogContains was never explicitly called - it is enabled by default (at LogLevel.Error), being a brand-new capability, so an Error-level resource log must still fail.
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+
+            await tester.WaitForResourceAsync("api");
+
+            var ex = Assert.Throws<XunitException>(() => tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error"));
+            Assert.Contains("Simulated error log entry.", ex.Message);
+        }
+
+        [Fact]
+        public async Task ErrorWhenLogContains_None_OptsOutEntirely()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(LogLevel.None); // LogLevel.None is numerically above Critical, so nothing can ever meet/exceed it - the documented opt-out.
+
+            await tester.WaitForResourceAsync("api");
+
+            tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error").AssertOK();
+        }
+
+        [Fact]
+        public async Task ErrorWhenLogContains_Http_ThrowsWhenResourceLogsAtOrAboveDefaultMinimumLevel()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(); // Defaults to LogLevel.Error.
+
+            await tester.WaitForResourceAsync("api");
+
+            var ex = Assert.Throws<XunitException>(() => tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error"));
+            Assert.Contains("Simulated error log entry.", ex.Message);
+        }
+
+        [Fact]
+        public async Task ErrorWhenLogContains_BelowConfiguredMinimumLevel_DoesNotThrow()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(LogLevel.Critical); // An 'error' level log does not meet this higher 'critical' minimum.
+
+            await tester.WaitForResourceAsync("api");
+
+            tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error").AssertOK();
+        }
+
+        [Fact]
+        public async Task ErrorWhenLogContains_ExcludeWildcard_SuppressesOtherwiseViolatingEntry()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(LogLevel.Error, exclude: ["Simulated error*"]);
+
+            await tester.WaitForResourceAsync("api");
+
+            tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error").AssertOK();
+        }
+
+        [Fact]
+        public async Task ErrorWhenLogContains_IncludeWildcard_DoesNotThrowWhenEntryDoesNotMatch()
+        {
+            // 'include' narrows what is checked - an otherwise-qualifying (Error level) entry that matches none of the include patterns is not reported.
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(include: ["*a totally different subsystem*"]);
+
+            await tester.WaitForResourceAsync("api");
+
+            tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error").AssertOK();
+        }
+
+        [Fact]
+        public async Task ErrorWhenLogContains_IncludeWildcard_ThrowsWhenEntryMatches()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(include: ["Simulated error*"]);
+
+            await tester.WaitForResourceAsync("api");
+
+            var ex = Assert.Throws<XunitException>(() => tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error"));
+            Assert.Contains("Simulated error log entry.", ex.Message);
+        }
+
+        [Fact]
+        public async Task ErrorWhenLogContains_ExcludeWinsOverInclude_SuppressesEvenWhenIncludeMatches()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(exclude: ["Simulated error*"], include: ["Simulated*"]);
+
+            await tester.WaitForResourceAsync("api");
+
+            tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error").AssertOK();
+        }
+
+        [Fact]
+        public async Task ErrorWhenLogContains_RepeatCall_ReplacesRatherThanMergesPriorConfiguration()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(exclude: ["Simulated error*"]) // Would otherwise suppress the entry below...
+                .ErrorWhenLogContains(); // ...but this second call replaces the entire prior configuration - the exclude pattern above is now gone.
+
+            await tester.WaitForResourceAsync("api");
+
+            var ex = Assert.Throws<XunitException>(() => tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error"));
+            Assert.Contains("Simulated error log entry.", ex.Message);
+        }
+
+        [Fact]
+        public async Task ErrorWhenLogContains_ChecksOnFinalCheckpoint_ForActivityNotDrainedByHttp()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains();
+
+            await tester.WaitForResourceAsync("api");
+
+            // Fire a raw (uninstrumented) request so the resulting Error log line is captured but not claimed/checked by any tester-driven Http() call - only a subsequent
+            // Checkpoint/Delay call (here, the final Checkpoint recommended at the end of a test relying on ErrorWhenLogContains) drains and checks it.
+            using (var client = ((IHttpClientSource)tester).CreateHttpClient("api"))
+            {
+                using var response = await client.GetAsync("Person/test/log/error");
+                response.EnsureSuccessStatusCode();
+            }
+
+            await Task.Delay(300); // Allow the forwarded resource log line time to arrive/be captured before draining.
+
+            Assert.Throws<XunitException>(() => tester.Checkpoint("Final log check."));
+        }
+
+        [Fact]
         public async Task HttpMock_StubsExternalMockHostDependency_Product()
         {
             // Note: this exercises the self-hosted WireMock.Net project resource (added via 'mockhost' in the AppHost - see AppHost.cs's header comment); no Docker/Podman is required.
@@ -283,8 +421,11 @@ namespace UnitTestEx.Aspire.Xunit.Test
         [Fact]
         public async Task HttpMock_WithSequenceAsync_ExceedingConfiguredResponses_Throws()
         {
+            // Deliberately induces a genuine 500/Error-level resource log as the very thing under test - opts out of the (now default-on) ErrorWhenLogContains check entirely rather than
+            // having it collide with the intentionally-triggered failure below.
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
-                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+                .ErrorWhenLogContains(LogLevel.None);
 
             await tester.WaitForResourceAsync(["api", "mockhost"]);
 

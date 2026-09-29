@@ -410,6 +410,23 @@ await app.WaitForShutdownAsync();
 
 This replaces the simpler `await app.RunAsync();` one-liner with the equivalent `StartAsync`/`WaitForShutdownAsync` pair (standard, supported Aspire usage) so there's a point after start-up, but before the host blocks, to seed mappings. A test can still layer its own stubs over these defaults (or `ResetAsync()` first to clear them) via `tester.HttpMock(...)` as normal - the AppHost's stubs are just a starting point, not a constraint on what a test may configure.
 
+### Failing on unexpected resource error logs
+
+A real inter-domain test can pass its own assertions while a background/hosted service (or a request that was never explicitly checked via `Http`) quietly logs an error or worse elsewhere in the `DistributedApplication` - `ErrorWhenLogContains` catches this by continuously watching every resource's forwarded log output for entries at or above a given `LogLevel` (`Error` by default) and failing the test the moment one appears:
+
+``` csharp
+await using var tester = AspireTester.Create<Projects.MyAppHost>()
+    .ErrorWhenLogContains(exclude: ["*a known, benign warning*"]); // Optional: only needed to change the level, or add exclude/include patterns.
+
+await tester.WaitForResourceAsync("shopping");
+
+tester.Http("shopping").Run(HttpMethod.Get, "orders/123").AssertOK();
+
+tester.Checkpoint("Final log check."); // Recommended: drains and checks any activity not otherwise seen by Http/Delay above.
+```
+
+This is **enabled by default** at `LogLevel.Error` for every `AspireTester` - there is no need to call `ErrorWhenLogContains` at all unless you want to change the `minimumLevel`, add wildcard (`*`/`?`) `exclude`/`include` patterns, or opt out entirely via `ErrorWhenLogContains(LogLevel.None)` (needed for a test that deliberately induces a resource-level error as its own subject, e.g. asserting a `500` response). `exclude` is the common case - known/expected noise that should not trigger a failure despite otherwise qualifying; a match here always wins. `include` is the rarer, opposite case - it *narrows* rather than widens what is checked, requiring an otherwise-qualifying entry to also match at least one `include` pattern to be reported (leave it `null`/empty, the default, to check every qualifying entry regardless of text). Each call fully **replaces** the prior configuration (level, `exclude` and `include` alike) rather than merging with it - pass the complete desired state each time. A resource log entry is only checked once *drained* - by `Checkpoint`, `Delay` or `Http` - so a trailing `Test.Checkpoint("Final log check.")` at the end of a test is recommended to also catch activity (e.g. shutdown-time logging) that nothing else happens to drain.
+
 _Note:_ Aspire-hosted resources are real OS processes (containers, where you opt into one), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
 
 _Note:_ Since Tier 2/3 resources are real, reachable URLs (not in-process fakes), a UI/frontend resource hosted in the `AppHost` can be driven directly with [Playwright](https://playwright.dev/dotnet/) - this is an ordinary consequence of the resources being real processes, not a UnitTestEx-specific feature; see Microsoft's own [Aspire + Playwright guide](https://learn.microsoft.com/en-us/dotnet/aspire/testing/write-your-first-test?tabs=xunit#creating-a-playwright-test) for the pattern.
