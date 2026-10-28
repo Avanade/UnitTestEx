@@ -1,4 +1,4 @@
-// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
@@ -277,11 +277,7 @@ namespace UnitTestEx.Assertors
         /// <param name="json">The expected JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertorBase{TSelf}"/> instance to support fluent-style method-chaining.</returns>
-#if NET7_0_OR_GREATER
         public TSelf AssertJson([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore)
-#else
-        public TSelf AssertJson(string json, params string[] pathsToIgnore)
-#endif
         {
             if (string.IsNullOrEmpty(json))
                 throw new ArgumentNullException(nameof(json));

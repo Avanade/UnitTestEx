@@ -1,4 +1,4 @@
-// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Moq;
 using System;
@@ -48,11 +48,7 @@ namespace UnitTestEx.Mocking
         /// <returns>The <see cref="IHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         /// <remarks>The exact JSON comparison semantics (including how <paramref name="pathsToIgnore"/> is interpreted) are tier-specific - see the native <c>WithJsonBody</c> documentation
         /// on the concrete implementation being used; they are <b>not</b> guaranteed to be equivalent between tiers.</remarks>
-#if NET7_0_OR_GREATER
         IHttpMockRequestBody WithJsonBody([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore);
-#else
-        IHttpMockRequestBody WithJsonBody(string json, params string[] pathsToIgnore);
-#endif
 
         /// <summary>
         /// Indicates that the request body must match the JSON serialized representation of the specified <paramref name="value"/>.

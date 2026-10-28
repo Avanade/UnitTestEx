@@ -1,7 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-#if NET7_0_OR_GREATER
-
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -68,5 +66,3 @@ namespace UnitTestEx.Assertors
         }
     }
 }
-
-#endif

@@ -206,11 +206,7 @@ namespace UnitTestEx.Mocking
         /// <param name="statusCode">The optional <see cref="HttpStatusCode"/> (defaults to <see cref="HttpStatusCode.OK"/>).</param>
         /// <param name="mediaType">The optional media type (defaults to <see cref="MediaTypeNames.Application.Json"/>).</param>
         /// <param name="response">The optional action to enable additional configuration of the <see cref="HttpResponseMessage"/>.</param>
-#if NET7_0_OR_GREATER
         public void WithJson([StringSyntax(StringSyntaxAttribute.Json)] string json, HttpStatusCode? statusCode = null, string? mediaType = MediaTypeNames.Application.Json, Action<HttpResponseMessage>? response = null)
-#else
-        public void WithJson(string json, HttpStatusCode? statusCode = null, string? mediaType = MediaTypeNames.Application.Json, Action<HttpResponseMessage>? response = null)
-#endif
         {
             var content = new StringContent(json ?? throw new ArgumentNullException(nameof(json)));
             content.Headers.ContentType = MediaTypeHeaderValue.Parse(mediaType ?? MediaTypeNames.Application.Json);

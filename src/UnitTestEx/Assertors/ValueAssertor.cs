@@ -54,11 +54,7 @@ namespace UnitTestEx.Assertors
         /// <param name="json">The JSON <see cref="string"/>.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ValueAssertor{TValue}"/> to support fluent-style method-chaining.</returns>
-#if NET7_0_OR_GREATER
         public ValueAssertor<TValue> AssertJson([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore)
-#else
-        public ValueAssertor<TValue> AssertJson(string json, params string[] pathsToIgnore)
-#endif
         {
             AssertSuccess();
             var cr = Owner.CreateJsonComparer().CompareValue(json, JsonSerializer.Serialize(Value), pathsToIgnore);
@@ -115,17 +111,11 @@ namespace UnitTestEx.Assertors
 
                 if (Value is IActionResult ar)
                     return ActionResultAssertor.ToHttpResponseMessageAssertor(Owner, ar, LogMessages, httpRequest);
-#if NET7_0_OR_GREATER
                 if (Value is IResult ir)
                     return HttpResultAssertor.ToHttpResponseMessageAssertor(Owner, ir, LogMessages, httpRequest);
-#endif
             }
 
-#if NET7_0_OR_GREATER
             throw new InvalidOperationException($"Result Type '{typeof(TValue).Name}' must be either a '{nameof(HttpResponseMessage)}', '{nameof(IResult)}' or '{nameof(IActionResult)}', and the value must not be null.");
-#else
-            throw new InvalidOperationException($"Result Type '{typeof(TValue).Name}' must be either a '{nameof(HttpResponseMessage)}' or '{nameof(IActionResult)}', and the value must not be null.");
-#endif
         }
     }
 }

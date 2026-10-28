@@ -223,11 +223,7 @@ namespace UnitTestEx.Expectations
         /// <param name="json">The JSON <see cref="string"/>.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore.</param>
         /// <returns>The <typeparamref name="TSelf"/> instance to support fluent-style method-chaining.</returns> 
-#if NET7_0_OR_GREATER
         public static TSelf ExpectJson<TSelf, TValue>(this IValueExpectations<TValue, TSelf> expectations, [StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore) where TSelf : IValueExpectations<TValue, TSelf>
-#else
-        public static TSelf ExpectJson<TSelf, TValue>(this IValueExpectations<TValue, TSelf> expectations, string json, params string[] pathsToIgnore) where TSelf : IValueExpectations<TValue, TSelf>
-#endif
         {
             expectations.ExpectationsArranger.GetOrAdd(() => new ValueExpectations<TSelf>(expectations.ExpectationsArranger.Owner, (TSelf)expectations)).SetExpectJson(t => json);
             expectations.ExpectationsArranger.PathsToIgnore.AddRange(pathsToIgnore);
@@ -247,6 +243,6 @@ namespace UnitTestEx.Expectations
         public static TSelf ExpectJsonFromResource<TSelf, TValue>(this IValueExpectations<TValue, TSelf> expectations, string resourceName, params string[] pathsToIgnore) where TSelf : IValueExpectations<TValue, TSelf>
             => ExpectJson(expectations, Resource.GetJson(resourceName, Assembly.GetCallingAssembly()), pathsToIgnore);
 
-#endregion
+        #endregion
     }
 }

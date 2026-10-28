@@ -135,11 +135,76 @@ namespace UnitTestEx.Azure.Functions
                 if (_host != null)
                     return _host;
 
+                _host = typeof(TEntryPoint).IsSubclassOf(typeof(FunctionsStartup)) || !FunctionHostFactory.CanBuildHost(typeof(TEntryPoint).Assembly)
+                    ? BuildStartupHost()
+                    : BuildApplicationHost();
+
+                OnHostStartUp();
+
+                return _host;
+            }
+        }
+
+        /// <summary>
+        /// Builds the <see cref="IHost"/> by executing the application's own entry point (e.g. <c>Program.cs</c> top-level statements) as-is, capturing the host at <c>Build()</c> and applying the test configuration; the worker is never started.
+        /// </summary>
+        private IHost BuildApplicationHost()
+        {
+            // The isolated worker builder determines its environment from 'AZURE_FUNCTIONS_ENVIRONMENT' on construction (as set by the Functions host); simulate accordingly.
+            System.Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", UnitTestEx.TestSetUp.Environment);
+
+            return FunctionHostFactory.BuildHost(typeof(TEntryPoint).Assembly, [], hb => hb
+                .ConfigureLogging(lb => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
+                .ConfigureAppConfiguration((_, cb) =>
+                {
+                    cb.SetBasePath(Environment.CurrentDirectory).AddJsonFile(GetLocalSettingsJson(), optional: true);
+                    ConfigureTestAppConfiguration(cb);
+                })
+                .ConfigureServices(ConfigureTestServices));
+        }
+
+        /// <summary>
+        /// Adds the unit-testing specific application configuration.
+        /// </summary>
+        private void ConfigureTestAppConfiguration(IConfigurationBuilder cb)
+        {
+            if (!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets || _includeUserSecrets.HasValue && _includeUserSecrets.Value)
+                cb.AddUserSecrets(typeof(TEntryPoint).Assembly, optional: true);
+
+            cb.AddEnvironmentVariables();
+
+            if (!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration || _includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value)
+                cb.AddJsonFile("appsettings.unittest.json", optional: true);
+
+            if (AdditionalConfiguration != null)
+                cb.AddInMemoryCollection(AdditionalConfiguration);
+        }
+
+        /// <summary>
+        /// Adds the unit-testing specific services (these override any existing registrations).
+        /// </summary>
+        private void ConfigureTestServices(IServiceCollection sc)
+        {
+            sc.ReplaceScoped(_ => SharedState);
+
+            foreach (var tec in UnitTestEx.TestSetUp.Extensions)
+                tec.ConfigureServices(this, sc);
+
+            SetUp.ConfigureServices?.Invoke(sc);
+            AddConfiguredServices(sc);
+        }
+
+        /// <summary>
+        /// Builds the <see cref="IHost"/> using the legacy <see cref="FunctionsStartup"/> (or <see cref="EntryPoint"/> convention) approach.
+        /// </summary>
+        private IHost BuildStartupHost()
+        {
+            {
                 var ep = Activator.CreateInstance<TEntryPoint>();
                 var ep2 = ep as FunctionsStartup;
                 var ep3 = new EntryPoint(ep);
 
-                _host = new HostBuilder()
+                return new HostBuilder()
                     .UseEnvironment(UnitTestEx.TestSetUp.Environment)
                     .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
                     .ConfigureHostConfiguration(cb =>
@@ -180,10 +245,6 @@ namespace UnitTestEx.Azure.Functions
                         SetUp.ConfigureServices?.Invoke(sc);
                         AddConfiguredServices(sc);
                     }).Build();
-
-                OnHostStartUp();
-
-                return _host;
             }
         }
 

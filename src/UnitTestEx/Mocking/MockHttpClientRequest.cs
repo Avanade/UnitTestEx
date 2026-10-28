@@ -316,11 +316,7 @@ namespace UnitTestEx.Mocking
         /// <param name="json">The <see cref="MediaTypeNames.Application.Json"/> content.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
-#if NET7_0_OR_GREATER
         public MockHttpClientRequestBody WithJsonBody([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore)
-#else
-        public MockHttpClientRequestBody WithJsonBody(string json, params string[] pathsToIgnore)
-#endif
         {
             Reset();
 

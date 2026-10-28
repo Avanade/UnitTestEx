@@ -291,11 +291,7 @@ namespace UnitTestEx.Json
         }
 
         /// <inheritdoc/>
-#if NET7_0_OR_GREATER
         public int GetHashCode([StringSyntax(StringSyntaxAttribute.Json)] string json)
-#else
-        public int GetHashCode(string json)
-#endif
         {
             if (json == null)
                 return 0;
