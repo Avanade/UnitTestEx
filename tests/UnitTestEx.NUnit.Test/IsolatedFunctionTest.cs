@@ -5,6 +5,8 @@ using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker.Http;
+using UnitTestEx.Azure.Functions;
 using UnitTestEx.Expectations;
 using UnitTestEx.IsolatedFunction;
 
@@ -64,6 +66,158 @@ namespace UnitTestEx.NUnit.Test
 
             var results = await Task.WhenAll(Task.Run(() => Build("first")), Task.Run(() => Build("second")));
             Assert.That(results, Is.EqualTo(new[] { "first", "second" }));
+        }
+
+        [Test]
+        public void HttpTrigger_RequestData_Json()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.HttpTrigger<HttpVariantFunctions>()
+                .ExpectLogContains("Data person Jane.")
+                .Run(f => f.DataJson(test.CreateJsonHttpRequestData(HttpMethod.Post, "data/json", new Person("Jane", "Doe"), null)))
+                .AssertSuccess()
+                .ToHttpResponseMessageAssertor()
+                .AssertOK()
+                .AssertContentType("application/json")
+                .AssertNamedHeader("X-Test", "abc")
+                .AssertNamedHeader("Set-Cookie", "session=xyz; path=/; httponly")
+                .AssertValue(new Person("Doe", "Jane"));
+        }
+
+        [Test]
+        public void HttpTrigger_RequestData_SyncText_RouteParameter()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.HttpTrigger<HttpVariantFunctions>()
+                .Run(f => f.DataText(test.CreateHttpRequestData(HttpMethod.Get, "data/text/bob", null, null, null), "bob"))
+                .ToHttpResponseMessageAssertor()
+                .AssertAccepted()
+                .AssertContentType("text/plain")
+                .AssertContent("Hello bob");
+        }
+
+        [Test]
+        public void HttpTrigger_RequestData_MethodCheck()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var ex = Assert.Throws<InvalidOperationException>(() => test.HttpTrigger<HttpVariantFunctions>()
+                .Run(f => f.DataText(test.CreateHttpRequestData(HttpMethod.Post, "data/text/bob", null, null, null), "bob")));
+            Assert.That(ex!.Message, Does.Contain("invoked using 'POST'"));
+        }
+
+        [Test]
+        public void HttpTrigger_RequestData_RouteCheck()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            Assert.Throws<InvalidOperationException>(() => test.HttpTrigger<HttpVariantFunctions>()
+                .Run(f => f.DataText(test.CreateHttpRequestData(HttpMethod.Get, "data/text/alice", null, null, null), "bob")));
+        }
+
+        [Test]
+        public void HttpTrigger_RequestData_GetHttpContext()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.HttpTrigger<HttpVariantFunctions>()
+                .Run(f => f.DataHttpContext(test.CreateHttpRequestData(HttpMethod.Get, "data/context", null, null, null)))
+                .ToHttpResponseMessageAssertor()
+                .AssertOK()
+                .AssertContent("/data/context");
+        }
+
+        [Test]
+        public void HttpTrigger_MultiOutput()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.HttpTrigger<HttpVariantFunctions>()
+                .Run(f => f.MultiOutput(test.CreateHttpRequestData(HttpMethod.Get, "multi-output")))
+                .Output(x => x.Message)
+                .AssertValue("multi-output message");
+
+            test.HttpTrigger<HttpVariantFunctions>()
+                .Run(f => f.MultiOutput(test.CreateHttpRequestData(HttpMethod.Get, "multi-output")))
+                .ToHttpResponseMessageAssertor()
+                .AssertOK()
+                .AssertContent("multi-output response");
+        }
+
+        [Test]
+        public void GenericTrigger_ServiceBus()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.Trigger<ServiceBusFunction>()
+                .Run(f => f.Run5(test.CreateServiceBusMessageFromValue(new Person("Jane", "Doe"))))
+                .AssertSuccess();
+
+            test.Trigger<ServiceBusFunction>()
+                .Run(f => ServiceBusFunction.Run4(new Person("Jane", "Doe")))
+                .AssertSuccess();
+        }
+
+        [Test]
+        public async Task HttpTrigger_Result_Async()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            (await test.HttpTrigger<HttpVariantFunctions>()
+                .RunAsync(f => f.Result(test.CreateHttpRequest(HttpMethod.Get, "result"))))
+                .AssertSuccess()
+                .ToHttpResponseMessageAssertor()
+                .AssertOK()
+                .AssertValue(new Person("Jane", "Doe"));
+        }
+
+        [Test]
+        public void HttpTrigger_Result_Sync()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.HttpTrigger<HttpVariantFunctions>()
+                .Run(f => f.ResultSync(test.CreateHttpRequest(HttpMethod.Get, "result/sync")))
+                .ToHttpResponseMessageAssertor()
+                .AssertNotFound();
+        }
+
+        [Test]
+        public void HttpTrigger_ActionResult_Sync()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.HttpTrigger<HttpVariantFunctions>()
+                .Run(f => f.ActionSync(test.CreateHttpRequest(HttpMethod.Get, "action/sync")))
+                .AssertOK()
+                .AssertValue(new Person("John", "Smith"))
+                .ToHttpResponseMessageAssertor()
+                .AssertOK()
+                .AssertValue(new Person("John", "Smith"));
+        }
+
+        [Test]
+        public void HttpTrigger_ActionResult_ToHttpResponseMessage()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.HttpTrigger<HttpFunction>()
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, null)))
+                .ToHttpResponseMessageAssertor()
+                .AssertOK()
+                .AssertContent("Welcome to Azure Functions!");
+        }
+
+        [Test]
+        public async Task HttpResponseData_ToHttpResponseMessage_PreservesBodyPosition()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var res = new TestHttpResponseData(new TestFunctionContext(test.Services)) { StatusCode = System.Net.HttpStatusCode.Created };
+            res.Headers.Add("Content-Type", "text/plain");
+            res.Headers.Add("X-Id", "42");
+            await res.WriteStringAsync("abc");
+            var pos = res.Body.Position;
+
+            using var hrm = res.ToHttpResponseMessage();
+            Assert.Multiple(async () =>
+            {
+                Assert.That(hrm.StatusCode, Is.EqualTo(System.Net.HttpStatusCode.Created));
+                Assert.That(hrm.Content.Headers.ContentType!.MediaType, Is.EqualTo("text/plain"));
+                Assert.That(hrm.Headers.GetValues("X-Id"), Is.EqualTo(new[] { "42" }));
+                Assert.That(await hrm.Content.ReadAsStringAsync(), Is.EqualTo("abc"));
+                Assert.That(res.Body.Position, Is.EqualTo(pos));
+            });
         }
 
         public sealed record TestService(string Value);

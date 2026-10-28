@@ -8,7 +8,7 @@ namespace UnitTestEx.Azure.Functions
     /// <summary>
     /// Provides the <b>NUnit</b> <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> implementation.
     /// </summary>
-    /// <typeparam name="TEntryPoint">Any <see cref="System.Type"/> within the Azure Functions (isolated worker) application assembly; or the legacy in-process <c>FunctionsStartup</c> <see cref="System.Type"/>.</typeparam>
+    /// <typeparam name="TEntryPoint">Any <see cref="System.Type"/> within the Azure Functions isolated-worker application assembly.</typeparam>
     /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
     /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
     /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>

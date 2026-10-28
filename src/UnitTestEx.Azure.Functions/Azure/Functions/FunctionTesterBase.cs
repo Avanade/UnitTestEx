@@ -1,16 +1,11 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Moq;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text.Json;
 using UnitTestEx.Abstractions;
@@ -21,7 +16,7 @@ namespace UnitTestEx.Azure.Functions
     /// <summary>
     /// Provides the basic Azure Function unit-testing capabilities.
     /// </summary>
-    /// <typeparam name="TEntryPoint">The <see cref="FunctionsStartup"/> or other entry point <see cref="Type"/>.</typeparam>
+    /// <typeparam name="TEntryPoint">A type from the isolated-worker application assembly.</typeparam>
     /// <typeparam name="TSelf">The <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class FunctionTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : class where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
@@ -33,16 +28,6 @@ namespace UnitTestEx.Azure.Functions
         private readonly bool? _includeUserSecrets;
         private IHost? _host;
         private bool _disposed;
-
-        private class Fhb(IServiceCollection services) : IFunctionsHostBuilder
-        {
-            public IServiceCollection Services { get; } = services;
-        }
-
-        private class Fcb(IConfigurationBuilder configurationBuilder) : IFunctionsConfigurationBuilder
-        {
-            public IConfigurationBuilder ConfigurationBuilder { get; } = configurationBuilder;
-        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> class.
@@ -57,26 +42,6 @@ namespace UnitTestEx.Azure.Functions
             _includeUnitTestConfiguration = includeUnitTestConfiguration;
             _includeUserSecrets = includeUserSecrets;
             AdditionalConfiguration = additionalConfiguration;
-        }
-
-        /// <summary>
-        /// Mock the <see cref="IFunctionsConfigurationBuilder"/> interface.
-        /// </summary>
-        private static IFunctionsConfigurationBuilder MockIFunctionsConfigurationBuilder(IConfigurationBuilder configurationBuilder)
-        {
-            var mock = new Mock<IFunctionsConfigurationBuilder>();
-            mock.Setup(x => x.ConfigurationBuilder).Returns(configurationBuilder);
-            return mock.Object;
-        }
-
-        /// <summary>
-        /// Mock the <see cref="IFunctionsHostBuilder"/> interface.
-        /// </summary>
-        private static IFunctionsHostBuilder MockIFunctionsHostBuilder(IServiceCollection services)
-        {
-            var mock = new Mock<IFunctionsHostBuilder>();
-            mock.Setup(x => x.Services).Returns(services);
-            return mock.Object;
         }
 
         /// <summary>
@@ -135,9 +100,7 @@ namespace UnitTestEx.Azure.Functions
                 if (_host != null)
                     return _host;
 
-                _host = typeof(TEntryPoint).IsSubclassOf(typeof(FunctionsStartup)) || !FunctionHostFactory.CanBuildHost(typeof(TEntryPoint).Assembly)
-                    ? BuildStartupHost()
-                    : BuildApplicationHost();
+                _host = BuildApplicationHost();
 
                 OnHostStartUp();
 
@@ -194,60 +157,6 @@ namespace UnitTestEx.Azure.Functions
             AddConfiguredServices(sc);
         }
 
-        /// <summary>
-        /// Builds the <see cref="IHost"/> using the legacy <see cref="FunctionsStartup"/> (or <see cref="EntryPoint"/> convention) approach.
-        /// </summary>
-        private IHost BuildStartupHost()
-        {
-            {
-                var ep = Activator.CreateInstance<TEntryPoint>();
-                var ep2 = ep as FunctionsStartup;
-                var ep3 = new EntryPoint(ep);
-
-                return new HostBuilder()
-                    .UseEnvironment(UnitTestEx.TestSetUp.Environment)
-                    .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
-                    .ConfigureHostConfiguration(cb =>
-                    {
-                        cb.SetBasePath(Environment.CurrentDirectory)
-                            .AddInMemoryCollection([new("AzureWebJobsConfigurationSection", "AzureFunctionsJobHost")])
-                            .AddJsonFile(GetLocalSettingsJson(), optional: true)
-                            .AddJsonFile("appsettings.json", optional: true)
-                            .AddJsonFile($"appsettings.{UnitTestEx.TestSetUp.Environment.ToLowerInvariant()}.json", optional: true);
-
-                        ep3?.ConfigureHostConfiguration(cb);
-                    })
-                    .ConfigureAppConfiguration((hbc, cb) =>
-                    {
-                        ep2?.ConfigureAppConfiguration(MockIFunctionsConfigurationBuilder(cb));
-                        ep3?.ConfigureAppConfiguration(hbc, cb);
-
-                        if (!_includeUserSecrets.HasValue && TestSetUp.FunctionTesterIncludeUserSecrets || _includeUserSecrets.HasValue && _includeUserSecrets.Value)
-                            cb.AddUserSecrets<TEntryPoint>();
-
-                        cb.AddEnvironmentVariables();
-
-                        if (!_includeUnitTestConfiguration.HasValue && TestSetUp.FunctionTesterIncludeUnitTestConfiguration || _includeUnitTestConfiguration.HasValue && _includeUnitTestConfiguration.Value)
-                            cb.AddJsonFile("appsettings.unittest.json", optional: true);
-
-                        if (AdditionalConfiguration != null)
-                            cb.AddInMemoryCollection(AdditionalConfiguration);
-                    })
-                    .ConfigureServices(sc =>
-                    {
-                        ep2?.Configure(MockIFunctionsHostBuilder(sc));
-                        ep3?.ConfigureServices(sc);
-                        sc.ReplaceScoped(_ => SharedState);
-
-                        foreach (var tec in UnitTestEx.TestSetUp.Extensions)
-                            tec.ConfigureServices(this, sc);
-
-                        SetUp.ConfigureServices?.Invoke(sc);
-                        AddConfiguredServices(sc);
-                    }).Build();
-            }
-        }
-
         /// <inheritdoc/>
         protected override void OnResetHost()
         {
@@ -297,6 +206,13 @@ namespace UnitTestEx.Azure.Functions
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="ServiceBusTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="ServiceBusTriggerTester{TFunction}"/>.</returns>
         public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
+
+        /// <summary>
+        /// Specifies an isolated-worker function with any trigger that does not have a dedicated tester.
+        /// </summary>
+        /// <typeparam name="TFunction">The function type.</typeparam>
+        /// <returns>A generic trigger tester.</returns>
+        public TriggerTester<TFunction> Trigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 
         /// <summary>
         /// Releases all resources.

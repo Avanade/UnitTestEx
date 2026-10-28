@@ -50,54 +50,73 @@ test.ReplaceHttpClientFactory(mcf)
 
 ## HTTP-triggered Azure Function
 
-Unfortunately, at time of writing, there is no `WebApplicationFactory` equivalent for Azure functions. _UnitTestEx_ looks to emulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method. _UnitTestEx_ when invoking verifies usage of [`HttpTriggerAttribute`](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-http-webhook-trigger?tabs=csharp) and ensures a `Task<IActionResult>` result.
+`FunctionTester` supports the Azure Functions v4 isolated worker model on .NET 8, 9 and 10, including the modern `FunctionsApplication.CreateBuilder` / `IHostApplicationBuilder` startup model. It executes the application's normal entry point to build its host, applies test configuration and service overrides, then invokes the function method directly. The worker is not started, so this is not a Functions runtime or binding-emulator test.
 
-The following is an [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs).
+The following is an [example](./tests/UnitTestEx.NUnit.Test/ProductFunctionTest.cs).
 
 ``` csharp
-using var test = FunctionTester.Create<Startup>();
+using var test = FunctionTester.Create<ProductFunction>();
 test.ReplaceHttpClientFactory(mcf)
     .HttpTrigger<ProductFunction>()
-    .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
+    .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc"))
     .AssertOK()
-    .Assert(new { id = "Abc", description = "A blue carrot" });
+    .AssertValue(new { id = "Abc", description = "A blue carrot" });
 ```
 
-Both the [_Isolated worker model_](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide) and [_In-process model_](https://learn.microsoft.com/en-us/azure/azure-functions/functions-dotnet-class-library) are supported.
+HTTP functions can use ASP.NET Core `HttpRequest` with `IActionResult`/`IResult`, or worker-native `HttpRequestData` with `HttpResponseData`. Both synchronous and asynchronous result methods are supported. HTTP responses can be asserted through `HttpResponseMessageAssertor`; worker-native response bodies, headers, status codes and test cookies are adapted to `HttpResponseMessage`.
 
-Additionally, where an `HttpRequest` is used the passed `HttpRequest.PathAndQuery` is checked against that defined by the corresponding `HttpTriggerAttribute.Route` and will result in an error where different. The `HttpTrigger.WithRouteChecK` and `WithNoRouteCheck` methods control the path and query checking as needed.
+Multi-output functions can assert their HTTP result and non-HTTP outputs separately:
+
+```csharp
+test.HttpTrigger<MyFunction>()
+    .Run(f => f.Run(test.CreateHttpRequestData(HttpMethod.Get, "route")))
+    .Output(x => x.Message).AssertValue("expected message");
+
+test.HttpTrigger<MyFunction>()
+    .Run(f => f.Run(test.CreateHttpRequestData(HttpMethod.Get, "route")))
+    .ToHttpResponseMessageAssertor()
+    .AssertOK();
+```
+
+By default, the HTTP tester validates the request method and route against the worker `HttpTriggerAttribute`. `WithNoMethodCheck`, `WithNoRouteCheck` and `WithRouteCheck` configure those checks.
 
 <br/>
 
 ## Service Bus-trigger Azure Function
 
-As above, there is currently no easy means to integration (in-process) test Azure functions that rely on the [Azure Service Bus](https://azure.microsoft.com/en-us/services/service-bus/). _UnitTestEx_ looks to emulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method and verifies usage of the [`ServiceBusTriggerAttribute`](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-service-bus-trigger?tabs=csharp).
+The Service Bus tester supports isolated-worker `ServiceBusTriggerAttribute` functions and worker `ServiceBusMessageActions`:
 
 The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs) of invoking the function method directly passing in a `ServiceBusReceivedMessage` created using `test.CreateServiceBusMessageFromValue` (this creates a message as if coming from Azure Service Bus).
 
 ``` csharp
-using var test = FunctionTester.Create<Startup>();
+using var test = FunctionTester.Create<ServiceBusFunction>();
 test.ReplaceHttpClientFactory(mcf)
     .ServiceBusTrigger<ServiceBusFunction>()
-    .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
+    .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" })))
     .AssertSuccess();
 ```
 
-Both the [_Isolated worker model_](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide) and [_In-process model_](https://learn.microsoft.com/en-us/azure/azure-functions/functions-dotnet-class-library) are supported.
+For triggers without a dedicated helper, `Trigger<TFunction>()` provides generic sync/async invocation, log capture, expectations and value assertions. It supports instance and static methods and requires a worker trigger attribute on the invoked method:
+
+```csharp
+test.Trigger<ServiceBusFunction>()
+    .Run(f => f.Run5(test.CreateServiceBusMessageFromValue(new Person("Jane", "Doe"))))
+    .AssertSuccess();
+```
 
 <br/>
 
 ## Generic Azure Function Type
 
-To support testing of any generic `Type` within an Azure Fuction, _UnitTestEx_ looks to simulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method.
+To test a function type directly without validating a trigger attribute, use the general-purpose `Type<T>` tester.
 
 The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs).
 
 ``` csharp
-using var test = FunctionTester.Create<Startup>();
+using var test = FunctionTester.Create<ServiceBusFunction>();
 test.ReplaceHttpClientFactory(mcf)
     .Type<ServiceBusFunction>()
-    .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
+    .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" })))
     .AssertSuccess();
 ```
 

@@ -29,7 +29,7 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void TesterExtensions_FunctionTester()
         {
-            using var test = FunctionTester.Create<Function.Startup>();
+            using var test = FunctionTester.Create<UnitTestEx.IsolatedFunction.HttpFunction>();
             var bs = test.Services.GetService<BlahService>();
             Assert.That(bs, Is.Not.Null);
         }

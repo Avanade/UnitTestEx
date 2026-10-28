@@ -1,7 +1,5 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.Azure.WebJobs.ServiceBus;
-
 namespace UnitTestEx.Azure.Functions
 {
     /// <summary>

@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Net.Mime;
-using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Assertors;
@@ -19,13 +18,11 @@ using UnitTestEx.Json;
 namespace UnitTestEx.Azure.Functions
 {
     /// <summary>
-    /// Provides Azure Function <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute"/> unit-testing and integration emulation testing capabilities.
+    /// Provides Azure Functions isolated-worker Service Bus trigger unit-testing and integration emulation testing capabilities.
     /// </summary>
     /// <typeparam name="TFunction">The Azure Function <see cref="Type"/>.</typeparam>
     public class ServiceBusTriggerTester<TFunction> : HostTesterBase<TFunction>, IExpectations<ServiceBusTriggerTester<TFunction>> where TFunction : class
     {
-        private static readonly Semaphore _semaphore = new(1, 1);
-
         /// <summary>
         /// Initializes a new <see cref="ServiceBusTriggerTester{TFunction}"/> class.
         /// </summary>
@@ -39,29 +36,27 @@ namespace UnitTestEx.Azure.Functions
         public ExpectationsArranger<ServiceBusTriggerTester<TFunction>> ExpectationsArranger { get; }
 
         /// <summary>
-        /// Runs the Service Bus Triggered (<see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute"/>) function expected as a parameter within the <paramref name="expression"/>.
+        /// Runs the isolated-worker Service Bus-triggered function expected as a parameter within the <paramref name="expression"/>.
         /// </summary>
         /// <param name="expression">The function operation invocation expression.</param>
-        /// <param name="validateTriggerProperties">Indicates whether to validate the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute"/> properties to ensure correct configuration.</param>
+        /// <param name="validateTriggerProperties">Indicates whether to validate the worker trigger properties to ensure correct configuration.</param>
         /// <returns>A <see cref="VoidAssertor"/>.</returns>
         public VoidAssertor Run(Expression<Func<TFunction, Task>> expression, bool validateTriggerProperties = false) => RunAsync(expression, validateTriggerProperties).GetAwaiter().GetResult();
 
         /// <summary>
-        /// Runs the Service Bus Triggered (<see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute"/>) function expected as a parameter within the <paramref name="expression"/>.
+        /// Runs the isolated-worker Service Bus-triggered function expected as a parameter within the <paramref name="expression"/>.
         /// </summary>
         /// <param name="expression">The function operation invocation expression.</param>
-        /// <param name="validateTriggerProperties">Indicates whether to validate the <see cref="Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute"/> or <see cref="Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute"/> properties to ensure correct configuration.</param>
+        /// <param name="validateTriggerProperties">Indicates whether to validate the worker trigger properties to ensure correct configuration.</param>
         /// <returns>A <see cref="VoidAssertor"/>.</returns>
         public async Task<VoidAssertor> RunAsync(Expression<Func<TFunction, Task>> expression, bool validateTriggerProperties = false)
         {
             object? sbv = null;
-            WebJobsServiceBusMessageActionsAssertor? sba = null;
-            WebJobsServiceBusSessionMessageActionsAssertor? ssba = null;
             WorkerServiceBusMessageActionsAssertor? wsba = null;
-            (Exception? ex, double ms) = await RunAsync(expression, [typeof(Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute), typeof(Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute)], (p, a, v) =>
+            (Exception? ex, double ms) = await RunAsync(expression, [typeof(Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute)], (p, a, v) =>
             {
                 if (validateTriggerProperties && a == null)
-                    throw new InvalidOperationException($"The function method must have a parameter using the {nameof(Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute)}.");
+                    throw new InvalidOperationException($"The function method must have a parameter using the {nameof(Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute)}.");
 
                 Implementor.WriteLine("");
                 Implementor.WriteLine("FUNCTION SERVICE BUS TRIGGER TESTER...");
@@ -71,10 +66,6 @@ namespace UnitTestEx.Azure.Functions
                 {
                     if (pi.Value is ServiceBusReceivedMessage sbrm)
                         sbv = sbrm;
-                    else if (pi.Value is WebJobsServiceBusMessageActionsAssertor psba)
-                        sba = psba;
-                    else if (pi.Value is WebJobsServiceBusSessionMessageActionsAssertor pssba)
-                        ssba = pssba;
                     else if (pi.Value is WorkerServiceBusMessageActionsAssertor pwsba)
                         wsba = pwsba;
                 }
@@ -82,19 +73,13 @@ namespace UnitTestEx.Azure.Functions
                 if (validateTriggerProperties && a is not null)
                 {
                     var config = Services.GetRequiredService<IConfiguration>();
-                    var sbta = a as Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute;
-                    if (sbta is not null)
-                        VerifyServiceBusTriggerProperties(config, sbta);
-
-                    var sbta2 = a as Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute;
-                    if (sbta2 is not null)
-                        VerifyServiceBusTriggerProperties2(config, sbta2);
+                    VerifyServiceBusTriggerProperties(config, (Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute)a);
                 }
             }).ConfigureAwait(false);
 
             await Task.Delay(UnitTestEx.TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
             var logs = Owner.SharedState.GetLoggerMessages();
-            LogOutput(ex, ms, sbv, sba, ssba, wsba, logs);
+            LogOutput(ex, ms, sbv, wsba, logs);
 
             await ExpectationsArranger.AssertAsync(logs, ex).ConfigureAwait(false);
 
@@ -104,39 +89,7 @@ namespace UnitTestEx.Azure.Functions
         /// <summary>
         /// Verifies the service bus trigger properties.
         /// </summary>
-        internal static (string ConnectionString, string? QueueName, string? TopicName, string? SubscriptionName) VerifyServiceBusTriggerProperties(IConfiguration config, Microsoft.Azure.WebJobs.ServiceBusTriggerAttribute sbta)
-        {
-            // Get the connection string.
-            var csn = sbta.Connection ?? "ServiceBus";
-            var cs = config.GetValue<string?>(csn);
-            if (cs == null)
-            {
-                csn = $"AzureWebJobs{csn}";
-                cs = config.GetValue<string?>(csn);
-            }
-
-            if (string.IsNullOrEmpty(cs))
-                throw new InvalidOperationException("Service Bus Connection String configuration setting either does not exist or does not have a value.");
-
-            // Get the queue name.
-            string? qn = null;
-            string? tn = null;
-            string? sn = null;
-            if (sbta.QueueName != null)
-                qn = GetValueFromConfig(config, "Queue Name", sbta.QueueName);
-            else
-            {
-                tn = GetValueFromConfig(config, "Topic Name", sbta.TopicName);
-                sn = GetValueFromConfig(config, "Subscription Name", sbta.SubscriptionName);
-            }
-
-            return (cs, qn, tn, sn);
-        }
-
-        /// <summary>
-        /// Verifies the service bus trigger properties.
-        /// </summary>
-        internal static (string ConnectionString, string? QueueName, string? TopicName, string? SubscriptionName) VerifyServiceBusTriggerProperties2(IConfiguration config, Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute sbta)
+        internal static (string ConnectionString, string? QueueName, string? TopicName, string? SubscriptionName) VerifyServiceBusTriggerProperties(IConfiguration config, Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute sbta)
         {
             // Get the connection string.
             var csn = sbta.Connection ?? "ServiceBus";
@@ -191,7 +144,7 @@ namespace UnitTestEx.Azure.Functions
         /// <summary>
         /// Log the output.
         /// </summary>
-        private void LogOutput(Exception? ex, double ms, object? value, WebJobsServiceBusMessageActionsAssertor? sba, WebJobsServiceBusSessionMessageActionsAssertor? ssba, WorkerServiceBusMessageActionsAssertor? wsba, IEnumerable<string?>? logs)
+        private void LogOutput(Exception? ex, double ms, object? value, WorkerServiceBusMessageActionsAssertor? wsba, IEnumerable<string?>? logs)
         {
             Implementor.WriteLine("");
             Implementor.WriteLine("LOGGING >");
@@ -257,8 +210,6 @@ namespace UnitTestEx.Azure.Functions
                 Implementor.WriteLine(ex.ToString());
             }
 
-            sba?.LogResult();
-            ssba?.LogResult();
             wsba?.LogResult();
 
             //Implementor.WriteLine("");
