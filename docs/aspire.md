@@ -236,6 +236,14 @@ The Event Grid builder lives in `UnitTestEx.Azure.Functions`; the webhook sender
 
 The isolated AppHost for this proof starts Azurite and Azure Functions Core Tools without changing the existing container-free Aspire test host. Run it with `dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --filter FullyQualifiedName~AzuriteBlobTriggerTest`; Podman and Azure Functions Core Tools v4 must be installed and available on `PATH`, and ports `7071` and `10000`-`10002` must be free.
 
+### Service Bus emulator integration
+
+The [Service Bus emulator test](../tests/UnitTestEx.Aspire.NUnit.Test/Functions/ServiceBusEmulatorTest.cs) starts a separate Functions host and an Aspire-managed Service Bus emulator. It sends a message to the emulator, lets the real Functions host receive and bind it, then verifies a message written to an output queue and checks the captured function log. This tests the host-to-broker integration; it does not validate Azure Service Bus delivery guarantees or every cloud feature.
+
+The AppHost also starts the emulator's SQL Edge dependency and mounts its entity configuration. The emulator and SQL containers require a working Aspire-compatible container runtime (Podman locally; the GitHub-hosted CI runner provides Docker), and the first run downloads their images. Microsoft's emulator prerequisites list at least 2 GB RAM and 5 GB disk. The AppHost sets the emulator and SQL `ACCEPT_EULA` values because the repository's tests are accepting those terms for this test-only use. The emulator is for development/testing, not production, and is not a substitute for Azure smoke tests.
+
+The resources are declared directly in the dedicated Aspire AppHost rather than maintained in a second `compose.yml`; the same integration test starts them locally and in CI. Run only this test with `dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --filter FullyQualifiedName~ServiceBusEmulatorTest`.
+
 _Note:_ Aspire-hosted resources are real OS processes (containers, where you opt into one), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
 
 _Note:_ Since Tier 2/3 resources are real, reachable URLs (not in-process fakes), a UI/frontend resource hosted in the `AppHost` can be driven directly with [Playwright](https://playwright.dev/dotnet/) - this is an ordinary consequence of the resources being real processes, not a UnitTestEx-specific feature; see Microsoft's own [Aspire + Playwright guide](https://learn.microsoft.com/en-us/dotnet/aspire/testing/write-your-first-test?tabs=xunit#creating-a-playwright-test) for the pattern.
@@ -259,5 +267,6 @@ Shared stubs across tiers (IHttpMockClient, YAML) | [`HttpMock_SharedInterface_C
 UnitTestEx JSON comparer in a self-hosted mock | [`HttpMock_WithJsonBodyUsingUnitTestExComparer_SelfHostedMockHost_MatchesUsingJsonElementComparerSemantics`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
 User / set-up flow | [`UseSetUp_And_UseUser_FlowThroughToHttpRequestSend`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
 Azure Functions blob webhook + Azurite | [`BlobCreatedWebhook_RunsFunction_AndWritesProcessedBlob`](../tests/UnitTestEx.Aspire.NUnit.Test/Functions/AzuriteBlobTriggerTest.cs)
+Azure Functions Service Bus emulator | [`ServiceBusMessage_RunsFunction_AndWritesOutputQueue`](../tests/UnitTestEx.Aspire.NUnit.Test/Functions/ServiceBusEmulatorTest.cs)
 
 [← Back to README](../README.md)

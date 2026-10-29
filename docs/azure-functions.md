@@ -159,6 +159,26 @@ Example: [`EventGridEvent_FromValue`](../tests/UnitTestEx.NUnit.Test/EventGridEx
 
 <br/>
 
+## Event Hubs triggers
+
+`CreateEventDataFromValue/FromJson/FromResource` build received `EventData` values using the test's JSON serializer or an embedded JSON resource. `CreateEventData` accepts raw `BinaryData` and supports setting partition key, sequence number, offset, enqueue time and custom event properties:
+
+```csharp
+var eventData = test.CreateEventDataFromValue(
+    new Person("Jane", "Doe"),
+    message => message.Properties["source"] = "unit-test");
+
+test.Trigger<CustomerEvents>()
+    .Run(function => function.Process(eventData))
+    .AssertSuccess();
+```
+
+Batch-trigger functions accept an `EventData[]` directly. These helpers exercise the function and UnitTestEx expectations, middleware and log capture; they do not emulate Event Hubs delivery, partition assignment, checkpointing or retries. Use an Event Hubs emulator or Azure for those integration behaviors.
+
+Example: [`EventHubsTest`](../tests/UnitTestEx.NUnit.Test/EventHubsTest.cs).
+
+<br/>
+
 ## Other triggers
 
 For triggers without a dedicated helper, use `Trigger<TFunction>()`, or `Type<TFunction>()` to skip trigger validation. Pass the trigger payload directly: a `string`, POCO, `BinaryData`, `TimerInfo` and so on.

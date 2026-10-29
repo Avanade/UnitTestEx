@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
     <PackageReference Include="NUnit" Version="4.1.0" />
     <PackageReference Include="NUnit.Analyzers" Version="3.10.0">
@@ -28,6 +29,7 @@
     <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" />
     <ProjectReference Include="..\UnitTestEx.Aspire.AppHost\UnitTestEx.Aspire.AppHost.csproj" />
     <ProjectReference Include="..\UnitTestEx.Aspire.Functions.AppHost\UnitTestEx.Aspire.Functions.AppHost.csproj" />
+    <ProjectReference Include="..\UnitTestEx.Aspire.ServiceBus.AppHost\UnitTestEx.Aspire.ServiceBus.AppHost.csproj" />
   </ItemGroup>
 
 </Project>
