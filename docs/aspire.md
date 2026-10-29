@@ -23,6 +23,26 @@ tester.Http("shopping")
     .AssertValue(new { id = "123", product = "Widget" });
 ```
 
+For an NUnit fixture that deliberately shares one AppHost across its test methods, derive from `WithAspireTester<TAppHost>` and use its `Test` property. The base exposes `OnBeforeStartAsync` and `OnAfterStartAsync` hooks and asynchronously disposes the shared tester when the fixture is torn down:
+
+```csharp
+public sealed class ShoppingTests : WithAspireTester<Projects.MyAppHost>
+{
+    [OneTimeSetUp]
+    public async Task StartAsync()
+    {
+        Test.WithResourceEnvironment("shopping", "FeatureFlag", "enabled");
+        await Test.WaitForResourceAsync("shopping");
+    }
+
+    [Test]
+    public void CanReadAnOrder()
+        => Test.Http("shopping").Run(HttpMethod.Get, "orders/123").AssertOK();
+}
+```
+
+This is a lifecycle convenience, not automatic test isolation: resources, external data, and captured logs live across methods for as long as the shared AppHost is running. Reset mutable external state and call `Test.ResetLogs()` where a test depends on a clean starting point. Use a fresh `AspireTester.Create<TAppHost>()` per test when isolation matters more than AppHost startup time. The base implements `IAsyncDisposable`; dispose it from the test framework's asynchronous fixture teardown.
+
 External-to-the-solution dependencies (an email/notification provider, an identity/auth service, an ERP system, a payment gateway, etc.) still need to be mocked - a real inter-domain test proves *your* services talk to each other correctly, not that a third-party's sandbox environment is up. UnitTestEx's recommended pattern is to **self-host** [WireMock.Net](https://github.com/WireMock-Net/WireMock.Net) as an ordinary Aspire *project* resource (`AddProject`) - one small console app per external system, added to your own solution - rather than the official [`WireMock.Net.Aspire`](https://github.com/WireMock-Net/WireMock.Net-Aspire) package's *container* resource (`AddWireMock`). UnitTestEx does not ship this host as a package (there's nothing to install or version); [`UnitTestEx.Aspire.MockHost`](../tests/UnitTestEx.Aspire.MockHost) is a template you copy into your own solution (referencing `UnitTestEx.Aspire`, which ships both the `JsonElementComparerMatcher` type and the `WireMockConsole.RunAsync` helper used below, so there's no matcher code - or port/custom-matcher/graceful-shutdown boilerplate - to write yourself):
 
 ``` csharp
@@ -172,6 +192,50 @@ tester.AssertLogContains("Order 123 processed successfully."); // Only sees acti
 
 This is deliberately explicit rather than automatic - unlike Tier 1, which resets its equivalent captured state automatically per Act (there being a single, well-defined Act boundary to hang it off), Tier 2/3 has no such boundary, and background/hosted-service activity occurring between calls is exactly what this capture exists to surface; an automatic reset would risk silently discarding it. `ResetLogs()` only clears previously captured log data - it does not reset any `ErrorWhenLogContains` configuration (level, `exclude`, `include`).
 
+### Driving Azure Functions triggers and waiting for background work
+
+Some Azure Functions triggers are delivered by the Functions host's HTTP webhook rather than by a normal HTTP endpoint. `FunctionsWebhook(resourceName)` resolves the resource's Aspire endpoint and can post Event Grid-schema events to either the blob-trigger route (`/runtime/webhooks/blobs`) or the Event Grid trigger route (`/runtime/webhooks/EventGrid`). The helper adds the `aeg-event-type: Notification` header and returns the raw response so the test can assert it:
+
+```csharp
+var created = EventGridExtensionMethods.CreateBlobCreatedEvent(
+    "imports", blob.Name, blob.Uri, properties.ETag.ToString(), "text/csv", properties.ContentLength);
+
+using var response = await tester.FunctionsWebhook("imports")
+    .PostBlobCreatedAsync("Host.Functions.CustomerImport", created);
+response.EnsureSuccessStatusCode();
+```
+
+`WaitForResourceAsync("functions")` only waits for Aspire's resource health check; an HTTP health endpoint can respond before the Functions isolated worker has finished indexing. Use `WaitForFunctionsAsync` when a test needs function registration to be ready:
+
+```csharp
+var functionNames = await tester.WaitForFunctionsAsync(
+    "functions",
+    expectedFunctionNames: ["CustomerImport", "HealthCheck"]);
+```
+
+This calls the Functions host's `/admin/functions` API, waits for the host to expose its indexed function list, and optionally verifies that the named functions are present. It does not inspect startup log text. A function omitted from the list (for example, one disabled by an unresolved `%SettingName%` binding expression) causes the expected-name check to fail. The method confirms function indexing, not successful connections to trigger services or end-to-end trigger delivery.
+
+For a Blob Storage trigger configured with `Source = BlobTriggerSource.EventGrid`, distinguish **trigger execution** from **Event Grid delivery**:
+
+- The Functions host receives the notification at its blob-trigger webhook, resolves the blob, applies the binding, invokes the function, and performs its output bindings. An Aspire test that posts to this webhook exercises those real host/runtime behaviors.
+- Azurite emulates Blob Storage; it does **not** publish `Microsoft.Storage.BlobCreated` events or deliver them through an Event Grid subscription. The test must arrange delivery itself: upload the blob to Azurite, create the corresponding event, then post that event with `FunctionsWebhook`. This simulates the notification/delivery step, not the function execution.
+- Consequently, this test does not verify Azure Event Grid subscription configuration, filtering, retries, or delivery semantics. Those require a real Azure Event Grid subscription or an Event Grid-compatible emulator that supports the desired scenario.
+
+The repository's [Azurite integration test](../tests/UnitTestEx.Aspire.NUnit.Test/Functions/AzuriteBlobTriggerTest.cs) follows that split: it uploads a real blob, manually posts its BlobCreated notification to the running Functions host, then waits for and verifies a real output blob. By contrast, the in-process trigger tests under `UnitTestEx.NUnit.Test` invoke the function method directly and do not test host binding or notification delivery.
+
+For an end-to-end import test, upload the blob and read the resulting report using the storage client and connection string already owned by the test/AppHost. `EventuallyAsync` polls a caller-supplied operation and returns its first result satisfying the condition; handle expected "not ready yet" outcomes (such as a 404 for a report that has not been written) in that operation. It does not depend on Azure Storage, so the same helper works for queues, databases, and other eventual side effects:
+
+```csharp
+var report = await tester.EventuallyAsync(
+    async cancellationToken => await TryReadReportAsync(reportBlob, cancellationToken),
+    value => value is not null,
+    timeout: TimeSpan.FromSeconds(60));
+```
+
+The Event Grid builder lives in `UnitTestEx.Azure.Functions`; the webhook sender and generic polling helper are separate. UnitTestEx.Aspire does not manage Azurite, upload blobs, or add Azure Storage SDK dependencies. Configure the emulator/resource in the AppHost, then use the application's storage client to arrange and assert storage state.
+
+The isolated AppHost for this proof starts Azurite and Azure Functions Core Tools without changing the existing container-free Aspire test host. Run it with `dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --filter FullyQualifiedName~AzuriteBlobTriggerTest`; Podman and Azure Functions Core Tools v4 must be installed and available on `PATH`, and ports `7071` and `10000`-`10002` must be free.
+
 _Note:_ Aspire-hosted resources are real OS processes (containers, where you opt into one), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
 
 _Note:_ Since Tier 2/3 resources are real, reachable URLs (not in-process fakes), a UI/frontend resource hosted in the `AppHost` can be driven directly with [Playwright](https://playwright.dev/dotnet/) - this is an ordinary consequence of the resources being real processes, not a UnitTestEx-specific feature; see Microsoft's own [Aspire + Playwright guide](https://learn.microsoft.com/en-us/dotnet/aspire/testing/write-your-first-test?tabs=xunit#creating-a-playwright-test) for the pattern.
@@ -194,5 +258,6 @@ Stubbing external dependencies (WireMock) | [`HttpMock_StubsExternalMockHostDepe
 Shared stubs across tiers (IHttpMockClient, YAML) | [`HttpMock_SharedInterface_ConfiguresIdenticallyAcrossTiers`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs), [`HttpMock_WithRequestsFromResourceAsync_LoadsStubsFromYaml_IdenticallyToTier1`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
 UnitTestEx JSON comparer in a self-hosted mock | [`HttpMock_WithJsonBodyUsingUnitTestExComparer_SelfHostedMockHost_MatchesUsingJsonElementComparerSemantics`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
 User / set-up flow | [`UseSetUp_And_UseUser_FlowThroughToHttpRequestSend`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
+Azure Functions blob webhook + Azurite | [`BlobCreatedWebhook_RunsFunction_AndWritesProcessedBlob`](../tests/UnitTestEx.Aspire.NUnit.Test/Functions/AzuriteBlobTriggerTest.cs)
 
 [← Back to README](../README.md)

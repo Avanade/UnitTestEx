@@ -14,6 +14,10 @@ namespace UnitTestEx.NUnit.Test.Other
 
         public class StubGreeter : IGreeter { public string Greet(string name) => $"Stub {name}"; }
 
+        /// <summary>
+        /// Creates a tester with the default scoped greeter registration.
+        /// </summary>
+        /// <returns>The configured generic tester.</returns>
         private static GenericTesterBase<object, GenericTester<object>> CreateTester() => GenericTester.Create().ConfigureServices(sc => sc.AddScoped<IGreeter, Greeter>());
 
         [Test]

@@ -153,7 +153,7 @@ test.Trigger<MyEventGridFunction>()
     .AssertSuccess();
 ```
 
-These helpers only create the event. They do not emulate Event Grid delivery, retries or filtering. To verify real end-to-end delivery, use [Aspire testing](./aspire.md).
+These helpers only create events. `EventGridExtensionMethods.CreateBlobCreatedEvent(...)` also builds the Azure Storage `Microsoft.Storage.BlobCreated` event shape from a container/blob name, URI and properties. It does not emulate delivery, retries or filtering. With Aspire and Azurite, upload the blob to the emulator and post the event yourself through `tester.FunctionsWebhook("functions").PostBlobCreatedAsync(...)`: the Functions host then handles the webhook, binding, invocation, and output, but Azurite does not publish or deliver Event Grid events. This verifies the function/runtime path, not Event Grid subscription configuration or delivery semantics. Test those separately against Azure Event Grid or a suitable emulator. Use `EventuallyAsync(...)` to wait for the function's external side effect. See [Aspire testing](./aspire.md#driving-azure-functions-triggers-and-waiting-for-background-work).
 
 Example: [`EventGridEvent_FromValue`](../tests/UnitTestEx.NUnit.Test/EventGridExtensionMethodsTest.cs), [`CloudEvent_FromResource`](../tests/UnitTestEx.NUnit.Test/EventGridExtensionMethodsTest.cs).
 
@@ -162,6 +162,22 @@ Example: [`EventGridEvent_FromValue`](../tests/UnitTestEx.NUnit.Test/EventGridEx
 ## Other triggers
 
 For triggers without a dedicated helper, use `Trigger<TFunction>()`, or `Type<TFunction>()` to skip trigger validation. Pass the trigger payload directly: a `string`, POCO, `BinaryData`, `TimerInfo` and so on.
+
+Blob and Storage Queue triggers use this same generic tester; no trigger-specific UnitTestEx tester or message builder is needed. The function app still references the corresponding isolated-worker storage extension package, which supplies the trigger attributes. Pass the value the function receives after Azure's binding conversion:
+
+``` csharp
+var content = BinaryData.FromString("""{"firstName":"Jane","lastName":"Doe"}""");
+
+test.Trigger<StorageTriggerFunctions>()
+    .Run(f => StorageTriggerFunctions.ProcessBlob(content, "people.json"))
+    .AssertValue("""people.json:{"firstName":"Jane","lastName":"Doe"}""");
+
+test.Trigger<StorageTriggerFunctions>()
+    .Run(f => StorageTriggerFunctions.ProcessQueuePerson(new Person("Jane", "Doe")))
+    .AssertValue("Jane Doe");
+```
+
+These are function-invocation unit tests: they do not test Azure's blob/queue binding conversion, storage connectivity, or delivery behavior. Use Aspire with Azurite for those integration scenarios.
 
 ``` csharp
 test.Trigger<ServiceBusFunction>()
@@ -174,7 +190,7 @@ test.Type<ProductFunction>()
     .AssertSuccess();
 ```
 
-Example: [`GenericTrigger_ServiceBus`](../tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`TimerTriggered`](../tests/UnitTestEx.NUnit.Test/ProductFunctionTest.cs).
+Example: [`BlobTrigger_Bytes`](../tests/UnitTestEx.NUnit.Test/StorageTriggerTest.cs), [`QueueTrigger_Person`](../tests/UnitTestEx.NUnit.Test/StorageTriggerTest.cs), [`QueueTrigger_String`](../tests/UnitTestEx.NUnit.Test/StorageTriggerTest.cs), [`GenericTrigger_ServiceBus`](../tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`TimerTriggered`](../tests/UnitTestEx.NUnit.Test/ProductFunctionTest.cs).
 
 <br/>
 

@@ -23,6 +23,9 @@ jobs:
           9.0.x
           10.0.x
 
+    - name: Setup Azure Functions Core Tools
+      run: npm install --global azure-functions-core-tools@4 --unsafe-perm true
+
     - name: Restore dependencies
       run: dotnet restore
 

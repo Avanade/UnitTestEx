@@ -1,5 +1,7 @@
 using Azure.Messaging;
 using Azure.Messaging.EventGrid;
+using System;
+using System.Text.Json;
 using NUnit.Framework;
 using UnitTestEx.Azure.Functions;
 using UnitTestEx.IsolatedFunction;
@@ -9,6 +11,27 @@ namespace UnitTestEx.NUnit.Test
     [TestFixture]
     public class EventGridExtensionMethodsTest
     {
+        [Test]
+        public void BlobCreatedEvent_ContainsBlobSubjectAndProperties()
+        {
+            var blobUri = new Uri("http://127.0.0.1:10000/devstoreaccount1/imports/batch/customers.csv");
+
+            var evt = EventGridExtensionMethods.CreateBlobCreatedEvent("imports", "batch/customers.csv", blobUri, "\"etag-value\"", "text/csv", 123);
+            using var data = JsonDocument.Parse(evt.Data.ToString());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(evt.Subject, Is.EqualTo("/blobServices/default/containers/imports/blobs/batch/customers.csv"));
+                Assert.That(evt.EventType, Is.EqualTo("Microsoft.Storage.BlobCreated"));
+                Assert.That(evt.DataVersion, Is.EqualTo("1.0"));
+                Assert.That(data.RootElement.GetProperty("url").GetString(), Is.EqualTo(blobUri.AbsoluteUri));
+                Assert.That(data.RootElement.GetProperty("eTag").GetString(), Is.EqualTo("\"etag-value\""));
+                Assert.That(data.RootElement.GetProperty("contentType").GetString(), Is.EqualTo("text/csv"));
+                Assert.That(data.RootElement.GetProperty("contentLength").GetInt64(), Is.EqualTo(123));
+                Assert.That(data.RootElement.GetProperty("blobType").GetString(), Is.EqualTo("BlockBlob"));
+            });
+        }
+
         [Test]
         public void EventGridEvent_FromValue()
         {

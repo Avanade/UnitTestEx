@@ -23,6 +23,10 @@ namespace UnitTestEx.Azure.Functions
         private IDisposable? _hostingSubscription;
         private bool _abandoned;
 
+        /// <summary>
+        /// Creates a host factory with optional host-builder customization.
+        /// </summary>
+        /// <param name="configure">The callback used to configure the host builder, if provided.</param>
         private FunctionHostFactory(Action<IHostBuilder>? configure) => _configure = configure;
 
         /// <summary>

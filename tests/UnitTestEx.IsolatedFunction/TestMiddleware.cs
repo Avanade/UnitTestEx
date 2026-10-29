@@ -40,6 +40,13 @@ namespace UnitTestEx.IsolatedFunction
             logger.LogInformation("Middleware after {FunctionName}.", context.FunctionDefinition.Name);
         }
 
+        /// <summary>
+        /// Writes a middleware response using the active HTTP hosting model and stores it as the invocation result.
+        /// </summary>
+        /// <param name="context">The current function context.</param>
+        /// <param name="req">The HTTP request associated with the invocation.</param>
+        /// <param name="statusCode">The response status code.</param>
+        /// <param name="body">The response body.</param>
         private static async Task SetResponseAsync(FunctionContext context, HttpRequestData req, HttpStatusCode statusCode, string body)
         {
             var httpContext = context.GetHttpContext();

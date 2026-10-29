@@ -290,6 +290,12 @@ namespace UnitTestEx.Azure.Functions
             }
         }
 
+        /// <summary>
+        /// Checks the request URI against the function route according to the configured route-check option.
+        /// </summary>
+        /// <param name="reqUri">The request URI.</param>
+        /// <param name="route">The route template declared by the function.</param>
+        /// <param name="params">The route parameter values used to format the template.</param>
         private void CheckRoute(Uri reqUri, string? route, (string? Name, object? Value)[] @params)
         {
             if (_routeCheckOption == RouteCheckOption.None)

@@ -93,6 +93,12 @@ namespace UnitTestEx.Azure.Functions
             return await CompleteValueAsync(result, ex, elapsed).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Completes a void trigger test by collecting logs, applying expectations, and creating its assertor.
+        /// </summary>
+        /// <param name="exception">The exception captured during invocation, if any.</param>
+        /// <param name="elapsed">The invocation duration in milliseconds.</param>
+        /// <returns>The assertor for the completed invocation.</returns>
         private async Task<VoidAssertor> CompleteVoidAsync(Exception? exception, double elapsed)
         {
             await Task.Delay(UnitTestEx.TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
@@ -102,6 +108,14 @@ namespace UnitTestEx.Azure.Functions
             return new VoidAssertor(Owner, logs, exception);
         }
 
+        /// <summary>
+        /// Completes a value-returning trigger test by collecting logs, applying expectations, and creating its assertor.
+        /// </summary>
+        /// <typeparam name="TValue">The function result type.</typeparam>
+        /// <param name="result">The value returned by the function.</param>
+        /// <param name="exception">The exception captured during invocation, if any.</param>
+        /// <param name="elapsed">The invocation duration in milliseconds.</param>
+        /// <returns>The assertor for the completed invocation.</returns>
         private async Task<ValueAssertor<TValue>> CompleteValueAsync<TValue>(TValue result, Exception? exception, double elapsed)
         {
             await Task.Delay(UnitTestEx.TestSetUp.TaskDelayMilliseconds).ConfigureAwait(false);
@@ -111,6 +125,10 @@ namespace UnitTestEx.Azure.Functions
             return new ValueAssertor<TValue>(Owner, result, logs, exception);
         }
 
+        /// <summary>
+        /// Ensures the selected function method declares an isolated-worker trigger attribute.
+        /// </summary>
+        /// <param name="expression">The function invocation expression.</param>
         private void ValidateTrigger(LambdaExpression expression)
         {
             var method = MethodCallExpressionValidate(expression).Method;
@@ -118,10 +136,22 @@ namespace UnitTestEx.Azure.Functions
                 throw new InvalidOperationException($"Function method '{method.Name}' does not have an isolated-worker trigger attribute.");
         }
 
+        /// <summary>
+        /// Determines whether a type is an Azure Functions isolated-worker trigger attribute.
+        /// </summary>
+        /// <param name="type">The attribute type to inspect.</param>
+        /// <returns><see langword="true"/> if the type is a worker trigger attribute.</returns>
         private static bool IsWorkerTriggerAttribute(Type type)
             => type.Name.EndsWith("TriggerAttribute", StringComparison.Ordinal)
                 && type.Namespace?.StartsWith("Microsoft.Azure.Functions.Worker", StringComparison.Ordinal) == true;
 
+        /// <summary>
+        /// Writes invocation details, captured logs, and any exception to the test output.
+        /// </summary>
+        /// <param name="result">The function result, if any.</param>
+        /// <param name="exception">The exception captured during invocation, if any.</param>
+        /// <param name="elapsed">The invocation duration in milliseconds.</param>
+        /// <param name="logs">The log messages captured during invocation.</param>
         private void LogResult(object? result, Exception? exception, double elapsed, IEnumerable<string?> logs)
         {
             Implementor.WriteLine("");

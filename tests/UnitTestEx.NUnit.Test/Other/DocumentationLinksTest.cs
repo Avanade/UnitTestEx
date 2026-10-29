@@ -13,6 +13,9 @@ namespace UnitTestEx.NUnit.Test.Other
     [TestFixture]
     public partial class DocumentationLinksTest
     {
+        /// <summary>
+        /// Gets the generated regular expression used to find Markdown links.
+        /// </summary>
         [GeneratedRegex(@"\[(?<text>[^\]]*)\]\((?<target>[^)\s]+)\)")]
         private static partial Regex LinkRegex();
 
@@ -58,6 +61,10 @@ namespace UnitTestEx.NUnit.Test.Other
             Assert.That(errors, Is.Empty, string.Join(Environment.NewLine, errors));
         }
 
+        /// <summary>
+        /// Finds the repository root by walking upward from the test output directory.
+        /// </summary>
+        /// <returns>The directory containing <c>UnitTestEx.sln</c>.</returns>
         private static string FindRepoRoot()
         {
             var dir = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);

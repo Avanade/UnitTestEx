@@ -15,6 +15,43 @@ namespace UnitTestEx
     public static class EventGridExtensionMethods
     {
         /// <summary>
+        /// Creates a <c>Microsoft.Storage.BlobCreated</c> Event Grid event suitable for posting to an Azure Functions blob-trigger webhook.
+        /// </summary>
+        /// <param name="containerName">The blob container name.</param>
+        /// <param name="blobName">The blob name, including any virtual directory path.</param>
+        /// <param name="blobUri">The blob's absolute URI.</param>
+        /// <param name="eTag">The blob's ETag.</param>
+        /// <param name="contentType">The blob's content type.</param>
+        /// <param name="contentLength">The blob's content length.</param>
+        /// <returns>The BlobCreated event.</returns>
+        public static EventGridEvent CreateBlobCreatedEvent(string containerName, string blobName, Uri blobUri, string eTag, string contentType, long contentLength)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(containerName);
+            ArgumentException.ThrowIfNullOrEmpty(blobName);
+            ArgumentNullException.ThrowIfNull(blobUri);
+            if (!blobUri.IsAbsoluteUri)
+                throw new ArgumentException("The blob URI must be absolute.", nameof(blobUri));
+
+            ArgumentException.ThrowIfNullOrEmpty(eTag);
+            ArgumentException.ThrowIfNullOrEmpty(contentType);
+            ArgumentOutOfRangeException.ThrowIfNegative(contentLength);
+
+            var data = BinaryData.FromObjectAsJson(new
+            {
+                api = "PutBlob",
+                url = blobUri.AbsoluteUri,
+                eTag,
+                contentType,
+                contentLength,
+                blobType = "BlockBlob",
+                sequencer = "00000000000000000000000000000000"
+            });
+
+            var subject = $"/blobServices/default/containers/{containerName}/blobs/{blobName}";
+            return new EventGridEvent(subject, "Microsoft.Storage.BlobCreated", "1.0", data);
+        }
+
+        /// <summary>
         /// Creates an <see cref="EventGridEvent"/> whose data contains the <paramref name="value"/> serialized as JSON.
         /// </summary>
         public static EventGridEvent CreateEventGridEventFromValue<T>(this TesterBase tester, T value, string subject, string eventType, string dataVersion = "1.0")

@@ -271,6 +271,15 @@ namespace UnitTestEx.Azure.Functions
 
         public override IImmutableDictionary<string, BindingMetadata> OutputBindings { get; } = ImmutableDictionary<string, BindingMetadata>.Empty;
 
+        /// <summary>
+        /// Initializes a function definition with the name, entry point, assembly path, parameters, and binding metadata.
+        /// </summary>
+        /// <param name="name">The function name.</param>
+        /// <param name="entryPoint">The fully qualified function method name.</param>
+        /// <param name="pathToAssembly">The path to the function assembly.</param>
+        /// <param name="parameters">The function parameters.</param>
+        /// <param name="inputs">The input binding metadata.</param>
+        /// <param name="outputs">The output binding metadata.</param>
         private TestFunctionDefinition(string name, string entryPoint, string pathToAssembly, ImmutableArray<FunctionParameter> parameters, IImmutableDictionary<string, BindingMetadata> inputs, IImmutableDictionary<string, BindingMetadata> outputs)
         {
             Name = name;
@@ -324,6 +333,11 @@ namespace UnitTestEx.Azure.Functions
         /// </summary>
         public static bool HasReturnValue(MethodInfo method) => GetReturnType(method) is not null;
 
+        /// <summary>
+        /// Gets the effective return type, unwrapping generic task-like return types and excluding void results.
+        /// </summary>
+        /// <param name="method">The function method.</param>
+        /// <returns>The returned value type, or <see langword="null"/> when the method has no value result.</returns>
         private static Type? GetReturnType(MethodInfo method)
         {
             var type = method.ReturnType;
@@ -336,6 +350,11 @@ namespace UnitTestEx.Azure.Functions
             return type;
         }
 
+        /// <summary>
+        /// Determines whether a type represents an HTTP response supported by the function pipeline.
+        /// </summary>
+        /// <param name="type">The type to inspect.</param>
+        /// <returns><see langword="true"/> when the type is an <see cref="HttpResponseData"/>, <see cref="IActionResult"/>, or <see cref="IResult"/>.</returns>
         private static bool IsHttpResponseType(Type type) => typeof(HttpResponseData).IsAssignableFrom(type) || typeof(IActionResult).IsAssignableFrom(type) || typeof(IResult).IsAssignableFrom(type);
 
         /// <summary>
@@ -358,6 +377,9 @@ namespace UnitTestEx.Azure.Functions
             return name.Length == 0 ? name : char.ToLowerInvariant(name[0]) + name[1..];
         }
 
+        /// <summary>
+        /// Represents the metadata for one input or output binding in the test function definition.
+        /// </summary>
         private sealed class TestBindingMetadata(string name, string type, BindingDirection direction) : BindingMetadata
         {
             public override string Name { get; } = name;
