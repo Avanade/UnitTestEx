@@ -43,7 +43,7 @@ namespace UnitTestEx.Api.Controllers
 
 #nullable enable
         [HttpGet("")]
-        public IActionResult GetByArgs(string firstName, string lastName, [FromQuery] List<int>? id = null)
+        public IActionResult GetByArgs(string? firstName, string? lastName, [FromQuery] List<int>? id = null)
         {
             return new ObjectResult($"{firstName}-{lastName}-{(id is null ? "" : string.Join(",", id))}");
         }

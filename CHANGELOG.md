@@ -10,11 +10,14 @@ Represents the **NuGet** versions.
 - *Enhancement:* `HttpTrigger<T>` supports both ASP.NET Core integration (`HttpRequest` → `IActionResult`/`IResult`) and built-in (`HttpRequestData` → `HttpResponseData`) HTTP models, asserted consistently via `HttpResponseMessageAssertor`; method and route are validated against the worker `HttpTriggerAttribute`.
 - *Enhancement:* `Trigger<T>` enables any other trigger type to be tested, with `FunctionOutputAssertor` for multi-output bindings.
 - *Enhancement:* Added Event Grid builders: `CreateEventGridEvent*` and `CreateCloudEvent*`.
+- *Enhancement:* Added Event Hubs `EventData` builders for values, JSON, resources and raw bodies, with broker metadata support.
+- *Enhancement:* Added Aspire integration coverage and documentation for a Service Bus-triggered Functions app using Microsoft's Service Bus emulator.
 - *Enhancement:* `FunctionTester` now runs the function app's worker middleware pipeline (including the ASP.NET Core integration) around the invoked method, so middleware logging, short-circuiting and exception mapping can be asserted. Use `UseWorkerMiddleware(false)` to invoke the method directly.
 - *Breaking:* Added `IHttpMockRequest.WithNoBody()` (implemented by `MockHttpClientRequest` and `AspireHttpMockRequest`), which matches a request with no body: absent or zero-length. The two are indistinguishable on the wire, so both tiers treat them identically. As a result:
   - Tier 1's default (no body configured) now also matches zero-length content, where previously only `Content == null` matched.
   - The shared `IHttpMockClient.WithRequestsFromResourceAsync` loader now treats an omitted `body` as `WithNoBody()`, consistent with Tier 1's native loader. Previously it matched any body, so Aspire stubs that omit `body` no longer match requests that have one; use `body: ^` for that. On Aspire, `GET`/`HEAD` (or an unspecified method) apply no body constraint, as WireMock.Net does not read those bodies by default.
 - *Documentation:* README restructured into a front door with a capability matrix linking to example tests; detailed documentation moved to [`docs/`](./docs).
+
 ## v5.12.0
 - *Enhancement:* Added `UnitTestEx.Aspire` (NET8+) to enable testing of [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) multi-host (inter-domain) testing alongside existing in-process `WebApplicationFactory`. The API surface between the two is consistent where appropriate. 
   - `HttpClient` mocking of external dependencies is supported via `AspireHttpMockClient`, which stubs a real, out-of-process [WireMock.Net](https://wiremock.org/dotnet/) server resource - see the README's [Aspire multi-host testing](./docs/aspire.md) section for the recommended, self-hosted (Docker-free) pattern.
