@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\UnitTestEx.Aspire.ServiceBus.Function\UnitTestEx.Aspire.ServiceBus.Function.csproj" SetTargetFramework="TargetFramework=net8.0" />
+    <ProjectReference Include="..\UnitTestEx.Aspire.ServiceBus.Function\UnitTestEx.Aspire.ServiceBus.Function.csproj" />
   </ItemGroup>
 
 </Project>
