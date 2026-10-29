@@ -31,9 +31,9 @@ namespace UnitTestEx.Azure.Functions
     /// <remarks>To aid with the testing the following checks are automatically performed during execution with an <see cref="InvalidOperationException"/> thrown when:
     /// <list type="bullet">
     /// <item><description>The <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Methods"/> does not contain the <see cref="HttpRequest.Method"/>.
-    /// This check can be further configured using the <see cref="WithNoMethodCheck"/> and <see cref="WithMethodCheck"/> methods prior to the <see cref="RunAsync"/> execution.</description></item>
+    /// This check can be further configured using the <see cref="WithNoMethodCheck"/> and <see cref="WithMethodCheck"/> methods prior to the <see cref="RunAsync(System.Linq.Expressions.Expression{System.Func{TFunction, System.Threading.Tasks.Task{Microsoft.AspNetCore.Mvc.IActionResult}}})"/> execution.</description></item>
     /// <item><description>The <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Route"/> does not match the <see cref="HttpRequest.Path"/> and <see cref="HttpRequest.QueryString"/> combination.
-    /// This check can be further configured using the <see cref="WithNoRouteCheck"/> and <see cref="WithRouteCheck(RouteCheckOption, StringComparison?)"/> methods prior to the <see cref="RunAsync"/> execution.</description></item>
+    /// This check can be further configured using the <see cref="WithNoRouteCheck"/> and <see cref="WithRouteCheck(RouteCheckOption, StringComparison?)"/> methods prior to the <see cref="RunAsync(System.Linq.Expressions.Expression{System.Func{TFunction, System.Threading.Tasks.Task{Microsoft.AspNetCore.Mvc.IActionResult}}})"/> execution.</description></item>
     /// </list>
     /// The above checks are generally neccessary to assist in ensuring that the function is being invoked correctly given the parameters have to be explicitly passed in separately.
     /// </remarks>

@@ -41,8 +41,9 @@ namespace UnitTestEx.Api.Controllers
                 return new NotFoundResult();
         }
 
+#nullable enable
         [HttpGet("")]
-        public IActionResult GetByArgs(string firstName, string lastName, [FromQuery] List<int> id = default)
+        public IActionResult GetByArgs(string firstName, string lastName, [FromQuery] List<int>? id = null)
         {
             return new ObjectResult($"{firstName}-{lastName}-{(id is null ? "" : string.Join(",", id))}");
         }
@@ -71,6 +72,7 @@ namespace UnitTestEx.Api.Controllers
 
             return Ok();
         }
+#nullable restore
 
         [HttpPost("{id}")]
         public IActionResult Update(int id, [FromBody] Person person)

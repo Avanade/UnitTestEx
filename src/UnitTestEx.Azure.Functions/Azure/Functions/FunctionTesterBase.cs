@@ -212,16 +212,16 @@ namespace UnitTestEx.Azure.Functions
         public override IConfiguration Configuration => Services.GetRequiredService<IConfiguration>();
 
         /// <summary>
-        /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="HttpTriggerAttribute"/> that is to be tested.
+        /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute"/> that is to be tested.
         /// </summary>
-        /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="HttpTriggerAttribute"/> to be tested.</typeparam>
+        /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="HttpTriggerTester{TFunction}"/>.</returns>
         public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 
         /// <summary>
-        /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="ServiceBusTriggerAttribute"/> that is to be tested.
+        /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute"/> that is to be tested.
         /// </summary>
-        /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="ServiceBusTriggerAttribute"/> to be tested.</typeparam>
+        /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="ServiceBusTriggerTester{TFunction}"/>.</returns>
         public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
 

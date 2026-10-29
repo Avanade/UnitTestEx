@@ -13,7 +13,7 @@ namespace UnitTestEx.Azure.Functions
     /// </summary>
     /// <param name="instanceServices">The <see cref="FunctionContext.InstanceServices"/>.</param>
     /// <param name="functionId">The optional <see cref="FunctionContext.FunctionId"/>.</param>
-    /// <remarks>The <see cref="TraceContext"/>, <see cref="BindingContext"/>, <see cref="RetryContext"/> and <see cref="FunctionDefinition"/> are not available (<c>null</c>) unless explicitly set.</remarks>
+    /// <remarks>The <see cref="Microsoft.Azure.Functions.Worker.TraceContext"/>, <see cref="Microsoft.Azure.Functions.Worker.BindingContext"/>, <see cref="Microsoft.Azure.Functions.Worker.RetryContext"/> and <see cref="Microsoft.Azure.Functions.Worker.FunctionDefinition"/> are not available (<c>null</c>) unless explicitly set.</remarks>
     public class TestFunctionContext(IServiceProvider instanceServices, string? functionId = null) : FunctionContext
     {
         /// <inheritdoc/>
@@ -23,7 +23,7 @@ namespace UnitTestEx.Azure.Functions
         public override string FunctionId { get; } = functionId ?? "unittestex";
 
         /// <summary>
-        /// Gets or sets the <see cref="Worker.TraceContext"/>.
+        /// Gets or sets the <see cref="Microsoft.Azure.Functions.Worker.TraceContext"/>.
         /// </summary>
         public TraceContext? TestTraceContext { get; set; }
 
@@ -31,7 +31,7 @@ namespace UnitTestEx.Azure.Functions
         public override TraceContext TraceContext => TestTraceContext!;
 
         /// <summary>
-        /// Gets or sets the <see cref="Worker.BindingContext"/>.
+        /// Gets or sets the <see cref="Microsoft.Azure.Functions.Worker.BindingContext"/>.
         /// </summary>
         public BindingContext? TestBindingContext { get; set; }
 
@@ -39,7 +39,7 @@ namespace UnitTestEx.Azure.Functions
         public override BindingContext BindingContext => TestBindingContext!;
 
         /// <summary>
-        /// Gets or sets the <see cref="Worker.RetryContext"/>.
+        /// Gets or sets the <see cref="Microsoft.Azure.Functions.Worker.RetryContext"/>.
         /// </summary>
         public RetryContext? TestRetryContext { get; set; }
 
@@ -50,7 +50,7 @@ namespace UnitTestEx.Azure.Functions
         public override IServiceProvider InstanceServices { get; set; } = instanceServices ?? throw new ArgumentNullException(nameof(instanceServices));
 
         /// <summary>
-        /// Gets or sets the <see cref="Worker.FunctionDefinition"/>.
+        /// Gets or sets the <see cref="Microsoft.Azure.Functions.Worker.FunctionDefinition"/>.
         /// </summary>
         public FunctionDefinition? TestFunctionDefinition { get; set; }
 
