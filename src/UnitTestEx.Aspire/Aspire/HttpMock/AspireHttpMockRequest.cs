@@ -3,6 +3,7 @@
 using Moq;
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
@@ -69,6 +70,22 @@ namespace UnitTestEx.Aspire.HttpMock
         /// </summary>
         /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         public AspireHttpMockRequestBody WithAnyBody() => new(this);
+
+        /// <summary>
+        /// Indicates that the request must have no body; i.e. the content is absent or zero-length.
+        /// </summary>
+        /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
+        /// <remarks>An absent body and a zero-length body are indistinguishable on the wire (both send <c>Content-Length: 0</c>), so cannot be differentiated by the WireMock.Net server.
+        /// <para>By default WireMock.Net does not read the request body for <c>GET</c> and <c>HEAD</c> (unless <c>AllowBodyForAllHttpMethods</c> is enabled), where any body rule would
+        /// therefore never match; as such, no body constraint is applied for these methods, or where the method is unspecified.</para></remarks>
+        public AspireHttpMockRequestBody WithNoBody()
+        {
+            Rule.Body = Rule.Methods is null || Rule.Methods.Any(m => string.Equals(m, HttpMethod.Get.Method, StringComparison.OrdinalIgnoreCase) || string.Equals(m, HttpMethod.Head.Method, StringComparison.OrdinalIgnoreCase))
+                ? null
+                : new BodyModel { Matcher = new MatcherModel { Name = "NotNullOrEmptyMatcher", RejectOnMatch = true } };
+
+            return new(this);
+        }
 
         /// <summary>
         /// Indicates that the request body must match the specified <paramref name="text"/> exactly.
@@ -238,6 +255,9 @@ namespace UnitTestEx.Aspire.HttpMock
 
         /// <inheritdoc/>
         IHttpMockRequestBody IHttpMockRequest.WithAnyBody() => WithAnyBody();
+
+        /// <inheritdoc/>
+        IHttpMockRequestBody IHttpMockRequest.WithNoBody() => WithNoBody();
 
         /// <inheritdoc/>
         IHttpMockRequestBody IHttpMockRequest.WithBody(string body, string mediaType) => WithBody(body, mediaType);

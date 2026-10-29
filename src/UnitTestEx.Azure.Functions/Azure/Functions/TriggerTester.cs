@@ -29,6 +29,9 @@ namespace UnitTestEx.Azure.Functions
         /// Gets the expectations arranger.
         /// </summary>
         public ExpectationsArranger<TriggerTester<TFunction>> ExpectationsArranger { get; }
+        
+        /// <inheritdoc/>
+        internal override Task<TValue> InvokeAsync<TValue>(System.Reflection.MethodInfo method, object?[] arguments, Func<Task<TValue>> invoke) => FunctionPipeline.InvokeAsync(Owner, Services, method, arguments, invoke);
 
         /// <summary>
         /// Runs a synchronous trigger function that returns no value.

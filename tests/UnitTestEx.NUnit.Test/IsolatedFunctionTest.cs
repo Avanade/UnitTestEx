@@ -220,6 +220,99 @@ namespace UnitTestEx.NUnit.Test
             });
         }
 
+        [Test]
+        public void Middleware_Logs_Captured_Http()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.HttpTrigger<HttpVariantFunctions>()
+                .ExpectLogContains("Middleware before DataText.")
+                .ExpectLogContains("Middleware after DataText.")
+                .Run(f => f.DataText(test.CreateHttpRequestData(HttpMethod.Get, "data/text/bob"), "bob"))
+                .ToHttpResponseMessageAssertor()
+                .AssertAccepted();
+        }
+
+        [Test]
+        public void Middleware_Logs_Captured_NonHttp()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.Trigger<ServiceBusFunction>()
+                .ExpectLogContains("Middleware before")
+                .ExpectLogContains("Middleware after")
+                .Run(f => f.Run5(test.CreateServiceBusMessageFromValue(new Person("Jane", "Doe"))))
+                .AssertSuccess();
+        }
+
+        [Test]
+        public void Middleware_ShortCircuit_HttpResponseData()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var req = test.CreateHttpRequestData(HttpMethod.Get, "data/text/bob", requestModifier: r => r.Headers["X-Middleware"] = "deny");
+            test.HttpTrigger<HttpVariantFunctions>()
+                .ExpectLogContains("Middleware before DataText.")
+                .Run(f => f.DataText(req, "bob"))
+                .ToHttpResponseMessageAssertor()
+                .AssertUnauthorized()
+                .AssertContent("denied by middleware");
+        }
+
+        [Test]
+        public void Middleware_ShortCircuit_ActionResult()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var req = test.CreateHttpRequest(HttpMethod.Get, "action/sync", r => r.Headers["X-Middleware"] = "deny");
+            test.HttpTrigger<HttpVariantFunctions>()
+                .Run(f => f.ActionSync(req))
+                .ToHttpResponseMessageAssertor()
+                .AssertUnauthorized()
+                .AssertContent("denied by middleware");
+        }
+
+        [Test]
+        public void Middleware_HandlesException_ActionResult()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var req = test.CreateHttpRequest(HttpMethod.Get, "throws/action", r => r.Headers["X-Middleware"] = "handle");
+            test.HttpTrigger<MiddlewareFunctions>()
+                .ExpectLogContains("Middleware handled action boom.")
+                .Run(f => f.ThrowsAction(req))
+                .ToHttpResponseMessageAssertor()
+                .AssertInternalServerError()
+                .AssertContent("handled by middleware");
+        }
+
+        [Test]
+        public void Middleware_HandlesException_HttpResponseData()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var req = test.CreateHttpRequestData(HttpMethod.Get, "throws/data", requestModifier: r => r.Headers["X-Middleware"] = "handle");
+            test.HttpTrigger<MiddlewareFunctions>()
+                .ExpectLogContains("Middleware handled data boom.")
+                .Run(f => f.ThrowsData(req))
+                .ToHttpResponseMessageAssertor()
+                .AssertInternalServerError()
+                .AssertContent("handled by middleware");
+        }
+
+        [Test]
+        public void Middleware_UnhandledException_Propagates()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            test.HttpTrigger<MiddlewareFunctions>()
+                .Run(f => f.ThrowsAction(test.CreateHttpRequest(HttpMethod.Get, "throws/action")))
+                .AssertException<InvalidOperationException>("action boom");
+        }
+
+        [Test]
+        public void Middleware_Bypassed()
+        {
+            using var test = FunctionTester.Create<HttpFunction>().UseWorkerMiddleware(false);
+            var req = test.CreateHttpRequest(HttpMethod.Get, "action/sync", r => r.Headers["X-Middleware"] = "deny");
+            test.HttpTrigger<HttpVariantFunctions>()
+                .Run(f => f.ActionSync(req))
+                .AssertOK();
+        }
+
         public sealed record TestService(string Value);
 
         public sealed class MustNotStartService : IHostedService

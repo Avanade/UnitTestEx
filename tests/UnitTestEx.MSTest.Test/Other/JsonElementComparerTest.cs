@@ -21,19 +21,19 @@ namespace UnitTestEx.MSTest.Test.Other
         [TestMethod]
         public void Compare_Object_DiffValuesAndTypes()
         {
-            Assert.AreEqual(@"Path '$.name': Value is not equal: ""gary"" != ""brian"".
-Path '$.age': Value is not equal: 40.0 != 41.0.
-Path '$.cool': Kind is not equal: Null != False.
-Path '$.salary': Kind is not equal: Number != Null.",
+            Assert.AreEqual("Path '$.name': Value is not equal: \"gary\" != \"brian\".\n"
+                + "Path '$.age': Value is not equal: 40.0 != 41.0.\n"
+                + "Path '$.cool': Kind is not equal: Null != False.\n"
+                + "Path '$.salary': Kind is not equal: Number != Null.",
                 new JsonElementComparer().Compare("{\"name\":\"gary\",\"age\":40.0,\"cool\":null,\"salary\":42000}", "{\"name\":\"brian\",\"age\":41.0,\"cool\":false,\"salary\":null}").ToString());
         }
 
         [TestMethod]
         public void Compare_Object_PropertyNameMismatch()
         {
-            Assert.AreEqual(@"Path '$.name': Does not exist in right JSON.
-Path '$.salary': Does not exist in right JSON.
-Path '$.Name': Does not exist in left JSON.",
+            Assert.AreEqual("Path '$.name': Does not exist in right JSON.\n"
+                + "Path '$.salary': Does not exist in right JSON.\n"
+                + "Path '$.Name': Does not exist in left JSON.",
                 new JsonElementComparer().Compare("{\"name\":\"gary\",\"age\":40.0,\"cool\":false,\"salary\":null}", "{\"Name\":\"gary\",\"age\":40.0,\"cool\":false}").ToString());
         }
 

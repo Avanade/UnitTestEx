@@ -17,7 +17,8 @@
         },
         "body": {
           "type": "string",
-          "title": "The HTTP Request Body (content)."
+          "title": "The HTTP Request Body (content).",
+          "description": "Where omitted the request must have no body (absent or zero-length); use '^' to match any body."
         },
         "media": {
           "type": "string",

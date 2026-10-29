@@ -72,6 +72,11 @@ namespace UnitTestEx.Azure.Functions
         public override CancellationToken CancellationToken => TestCancellationToken;
 
         /// <summary>
+        /// Sets a feature using a runtime <paramref name="type"/>; enables internal worker feature contracts to be set.
+        /// </summary>
+        internal void SetFeature(Type type, object instance) => ((TestInvocationFeatures)Features).Set(type, instance);
+
+        /// <summary>
         /// Provides a simple <see cref="IInvocationFeatures"/> implementation.
         /// </summary>
         private sealed class TestInvocationFeatures : IInvocationFeatures
@@ -87,6 +92,8 @@ namespace UnitTestEx.Azure.Functions
                 else
                     _features[typeof(T)] = instance;
             }
+
+            public void Set(Type type, object instance) => _features[type] = instance;
 
             public IEnumerator<KeyValuePair<Type, object>> GetEnumerator() => _features.GetEnumerator();
 

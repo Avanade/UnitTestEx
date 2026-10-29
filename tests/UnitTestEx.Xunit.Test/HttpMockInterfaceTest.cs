@@ -45,6 +45,26 @@ namespace UnitTestEx.Xunit.Test
         }
 
         [Fact]
+        public async Task Interface_Request_WithNoBody_MatchesAbsentOrEmptyBodyOnly()
+        {
+            var mcf = MockHttpClientFactory.Create();
+            IHttpMockClient client = mcf.CreateClient("XXX", new System.Uri("https://d365test"));
+
+            // Moq evaluates the most recent matching setup first, so this any-body fallback only handles requests that the no-body stub rejects.
+            var fallback = await client.Request(HttpMethod.Post, "no-body").Times(Times.Once()).WithAnyBody().Respond.WithAsync(HttpStatusCode.BadRequest);
+            var stub = await client.Request(HttpMethod.Post, "no-body").Times(Times.Exactly(3)).WithNoBody().Respond.WithAsync(HttpStatusCode.NoContent);
+
+            var hc = mcf.GetHttpClient("XXX");
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("no-body", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("no-body", new StringContent(""))).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("no-body", new ByteArrayContent([]))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await hc.PostAsync("no-body", new StringContent("x"))).StatusCode);
+
+            await stub.VerifyAsync();
+            await fallback.VerifyAsync();
+        }
+
+        [Fact]
         public async Task Interface_Request_WithJsonResourceBody_Dim_MatchesResourceContent()
         {
             var mcf = MockHttpClientFactory.Create();
@@ -126,9 +146,15 @@ namespace UnitTestEx.Xunit.Test
             var mcf = MockHttpClientFactory.Create();
             IHttpMockClient client = mcf.CreateClient("XXX", new System.Uri("https://d365test"));
 
+            // Moq evaluates the most recent matching setup first, so this any-body fallback only handles requests that the YAML's omitted-body (no body) stub rejects.
+            await client.Request(HttpMethod.Post, "no-body").WithAnyBody().Respond.WithAsync(HttpStatusCode.BadRequest);
+
             await client.WithRequestsFromResourceAsync<HttpMockInterfaceTest>("HttpMockInterfaceTest-mock.unittestex.yaml"); // DIM: shared YAML/JSON resource loader.
 
             var hc = mcf.GetHttpClient("XXX");
+
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("no-body", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await hc.PostAsync("no-body", new StringContent("x"))).StatusCode);
 
             var res1 = await hc.PostAsJsonAsync("products/xyz", new { product = "xyz", quantity = 1, stamp = "does-not-matter" });
             Assert.Equal(HttpStatusCode.Accepted, res1.StatusCode);

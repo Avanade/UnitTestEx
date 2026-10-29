@@ -1,4 +1,4 @@
-﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Configuration;
@@ -34,6 +34,9 @@ namespace UnitTestEx.Azure.Functions
         /// Gets the <see cref="ExpectationsArranger{TSelf}"/>.
         /// </summary>
         public ExpectationsArranger<ServiceBusTriggerTester<TFunction>> ExpectationsArranger { get; }
+        
+        /// <inheritdoc/>
+        internal override Task<TValue> InvokeAsync<TValue>(System.Reflection.MethodInfo method, object?[] arguments, Func<Task<TValue>> invoke) => FunctionPipeline.InvokeAsync(Owner, Services, method, arguments, invoke);
 
         /// <summary>
         /// Runs the isolated-worker Service Bus-triggered function expected as a parameter within the <paramref name="expression"/>.

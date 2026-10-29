@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Json;
@@ -99,7 +100,7 @@ namespace UnitTestEx.Hosting
             try
             {
                 var p = @params.Select(x => x.Value).ToArray();
-                await ((Task)mce.Method.Invoke(h, p)!).ConfigureAwait(false);
+                await InvokeAsync(mce.Method, p, async () => { await ((Task)mce.Method.Invoke(h, p)!).ConfigureAwait(false); return true; }).ConfigureAwait(false);
                 sw.Stop();
                 return (null, sw.Elapsed.TotalMilliseconds);
             }
@@ -186,7 +187,7 @@ namespace UnitTestEx.Hosting
 
             try
             {
-                var mr = await invoker(h!).ConfigureAwait(false);
+                var mr = await InvokeAsync(mce.Method, @params.Select(x => x.Value).ToArray(), () => invoker(h!)).ConfigureAwait(false);
                 sw.Stop();
                 return (mr, null, sw.Elapsed.TotalMilliseconds);
             }
@@ -201,6 +202,14 @@ namespace UnitTestEx.Hosting
                 return (default!, ex, sw.Elapsed.TotalMilliseconds);
             }
         }
+
+        /// <summary>
+        /// Wraps the actual method invocation; enables a derived tester to execute within a host-specific pipeline (e.g. Azure Functions worker middleware).
+        /// </summary>
+        /// <param name="method">The method being invoked.</param>
+        /// <param name="arguments">The method arguments.</param>
+        /// <param name="invoke">The function that performs the actual method invocation.</param>
+        internal virtual Task<TValue> InvokeAsync<TValue>(MethodInfo method, object?[] arguments, Func<Task<TValue>> invoke) => invoke();
 
         /// <summary>
         /// Represents the on before run delegate.

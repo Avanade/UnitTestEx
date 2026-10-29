@@ -59,6 +59,9 @@ namespace UnitTestEx.Azure.Functions
         /// Gets the <see cref="ExpectationsArranger{TSelf}"/>.
         /// </summary>
         public ExpectationsArranger<HttpTriggerTester<TFunction>> ExpectationsArranger { get; }
+        
+        /// <inheritdoc/>
+        internal override Task<TValue> InvokeAsync<TValue>(System.Reflection.MethodInfo method, object?[] arguments, Func<Task<TValue>> invoke) => FunctionPipeline.InvokeAsync(Owner, Services, method, arguments, invoke);
 
         /// <summary>
         /// Indicates that <i>no</i> check is performed to ensure that the <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute.Methods"/> contain the <see cref="HttpRequest.Method"/>.

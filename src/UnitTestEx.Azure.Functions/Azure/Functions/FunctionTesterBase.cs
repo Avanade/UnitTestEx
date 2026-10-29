@@ -18,7 +18,7 @@ namespace UnitTestEx.Azure.Functions
     /// </summary>
     /// <typeparam name="TEntryPoint">A type from the isolated-worker application assembly.</typeparam>
     /// <typeparam name="TSelf">The <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
-    public abstract class FunctionTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IDisposable where TEntryPoint : class where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
+    public abstract class FunctionTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IFunctionTesterOptions, IDisposable where TEntryPoint : class where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
         private static readonly object _lock = new();
         private static readonly JsonSerializerOptions _localSettingsJsonSerializerOptions = new() { ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
@@ -28,6 +28,7 @@ namespace UnitTestEx.Azure.Functions
         private readonly bool? _includeUserSecrets;
         private IHost? _host;
         private bool _disposed;
+        private bool _useWorkerMiddleware = true;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> class.
@@ -155,6 +156,23 @@ namespace UnitTestEx.Azure.Functions
 
             SetUp.ConfigureServices?.Invoke(sc);
             AddConfiguredServices(sc);
+            FunctionPipeline.ConfigureServices(sc);
+        }
+
+        /// <summary>
+        /// Indicates whether the function is executed within the application's isolated worker middleware pipeline; defaults to <c>true</c>.
+        /// </summary>
+        bool IFunctionTesterOptions.UseWorkerMiddleware => _useWorkerMiddleware;
+
+        /// <summary>
+        /// Indicates whether the function is to be executed within the application's isolated worker middleware pipeline (as registered via <c>UseMiddleware</c>, <c>UseWhen</c>, etc.); defaults to <c>true</c>.
+        /// </summary>
+        /// <param name="useWorkerMiddleware"><c>true</c> to execute within the worker middleware pipeline; otherwise, <c>false</c> to invoke the function method directly.</param>
+        /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>
+        public TSelf UseWorkerMiddleware(bool useWorkerMiddleware = true)
+        {
+            _useWorkerMiddleware = useWorkerMiddleware;
+            return (TSelf)this;
         }
 
         /// <inheritdoc/>

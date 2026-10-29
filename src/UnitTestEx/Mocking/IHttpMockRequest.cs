@@ -33,6 +33,13 @@ namespace UnitTestEx.Mocking
         IHttpMockRequestBody WithAnyBody();
 
         /// <summary>
+        /// Indicates that the request must have no body; i.e. the content is absent or zero-length.
+        /// </summary>
+        /// <returns>The <see cref="IHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
+        /// <remarks>An absent body and a zero-length body are indistinguishable on the wire (both send <c>Content-Length: 0</c>), so both tiers deliberately treat them identically.</remarks>
+        IHttpMockRequestBody WithNoBody();
+
+        /// <summary>
         /// Indicates that the request body must match the specified <paramref name="body"/> exactly, with the specified <paramref name="mediaType"/>.
         /// </summary>
         /// <param name="body">The exact body text to match.</param>

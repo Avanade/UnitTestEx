@@ -647,6 +647,33 @@ namespace UnitTestEx.Aspire.Xunit.Test
             tester.Http("mockhost").Run(HttpMethod.Post, "/resource-config/echo", new { id = "Abc", stamp = Guid.NewGuid().ToString() })
                 .AssertAccepted()
                 .AssertValue(new { id = "Abc", description = "matched" });
+
+            // An omitted 'body' means no body (absent or zero-length), consistent with Tier 1; a request with a body is unmatched (WireMock.Net returns 404).
+            using var hc = ((IHttpClientSource)tester).CreateHttpClient("mockhost");
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("/resource-config/no-body", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await hc.PostAsync("/resource-config/no-body", new StringContent("x"))).StatusCode);
+        }
+
+        [Fact]
+        public async Task HttpMock_WithNoBody_MatchesAbsentOrEmptyBodyOnly()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>();
+
+            await tester.WaitForResourceAsync("mockhost");
+
+            IHttpMockClient client = tester.HttpMock("mockhost");
+            var stub = await client.Request(HttpMethod.Post, "/interface/no-body")
+                .Times(Times.Exactly(3))
+                .WithNoBody()
+                .Respond.WithAsync(HttpStatusCode.NoContent);
+
+            using var hc = ((IHttpClientSource)tester).CreateHttpClient("mockhost");
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("/interface/no-body", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("/interface/no-body", new StringContent(""))).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("/interface/no-body", new ByteArrayContent([]))).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await hc.PostAsync("/interface/no-body", new StringContent("x"))).StatusCode);
+
+            await stub.VerifyAsync();
         }
 
         [Fact]
