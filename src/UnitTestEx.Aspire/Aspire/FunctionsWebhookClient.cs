@@ -97,7 +97,7 @@ namespace UnitTestEx.Aspire
             return new
             {
                 id = eventGridEvent.Id,
-                topic = "UnitTestEx",
+                topic = string.IsNullOrEmpty(eventGridEvent.Topic) ? "UnitTestEx" : eventGridEvent.Topic,
                 subject = eventGridEvent.Subject,
                 eventType = eventGridEvent.EventType,
                 eventTime = eventGridEvent.EventTime,

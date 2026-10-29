@@ -64,5 +64,51 @@ namespace UnitTestEx.NUnit.Test.Other
                 value => value,
                 cancellationToken: cancellation.Token));
         }
+
+        [Test]
+        public void EventuallyAsync_TimesOutWhenOperationIgnoresCancellation()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var operation = test.EventuallyAsync(
+                _ => pending.Task,
+                value => value,
+                timeout: TimeSpan.FromMilliseconds(20));
+
+            try
+            {
+                Assert.ThrowsAsync<TimeoutException>(() => operation.WaitAsync(TimeSpan.FromSeconds(5)));
+                Assert.That(operation.IsCompleted, Is.True, "The polling timeout must bound the operation itself.");
+            }
+            finally
+            {
+                pending.TrySetResult(false);
+            }
+        }
+
+        [Test]
+        public void EventuallyAsync_CancelsWaitWhenOperationIgnoresCancellation()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            using var cancellation = new CancellationTokenSource();
+            var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var operation = test.EventuallyAsync(
+                _ => pending.Task,
+                value => value,
+                timeout: Timeout.InfiniteTimeSpan,
+                cancellationToken: cancellation.Token);
+
+            try
+            {
+                cancellation.Cancel();
+                var exception = Assert.CatchAsync<OperationCanceledException>(() => operation.WaitAsync(TimeSpan.FromSeconds(5)));
+                Assert.That(exception!.CancellationToken, Is.EqualTo(cancellation.Token));
+                Assert.That(operation.IsCanceled, Is.True);
+            }
+            finally
+            {
+                pending.TrySetResult(false);
+            }
+        }
     }
 }

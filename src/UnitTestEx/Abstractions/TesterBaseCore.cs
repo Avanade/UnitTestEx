@@ -148,7 +148,8 @@ namespace UnitTestEx.Abstractions
         /// <returns>The first result that satisfies <paramref name="condition"/>.</returns>
         /// <exception cref="TimeoutException">The condition was not satisfied within <paramref name="timeout"/>.</exception>
         /// <remarks>Exceptions thrown by <paramref name="action"/> or <paramref name="condition"/> are propagated; use the action to handle expected "not ready yet" results (e.g. a missing blob)
-        /// and return a value that does not yet satisfy the condition.</remarks>
+        /// and return a value that does not yet satisfy the condition. Timeout and cancellation bound the wait for each asynchronous operation; an operation that ignores its token
+        /// may continue running after the wait ends.</remarks>
         public async Task<T> EventuallyAsync<T>(Func<CancellationToken, Task<T>> action, Func<T, bool> condition, TimeSpan? timeout = null, TimeSpan? interval = null, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(action);
@@ -174,7 +175,7 @@ namespace UnitTestEx.Abstractions
                 {
                     operationToken.ThrowIfCancellationRequested();
 
-                    var result = await action(operationToken).ConfigureAwait(false);
+                    var result = await action(operationToken).WaitAsync(operationToken).ConfigureAwait(false);
                     operationToken.ThrowIfCancellationRequested();
                     if (condition(result))
                         return result;

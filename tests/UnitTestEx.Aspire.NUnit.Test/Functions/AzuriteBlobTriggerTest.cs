@@ -24,7 +24,7 @@ public sealed class AzuriteBlobTriggerTest
     public async Task BlobCreatedWebhook_RunsFunction_AndWritesProcessedBlob()
     {
         await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_Functions_AppHost>();
-        await tester.WaitForFunctionsAsync("functions", ["BlobTrigger", "ServiceBusFunction4"]);
+        await tester.WaitForFunctionsAsync("functions", ["BlobTrigger"]);
 
         var app = await tester.GetDistributedApplicationAsync();
         var storageEndpoint = app.GetEndpoint("azurite", "blob");

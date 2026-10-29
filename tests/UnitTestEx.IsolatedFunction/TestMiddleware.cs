@@ -8,7 +8,7 @@ using System.Net;
 namespace UnitTestEx.IsolatedFunction
 {
     /// <summary>
-    /// Test middleware: always logs; behaviour is otherwise opt-in via the <c>X-Middleware</c> request header (<c>deny</c> or <c>handle</c>).
+    /// Test middleware: always logs; behaviour is otherwise opt-in via the <c>X-Middleware</c> request header (<c>deny</c>, <c>handle</c> or <c>set-item</c>).
     /// </summary>
     public sealed class TestMiddleware : IFunctionsWorkerMiddleware
     {
@@ -25,6 +25,9 @@ namespace UnitTestEx.IsolatedFunction
                 await SetResponseAsync(context, req!, HttpStatusCode.Unauthorized, "denied by middleware");
                 return;
             }
+
+            if (mode == "set-item" && context.GetHttpContext() is { } httpContext)
+                httpContext.Items["MiddlewareValue"] = "set by middleware";
 
             try
             {
@@ -65,6 +68,21 @@ namespace UnitTestEx.IsolatedFunction
 
     public class MiddlewareFunctions
     {
+        [Function("MiddlewareRequestAsync")]
+        public async Task<Microsoft.AspNetCore.Mvc.IActionResult> RequestAsync([HttpTrigger(AuthorizationLevel.Function, "get", Route = "middleware/async")] HttpRequest req)
+        {
+            await Task.CompletedTask;
+            return new Microsoft.AspNetCore.Mvc.OkObjectResult(req.HttpContext.Items["MiddlewareValue"]);
+        }
+
+        [Function("MiddlewareRequestSync")]
+        public Microsoft.AspNetCore.Mvc.IActionResult RequestSync([HttpTrigger(AuthorizationLevel.Function, "get", Route = "middleware/sync")] HttpRequest req)
+            => new Microsoft.AspNetCore.Mvc.OkObjectResult(req.HttpContext.Items["MiddlewareValue"]);
+
+        [Function("MiddlewareRequestVoid")]
+        public void RequestVoid([HttpTrigger(AuthorizationLevel.Function, "get", Route = "middleware/void")] HttpRequest req)
+            => req.Headers["X-Function-Value"] = (string?)req.HttpContext.Items["MiddlewareValue"];
+
         [Function("ThrowsAction")]
         public Microsoft.AspNetCore.Mvc.IActionResult ThrowsAction([HttpTrigger(AuthorizationLevel.Function, "get", Route = "throws/action")] HttpRequest req) => throw new InvalidOperationException("action boom");
 

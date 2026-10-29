@@ -125,7 +125,7 @@ namespace UnitTestEx.Hosting
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
         protected Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<TService, Task<TValue>>> expression, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
-            => RunCoreAsync<TValue>(expression, h => expression.Compile().Invoke(h), paramAttributeTypes, onBeforeRun);
+            => RunCoreAsync<TValue>(expression, result => (Task<TValue>)result!, paramAttributeTypes, onBeforeRun);
 
         /// <summary>
         /// Orchestrates the execution of a synchronous method as described by the <paramref name="expression"/> returning a result of <see cref="Type"/> <typeparamref name="TValue"/>.
@@ -136,22 +136,18 @@ namespace UnitTestEx.Hosting
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
         internal Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunSyncAsync<TValue>(Expression<Func<TService, TValue>> expression, Type[]? paramAttributeTypes, Action<(string? Name, object? Value)[], Attribute?, object?>? onBeforeRun)
-            => RunCoreAsync<TValue>(expression, h => Task.FromResult(expression.Compile().Invoke(h)), paramAttributeTypes, onBeforeRun is null ? null : (parameters, attribute, value) => onBeforeRun(parameters, attribute, value));
+            => RunCoreAsync<TValue>(expression, result => Task.FromResult((TValue)result!), paramAttributeTypes, onBeforeRun is null ? null : (parameters, attribute, value) => onBeforeRun(parameters, attribute, value));
 
         /// <summary>
         /// Executes a synchronous method that does not return a value.
         /// </summary>
         internal Task<(bool Result, Exception? Exception, double ElapsedMilliseconds)> RunSyncAsync(Expression<Action<TService>> expression, Type[]? paramAttributeTypes, Action<(string? Name, object? Value)[], Attribute?, object?>? onBeforeRun)
-            => RunCoreAsync<bool>(expression, h =>
-            {
-                expression.Compile().Invoke(h);
-                return Task.FromResult(true);
-            }, paramAttributeTypes, onBeforeRun is null ? null : (parameters, attribute, value) => onBeforeRun(parameters, attribute, value));
+            => RunCoreAsync<bool>(expression, _ => Task.FromResult(true), paramAttributeTypes, onBeforeRun is null ? null : (parameters, attribute, value) => onBeforeRun(parameters, attribute, value));
 
         /// <summary>
-        /// Orchestrates the execution of a method as described by the <paramref name="expression"/> using the <paramref name="invoker"/> returning a result of <see cref="Type"/> <typeparamref name="TValue"/>.
+        /// Orchestrates the execution of a method as described by the <paramref name="expression"/> using the <paramref name="getResult"/> to obtain a result of <see cref="Type"/> <typeparamref name="TValue"/>.
         /// </summary>
-        private async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunCoreAsync<TValue>(LambdaExpression expression, Func<TService, Task<TValue>> invoker, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
+        private async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunCoreAsync<TValue>(LambdaExpression expression, Func<object?, Task<TValue>> getResult, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
@@ -187,7 +183,8 @@ namespace UnitTestEx.Hosting
 
             try
             {
-                var mr = await InvokeAsync(mce.Method, @params.Select(x => x.Value).ToArray(), () => invoker(h!)).ConfigureAwait(false);
+                var p = @params.Select(x => x.Value).ToArray();
+                var mr = await InvokeAsync(mce.Method, p, () => getResult(mce.Method.Invoke(h, BindingFlags.DoNotWrapExceptions, null, p, null))).ConfigureAwait(false);
                 sw.Stop();
                 return (mr, null, sw.Elapsed.TotalMilliseconds);
             }

@@ -12,8 +12,8 @@ var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent?.Name
     ?? throw new InvalidOperationException("Could not determine the AppHost build configuration.");
 var functionsDirectory = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "UnitTestEx.IsolatedFunction", "bin", configuration, "net8.0"));
 var functions = OperatingSystem.IsWindows()
-    ? builder.AddExecutable("functions", "cmd.exe", functionsDirectory, "/c", "func", "start", "--dotnet-isolated", "--no-build", "--verbose", "--port", "7071")
-    : builder.AddExecutable("functions", "func", functionsDirectory, "start", "--dotnet-isolated", "--no-build", "--verbose", "--port", "7071");
+    ? builder.AddExecutable("functions", "cmd.exe", functionsDirectory, "/c", "func", "start", "--dotnet-isolated", "--no-build", "--verbose", "--port", "7071", "--functions", "BlobTrigger")
+    : builder.AddExecutable("functions", "func", functionsDirectory, "start", "--dotnet-isolated", "--no-build", "--verbose", "--port", "7071", "--functions", "BlobTrigger");
 
 functions
     .WithHttpEndpoint(port: 7071, targetPort: 7071, name: "http", isProxied: false)
@@ -21,6 +21,6 @@ functions
     .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
     .WithEnvironment("AzureWebJobsSecretStorageType", "files")
     .WithEnvironment("AzureWebJobsStorage", "UseDevelopmentStorage=true")
-    .WithEnvironment("Run4QueueName", "unittestex");
+    .WaitFor(azurite);
 
 builder.Build().Run();

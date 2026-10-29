@@ -244,6 +244,60 @@ namespace UnitTestEx.NUnit.Test
         }
 
         [Test]
+        public async Task Middleware_AsyncFunction_UsesTheEvaluatedRequest()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var evaluations = 0;
+            Func<Microsoft.AspNetCore.Http.HttpRequest> createRequest = () =>
+            {
+                evaluations++;
+                return test.CreateHttpRequest(HttpMethod.Get, "middleware/async", r => r.Headers["X-Middleware"] = "set-item");
+            };
+
+            (await test.HttpTrigger<MiddlewareFunctions>().RunAsync(f => f.RequestAsync(createRequest())))
+                .AssertOK()
+                .AssertValue("set by middleware");
+
+            Assert.That(evaluations, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Middleware_SyncFunction_UsesTheEvaluatedRequest()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var evaluations = 0;
+            Func<Microsoft.AspNetCore.Http.HttpRequest> createRequest = () =>
+            {
+                evaluations++;
+                return test.CreateHttpRequest(HttpMethod.Get, "middleware/sync", r => r.Headers["X-Middleware"] = "set-item");
+            };
+
+            test.HttpTrigger<MiddlewareFunctions>().Run(f => f.RequestSync(createRequest()))
+                .AssertOK()
+                .AssertValue("set by middleware");
+
+            Assert.That(evaluations, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Middleware_VoidFunction_UsesTheEvaluatedRequest()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var request = test.CreateHttpRequest(HttpMethod.Get, "middleware/void", r => r.Headers["X-Middleware"] = "set-item");
+            var evaluations = 0;
+            Func<Microsoft.AspNetCore.Http.HttpRequest> createRequest = () =>
+            {
+                evaluations++;
+                return request;
+            };
+
+            test.Trigger<MiddlewareFunctions>().Run(f => f.RequestVoid(createRequest())).AssertSuccess();
+
+            Assert.That(evaluations, Is.EqualTo(1));
+            Assert.That(request.Headers["X-Function-Value"].ToString(), Is.EqualTo("set by middleware"));
+        }
+
+        [Test]
         public void Middleware_ShortCircuit_HttpResponseData()
         {
             using var test = FunctionTester.Create<HttpFunction>();

@@ -1,7 +1,10 @@
 using Aspire.Hosting;
+using Azure.Messaging.EventGrid;
+using Moq;
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -45,6 +48,47 @@ namespace UnitTestEx.Aspire.NUnit.Test
                 .Run(HttpMethod.Get, "Person/1")
                 .AssertOK()
                 .AssertValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [TestCase(null, false)]
+        [TestCase("", false)]
+        [TestCase("/subscriptions/test/topics/events", false)]
+        [TestCase(null, true)]
+        [TestCase("", true)]
+        [TestCase("/subscriptions/test/topics/blobs", true)]
+        public async Task FunctionsWebhook_PreservesTopicOrUsesDefault(string? topic, bool blobWebhook)
+        {
+            await Test.WaitForResourceAsync("mockhost");
+            var eventGridEvent = new EventGridEvent("test-subject", "test-event", "1.0", BinaryData.FromObjectAsJson(new { value = "payload" }));
+            if (topic is not null)
+                eventGridEvent.Topic = topic;
+
+            var route = blobWebhook ? "/runtime/webhooks/blobs" : "/runtime/webhooks/EventGrid";
+            var stub = await Test.HttpMock("mockhost")
+                .Request(HttpMethod.Post, route)
+                .Times(Times.Once())
+                .WithJsonBody(new[]
+                {
+                    new
+                    {
+                        id = eventGridEvent.Id,
+                        topic = string.IsNullOrEmpty(topic) ? "UnitTestEx" : topic,
+                        subject = eventGridEvent.Subject,
+                        eventType = eventGridEvent.EventType,
+                        eventTime = eventGridEvent.EventTime,
+                        dataVersion = eventGridEvent.DataVersion,
+                        metadataVersion = "1",
+                        data = new { value = "payload" }
+                    }
+                })
+                .Respond.WithAsync(HttpStatusCode.Accepted);
+
+            using var response = blobWebhook
+                ? await Test.FunctionsWebhook("mockhost").PostBlobCreatedAsync("Host.Functions.Test", eventGridEvent)
+                : await Test.FunctionsWebhook("mockhost").PostEventGridAsync("Host.Functions.Test", [eventGridEvent]);
+
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            await stub.VerifyAsync();
         }
 
         [Test]

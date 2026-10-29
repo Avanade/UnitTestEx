@@ -4,6 +4,12 @@ var builder = DistributedApplication.CreateBuilder(args);
 const string sqlPassword = "UnitTestEx_Emulator!2026";
 const string serviceBusConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;";
 
+var azurite = builder.AddContainer("azurite", "mcr.microsoft.com/azure-storage/azurite", "3.35.0")
+    .WithArgs("azurite", "-l", "/data", "--blobHost", "0.0.0.0", "--queueHost", "0.0.0.0", "--tableHost", "0.0.0.0")
+    .WithEndpoint(port: 10000, targetPort: 10000, scheme: "http", name: "blob", isProxied: false)
+    .WithEndpoint(port: 10001, targetPort: 10001, scheme: "http", name: "queue", isProxied: false)
+    .WithEndpoint(port: 10002, targetPort: 10002, scheme: "http", name: "table", isProxied: false);
+
 var sql = builder.AddContainer("sqledge", "mcr.microsoft.com/azure-sql-edge", "latest")
     .WithEnvironment("ACCEPT_EULA", "Y")
     .WithEnvironment("MSSQL_SA_PASSWORD", sqlPassword);
@@ -35,6 +41,7 @@ functions
     .WithEnvironment("AzureWebJobsSecretStorageType", "files")
     .WithEnvironment("AzureWebJobsStorage", "UseDevelopmentStorage=true")
     .WithEnvironment("ServiceBusConnectionString", serviceBusConnectionString)
-    .WaitFor(serviceBus);
+    .WaitFor(serviceBus)
+    .WaitFor(azurite);
 
 builder.Build().Run();
