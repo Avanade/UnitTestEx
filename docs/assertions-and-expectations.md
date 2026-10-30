@@ -59,6 +59,8 @@ All value and JSON comparisons serialize both sides to JSON and compare them wit
 
 Use `ObjectComparer.Assert(expected, actual, pathsToIgnore)` and `ObjectComparer.AssertJson(...)` for ad-hoc comparisons outside a tester. `UseJsonComparerOptions(...)` / `TestSetUp.JsonComparerOptions` control behaviour such as null and default handling.
 
+`ValueAssertor<T>.AssertJson` and both `AssertJsonFromResource` overloads compare the expected JSON structure with the serialized actual value, using the tester's serializer and comparer options. Object property order and whitespace are insignificant, array order matters, and `pathsToIgnore` applies to object/array paths. A returned string is still a string value: use a JSON string literal as its expected JSON, even when that string happens to contain JSON text.
+
 Example: [`MatchyMatchy`](../tests/UnitTestEx.NUnit.Test/Other/ObjectComparerTest.cs), [`PathsToIgnore_PropertyName`](../tests/UnitTestEx.NUnit.Test/Other/ObjectComparerTest.cs), [`PathsToIgnore_Json`](../tests/UnitTestEx.NUnit.Test/Other/ObjectComparerTest.cs), [`Get_Test5_AnonymousType_OK`](../tests/UnitTestEx.NUnit.Test/PersonControllerTest.cs).
 
 <br/>

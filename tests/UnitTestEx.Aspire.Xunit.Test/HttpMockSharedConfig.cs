@@ -24,7 +24,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
         internal static async Task<IHttpMockedRequest> ConfigureProductStubAsync(IHttpMockClient client, string requestUri) =>
             await client.Request(HttpMethod.Get, requestUri)
                 .Times(Times.Once())
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithJsonAsync(new { id = "Shared", description = "Configured via the shared IHttpMockClient interface." });
     }
 }

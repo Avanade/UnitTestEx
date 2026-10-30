@@ -100,7 +100,7 @@ namespace UnitTestEx.Hosting
             try
             {
                 var p = @params.Select(x => x.Value).ToArray();
-                await InvokeAsync(mce.Method, p, async () => { await ((Task)mce.Method.Invoke(h, p)!).ConfigureAwait(false); return true; }).ConfigureAwait(false);
+                await InvokeAsync(mce.Method, p, async () => { await ((Task)mce.Method.Invoke(h, BindingFlags.DoNotWrapExceptions, null, p, null)!).ConfigureAwait(false); return true; }).ConfigureAwait(false);
                 sw.Stop();
                 return (null, sw.Elapsed.TotalMilliseconds);
             }

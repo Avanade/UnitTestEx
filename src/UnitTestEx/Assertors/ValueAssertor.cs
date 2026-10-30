@@ -57,7 +57,7 @@ namespace UnitTestEx.Assertors
         public ValueAssertor<TValue> AssertJson([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore)
         {
             AssertSuccess();
-            var cr = Owner.CreateJsonComparer().CompareValue(json, JsonSerializer.Serialize(Value), pathsToIgnore);
+            var cr = Owner.CreateJsonComparer().Compare(json, JsonSerializer.Serialize(Value), pathsToIgnore);
             if (cr.HasDifferences)
                 Implementor.AssertFail($"Expected and Actual values are not equal:{Environment.NewLine}{cr}");
 

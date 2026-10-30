@@ -27,7 +27,7 @@ namespace UnitTestEx.Mocking
         IHttpMockRequest Times(Times times);
 
         /// <summary>
-        /// Indicates that the request will match regardless of the body content.
+        /// Indicates that the request must have a non-empty body, regardless of its content.
         /// </summary>
         /// <returns>The <see cref="IHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         IHttpMockRequestBody WithAnyBody();

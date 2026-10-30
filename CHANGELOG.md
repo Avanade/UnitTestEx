@@ -15,7 +15,9 @@ Represents the **NuGet** versions.
 - *Enhancement:* `FunctionTester` now runs the function app's worker middleware pipeline (including the ASP.NET Core integration) around the invoked method, so middleware logging, short-circuiting and exception mapping can be asserted. Use `UseWorkerMiddleware(false)` to invoke the method directly.
 - *Breaking:* Added `IHttpMockRequest.WithNoBody()` (implemented by `MockHttpClientRequest` and `AspireHttpMockRequest`), which matches a request with no body: absent or zero-length. The two are indistinguishable on the wire, so both tiers treat them identically. As a result:
   - Tier 1's default (no body configured) now also matches zero-length content, where previously only `Content == null` matched.
-  - The shared `IHttpMockClient.WithRequestsFromResourceAsync` loader now treats an omitted `body` as `WithNoBody()`, consistent with Tier 1's native loader. Previously it matched any body, so Aspire stubs that omit `body` no longer match requests that have one; use `body: ^` for that. On Aspire, `GET`/`HEAD` (or an unspecified method) apply no body constraint, as WireMock.Net does not read those bodies by default.
+  - The shared `IHttpMockClient.WithRequestsFromResourceAsync` loader now treats an omitted `body` as `WithNoBody()`, consistent with Tier 1's native loader. Previously it matched any body, so Aspire stubs that omit `body` no longer match requests that have one; use `body: ^` to match any non-empty body.
+  - `WithAnyBody()` and `body: ^` require a non-empty body, regardless of its content; absent and zero-length bodies match `WithNoBody()` instead.
+  - On Aspire, WireMock.Net does not read `GET`/`HEAD` request bodies by default. Therefore `WithAnyBody()` cannot match those methods, and `WithNoBody()` cannot enforce the no-body constraint for rules restricted exclusively to `GET`/`HEAD`. Unrestricted or mixed-method `WithNoBody()` rules apply the no-body constraint.
 - *Documentation:* README restructured into a front door with a capability matrix linking to example tests; detailed documentation moved to [`docs/`](./docs).
 
 ## v5.12.0

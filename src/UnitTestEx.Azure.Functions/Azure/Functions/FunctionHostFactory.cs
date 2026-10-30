@@ -18,6 +18,7 @@ namespace UnitTestEx.Azure.Functions
     internal sealed class FunctionHostFactory : IObserver<DiagnosticListener>, IObserver<KeyValuePair<string, object?>>
     {
         private static readonly AsyncLocal<FunctionHostFactory?> _current = new();
+        private static readonly object _environmentLock = new();
         private readonly TaskCompletionSource<IHost> _host = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly Action<IHostBuilder>? _configure;
         private IDisposable? _hostingSubscription;
@@ -37,7 +38,28 @@ namespace UnitTestEx.Azure.Functions
         /// <summary>
         /// Builds (but does not start) the <see cref="IHost"/> by invoking the <paramref name="assembly"/> entry point.
         /// </summary>
-        public static IHost BuildHost(Assembly assembly, string[] args, Action<IHostBuilder>? configure = null, TimeSpan? timeout = null)
+        public static IHost BuildHost(Assembly assembly, string[] args, string environmentName, Action<IHostBuilder>? configure = null, TimeSpan? timeout = null)
+        {
+            lock (_environmentLock)
+            {
+                var previousEnvironment = Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT");
+                try
+                {
+                    // The worker reads this during builder creation, before the HostBuilding configuration hook.
+                    Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", environmentName);
+                    return BuildHostCore(assembly, args, configure, timeout);
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", previousEnvironment);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Executes the entry point while the caller owns the environment gate.
+        /// </summary>
+        private static IHost BuildHostCore(Assembly assembly, string[] args, Action<IHostBuilder>? configure, TimeSpan? timeout)
         {
             var entryPoint = assembly.EntryPoint ?? throw new InvalidOperationException($"Assembly '{assembly.GetName().Name}' has no entry point; unable to build the host.");
             var factory = new FunctionHostFactory(configure);

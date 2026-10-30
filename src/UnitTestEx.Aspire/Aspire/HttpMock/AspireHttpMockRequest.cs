@@ -66,25 +66,47 @@ namespace UnitTestEx.Aspire.HttpMock
         }
 
         /// <summary>
-        /// Indicates that the request will match regardless of the body content.
+        /// Indicates that the request must have a non-empty body, regardless of its content.
         /// </summary>
         /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
-        public AspireHttpMockRequestBody WithAnyBody() => new(this);
+        /// <remarks>By default WireMock.Net does not read the request body for <c>GET</c> and <c>HEAD</c> (unless <c>AllowBodyForAllHttpMethods</c> is enabled), so this matcher cannot match
+        /// those methods by default.</remarks>
+        public AspireHttpMockRequestBody WithAnyBody()
+        {
+            Rule.Body = new BodyModel { Matcher = new MatcherModel { Name = "NotNullOrEmptyMatcher" } };
+            ClearContentTypeMatcher();
+            return new(this);
+        }
 
         /// <summary>
         /// Indicates that the request must have no body; i.e. the content is absent or zero-length.
         /// </summary>
         /// <returns>The <see cref="AspireHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         /// <remarks>An absent body and a zero-length body are indistinguishable on the wire (both send <c>Content-Length: 0</c>), so cannot be differentiated by the WireMock.Net server.
-        /// <para>By default WireMock.Net does not read the request body for <c>GET</c> and <c>HEAD</c> (unless <c>AllowBodyForAllHttpMethods</c> is enabled), where any body rule would
-        /// therefore never match; as such, no body constraint is applied for these methods, or where the method is unspecified.</para></remarks>
+        /// <para>By default WireMock.Net does not read the request body for <c>GET</c> and <c>HEAD</c> (unless <c>AllowBodyForAllHttpMethods</c> is enabled), so no body constraint is
+        /// applied when the configured methods are exclusively <c>GET</c>/<c>HEAD</c>. For an unrestricted or mixed-method rule, the no-body matcher is applied.</para></remarks>
         public AspireHttpMockRequestBody WithNoBody()
         {
-            Rule.Body = Rule.Methods is null || Rule.Methods.Any(m => string.Equals(m, HttpMethod.Get.Method, StringComparison.OrdinalIgnoreCase) || string.Equals(m, HttpMethod.Head.Method, StringComparison.OrdinalIgnoreCase))
+            Rule.Body = Rule.Methods is { Length: > 0 } methods && methods.All(IsGetOrHead)
                 ? null
                 : new BodyModel { Matcher = new MatcherModel { Name = "NotNullOrEmptyMatcher", RejectOnMatch = true } };
 
+            ClearContentTypeMatcher();
             return new(this);
+        }
+
+        private static bool IsGetOrHead(string method) =>
+            string.Equals(method, HttpMethod.Get.Method, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(method, HttpMethod.Head.Method, StringComparison.OrdinalIgnoreCase);
+
+        private void ClearContentTypeMatcher()
+        {
+            if (Rule.Headers is null)
+                return;
+
+            Rule.Headers = Rule.Headers.Where(header => !string.Equals(header.Name, "Content-Type", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (Rule.Headers.Count == 0)
+                Rule.Headers = null;
         }
 
         /// <summary>

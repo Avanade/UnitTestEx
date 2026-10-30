@@ -20,7 +20,7 @@ namespace UnitTestEx.Mocking
     /// but is implemented purely against the shared <see cref="IHttpMockClient"/>/<see cref="IHttpMockRequest"/>/<see cref="IHttpMockResponse"/>/<see cref="IHttpMockResponseSequenceItem"/> abstractions -
     /// so the same embedded resource works identically against Tier 1's <see cref="MockHttpClient"/> and Tier 2/3's <c>AspireHttpMockClient</c>, without either tier reimplementing the parsing.
     /// <para>Where a request entry omits <c>body</c> entirely, the request must have no body (absent or zero-length; see <see cref="IHttpMockRequest.WithNoBody"/>), consistent with Tier 1's native method;
-    /// use <c>body: ^</c> to match any body.</para>
+    /// use <c>body: ^</c> to match any non-empty body.</para>
     /// <para>Response header values are applied via repeated <see cref="IHttpMockResponse.Header(string, string)"/>/<see cref="IHttpMockResponseSequenceItem.Header(string, string)"/> calls, one per
     /// configured value; Tier 1 accumulates multiple values per header name, whereas Aspire's WireMock.Net-backed response currently retains only the last value written for a given header name.</para></remarks>
     internal static class HttpMockResourceConfig

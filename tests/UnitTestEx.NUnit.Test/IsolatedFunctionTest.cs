@@ -151,6 +151,10 @@ namespace UnitTestEx.NUnit.Test
             test.Trigger<ServiceBusFunction>()
                 .Run(f => ServiceBusFunction.Run4(new Person("Jane", "Doe")))
                 .AssertSuccess();
+
+            test.Trigger<ServiceBusFunction>()
+                .Run(f => ServiceBusFunction.Run4(new Person(null, "Doe")))
+                .AssertException<InvalidOperationException>("First name is required.");
         }
 
         [Test]

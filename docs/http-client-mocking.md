@@ -80,8 +80,8 @@ A request matches on method and URI, and then on body:
 
 Method | Matches
 -|-
-_(none)_ / `WithNoBody()` | No body: absent or zero-length. In-process (Tier 1), this is the default when no body method is called; Aspire requires an explicit body method. On Aspire, `GET`/`HEAD` (or an unspecified method) apply no body constraint, as WireMock.Net does not read those bodies by default.
-`WithAnyBody()` | Any body, including none.
+_(none)_ / `WithNoBody()` | No body: absent or zero-length. In-process (Tier 1), this is the default when no body method is called; Aspire requires an explicit body method. On Aspire, rules restricted exclusively to `GET`/`HEAD` apply no body constraint, as WireMock.Net does not read those bodies by default.
+`WithAnyBody()` | Any non-empty body, regardless of content.
 `WithBody(text)` / `WithBody(text, mediaType)` | The exact text (and media type, where specified).
 `WithJsonBody(json \| value, pathsToIgnore)` | Semantically equal JSON (via `JsonElementComparer`), ignoring the specified paths.
 `WithJsonResourceBody(resourceName, ...)` | As `WithJsonBody`, with the JSON loaded from an embedded resource.
@@ -202,7 +202,7 @@ IHttpMockClient client = mcf.CreateClient("XXX", new Uri("https://unit-test")); 
 await client.WithRequestsFromResourceAsync<MyTestClass>("my.mock.unittestex.yaml");
 ```
 
-Both loaders apply the same request `body` semantics: where `body` is omitted, the request must have **no body**, meaning absent or zero-length (`WithNoBody()`). Use `body: ^` to match any body (`WithAnyBody()`). An absent body and a zero-length body both send `Content-Length: 0` on the wire, so neither tier distinguishes them. One Aspire-tier caveat: by default WireMock.Net does not read `GET`/`HEAD` request bodies at all, so `WithNoBody()` applies no body constraint for those methods (or where the method is unspecified).
+Both loaders apply the same request `body` semantics: where `body` is omitted, the request must have **no body**, meaning absent or zero-length (`WithNoBody()`). Use `body: ^` to match any **non-empty** body (`WithAnyBody()`). An absent body and a zero-length body both send `Content-Length: 0` on the wire, so neither tier distinguishes them. One Aspire-tier caveat: by default WireMock.Net does not read `GET`/`HEAD` request bodies at all. Consequently, `WithAnyBody()` cannot match those methods, and `WithNoBody()` applies no body constraint for rules whose configured methods are exclusively `GET`/`HEAD`; for unrestricted or mixed-method rules, the no-body constraint is applied.
 
 <br/>
 

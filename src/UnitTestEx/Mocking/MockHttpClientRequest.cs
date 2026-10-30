@@ -180,7 +180,7 @@ namespace UnitTestEx.Mocking
                 return false;
 
             if (_anyContent)
-                return true;
+                return !IsEmptyContent(request.Content);
 
             if (_mediaType == null)
                 return IsEmptyContent(request.Content);
@@ -270,7 +270,7 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Enables the request to match regardless of body content, including where no body is present at all (functionally equivalent to <see cref="ItExpr.IsAny{TValue}"/>).
+        /// Indicates that the request must have a non-empty body, regardless of its content.
         /// </summary>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithAnyBody()

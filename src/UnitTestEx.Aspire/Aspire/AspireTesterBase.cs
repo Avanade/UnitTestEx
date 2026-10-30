@@ -246,9 +246,9 @@ namespace UnitTestEx.Aspire
                 _appTask = null;
             }
 
-            if (appTask is { IsCompletedSuccessfully: true })
+            if (appTask is not null)
             {
-                appTask.Result.Dispose();
+                appTask.GetAwaiter().GetResult().Dispose();
                 Implementor.WriteLine("");
                 Implementor.WriteLine("** The underlying UnitTestEx 'AspireTester' distributed application host has been reset. **");
                 Implementor.WriteLine("");
@@ -863,15 +863,18 @@ namespace UnitTestEx.Aspire
             if (appTask is null)
                 return;
 
+            DistributedApplication app;
             try
             {
-                var app = await appTask.ConfigureAwait(false);
-                await app.DisposeAsync().ConfigureAwait(false);
+                app = await appTask.ConfigureAwait(false);
             }
             catch
             {
                 // Swallow; there is nothing meaningful to dispose where the underlying host failed to build/start.
+                return;
             }
+
+            await app.DisposeAsync().ConfigureAwait(false);
         }
     }
 }

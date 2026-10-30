@@ -21,6 +21,10 @@ using var test = FunctionTester.Create<ProductFunction>();
 
 Example: [`Program_TestOverrides`](../tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`Program_ServicesUsed_WorkerNotStarted`](../tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`Program_ConcurrentHostsAreIsolated`](../tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs). The sample function app is [`UnitTestEx.IsolatedFunction`](../tests/UnitTestEx.IsolatedFunction/Program.cs).
 
+Test configuration and service overrides are applied at the `Build()` boundary. Configuration values read eagerly, service-registration decisions made from those values, and other side effects executed earlier in `Program.cs` cannot be retroactively changed by this hook. `Program_TestOverrides` verifies the final configuration and replaced services, not arbitrary pre-`Build()` reads.
+
+The worker reads `AZURE_FUNCTIONS_ENVIRONMENT` when its builder is created. `FunctionTester` temporarily sets this process-wide variable to `TestSetUp.Environment` during host construction and restores the previous value (including an absent value) before returning, even if construction fails. Host construction is serialized across all `FunctionTester` entry-point types. This does not isolate unrelated code that reads or writes the process environment during construction; serialize those tests too. A timed-out entry point cannot be forcibly stopped and may continue running after the environment is restored. `TestSetUp.Environment` is shared configuration: set it before starting tests, not concurrently during host construction.
+
 <br/>
 
 ## Choosing a tester
@@ -33,6 +37,8 @@ Method | Use for | Trigger validation
 `Type<TFunction>()` | Any method, with no trigger checks | None.
 
 All four support synchronous and asynchronous methods, instance and `static` methods, expectations (`Expect*`), log capture, and the standard assertors.
+
+Scopes created by `HttpTrigger`, `ServiceBusTrigger`, and `Trigger` belong to the owning `FunctionTester`. They remain usable for subsequent invocations, response reading and assertions until that tester is reset or disposed. Reset/disposal releases these scopes before the host, including async-only scoped dependencies; individual trigger testers do not need to be disposed. Do not retain a trigger tester across an owner reset. Cleanup attempts all scopes and the host and reports disposal failures rather than silently ignoring them.
 
 <br/>
 

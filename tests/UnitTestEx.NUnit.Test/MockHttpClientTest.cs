@@ -317,13 +317,12 @@ namespace UnitTestEx.NUnit.Test
                 Assert.That(res.RequestMessage, Is.Not.Null);
             });
 
-            // WithAnyBody is a true wildcard - it also matches a request with no body at all.
-            var res2 = await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")).ConfigureAwait(false);
-            Assert.Multiple(async () =>
-            {
-                Assert.That(res2.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
-                Assert.That(await res2.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
-            });
+            // WithAnyBody requires a non-empty body, but does not inspect its content.
+            var res2 = await hc.PostAsync("products/xyz", new StringContent("arbitrary body")).ConfigureAwait(false);
+            Assert.That(res2.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            Assert.That(await res2.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
+            Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
+            Assert.ThrowsAsync<MockHttpClientException>(() => hc.PostAsync("products/xyz", new StringContent("")));
 
             Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Get, "products/xyz")));
         }
@@ -548,13 +547,11 @@ namespace UnitTestEx.NUnit.Test
                 Assert.That(res.Headers.Age, Is.EqualTo(TimeSpan.FromSeconds(55)));
             });
 
-            // WithAnyBody is a true wildcard - it also matches a request with no body at all.
-            var res2 = await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")).ConfigureAwait(false);
-            Assert.Multiple(async () =>
-            {
-                Assert.That(res2.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
-                Assert.That(await res2.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
-            });
+            // WithAnyBody requires a non-empty body, but does not inspect its content.
+            var res2 = await hc.PostAsync("products/xyz", new StringContent("arbitrary body")).ConfigureAwait(false);
+            Assert.That(res2.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            Assert.That(await res2.Content.ReadAsStringAsync().ConfigureAwait(false), Is.EqualTo("{\"first\":\"Bob\",\"last\":\"Jane\"}"));
+            Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
 
             Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Get, "products/xyz")));
         }

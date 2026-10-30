@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
+using System.Threading;
 using System.Threading.Tasks;
 using Moq;
 using UnitTestEx;
@@ -86,6 +87,51 @@ namespace UnitTestEx.Aspire.Xunit.Test
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => tester.WaitForResourceAsync("api"));
             Assert.Equal("Simulated pre-start failure.", ex.Message);
+        }
+
+        [Fact]
+        public async Task ResetHost_WaitsForInFlightStartBeforeDisposingAndRebuilding()
+        {
+            var startBlocked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var allowStartToFinish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var startCount = 0;
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
+                .AfterStart(async _ =>
+                {
+                    if (Interlocked.Increment(ref startCount) == 1)
+                    {
+                        startBlocked.SetResult();
+                        await allowStartToFinish.Task;
+                    }
+                });
+
+            var firstAppTask = tester.GetDistributedApplicationAsync();
+            try
+            {
+                await startBlocked.Task.WaitAsync(TimeSpan.FromSeconds(60));
+                var resetStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var resetTask = Task.Run(() =>
+                {
+                    resetStarted.SetResult();
+                    tester.ResetHost();
+                });
+
+                await resetStarted.Task;
+                await Task.Delay(50);
+                Assert.False(resetTask.IsCompleted);
+
+                allowStartToFinish.SetResult();
+                await resetTask;
+
+                var firstApp = await firstAppTask;
+                var secondApp = await tester.GetDistributedApplicationAsync();
+                Assert.NotSame(firstApp, secondApp);
+                Assert.Equal(2, startCount);
+            }
+            finally
+            {
+                allowStartToFinish.TrySetResult();
+            }
         }
 
         [Fact]
@@ -442,7 +488,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
             var stub = await tester.HttpMock("mockhost")
                 .Request(HttpMethod.Get, "/products/abc")
                 .Times(Times.Once())
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
 
             tester.Http("api")
@@ -466,7 +512,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
             var stub = await tester.HttpMock("mockhost")
                 .Request(HttpMethod.Get, "products/abc") // Deliberately no leading '/'.
                 .Times(Times.Once())
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
 
             tester.Http("api")
@@ -493,7 +539,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
             var stub = await tester.HttpMock("mockhost")
                 .Request(HttpMethod.Get, "/products/abc")
                 .Times(Times.Once())
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
 
             tester.Http("api")
@@ -524,7 +570,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
                     _ = await app.HttpMock("mockhost")
                         .Request(HttpMethod.Get, "/products/xyz")
                         .Times(Times.Once())
-                        .WithAnyBody()
+                        .WithNoBody()
                         .Respond.WithJsonAsync(new { id = "Xyz", description = "Configured via the DistributedApplication.HttpMock extension method." });
                 });
 
@@ -548,7 +594,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
 
             var stub = await tester.HttpMock("mockhost")
                 .Request(HttpMethod.Get, "/products/seq")
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithSequenceAsync(seq =>
                 {
                     seq.Respond().WithJson(new { id = "Seq", description = "First" });
@@ -576,7 +622,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
 
             var stub = await tester.HttpMock("mockhost")
                 .Request(HttpMethod.Get, "/products/seq")
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithSequenceAsync(seq => seq.Respond().WithJson(new { id = "Seq", description = "Only" }));
 
             tester.Http("api").Run(HttpMethod.Get, "Product/seq").AssertOK().AssertValue(new { id = "Seq", description = "Only" });
@@ -674,6 +720,35 @@ namespace UnitTestEx.Aspire.Xunit.Test
             Assert.Equal(HttpStatusCode.NotFound, (await hc.PostAsync("/interface/no-body", new StringContent("x"))).StatusCode);
 
             await stub.VerifyAsync();
+
+            var anyMethodStub = await client.Request(null, "/interface/no-body-any-method")
+                .Times(Times.Once())
+                .WithNoBody()
+                .Respond.WithAsync(statusCode: HttpStatusCode.NoContent);
+
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("/interface/no-body-any-method", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await hc.PostAsync("/interface/no-body-any-method", new StringContent("x"))).StatusCode);
+            await anyMethodStub.VerifyAsync();
+        }
+
+        [Fact]
+        public async Task HttpMock_WithAnyBody_RequiresNonEmptyBodyAndClearsPreviousMatcher()
+        {
+            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>();
+
+            await tester.WaitForResourceAsync("mockhost");
+
+            IHttpMockClient client = tester.HttpMock("mockhost");
+            var request = client.Request(HttpMethod.Post, "/interface/any-body").Times(Times.Exactly(2));
+            request.WithBody("previous body", MediaTypeNames.Text.Plain);
+            var stub = await request.WithAnyBody().Respond.WithAsync(statusCode: HttpStatusCode.NoContent);
+
+            using var hc = ((IHttpClientSource)tester).CreateHttpClient("mockhost");
+            Assert.Equal(HttpStatusCode.NotFound, (await hc.PostAsync("/interface/any-body", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("/interface/any-body", new StringContent("arbitrary", System.Text.Encoding.UTF8, "application/json"))).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await hc.PostAsync("/interface/any-body", new StringContent("different", System.Text.Encoding.UTF8, "application/json"))).StatusCode);
+
+            await stub.VerifyAsync();
         }
 
         [Fact]
@@ -696,7 +771,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
 
             var stub2 = await client.Request(HttpMethod.Get, "/interface/no-content")
                 .Times(Times.Once())
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithAsync(statusCode: HttpStatusCode.NoContent);
 
             var stub3 = await client.Request(HttpMethod.Post, "/interface/json-body")
@@ -705,7 +780,7 @@ namespace UnitTestEx.Aspire.Xunit.Test
                 .Respond.WithJsonAsync(new { id = "Abc", description = "Configured via IHttpMockRequest.WithJsonBody<T>." });
 
             var stub4 = await client.Request(HttpMethod.Get, "/interface/sequence")
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithSequenceAsync(seq =>
                 {
                     seq.Respond().WithJson(new { id = "First" });
@@ -862,4 +937,3 @@ namespace UnitTestEx.Aspire.Xunit.Test
         }
     }
 }
-

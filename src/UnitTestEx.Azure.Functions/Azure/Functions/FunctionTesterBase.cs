@@ -7,7 +7,9 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
+using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Hosting;
 
@@ -26,6 +28,7 @@ namespace UnitTestEx.Azure.Functions
 
         private readonly bool? _includeUnitTestConfiguration;
         private readonly bool? _includeUserSecrets;
+        private readonly List<IServiceScope> _triggerScopes = [];
         private IHost? _host;
         private bool _disposed;
         private bool _useWorkerMiddleware = true;
@@ -93,11 +96,9 @@ namespace UnitTestEx.Azure.Functions
         /// </summary>
         private IHost GetHost()
         {
-            if (_host != null)
-                return _host;
-
             lock (SyncRoot)
             {
+                ObjectDisposedException.ThrowIf(_disposed, this);
                 if (_host != null)
                     return _host;
 
@@ -114,10 +115,7 @@ namespace UnitTestEx.Azure.Functions
         /// </summary>
         private IHost BuildApplicationHost()
         {
-            // The isolated worker builder determines its environment from 'AZURE_FUNCTIONS_ENVIRONMENT' on construction (as set by the Functions host); simulate accordingly.
-            System.Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", UnitTestEx.TestSetUp.Environment);
-
-            return FunctionHostFactory.BuildHost(typeof(TEntryPoint).Assembly, [], hb => hb
+            return FunctionHostFactory.BuildHost(typeof(TEntryPoint).Assembly, [], UnitTestEx.TestSetUp.Environment, hb => hb
                 .ConfigureLogging(lb => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
                 .ConfigureAppConfiguration((_, cb) =>
                 {
@@ -182,8 +180,7 @@ namespace UnitTestEx.Azure.Functions
             {
                 if (_host is not null)
                 {
-                    _host.Dispose();
-                    _host = null;
+                    DisposeHost();
                     Implementor.WriteLine("");
                     Implementor.WriteLine("** The underlying UnitTestEx 'FunctionTester' Host has been reset. **");
                     Implementor.WriteLine("");
@@ -216,21 +213,78 @@ namespace UnitTestEx.Azure.Functions
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.Functions.Worker.HttpTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="HttpTriggerTester{TFunction}"/>.</returns>
-        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
+        public HttpTriggerTester<TFunction> HttpTrigger<TFunction>() where TFunction : class => new(this, CreateTriggerScope());
 
         /// <summary>
         /// Specifies the <i>Function</i> <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute"/> that is to be tested.
         /// </summary>
         /// <typeparam name="TFunction">The Function <see cref="Type"/> that utilizes the <see cref="Microsoft.Azure.Functions.Worker.ServiceBusTriggerAttribute"/> to be tested.</typeparam>
         /// <returns>The <see cref="ServiceBusTriggerTester{TFunction}"/>.</returns>
-        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
+        public ServiceBusTriggerTester<TFunction> ServiceBusTrigger<TFunction>() where TFunction : class => new(this, CreateTriggerScope());
 
         /// <summary>
         /// Specifies an isolated-worker function with any trigger that does not have a dedicated tester.
         /// </summary>
         /// <typeparam name="TFunction">The function type.</typeparam>
         /// <returns>A generic trigger tester.</returns>
-        public TriggerTester<TFunction> Trigger<TFunction>() where TFunction : class => new(this, HostExecutionWrapper(() => GetHost().Services.CreateScope()));
+        public TriggerTester<TFunction> Trigger<TFunction>() where TFunction : class => new(this, CreateTriggerScope());
+
+        /// <summary>
+        /// Creates a trigger scope owned by this tester until the host is reset or disposed.
+        /// </summary>
+        private IServiceScope CreateTriggerScope()
+        {
+            lock (SyncRoot)
+            {
+                var scope = HostExecutionWrapper(() => GetHost().Services.CreateScope());
+                _triggerScopes.Add(scope);
+                return scope;
+            }
+        }
+
+        /// <summary>
+        /// Releases all trigger scopes before their host, reporting failures after attempting all cleanup.
+        /// </summary>
+        private void DisposeHost()
+        {
+            var scopes = _triggerScopes.ToArray();
+            _triggerScopes.Clear();
+            var host = _host;
+            _host = null;
+            List<Exception> exceptions = [];
+
+            for (var i = scopes.Length - 1; i >= 0; i--)
+            {
+                try
+                {
+                    if (scopes[i] is IAsyncDisposable asyncScope)
+                    {
+                        // Keep the synchronous tester API usable with async-only services, without capturing the caller's context.
+                        Task.Run(async () => await asyncScope.DisposeAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
+                    }
+                    else
+                        scopes[i].Dispose();
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
+                }
+            }
+
+            try
+            {
+                host?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
+            }
+
+            if (exceptions.Count == 1)
+                ExceptionDispatchInfo.Capture(exceptions[0]).Throw();
+            else if (exceptions.Count > 1)
+                throw new AggregateException("Failed to dispose the FunctionTester scopes and host.", exceptions);
+        }
 
         /// <summary>
         /// Releases all resources.
@@ -247,16 +301,15 @@ namespace UnitTestEx.Azure.Functions
         /// <param name="disposing"><c>true</c> to release both managed and unmanaged resources; <c>false</c> to release only unmanaged resources.</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed)
-                return;
-
-            if (_host != null)
+            lock (SyncRoot)
             {
-                _host.Dispose();
-                _host = null;
-            }
+                if (_disposed)
+                    return;
 
-            _disposed = true;
+                _disposed = true;
+                if (disposing)
+                    DisposeHost();
+            }
         }
     }
 }

@@ -91,7 +91,7 @@ namespace UnitTestEx.Xunit.Test
 
             var stub = await client.Request(HttpMethod.Get, "ping")
                 .Times(Times.Once())
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond
                 .Headers([new("x-custom", "abc"), new("x-other", "def")]) // DIM: iterates and calls the core Header member.
                 .Delay(50) // DIM: int milliseconds overload.
@@ -118,12 +118,12 @@ namespace UnitTestEx.Xunit.Test
 
             var stub1 = await client.Request(HttpMethod.Get, "raw-json")
                 .Times(Times.Once())
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithJsonAsync("{\"literal\":true}"); // DIM: raw JSON string overload.
 
             var stub2 = await client.Request(HttpMethod.Get, "resource-json")
                 .Times(Times.Once())
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithJsonResourceAsync<HttpMockInterfaceTest>("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted); // DIM: embedded resource overload.
 
             var hc = mcf.GetHttpClient("XXX");
@@ -177,7 +177,7 @@ namespace UnitTestEx.Xunit.Test
             IHttpMockClient client = mcf.CreateClient("XXX", new System.Uri("https://d365test"));
 
             var stub = await client.Request(HttpMethod.Get, "sequence")
-                .WithAnyBody()
+                .WithNoBody()
                 .Respond.WithSequenceAsync(seq =>
                 {
                     seq.Respond()
