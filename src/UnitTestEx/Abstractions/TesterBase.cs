@@ -194,9 +194,10 @@ namespace UnitTestEx.Abstractions
 
             if (body is not null)
             {
-                context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+                var bodyBytes = Encoding.UTF8.GetBytes(body);
+                context.Request.Body = new MemoryStream(bodyBytes);
                 context.Request.ContentType = contentType ?? MediaTypeNames.Text.Plain;
-                context.Request.ContentLength = body.Length;
+                context.Request.ContentLength = bodyBytes.Length;
             }
             else
                 context.Request.ContentType = contentType;

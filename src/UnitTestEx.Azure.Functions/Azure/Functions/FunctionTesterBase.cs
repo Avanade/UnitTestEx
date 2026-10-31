@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -22,9 +23,7 @@ namespace UnitTestEx.Azure.Functions
     /// <typeparam name="TSelf">The <see cref="FunctionTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class FunctionTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IFunctionTesterOptions, IDisposable where TEntryPoint : class where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
-        private static readonly object _lock = new();
-        private static readonly JsonSerializerOptions _localSettingsJsonSerializerOptions = new() { ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
-        private static bool _localSettingsDone = false;
+        private static readonly JsonDocumentOptions _localSettingsJsonDocumentOptions = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
 
         private readonly bool? _includeUnitTestConfiguration;
         private readonly bool? _includeUserSecrets;
@@ -49,40 +48,23 @@ namespace UnitTestEx.Azure.Functions
         }
 
         /// <summary>
-        /// Get the local.settings.json values and store in a temporary file.
+        /// Reads the local.settings.json values into memory.
         /// </summary>
-        private static string GetLocalSettingsJson()
+        private static List<KeyValuePair<string, string?>> GetLocalSettingsValues()
         {
-            lock (_lock)
-            {
-                // Manage a temporary local.settings.json for the values.
-                var tfi = new FileInfo(Path.Combine(Environment.CurrentDirectory, "temporary.local.settings.json"));
-                if (tfi.Exists)
-                {
-                    if (_localSettingsDone)
-                        return tfi.Name;
+            var file = new FileInfo(Path.Combine(Environment.CurrentDirectory, "local.settings.json"));
+            if (!file.Exists)
+                return [];
 
-                    tfi.Delete();
-                }
+            using var document = JsonDocument.Parse(File.ReadAllText(file.FullName), _localSettingsJsonDocumentOptions);
+            if (!document.RootElement.TryGetProperty("Values", out var values) || values.ValueKind != JsonValueKind.Object)
+                return [];
 
-                // Simulate the loading of the local.settings.json values.
-                var fi = new FileInfo(Path.Combine(Environment.CurrentDirectory, "local.settings.json"));
-                if (!fi.Exists)
-                    return tfi.Name;
-
-                var json = File.ReadAllText(fi.FullName);
-                var je = (JsonElement)System.Text.Json.JsonSerializer.Deserialize<dynamic>(json, _localSettingsJsonSerializerOptions);
-                if (je.TryGetProperty("Values", out var jv))
-                {
-                    using var fs = tfi.OpenWrite();
-                    using var uw = new Utf8JsonWriter(fs, new JsonWriterOptions { Indented = true });
-                    jv.WriteTo(uw);
-                    uw.Flush();
-                }
-
-                _localSettingsDone = true;
-                return tfi.Name;
-            }
+            return values.EnumerateObject()
+                .Select(property => new KeyValuePair<string, string?>(
+                    property.Name,
+                    property.Value.ValueKind == JsonValueKind.Null ? null : property.Value.ToString()))
+                .ToList();
         }
 
         /// <summary>
@@ -119,7 +101,7 @@ namespace UnitTestEx.Azure.Functions
                 .ConfigureLogging(lb => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
                 .ConfigureAppConfiguration((_, cb) =>
                 {
-                    cb.SetBasePath(Environment.CurrentDirectory).AddJsonFile(GetLocalSettingsJson(), optional: true);
+                    cb.SetBasePath(Environment.CurrentDirectory).AddInMemoryCollection(GetLocalSettingsValues());
                     ConfigureTestAppConfiguration(cb);
                 })
                 .ConfigureServices(ConfigureTestServices));

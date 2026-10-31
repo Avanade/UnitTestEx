@@ -88,6 +88,23 @@ namespace UnitTestEx.NUnit.Test.Other
         }
 
         [Test]
+        public void JsonElementComparer_HashCodeMatchesSemanticEquality()
+        {
+            var comparer = new JsonElementComparer(new JsonElementComparerOptions
+            {
+                PropertyNameComparer = StringComparer.OrdinalIgnoreCase,
+                NullComparison = JsonElementComparison.Semantic
+            });
+
+            const string first = """{"Name":"2024-01-01T00:00:00Z","Count":1.0,"Ignored":null}""";
+            const string second = """{"count":1,"name":"2024-01-01T00:00:00.000+00:00"}""";
+
+            Assert.That(comparer.Equals(first, second), Is.True);
+            Assert.That(comparer.GetHashCode(first), Is.EqualTo(comparer.GetHashCode(second)));
+            Assert.DoesNotThrow(() => comparer.GetHashCode("""{"value":1e1000}"""));
+        }
+
+        [Test]
         public void AssertJsonFromResource_BothOverloadsCompareStructurally()
         {
             using var test = GenericTester.Create()

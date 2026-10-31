@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NUnit.Framework;
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -53,6 +54,28 @@ namespace UnitTestEx.NUnit.Test
                 using var client = test.Services.GetRequiredService<IHttpClientFactory>().CreateClient("XXX");
                 Assert.That(client.BaseAddress, Is.EqualTo(new Uri("https://test-override")));
             });
+        }
+
+        [Test]
+        public void LocalSettings_AreLoadedInMemoryWithoutCreatingSidecar()
+        {
+            var originalDirectory = Environment.CurrentDirectory;
+            var directory = Directory.CreateTempSubdirectory("UnitTestEx-LocalSettings-");
+            try
+            {
+                Environment.CurrentDirectory = directory.FullName;
+                File.WriteAllText(Path.Combine(directory.FullName, "local.settings.json"),
+                    """{"IsEncrypted":false,"Values":{"UnitTestEx_LocalSettings_Test":"loaded"}}""");
+
+                using var test = FunctionTester.Create<HttpFunction>();
+                Assert.That(test.Configuration["UnitTestEx_LocalSettings_Test"], Is.EqualTo("loaded"));
+                Assert.That(File.Exists(Path.Combine(directory.FullName, "temporary.local.settings.json")), Is.False);
+            }
+            finally
+            {
+                Environment.CurrentDirectory = originalDirectory;
+                directory.Delete(recursive: true);
+            }
         }
 
         [Test]

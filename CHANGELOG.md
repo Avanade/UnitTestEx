@@ -13,6 +13,11 @@ Represents the **NuGet** versions.
 - *Enhancement:* Added Event Hubs `EventData` builders for values, JSON, resources and raw bodies, with broker metadata support.
 - *Enhancement:* Added Aspire integration coverage and documentation for a Service Bus-triggered Functions app using Microsoft's Service Bus emulator.
 - *Enhancement:* `FunctionTester` now runs the function app's worker middleware pipeline (including the ASP.NET Core integration) around the invoked method, so middleware logging, short-circuiting and exception mapping can be asserted. Use `UseWorkerMiddleware(false)` to invoke the method directly.
+- *Fixed:* `TypeTester<TService>` now creates each tested service within the scope for that `Run`, preventing scoped dependencies from being reused after disposal.
+- *Fixed:* UTF-8 request bodies created by `TesterBase.CreateHttpRequest` now report the encoded byte length rather than the UTF-16 character count.
+- *Fixed:* `JsonElementComparer` hash codes now follow its configured semantic equality rules and tolerate valid numbers outside the decimal range.
+- *Fixed:* `ApiTester` applies its test environment and settings only while the host is being built, then restores the process environment; host construction is serialized to prevent UnitTestEx API testers from racing. It also avoids building a duplicate service provider to capture `IHttpContextAccessor`.
+- *Fixed:* `FunctionTester` now reads `local.settings.json` values into in-memory configuration and no longer writes a plaintext settings sidecar into the current directory.
 - *Breaking:* Added `IHttpMockRequest.WithNoBody()` (implemented by `MockHttpClientRequest` and `AspireHttpMockRequest`), which matches a request with no body: absent or zero-length. The two are indistinguishable on the wire, so both tiers treat them identically. As a result:
   - Tier 1's default (no body configured) now also matches zero-length content, where previously only `Content == null` matched.
   - The shared `IHttpMockClient.WithRequestsFromResourceAsync` loader now treats an omitted `body` as `WithNoBody()`, consistent with Tier 1's native loader. Previously it matched any body, so Aspire stubs that omit `body` no longer match requests that have one; use `body: ^` to match any non-empty body.

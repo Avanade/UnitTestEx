@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -26,9 +27,24 @@ namespace UnitTestEx.AspNetCore
     /// <typeparam name="TSelf">The <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> to support inheriting fluent-style method-chaining.</typeparam>
     public abstract class ApiTesterBase<TEntryPoint, TSelf> : TesterBase<TSelf>, IHttpClientSource, IDisposable where TEntryPoint : class where TSelf : ApiTesterBase<TEntryPoint, TSelf> 
     {
+        private sealed class UnitTestExWebApplicationFactory(string contentRoot, string configurationDirectory, Action<IWebHostBuilder> configure) : WebApplicationFactory<TEntryPoint>
+        {
+            protected override void ConfigureWebHost(IWebHostBuilder builder)
+            {
+                builder.UseSolutionRelativeContentRoot(contentRoot);
+                configure(builder);
+            }
+
+            protected override IHost CreateHost(IHostBuilder builder)
+            {
+                return ApiTesterEnvironment.CreateHost(configurationDirectory, () => base.CreateHost(builder));
+            }
+        }
+
         private bool _disposed;
         private WebApplicationFactory<TEntryPoint>? _waf;
         private string? _solutionRelativePath;
+        private readonly string _configurationDirectory;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ApiTesterBase{TEntryPoint, TSelf}"/> class.
@@ -36,21 +52,9 @@ namespace UnitTestEx.AspNetCore
         /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
         public ApiTesterBase(TestFrameworkImplementor implementor) : base(implementor)
         {
+            _configurationDirectory = Environment.CurrentDirectory;
             Logger = LoggerProvider.CreateLogger(GetType().Name);
 
-            // Default the .NET environment environment variable.
-            Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", TestSetUp.Environment);
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", TestSetUp.Environment);
-
-            // Add settings from appsettings.unittest.json so that they are available to the startup class.
-            var config = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.unittest.json", optional: true)
-                .Build();
-
-            foreach (var key in config.AsEnumerable())
-            {
-                Environment.SetEnvironmentVariable(key.Key, key.Value);
-            }
         }
 
         /// <summary>
@@ -66,8 +70,10 @@ namespace UnitTestEx.AspNetCore
                 if (_waf != null)
                     return _waf;
 
-                _waf = new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(whb =>
-                    whb.UseSolutionRelativeContentRoot(_solutionRelativePath ?? Environment.CurrentDirectory)
+                var contentRoot = _solutionRelativePath ?? Environment.CurrentDirectory;
+                _waf = new UnitTestExWebApplicationFactory(contentRoot, _configurationDirectory, whb =>
+                    whb
+                        .UseEnvironment(TestSetUp.Environment)
                         .ConfigureAppConfiguration((_, cb) =>
                         {
                             cb.AddJsonFile("appsettings.unittest.json", optional: true);
@@ -76,8 +82,10 @@ namespace UnitTestEx.AspNetCore
                         })
                         .ConfigureServices(sc =>
                         {
+                            var httpContextAccessor = new HttpContextAccessor();
                             sc.AddHttpContextAccessor();
-                            SharedState.HttpContextAccessor = sc.BuildServiceProvider().GetRequiredService<IHttpContextAccessor>();
+                            sc.ReplaceSingleton<IHttpContextAccessor>(httpContextAccessor);
+                            SharedState.HttpContextAccessor = httpContextAccessor;
 
                             sc.ReplaceScoped(_ => SharedState);
 
@@ -269,6 +277,58 @@ namespace UnitTestEx.AspNetCore
             _waf = null;
 
             _disposed = true;
+        }
+    }
+
+    internal static class ApiTesterEnvironment
+    {
+        private static readonly object _lock = new();
+
+        public static IHost CreateHost(string contentRoot, Func<IHost> createHost)
+        {
+            // Entry points may inspect configuration before WebApplicationFactory applies its test configuration sources.
+            lock (_lock)
+            {
+                var configuration = new ConfigurationBuilder()
+                    .SetBasePath(contentRoot)
+                    .AddJsonFile("appsettings.unittest.json", optional: true)
+                    .Build();
+
+                var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["DOTNET_ENVIRONMENT"] = TestSetUp.Environment,
+                    ["ASPNETCORE_ENVIRONMENT"] = TestSetUp.Environment
+                };
+
+                foreach (var pair in configuration.AsEnumerable())
+                {
+                    if (pair.Value is not null)
+                        values[pair.Key] = pair.Value;
+                }
+
+                var previous = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                foreach (var key in values.Keys)
+                    previous[key] = Environment.GetEnvironmentVariable(key);
+
+                try
+                {
+                    foreach (var pair in values)
+                    {
+                        if (!string.IsNullOrEmpty(pair.Key))
+                            Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+                    }
+
+                    return createHost();
+                }
+                finally
+                {
+                    foreach (var pair in previous)
+                    {
+                        if (!string.IsNullOrEmpty(pair.Key))
+                            Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+                    }
+                }
+            }
         }
     }
 }

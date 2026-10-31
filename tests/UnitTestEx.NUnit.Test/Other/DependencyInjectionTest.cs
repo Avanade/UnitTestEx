@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using NUnit.Framework;
 using UnitTestEx.Generic;
+using System.Collections.Generic;
 
 namespace UnitTestEx.NUnit.Test.Other
 {
@@ -13,6 +14,17 @@ namespace UnitTestEx.NUnit.Test.Other
         public class Greeter : IGreeter { public string Greet(string name) => $"Hello {name}"; }
 
         public class StubGreeter : IGreeter { public string Greet(string name) => $"Stub {name}"; }
+
+        public sealed class ScopedResource : System.IDisposable
+        {
+            public bool IsDisposed { get; private set; }
+            public void Dispose() => IsDisposed = true;
+        }
+
+        public sealed class ScopedService(ScopedResource resource)
+        {
+            public ScopedResource Resource { get; } = resource;
+        }
 
         /// <summary>
         /// Creates a tester with the default scoped greeter registration.
@@ -59,6 +71,33 @@ namespace UnitTestEx.NUnit.Test.Other
             test.ScopedType<IGreeter>(st => st
                 .Run(g => g.Greet("Bob"))
                 .AssertValue("Hello Bob"));
+        }
+
+        [Test]
+        public void TypeTester_CreatesServiceWithinFreshScopeForEachRun()
+        {
+            using var test = GenericTester.Create().ConfigureServices(sc => sc.AddScoped<ScopedResource>());
+            var services = new List<ScopedService>();
+            var resources = new List<ScopedResource>();
+            var tester = test.Type<ScopedService>();
+
+            tester.Run(service =>
+            {
+                services.Add(service);
+                resources.Add(service.Resource);
+                Assert.That(service.Resource.IsDisposed, Is.False);
+            }).AssertSuccess();
+
+            tester.Run(service =>
+            {
+                services.Add(service);
+                resources.Add(service.Resource);
+                Assert.That(service.Resource.IsDisposed, Is.False);
+            }).AssertSuccess();
+
+            Assert.That(services[0], Is.Not.SameAs(services[1]));
+            Assert.That(resources[0], Is.Not.SameAs(resources[1]));
+            Assert.That(resources, Has.All.Property(nameof(ScopedResource.IsDisposed)).True);
         }
     }
 }

@@ -306,16 +306,15 @@ namespace UnitTestEx.Json
         /// <inheritdoc/>
         public int GetHashCode(JsonElement json)
         {
-            var hash = new HashCode();
-            JsonElementComparer.ComputeHashCode(json, ref hash);
-            return hash.ToHashCode();
+            return ComputeHashCode(json);
         }
 
         /// <summary>
         /// Computes the hash code.
         /// </summary>
-        private static void ComputeHashCode(JsonElement json, ref HashCode hash)
+        private int ComputeHashCode(JsonElement json)
         {
+            var hash = new HashCode();
             hash.Add(json.ValueKind);
 
             switch (json.ValueKind)
@@ -332,28 +331,62 @@ namespace UnitTestEx.Json
                     break;
 
                 case JsonValueKind.Number:
-                    hash.Add(json.GetDecimal().GetHashCode());
+                    if (Options.ValueComparison == JsonElementComparison.Exact)
+                        hash.Add(json.GetRawText(), StringComparer.Ordinal);
+                    else if (json.TryGetDouble(out var number))
+                        hash.Add(number);
+                    else
+                        hash.Add(json.GetRawText(), StringComparer.Ordinal);
                     break;
 
                 case JsonValueKind.String:
-                    hash.Add(json.GetString());
+                    if (Options.ValueComparison == JsonElementComparison.Exact)
+                        hash.Add(json.GetRawText(), StringComparer.Ordinal);
+                    else
+                        hash.Add(0);
                     break;
 
                 case JsonValueKind.Array:
                     foreach (var item in json.EnumerateArray())
-                    {
-                        JsonElementComparer.ComputeHashCode(item, ref hash);
-                    }
+                        hash.Add(ComputeHashCode(item));
 
                     break;
 
                 case JsonValueKind.Object:
-                    foreach (var property in json.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
+                    var propertyNameComparer = Options.PropertyNameComparer ?? StringComparer.Ordinal;
+                    var properties = new Dictionary<string, JsonElement>(propertyNameComparer);
+                    foreach (var property in json.EnumerateObject())
                     {
-                        hash.Add(property.Name);
-                        JsonElementComparer.ComputeHashCode(property.Value, ref hash);
+                        if (Options.PropertyNameComparer is null)
+                            properties[property.Name] = property.Value;
+                        else
+                            properties.TryAdd(property.Name, property.Value);
                     }
 
+                    var propertyCount = 0;
+                    var propertyHashSum = 0;
+                    var propertyHashXor = 0;
+                    foreach (var property in properties)
+                    {
+                        if (property.Value.ValueKind == JsonValueKind.Null && Options.NullComparison == JsonElementComparison.Semantic)
+                            continue;
+
+                        var propertyHash = new HashCode();
+                        propertyHash.Add(property.Key, propertyNameComparer);
+                        propertyHash.Add(ComputeHashCode(property.Value));
+                        var propertyValueHash = propertyHash.ToHashCode();
+                        unchecked
+                        {
+                            propertyHashSum += propertyValueHash;
+                        }
+
+                        propertyHashXor ^= propertyValueHash;
+                        propertyCount++;
+                    }
+
+                    hash.Add(propertyCount);
+                    hash.Add(propertyHashSum);
+                    hash.Add(propertyHashXor);
                     break;
 
                 case JsonValueKind.Undefined:
@@ -362,6 +395,8 @@ namespace UnitTestEx.Json
                 default:
                     throw new JsonException(string.Format("Unknown JsonValueKind {0}", json.ValueKind));
             }
+
+            return hash.ToHashCode();
         }
 
         /// <summary>

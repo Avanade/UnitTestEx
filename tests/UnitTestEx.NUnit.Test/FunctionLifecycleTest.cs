@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -143,6 +144,15 @@ namespace UnitTestEx.NUnit.Test
             {
                 Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", original);
             }
+        }
+
+        [Test]
+        public void CreateHttpRequest_UsesUtf8ContentLength()
+        {
+            using var test = FunctionTester.Create<HttpFunction>();
+            var request = test.CreateHttpRequest(HttpMethod.Post, "unicode", "café");
+
+            Assert.That(request.ContentLength, Is.EqualTo(System.Text.Encoding.UTF8.GetByteCount("café")));
         }
 
         [Test]
