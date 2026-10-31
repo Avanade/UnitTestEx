@@ -1,11 +1,9 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-using Microsoft.Azure.WebJobs.ServiceBus;
-
 namespace UnitTestEx.Azure.Functions
 {
     /// <summary>
-    /// Represents the <see cref="ServiceBusMessageActions"/> status.
+    /// Represents the <see cref="Microsoft.Azure.Functions.Worker.ServiceBusMessageActions"/> status.
     /// </summary>
     public enum ServiceBusMessageActionStatus
     {

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <RootNamespace>UnitTestEx</RootNamespace>
     <Product>UnitTestEx</Product>
     <Title>UnitTestEx Test Extensions.</Title>
@@ -10,39 +10,28 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="UnitTestEx.Azure.Functions, PublicKey=00240000048000009400000006020000002400005253413100040000010001007DEE530AF6D801902D40685E9CD0A3D8991DDBF545BE3EF6147C9F79BACD7464D92FBD94FEE34E885C37E3DFF4EA15A4F9978F1F614798E0F48E3A3D5BF15E8B2FBA9C19B6966838F97444BC247BC101454946D70AC93207CF2C611956AED59C316F81F1BF8C8486F8F0B3F9ADF93C2F07E06A86745F6DC4B819C2BC2F3FDAD5" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="YamlDotNet" Version="16.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Routing" Version="2.3.0" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.32" />
-    <PackageReference Include="System.Memory.Data" Version="6.0.0" />
-    <PackageReference Include="System.Text.Json" Version="6.0.10" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0'">
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="7.0.20" />
-    <PackageReference Include="System.Memory.Data" Version="7.0.0" />
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
-  </ItemGroup>
-
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.7" />
     <PackageReference Include="System.Memory.Data" Version="8.0.0" />
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
     <PackageReference Include="System.Memory.Data" Version="9.0.0" />
-    <PackageReference Include="System.Text.Json" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
     <PackageReference Include="System.Memory.Data" Version="10.0.0" />
-    <PackageReference Include="System.Text.Json" Version="10.0.0" />
   </ItemGroup>
 
   <Import Project="..\..\Common.targets" />

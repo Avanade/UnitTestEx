@@ -180,10 +180,10 @@ namespace UnitTestEx.Mocking
                 return false;
 
             if (_anyContent)
-                return true;
+                return !IsEmptyContent(request.Content);
 
             if (_mediaType == null)
-                return request.Content == null;
+                return IsEmptyContent(request.Content);
 
             if (request?.Content == null)
                 return false;
@@ -213,6 +213,20 @@ namespace UnitTestEx.Mocking
             }
             else
                  return body == _content?.ToString();
+        }
+
+        /// <summary>
+        /// Indicates whether the <paramref name="content"/> is absent or zero-length; these are indistinguishable on the wire (both send <c>Content-Length: 0</c>), so are treated identically to be consistent with Aspire.
+        /// </summary>
+        private static bool IsEmptyContent(HttpContent? content)
+        {
+            if (content is null)
+                return true;
+
+            if (content.Headers.ContentLength is long length)
+                return length == 0;
+
+            return content.ReadAsByteArrayAsync().GetAwaiter().GetResult().Length == 0;
         }
 
         /// <inheritdoc/>
@@ -256,7 +270,7 @@ namespace UnitTestEx.Mocking
         }
 
         /// <summary>
-        /// Enables the request to match regardless of body content, including where no body is present at all (functionally equivalent to <see cref="ItExpr.IsAny{TValue}"/>).
+        /// Indicates that the request must have a non-empty body, regardless of its content.
         /// </summary>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
         public MockHttpClientRequestBody WithAnyBody()
@@ -264,6 +278,17 @@ namespace UnitTestEx.Mocking
             Reset();
             _anyContent = true;
             _mediaType = MediaTypeNames.Text.Plain;
+            return new MockHttpClientRequestBody(Rule);
+        }
+
+        /// <summary>
+        /// Indicates that the request must have no body; i.e. the content is absent or zero-length.
+        /// </summary>
+        /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
+        /// <remarks>This is also the default where no body is configured (i.e. <see cref="Respond"/> is used directly).</remarks>
+        public MockHttpClientRequestBody WithNoBody()
+        {
+            Reset();
             return new MockHttpClientRequestBody(Rule);
         }
 
@@ -316,11 +341,7 @@ namespace UnitTestEx.Mocking
         /// <param name="json">The <see cref="MediaTypeNames.Application.Json"/> content.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The resulting <see cref="MockHttpClientRequestBody"/> to <see cref="MockHttpClientRequestBody.Respond"/> accordingly.</returns>
-#if NET7_0_OR_GREATER
         public MockHttpClientRequestBody WithJsonBody([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore)
-#else
-        public MockHttpClientRequestBody WithJsonBody(string json, params string[] pathsToIgnore)
-#endif
         {
             Reset();
 
@@ -425,6 +446,9 @@ namespace UnitTestEx.Mocking
 
         /// <inheritdoc/>
         IHttpMockRequestBody IHttpMockRequest.WithAnyBody() => WithAnyBody();
+
+        /// <inheritdoc/>
+        IHttpMockRequestBody IHttpMockRequest.WithNoBody() => WithNoBody();
 
         /// <inheritdoc/>
         IHttpMockRequestBody IHttpMockRequest.WithBody(string body, string mediaType) => WithBody(body, mediaType);

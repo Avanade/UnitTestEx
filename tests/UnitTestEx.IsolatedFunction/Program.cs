@@ -1,10 +1,11 @@
+using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using UnitTestEx.IsolatedFunction;
 
-var startup = new Startup();
-var host = new HostBuilder()
-    .ConfigureFunctionsWebApplication()
-    .ConfigureServices((hbc, sc) => startup.ConfigureServices(sc))
-    .Build();
-
-host.Run();
+var builder = FunctionsApplication.CreateBuilder(args);
+builder.ConfigureFunctionsWebApplication();
+builder.UseMiddleware<UnitTestEx.IsolatedFunction.TestMiddleware>();
+builder.Services.AddHttpClient("XXX", client => client.BaseAddress = new Uri("https://somesys"));
+builder.Configuration.AddInMemoryCollection([new KeyValuePair<string, string?>("SpecialKey", "VerySpecialValue")]);
+builder.Build().Run();

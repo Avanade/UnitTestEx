@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
+using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Expectations;
 using UnitTestEx.Json;
@@ -133,6 +134,65 @@ namespace UnitTestEx.Abstractions
             var options = JsonComparerOptions.Clone();
             options.JsonSerializer ??= JsonSerializer;
             return new JsonElementComparer(options);
+        }
+
+        /// <summary>
+        /// Repeatedly invokes an asynchronous operation until its result satisfies the specified condition.
+        /// </summary>
+        /// <typeparam name="T">The operation result type.</typeparam>
+        /// <param name="action">The asynchronous operation to repeat.</param>
+        /// <param name="condition">The condition that indicates success.</param>
+        /// <param name="timeout">The maximum wait (defaults to 30 seconds); pass <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> to wait indefinitely.</param>
+        /// <param name="interval">The delay between attempts (defaults to 250 milliseconds).</param>
+        /// <param name="cancellationToken">The <see cref="CancellationToken"/>.</param>
+        /// <returns>The first result that satisfies <paramref name="condition"/>.</returns>
+        /// <exception cref="TimeoutException">The condition was not satisfied within <paramref name="timeout"/>.</exception>
+        /// <remarks>Exceptions thrown by <paramref name="action"/> or <paramref name="condition"/> are propagated; use the action to handle expected "not ready yet" results (e.g. a missing blob)
+        /// and return a value that does not yet satisfy the condition. Timeout and cancellation bound the wait for each asynchronous operation; an operation that ignores its token
+        /// may continue running after the wait ends.</remarks>
+        public async Task<T> EventuallyAsync<T>(Func<CancellationToken, Task<T>> action, Func<T, bool> condition, TimeSpan? timeout = null, TimeSpan? interval = null, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(action);
+            ArgumentNullException.ThrowIfNull(condition);
+
+            var effectiveTimeout = timeout ?? TimeSpan.FromSeconds(30);
+            var effectiveInterval = interval ?? TimeSpan.FromMilliseconds(250);
+            if (effectiveTimeout != System.Threading.Timeout.InfiniteTimeSpan && effectiveTimeout <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be positive or Timeout.InfiniteTimeSpan.");
+            if (effectiveInterval <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(interval), "Interval must be positive.");
+
+            var stopwatch = Stopwatch.StartNew();
+            using var timeoutSource = effectiveTimeout == System.Threading.Timeout.InfiniteTimeSpan
+                ? null
+                : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutSource?.CancelAfter(effectiveTimeout);
+            var operationToken = timeoutSource?.Token ?? cancellationToken;
+
+            try
+            {
+                while (true)
+                {
+                    operationToken.ThrowIfCancellationRequested();
+
+                    var result = await action(operationToken).WaitAsync(operationToken).ConfigureAwait(false);
+                    operationToken.ThrowIfCancellationRequested();
+                    if (condition(result))
+                        return result;
+
+                    var remaining = effectiveTimeout == System.Threading.Timeout.InfiniteTimeSpan
+                        ? effectiveInterval
+                        : effectiveTimeout - stopwatch.Elapsed;
+                    if (remaining <= TimeSpan.Zero)
+                        throw new TimeoutException($"The condition was not satisfied within {effectiveTimeout}.");
+
+                    await Task.Delay(remaining < effectiveInterval ? remaining : effectiveInterval, operationToken).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeoutSource?.IsCancellationRequested == true)
+            {
+                throw new TimeoutException($"The condition was not satisfied within {effectiveTimeout}.");
+            }
         }
 
         /// <summary>

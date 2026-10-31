@@ -24,7 +24,6 @@ namespace UnitTestEx.Hosting
     {
         private readonly object? _serviceKey;
         private readonly Func<IServiceProvider, TService>? _serviceFactory;
-        private TService? _service;
 
         /// <summary>
         /// Initializes a new <see cref="TypeTester{TFunction}"/> class.
@@ -59,7 +58,7 @@ namespace UnitTestEx.Hosting
         /// <summary>
         /// Creates the scoped <typeparamref name="TService"/> service instance.
         /// </summary>
-        private TService CreateService(IServiceScope scope) => _service ??= _serviceFactory is null ? scope.ServiceProvider.CreateInstance<TService>(_serviceKey) : _serviceFactory(scope.ServiceProvider);
+        private TService CreateService(IServiceScope scope) => _serviceFactory is null ? scope.ServiceProvider.CreateInstance<TService>(_serviceKey) : _serviceFactory(scope.ServiceProvider);
 
         /// <summary>
         /// Runs the synchronous method with no result.

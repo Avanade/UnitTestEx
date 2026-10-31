@@ -66,11 +66,7 @@ namespace UnitTestEx
         /// <param name="actual">The actual JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         [Obsolete("The JsonAssert is being renamed to AssertJson as this name is standard with UnitTestEx.")]
-#if NET7_0_OR_GREATER
         public static void JsonAssert([StringSyntax(StringSyntaxAttribute.Json)] string? expected, [StringSyntax(StringSyntaxAttribute.Json)] string? actual, params string[] pathsToIgnore) => AssertJson(null, expected, actual, pathsToIgnore);
-#else
-        public static void JsonAssert(string? expected, string? actual, params string[] pathsToIgnore) => AssertJson(null, expected, actual, pathsToIgnore);
-#endif
 
         /// <summary>
         /// Compares two JSON strings to each other.
@@ -80,11 +76,7 @@ namespace UnitTestEx
         /// <param name="actual">The actual JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         [Obsolete("The JsonAssert is being renamed to AssertJson as this name is standard with UnitTestEx.")]
-#if NET7_0_OR_GREATER
         public static void JsonAssert(JsonElementComparerOptions? options, [StringSyntax(StringSyntaxAttribute.Json)] string? expected, [StringSyntax(StringSyntaxAttribute.Json)] string? actual, params string[] pathsToIgnore)
-#else
-        public static void JsonAssert(JsonElementComparerOptions? options, string? expected, string? actual, params string[] pathsToIgnore)
-#endif
             => AssertJson(options, expected, actual, pathsToIgnore);
 
         /// <summary>
@@ -93,11 +85,7 @@ namespace UnitTestEx
         /// <param name="expected">The expected JSON.</param>
         /// <param name="actual">The actual JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
-#if NET7_0_OR_GREATER
         public static void AssertJson([StringSyntax(StringSyntaxAttribute.Json)] string? expected, [StringSyntax(StringSyntaxAttribute.Json)] string? actual, params string[] pathsToIgnore) => AssertJson(null, expected, actual, pathsToIgnore);
-#else
-        public static void AssertJson(string? expected, string? actual, params string[] pathsToIgnore) => AssertJson(null, expected, actual, pathsToIgnore);
-#endif
 
         /// <summary>
         /// Compares two JSON strings to each other.
@@ -106,11 +94,7 @@ namespace UnitTestEx
         /// <param name="expected">The expected JSON.</param>
         /// <param name="actual">The actual JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
-#if NET7_0_OR_GREATER
         public static void AssertJson(JsonElementComparerOptions? options, [StringSyntax(StringSyntaxAttribute.Json)] string? expected, [StringSyntax(StringSyntaxAttribute.Json)] string? actual, params string[] pathsToIgnore)
-#else
-        public static void AssertJson(JsonElementComparerOptions? options, string? expected, string? actual, params string[] pathsToIgnore)
-#endif
         {
             if (expected is null && actual is null)
                 return;

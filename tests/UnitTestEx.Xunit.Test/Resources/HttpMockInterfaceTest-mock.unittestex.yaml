@@ -28,3 +28,8 @@
     - status: 200
       body: |
         {"seq":2}
+
+- method: post
+  uri: no-body
+  response:
+    status: 204

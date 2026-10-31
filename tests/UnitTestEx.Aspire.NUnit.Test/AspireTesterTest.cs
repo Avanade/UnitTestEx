@@ -1,7 +1,10 @@
 using Aspire.Hosting;
+using Azure.Messaging.EventGrid;
+using Moq;
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -11,35 +14,81 @@ using UnitTestEx.Api.Models;
 namespace UnitTestEx.Aspire.NUnit.Test
 {
     [TestFixture]
-    public class AspireTesterTest
+    public class AspireTesterTest : WithAspireTester<Projects.UnitTestEx_Aspire_AppHost>
     {
         [Test]
-        public async Task Http_Get_ReturnsSuccess()
+        public void WithAspireTester_InvokesFixtureLifecycleHooks()
         {
-            // Note: UnitTestEx.Api's Program.cs deliberately fails fast at host start up unless the 'SpecialKey' configuration is set; this is what WithResourceEnvironment is proving out.
-            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
-                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+            Assert.That(LifecycleCallbacks, Is.EqualTo(new[] { "before", "after" }));
+        }
 
-            await tester.WaitForResourceAsync("api");
+        [OneTimeSetUp]
+        public async Task StartSharedAppHostAsync()
+        {
+            Test.WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+            await Test.WaitForResourceAsync("api");
+        }
 
-            tester.Http("api")
+        [OneTimeTearDown]
+        public async Task DisposeSharedAppHostAsync() => await DisposeAsync();
+
+        [Test]
+        public void Http_Get_ReturnsSuccess()
+        {
+            Test.Http("api")
                 .Run(HttpMethod.Get, "Person?firstName=John&lastName=Doe")
                 .AssertOK()
                 .AssertContent("John-Doe-");
         }
 
         [Test]
-        public async Task WithResourceEnvironment_AppliedBeforeBuild()
+        public void WithResourceEnvironment_AppliedBeforeBuild()
         {
-            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
-                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
-
-            await tester.WaitForResourceAsync("api");
-
-            tester.Http("api")
+            Test.Http("api")
                 .Run(HttpMethod.Get, "Person/1")
                 .AssertOK()
                 .AssertValue(new Person { Id = 1, FirstName = "Bob", LastName = "Smith" });
+        }
+
+        [TestCase(null, false)]
+        [TestCase("", false)]
+        [TestCase("/subscriptions/test/topics/events", false)]
+        [TestCase(null, true)]
+        [TestCase("", true)]
+        [TestCase("/subscriptions/test/topics/blobs", true)]
+        public async Task FunctionsWebhook_PreservesTopicOrUsesDefault(string? topic, bool blobWebhook)
+        {
+            await Test.WaitForResourceAsync("mockhost");
+            var eventGridEvent = new EventGridEvent("test-subject", "test-event", "1.0", BinaryData.FromObjectAsJson(new { value = "payload" }));
+            if (topic is not null)
+                eventGridEvent.Topic = topic;
+
+            var route = blobWebhook ? "/runtime/webhooks/blobs" : "/runtime/webhooks/EventGrid";
+            var stub = await Test.HttpMock("mockhost")
+                .Request(HttpMethod.Post, route)
+                .Times(Times.Once())
+                .WithJsonBody(new[]
+                {
+                    new
+                    {
+                        id = eventGridEvent.Id,
+                        topic = string.IsNullOrEmpty(topic) ? "UnitTestEx" : topic,
+                        subject = eventGridEvent.Subject,
+                        eventType = eventGridEvent.EventType,
+                        eventTime = eventGridEvent.EventTime,
+                        dataVersion = eventGridEvent.DataVersion,
+                        metadataVersion = "1",
+                        data = new { value = "payload" }
+                    }
+                })
+                .Respond.WithAsync(HttpStatusCode.Accepted);
+
+            using var response = blobWebhook
+                ? await Test.FunctionsWebhook("mockhost").PostBlobCreatedAsync("Host.Functions.Test", eventGridEvent)
+                : await Test.FunctionsWebhook("mockhost").PostEventGridAsync("Host.Functions.Test", [eventGridEvent]);
+
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+            await stub.VerifyAsync();
         }
 
         [Test]
@@ -160,41 +209,58 @@ namespace UnitTestEx.Aspire.NUnit.Test
         [Test]
         public async Task Checkpoint_And_Delay_AggregatesResourceLogs()
         {
-            await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
-                .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue");
+            Test.ResetLogs();
+            var originalImplementor = Test.Implementor;
+            var spy = new SpyTestFrameworkImplementor(originalImplementor);
+            Test.ReplaceTestFrameworkImplementor(spy);
 
-            await tester.WaitForResourceAsync("api");
-
-            var spy = new SpyTestFrameworkImplementor(tester.Implementor);
-            tester.ReplaceTestFrameworkImplementor(spy);
-
-            var checkpointResult = tester.Checkpoint("Confirming Checkpoint() writes context for Aspire multi-host testers too.");
-
-            // Fire a raw (uninstrumented) request against the 'api' resource part-way through the delay window to simulate genuine background/inter-resource activity that is not
-            // tied to a tester-driven request/response (which would otherwise claim - and so report - the resource's log line itself, rather than Delay).
-            var backgroundCallTask = Task.Run(async () =>
+            try
             {
-                await Task.Delay(300);
-                using var client = ((IHttpClientSource)tester).CreateHttpClient("api");
-                using var response = await client.GetAsync("Person/1");
-                response.EnsureSuccessStatusCode();
-            });
+                var checkpointResult = Test.Checkpoint("Confirming Checkpoint() writes context for Aspire multi-host testers too.");
 
-            var sw = Stopwatch.StartNew();
-            var delayResult = tester.Delay(TimeSpan.FromSeconds(2), "Waiting for a background Person lookup to complete and log.");
-            sw.Stop();
+                // Fire a raw (uninstrumented) request against the 'api' resource part-way through the delay window to simulate genuine background/inter-resource activity that is not
+                // tied to a tester-driven request/response (which would otherwise claim - and so report - the resource's log line itself, rather than Delay).
+                var backgroundCallTask = Task.Run(async () =>
+                {
+                    await Task.Delay(300);
+                    using var client = ((IHttpClientSource)Test).CreateHttpClient("api");
+                    using var response = await client.GetAsync("Person/1");
+                    response.EnsureSuccessStatusCode();
+                });
 
-            await backgroundCallTask;
+                var sw = Stopwatch.StartNew();
+                var delayResult = Test.Delay(TimeSpan.FromSeconds(2), "Waiting for a background Person lookup to complete and log.");
+                sw.Stop();
 
-            Assert.That(checkpointResult, Is.SameAs(tester));
-            Assert.That(delayResult, Is.SameAs(tester));
-            Assert.That(sw.Elapsed, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(2) - TimeSpan.FromMilliseconds(200)), $"Expected to delay ~2s, actually waited {sw.Elapsed}.");
-            Assert.That(spy.Lines, Does.Contain("CHECKPOINT >"));
-            Assert.That(spy.Lines.Any(l => l != null && l.Contains("DELAY (00:00:02) >")), Is.True);
-            Assert.That(spy.Lines.Any(l => l != null && l.Contains("Waiting for a background Person lookup to complete and log.")), Is.True);
-            Assert.That(spy.Lines, Does.Contain("LOGGING >"));
-            Assert.That(spy.Lines.Any(l => l != null && l.Contains("Get using identifier 1.") && l.EndsWith("(api)]", StringComparison.Ordinal)), Is.True);
+                await backgroundCallTask;
+
+                Assert.That(checkpointResult, Is.SameAs(Test));
+                Assert.That(delayResult, Is.SameAs(Test));
+                Assert.That(sw.Elapsed, Is.GreaterThanOrEqualTo(TimeSpan.FromSeconds(2) - TimeSpan.FromMilliseconds(200)), $"Expected to delay ~2s, actually waited {sw.Elapsed}.");
+                Assert.That(spy.Lines, Does.Contain("CHECKPOINT >"));
+                Assert.That(spy.Lines.Any(l => l != null && l.Contains("DELAY (00:00:02) >")), Is.True);
+                Assert.That(spy.Lines.Any(l => l != null && l.Contains("Waiting for a background Person lookup to complete and log.")), Is.True);
+                Assert.That(spy.Lines, Does.Contain("LOGGING >"));
+                Assert.That(spy.Lines.Any(l => l != null && l.Contains("Get using identifier 1.") && l.EndsWith("(api)]", StringComparison.Ordinal)), Is.True);
+            }
+            finally
+            {
+                Test.ReplaceTestFrameworkImplementor(originalImplementor);
+            }
+        }
+
+        private readonly System.Collections.Generic.List<string> LifecycleCallbacks = [];
+
+        protected override Task OnBeforeStartAsync(DistributedApplication app)
+        {
+            LifecycleCallbacks.Add("before");
+            return Task.CompletedTask;
+        }
+
+        protected override async Task OnAfterStartAsync(DistributedApplication app)
+        {
+            LifecycleCallbacks.Add("after");
+            await app.WaitForResourceAsync("api");
         }
     }
 }
-

@@ -19,10 +19,8 @@ namespace UnitTestEx.Mocking
     /// <remarks>Uses the same YAML/JSON schema as Tier 1's native, synchronous <see cref="MockHttpClient.WithRequestsFromResource(string, Assembly?)"/> (see <c>src/UnitTestEx/Schema/mock.unittestex.json</c>),
     /// but is implemented purely against the shared <see cref="IHttpMockClient"/>/<see cref="IHttpMockRequest"/>/<see cref="IHttpMockResponse"/>/<see cref="IHttpMockResponseSequenceItem"/> abstractions -
     /// so the same embedded resource works identically against Tier 1's <see cref="MockHttpClient"/> and Tier 2/3's <c>AspireHttpMockClient</c>, without either tier reimplementing the parsing.
-    /// <para>One intentional behavioral difference versus Tier 1's native method: where a request entry omits <c>body</c> entirely, Tier 1's native method matches only a request with <i>no</i> body
-    /// (content must be absent); this shared implementation instead matches <i>any</i> body (equivalent to <c>body: ^</c>), via <see cref="IHttpMockRequest.WithAnyBody"/> - the shared interface has no
-    /// means to express "body must be absent", and this is both consistent with <see cref="IHttpMockRequest.WithAnyBody"/>'s own true-wildcard semantics and almost always what's actually wanted
-    /// (e.g. a bodyless <c>GET</c> matches either way).</para>
+    /// <para>Where a request entry omits <c>body</c> entirely, the request must have no body (absent or zero-length; see <see cref="IHttpMockRequest.WithNoBody"/>), consistent with Tier 1's native method;
+    /// use <c>body: ^</c> to match any non-empty body.</para>
     /// <para>Response header values are applied via repeated <see cref="IHttpMockResponse.Header(string, string)"/>/<see cref="IHttpMockResponseSequenceItem.Header(string, string)"/> calls, one per
     /// configured value; Tier 1 accumulates multiple values per header name, whereas Aspire's WireMock.Net-backed response currently retains only the last value written for a given header name.</para></remarks>
     internal static class HttpMockResourceConfig
@@ -101,8 +99,10 @@ namespace UnitTestEx.Mocking
                         ? request.WithJsonBody(Body, Ignore ?? [])
                         : request.WithBody(Body, media);
                 }
+                else if (Body == "^")
+                    body = request.WithAnyBody();
                 else
-                    body = request.WithAnyBody(); // Also covers the omitted-body case; see remarks on this class for the resulting (intentional) behavioral difference from Tier 1's native method.
+                    body = request.WithNoBody();
 
                 if (Response is not null && Sequence is not null)
                     throw new InvalidOperationException($"A mocked request can not contain both a {nameof(Response)} and a {nameof(Sequence)} as they are mutually exclusive.");

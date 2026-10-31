@@ -6,143 +6,38 @@
 
 ## Introduction
 
-_UnitTestEx_ provides [.NET testing](https://docs.microsoft.com/en-us/dotnet/core/testing/) extensions to the most popular testing frameworks: [MSTest](https://github.com/Microsoft/testfx-docs), [NUnit](https://nunit.org/) and [Xunit](https://xunit.net/).
+_UnitTestEx_ provides [.NET testing](https://learn.microsoft.com/en-us/dotnet/core/testing/) extensions for [MSTest](https://github.com/Microsoft/testfx-docs), [NUnit](https://nunit.org/) and [xUnit](https://xunit.net/). It hosts your **real** application (API, Azure Function, or any DI-composed code) inside the test, lets you replace or mock its dependencies, and gives you fluent _Arrange, Act, Assert_ testing with captured logging and detailed JSON-diff assertions.
 
-The scenarios that _UnitTestEx_ looks to address is the end-to-end unit-style testing of the following whereby the capabilities look to adhere to the _AAA_ pattern of unit testing; Arrange, Act and Assert.
-
-- [API Controller](#API-Controller)
-- [HTTP-triggered Azure Function](#HTTP-triggered-Azure-Function)
-- [Service Bus-trigger Azure Function](#Service-Bus-trigger-Azure-Function)
-- [Generic Azure Function Type](#Generic-Azure-Function-Type)
-- [HTTP Client mocking](#HTTP-Client-mocking)
-- [Aspire multi-host testing](#Aspire-multi-host-testing)
+> **v6** targets .NET 8, 9 and 10, and the Azure Functions **v4 isolated worker** model only. Upgrading? See [Migrating from v5 to v6](./docs/migration-v6.md).
 
 <br/>
 
 ## Status
 
-The build and packaging status is as follows.
+CI | `UnitTestEx` | `UnitTestEx.Azure.Functions` | `UnitTestEx.Aspire` | `UnitTestEx.MSTest` | `UnitTestEx.NUnit` | `UnitTestEx.Xunit`
+-|-|-|-|-|-|-
+[![CI](https://github.com/Avanade/UnitTestEx/workflows/CI/badge.svg)](https://github.com/Avanade/UnitTestEx/actions?query=workflow%3ACI) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.svg)](https://badge.fury.io/nu/UnitTestEx) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Azure.Functions.svg)](https://badge.fury.io/nu/UnitTestEx.Azure.Functions) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Aspire.svg)](https://badge.fury.io/nu/UnitTestEx.Aspire) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.MSTest.svg)](https://badge.fury.io/nu/UnitTestEx.MSTest) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.NUnit.svg)](https://badge.fury.io/nu/UnitTestEx.NUnit) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Xunit.svg)](https://badge.fury.io/nu/UnitTestEx.Xunit)
 
-CI | `UnitTestEx` | `UnitTestEx.Aspire` | `UnitTestEx.MSTest` | `UnitTestEx.NUnit` | `UnitTestEx.Xunit`
--|-|-|-|-|-
-[![CI](https://github.com/Avanade/UnitTestEx/workflows/CI/badge.svg)](https://github.com/Avanade/UnitTestEx/actions?query=workflow%3ACI) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.svg)](https://badge.fury.io/nu/UnitTestEx) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Aspire.svg)](https://badge.fury.io/nu/UnitTestEx.Aspire) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.MSTest.svg)](https://badge.fury.io/nu/UnitTestEx.MSTest) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.NUnit.svg)](https://badge.fury.io/nu/UnitTestEx.NUnit) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Xunit.svg)](https://badge.fury.io/nu/UnitTestEx.Xunit)
-
-The included [change log](CHANGELOG.md) details all key changes per published version.
+The [change log](CHANGELOG.md) details all key changes per published version.
 
 <br/>
 
-## API Controller
+## Which tester?
 
-Leverages the [`WebApplicationFactory`](https://docs.microsoft.com/en-us/aspnet/core/test/integration-tests) (WAF) as a means to host a test server in process to invoke APIs directly using HTTP requests. This has the benefit of validating the HTTP pipeline and all Dependency Injection (DI) configuration within. External system interactions can be mocked accordingly.
+Testing... | Use | Package(s) | Hosts | Docs
+-|-|-|-|-
+An ASP.NET Core API (controllers or minimal APIs) | `ApiTester` | `UnitTestEx` + framework package | `WebApplicationFactory`, full HTTP pipeline | [API testing](./docs/api-testing.md)
+An Azure Function (isolated worker) | `FunctionTester` | `UnitTestEx.Azure.Functions` | Your real `Program.cs` host, built but not started; the function is invoked directly | [Azure Functions](./docs/azure-functions.md)
+Any DI-composed class or service | `GenericTester` | `UnitTestEx` | Lightweight Generic Host | [Generic testing](./docs/generic-testing.md)
+Multiple real services together | `AspireTester` | `UnitTestEx.Aspire` | .NET Aspire `DistributedApplication` | [Aspire](./docs/aspire.md)
 
-_UnitTestEx_ encapsulates the `WebApplicationFactory` providing a simple means to arrange the input, execute (act), and assert the response. The following is an [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs).
-
-``` csharp
-using var test = ApiTester.Create<Startup>();
-test.ReplaceHttpClientFactory(mcf)
-    .Controller<ProductController>()
-    .Run(c => c.Get("abc"))
-    .AssertOK()
-    .Assert(new { id = "Abc", description = "A blue carrot" });
-```
+The framework package (`UnitTestEx.NUnit`, `UnitTestEx.MSTest` or `UnitTestEx.Xunit`) wires output and assertions into your test framework.
 
 <br/>
 
-## HTTP-triggered Azure Function
+## Quick start
 
-Unfortunately, at time of writing, there is no `WebApplicationFactory` equivalent for Azure functions. _UnitTestEx_ looks to emulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method. _UnitTestEx_ when invoking verifies usage of [`HttpTriggerAttribute`](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-http-webhook-trigger?tabs=csharp) and ensures a `Task<IActionResult>` result.
-
-The following is an [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs).
-
-``` csharp
-using var test = FunctionTester.Create<Startup>();
-test.ReplaceHttpClientFactory(mcf)
-    .HttpTrigger<ProductFunction>()
-    .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc", null), "abc", test.Logger))
-    .AssertOK()
-    .Assert(new { id = "Abc", description = "A blue carrot" });
-```
-
-Both the [_Isolated worker model_](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide) and [_In-process model_](https://learn.microsoft.com/en-us/azure/azure-functions/functions-dotnet-class-library) are supported.
-
-Additionally, where an `HttpRequest` is used the passed `HttpRequest.PathAndQuery` is checked against that defined by the corresponding `HttpTriggerAttribute.Route` and will result in an error where different. The `HttpTrigger.WithRouteChecK` and `WithNoRouteCheck` methods control the path and query checking as needed.
-
-<br/>
-
-## Service Bus-trigger Azure Function
-
-As above, there is currently no easy means to integration (in-process) test Azure functions that rely on the [Azure Service Bus](https://azure.microsoft.com/en-us/services/service-bus/). _UnitTestEx_ looks to emulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method and verifies usage of the [`ServiceBusTriggerAttribute`](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-service-bus-trigger?tabs=csharp).
-
-The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs) of invoking the function method directly passing in a `ServiceBusReceivedMessage` created using `test.CreateServiceBusMessageFromValue` (this creates a message as if coming from Azure Service Bus).
-
-``` csharp
-using var test = FunctionTester.Create<Startup>();
-test.ReplaceHttpClientFactory(mcf)
-    .ServiceBusTrigger<ServiceBusFunction>()
-    .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
-    .AssertSuccess();
-```
-
-Both the [_Isolated worker model_](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide) and [_In-process model_](https://learn.microsoft.com/en-us/azure/azure-functions/functions-dotnet-class-library) are supported.
-
-<br/>
-
-## Generic Azure Function Type
-
-To support testing of any generic `Type` within an Azure Fuction, _UnitTestEx_ looks to simulate by self-hosting the function, managing Dependency Injection (DI) configuration, and invocation of the specified method.
-
-The following is an [example](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs).
-
-``` csharp
-using var test = FunctionTester.Create<Startup>();
-test.ReplaceHttpClientFactory(mcf)
-    .Type<ServiceBusFunction>()
-    .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" }), test.Logger))
-    .AssertSuccess();
-```
-
-<br/>
-
-## Generic Type
-
-To test a component that relies on Dependency Injection (DI) directly without the runtime expense of instantiating the underlying host (e.g. ASP.NET Core) the `GenericTester` enables any `Type` to be tested.
-
-``` csharp
-using var test = GenericTester.Create().ConfigureServices(services => services.AddSingleton<Gin>());
-test.Run<Gin, int>(gin => gin.Pour())
-    .AssertSuccess()
-    .AssertValue(1);
-```
-
-Additionally, where the `TEntryPoint` is specified and implements `ConfigureApplication` (`.NET8.0` or above) this will be invoked automatically to perform any additional configuration. 
-
-``` csharp
-using var test = GenericTester.Create<Startup>();
-test.Run<Gin, int>(gin => gin.Pour())
-    .AssertSuccess()
-    .AssertValue(1);
-
-public class Startup
-{
-    public void ConfigureApplication(IHostApplicationBuilder builder) => builder.Services.AddSingleton<Gin>();
-}
-```
-
-<br/>
-
-## DI Mocking
-
-Each of the aforementioned test capabilities support Dependency Injection (DI) mocking. This is achieved by replacing the registered services with mocks, stubs, or fakes. The [`TesterBase`](./src/UnitTestEx/Abstractions/TesterBaseT.cs) enables using the `Mock*`, `Replace*` and `ConfigureServices` methods. 
-
-The underlying `Services` property also provides access to the `IServiceCollection` within the underlying test host to enable further configuration as required.
-
-<br/>
-
-## HTTP Client mocking
-
-Where invoking a down-stream system using an [`HttpClient`](https://docs.microsoft.com/en-us/dotnet/api/system.net.http.httpclient) within a unit test context this should generally be mocked. To enable _UnitTestEx_ provides a [`MockHttpClientFactory`](./src/UnitTestEx/Mocking/MockHttpClientFactory.cs) to manage each `HttpClient` (one or more), and mock a response based on the configured request. This leverages the [Moq](https://github.com/moq/moq4) framework internally to enable. One or more requests can also be configured per `HttpClient`.
-
-The following is an [example](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs).
+**API**: send a real HTTP request through the pipeline, with a downstream `HttpClient` mocked.
 
 ``` csharp
 var mcf = MockHttpClientFactory.Create();
@@ -154,387 +49,86 @@ test.ReplaceHttpClientFactory(mcf)
     .Controller<ProductController>()
     .Run(c => c.Get("abc"))
     .AssertOK()
-    .Assert(new { id = "Abc", description = "A blue carrot" });
+    .AssertValue(new { id = "Abc", description = "A blue carrot" });
 ```
 
-The `ReplaceHttpClientFactory` leverages the `Replace*` capabilities discussed earlier in [DI Mocking](#di-mocking).
-
-Every mocked request/response pair is also logged (via `MockHttpClientHandler`) at `MockHttpClientFactory.LogLevel` - `LogLevel.Debug` by default; change it via `UseLogLevel(LogLevel)` (or set `LogLevel.None` to disable this logging entirely):
+**Azure Function**: `Program.cs` runs as-is, with no test-only structure needed.
 
 ``` csharp
-var mcf = MockHttpClientFactory.Create().UseLogLevel(LogLevel.Information);
-```
-
-<br/>
-
-### HTTP Client configurations
-
-Any configuration specified as part of the registering the `HttpClient` services from a Dependency Injection (DI) perspective is ignored by default when creating an `HttpClient` using the `MockHttpClientFactory`. This default behavior is intended to potentially minimize any side-effect behavior that may occur that is not intended for the unit testing. For example, a `DelegatingHandler` may be configured that requests a token from an identity provider which is not needed for the unit test, or may fail due to lack of access from the unit testing environment.
-
-``` csharp
-// Startup service (DI) configuration.
-services.AddHttpClient("XXX", hc => hc.BaseAddress = new System.Uri("https://somesys")) // This is HttpClient configuration.
-    .AddHttpMessageHandler(_ => new MessageProcessingHandler()) // This is HttpMessageHandler configuration.
-    .ConfigureHttpClient(hc => hc.DefaultRequestVersion = new Version(1, 2)); // This is further HttpClient configuration.
-```
-
-However, where the configuration is required then the `MockHttpClient` can be configured _explicitly_ to include the configuration; the following methods enable:
-
-Method | Description
--|-
-`WithConfigurations` | Indicates that the `HttpMessageHandler` and `HttpClient` configurations are to be used. *
-`WithoutConfigurations` | Indicates that the `HttpMessageHandler` and `HttpClient` configurations are _not_ to be used (this is the default state).
-`WithHttpMessageHandlers` | Indicates that the `HttpMessageHandler` configurations are to be used. *
-`WithoutHttpMessageHandlers` | Indicates that the `HttpMessageHandler` configurations are _not_ to be used.
-`WithHttpClientConfigurations` | Indicates that the `HttpClient` configurations are to be used.
-`WithoutHttpClientConfigurations` | Indicates that the `HttpClient` configurations are to be used.
--- | --
-`WithoutMocking` | Indicates that the underlying `HttpClient` is **not** to be mocked; i.e. will result in an actual/real HTTP request to the specified endpoint. This is useful to achieve a level of testing where both mocked and real requests are required. Note that an `HttpClient` cannot support both, these would need to be tested separately.
-
-_Note:_ `*` above denotes that an array of `DelegatingHandler` types to be excluded can be specified; with the remainder being included within the order specified.
-
-``` csharp
-// Mock with configurations.
-var mcf = MockHttpClientFactory.Create();
-mcf.CreateClient("XXX").WithConfigurations()
-    .Request(HttpMethod.Get, "products/xyz").Respond.With(HttpStatusCode.NotFound);
-
-// No mocking, real request.
-var mcf = MockHttpClientFactory.Create();
-mcf.CreateClient("XXX").WithoutMocking();
-```
-
-<br/>
-
-### Times
-
-To verify the number of times that a request/response is performed _UnitTestEx_ support MOQ [`Times`](https://github.com/moq/moq4/blob/main/src/Moq/Times.cs), as follows:
-
-``` csharp
-var mcf = MockHttpClientFactory.Create();
-var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
-mc.Request(HttpMethod.Post, "products/xyz").Times(Times.Exactly(2)).WithJsonBody(new Person { FirstName = "Bob", LastName = "Jane" })
-    .Respond.WithJsonResource("MockHttpClientTest-UriAndBody_WithJsonResponse3.json", HttpStatusCode.Accepted);
-```
-
-<br/>
-
-### Sequeuce
-
-To support different responses per execution MOQ supports [sequences](https://github.com/moq/moq4/blob/main/src/Moq/SequenceSetup.cs). This capability has been extended for _UnitTestEx_.
-
-``` csharp
-var mcf = MockHttpClientFactory.Create();
-var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
-mc.Request(HttpMethod.Get, "products/xyz").Respond.WithSequence(s =>
-{
-    s.Respond().With(HttpStatusCode.NotModified);
-    s.Respond().With(HttpStatusCode.NotFound);
-});
-``` 
-
-<br/>
-
-### Delay
-
-A delay (sleep) can be simulated so a response is not always immediated. This can be specified as a fixed value, or randomly generated using a from and to.
-
-``` csharp
-var mcf = MockHttpClientFactory.Create();
-var mc = mcf.CreateClient("XXX", new Uri("https://d365test"));
-mc.Request(HttpMethod.Get, "products/xyz").Respond.Delay(500).With(HttpStatusCode.NotFound);
-mc.Request(HttpMethod.Get, "products/kjl").Respond.WithSequence(s =>
-{
-    s.Respond().Delay(250).With(HttpStatusCode.NotModified);
-    s.Respond().Delay(100, 200).With(HttpStatusCode.NotFound);
-});
-```
-
-<br/>
-
-### YAML/JSON configuration
-
-The Request/Response configuration can also be specified within an embedded resource using YAML/JSON as required. The [`mock.unittestex.json`](./src/UnitTestEx/Schema/mock.unittestex.json) JSON schema defines content; where the file is named `*.unittestex.yaml` or `*.unittestex.json` then the schema-based intellisense and validation will occur within the likes of Visual Studio.
-
-To reference the YAML/JSON from a unit test the following is required:
-
-``` csharp
-var mcf = MockHttpClientFactory.Create();
-mcf.CreateClient("XXX", new Uri("https://unit-test")).WithRequestsFromResource("my.mock.unittestex.yaml");
-```
-
-The following represents a YAML example for one-to-one request/responses:
-
-``` yaml
-- method: post
-  uri: products/xyz
-  body: ^
-  response:
-    status: 202
-    body: |
-      {"product":"xyz","quantity":1}
-
-- method: get
-  uri: people/123
-  response:
-    headers:
-      ETag: Abc123
-    body: |
-      {
-        "first":"Bob",
-        "last":"Jane"
-      }
-```
-
-The following represents a YAML example for a request/response with sequences:
-
-``` yaml
-- method: get
-  uri: people/123
-  sequence: 
-    - body: |
-        {
-          "first":"Bob",
-          "last":"Jane"
-        }
-    - body: |
-        {
-          "first":"Sarah",
-          "last":"Johns"
-        }
-```
-
-_Note:_ Not all scenarios are currently available using YAML/JSON configuration.
-
-The same YAML/JSON schema/file can also be loaded via the shared [`IHttpMockClient.WithRequestsFromResourceAsync`](./src/UnitTestEx/Mocking/IHttpMockClient.cs) - so a single embedded resource can configure both Tier 1's `MockHttpClient` above *and* Tier 2/3's `AspireHttpMockClient` (see [Aspire multi-host testing](#Aspire-multi-host-testing) below) identically:
-
-``` csharp
-IHttpMockClient client = mcf.CreateClient("XXX", new Uri("https://unit-test")); // or tester.HttpMock("erp") for Aspire.
-await client.WithRequestsFromResourceAsync<MyTestClass>("my.mock.unittestex.yaml");
-```
-
-One intentional difference versus the native `WithRequestsFromResource` above: where a request entry omits `body` entirely, this shared loader matches *any* body (equivalent to `body: ^`), rather than Tier 1's native "no body at all" semantics - the shared interface has no means to express the latter.
-
-<br/>
-
-## Aspire multi-host testing
-
-Everything above (`ApiTester`, `FunctionTester`, `GenericTester`, etc.) hosts a **single** system/service in-process via `WebApplicationFactory` - ideal for intra-domain testing where you want deep, per-component control (DI replacement, mocked `HttpClient`s) of one service in isolation.
-
-Sometimes, though, you genuinely need to prove that two or more **real**, separately-hosted services interact correctly over the network (inter-domain testing) - for example a [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) distributed application where a "shopping" API calls a "products" API. For this, the [`UnitTestEx.Aspire`](./src/UnitTestEx.Aspire) package provides `AspireTester`, which spins up the **entire AppHost** - every project, container and executable resource it declares - as separate, real OS processes wired together with Aspire's actual service discovery, exactly as they'd run in production. This is deliberately a second, opt-in tier rather than an extension of the first: pick the tier per test based on what you're actually trying to prove, don't force a hybrid.
-
-This isn't a UnitTestEx-specific compromise - it matches Aspire's own guidance verbatim:
-
-> "If your goal is to test a single project in isolation, run components in-memory, or mock external dependencies, consider using `WebApplicationFactory<T>` instead."
-> — [aspire.dev/testing/overview](https://aspire.dev/testing/overview/)
-
-``` csharp
-await using var tester = AspireTester.Create<Projects.MyAppHost>();
-
-await tester.WaitForResourceAsync("shopping");
-
-tester.Http("shopping")
-    .Run(HttpMethod.Get, "orders/123")
-    .AssertOK()
-    .AssertValue(new { id = "123", product = "Widget" });
-```
-
-External-to-the-solution dependencies (an email/notification provider, an identity/auth service, an ERP system, a payment gateway, etc.) still need to be mocked - a real inter-domain test proves *your* services talk to each other correctly, not that a third-party's sandbox environment is up. UnitTestEx's recommended pattern is to **self-host** [WireMock.Net](https://github.com/WireMock-Net/WireMock.Net) as an ordinary Aspire *project* resource (`AddProject`) - one small console app per external system, added to your own solution - rather than the official [`WireMock.Net.Aspire`](https://github.com/WireMock-Net/WireMock.Net-Aspire) package's *container* resource (`AddWireMock`). UnitTestEx does not ship this host as a package (there's nothing to install or version); [`UnitTestEx.Aspire.MockHost`](./tests/UnitTestEx.Aspire.MockHost) is a template you copy into your own solution (referencing `UnitTestEx.Aspire`, which ships both the `JsonElementComparerMatcher` type and the `WireMockConsole.RunAsync` helper used below, so there's no matcher code - or port/custom-matcher/graceful-shutdown boilerplate - to write yourself):
-
-``` csharp
-// MockApis/Program.cs
-await WireMockConsole.RunAsync(settings => WireMockServer.Start(settings));
-```
-
-`WireMockConsole.RunAsync` reads the `PORT` environment variable Aspire assigns, builds an `AspireWireMockServerSettings` (a plain `WireMockServerSettings` subclass - `WireMock.Net` deliberately leaves it unsealed - that adds UnitTestEx-specific configuration as a single, discoverable extension point rather than an ever-growing list of `RunAsync` parameters) with `JsonElementComparerMatcher` already registered, invokes your factory to start the actual server (any `IWireMockServer` - typically `WireMockServer.Start`), then blocks gracefully until Aspire stops the process (Ctrl+C locally, SIGTERM in orchestration), disposing the server on the way out. It also registers a `WireMockRequestResponseLogger` (giving Tier 2/3 parity with Tier 1's `MockHttpClientHandler` request/response logging above) that logs every genuine stubbed request/response pair - not the admin API calls used to configure mappings - through the resource's own console output at `AspireWireMockServerSettings.RequestResponseLogLevel` (`LogLevel.Information` by default), so it is captured and drained the same way as any other resource log entry (see `Checkpoint`/`Delay`/`ErrorWhenLogContains` below). Set a different level (or `LogLevel.None` to disable) directly on the settings your factory receives:
-
-``` csharp
-await WireMockConsole.RunAsync(settings =>
-{
-    settings.RequestResponseLogLevel = LogLevel.Debug;
-    return WireMockServer.Start(settings);
-});
-```
-
-``` csharp
-// AppHost.cs
-var email = builder.AddMockHostProject<Projects.MockApis>("email");
-var auth  = builder.AddMockHostProject<Projects.MockApis>("auth");
-var erp   = builder.AddMockHostProject<Projects.MockApis>("erp");
-
-builder.AddProject<Projects.MyApi>("api")
-    .WithMockHostEnvironment("Email__BaseUrl", email, "http")
-    .WithMockHostEnvironment("Auth__BaseUrl", auth, "http")
-    .WithMockHostEnvironment("Erp__BaseUrl", erp, "http");
-```
-
-`AddMockHostProject`/`WithMockHostEnvironment` (both extension methods on `UnitTestEx.Aspire`, in the `Aspire.Hosting` namespace alongside Aspire's own `AddProject`/`WithEnvironment`) exist because each mock resource is test-only and must never appear in a *published manifest* - the JSON resource graph `aspire publish` (or `dotnet run --publisher manifest`) emits for deployment tooling (e.g. Azure Developer CLI) to turn into real infrastructure; a mock host has no production equivalent, so including it there would make deployment tooling try to provision it as if it were real. `AddMockHostProject` only actually adds the resource when `IDistributedApplicationBuilder.ExecutionContext.IsRunMode` is `true` (returning `null` in publish mode instead), and `WithMockHostEnvironment` accepts that potentially-`null` result directly, no-op'ing rather than requiring an `if (email is not null)` guard at every call site.
-
-Being just our own process (not a published, off-the-shelf binary), it can register `JsonElementComparerMatcher` - a custom `IMatcher`, shipped as part of `UnitTestEx.Aspire`, that delegates JSON body matching to UnitTestEx's own [`JsonElementComparer`](./src/UnitTestEx/Json/JsonElementComparer.cs) - via `WireMockServerSettings.CustomMatcherMappings`. This gives Tier 2/3 JSON body matching genuine parity with Tier 1 (semantic value coercion for dates, GUIDs and numbers), rather than being limited to WireMock.Net's own textual `JsonMatcher`/`JsonPartialMatcher`. It also drops the Docker/Podman requirement entirely - it's an ordinary .NET console app, so there's nothing to pull or run as a container. The official `WireMock.Net.Aspire` container resource (`AddWireMock`) remains fully supported for teams already standardized on that package - `AspireTesterBase.HttpMock` works against either resource type identically, since request matching is driven by the resource's admin API rather than its hosting mechanism.
-
-Each mock resource is a genuine, isolated WireMock.Net process - one per external system, so stubs configured for `"email"` can never leak into `"auth"` or `"erp"`. Within a test, `AspireTesterBase.HttpMock(resourceName)` returns a fluent `AspireHttpMockClient` for the named resource:
-
-``` csharp
-await using var tester = AspireTester.Create<Projects.MyAppHost>();
-
-await tester.WaitForResourceAsync("api");
-await tester.WaitForResourceAsync("erp");
-
-var stub = await tester.HttpMock("erp")
-    .Request(HttpMethod.Get, "products/abc")
-    .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
-
-tester.Http("api")
-    .Run(HttpMethod.Get, "Product/abc")
+using var test = FunctionTester.Create<ProductFunction>();
+test.ReplaceHttpClientFactory(mcf)
+    .HttpTrigger<ProductFunction>()
+    .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc"))
     .AssertOK()
     .AssertValue(new { id = "Abc", description = "A blue carrot" });
 
-await stub.VerifyAsync();
+test.ServiceBusTrigger<ServiceBusFunction>()
+    .Run(f => f.Run2(test.CreateServiceBusMessageFromValue(new Person { FirstName = "Bob", LastName = "Smith" })))
+    .AssertSuccess();
 ```
 
-The fluent configuration API is intentionally near-identical to Tier 1's `MockHttpClientFactory` above (both implement the shared [`IHttpMockClient`](./src/UnitTestEx/Mocking/IHttpMockClient.cs)/`IHttpMockRequest`/`IHttpMockResponse` interfaces) - a helper method written once against these interfaces can configure request/response stubbing identically regardless of which tier it's handed. The main differences are that the terminal `With*` methods here are asynchronous (`AspireHttpMockClient` performs a real HTTP call to the WireMock.Net server's admin API to register each mapping) and must be awaited, and the underlying JSON comparison/sequence-exhaustion semantics are WireMock.Net's own (not identical to Tier 1's) - unless you use `WithJsonBodyUsingUnitTestExComparer` instead of `WithJsonBody`. As with Tier 1, `Request`'s `requestUri` does not need a leading `/` - one is added automatically where absent, since WireMock.Net's admin API rejects a path that doesn't start with one:
+**Generic**: any service, with expectations declared up front.
 
 ``` csharp
-var stub = await tester.HttpMock("erp")
-    .Request(HttpMethod.Post, "orders")
-    .WithJsonBodyUsingUnitTestExComparer(new { id = "Abc", occurredAt = "2024-01-01T00:00:00Z" }) // matches "2024-01-01T00:00:00.000+00:00" too - same instant, same as Tier 1
-    .Respond.WithJsonAsync(new { id = "Abc", status = "Accepted" });
-```
-
-_Note:_ `WithJsonBodyUsingUnitTestExComparer` requires the target resource to have registered `JsonElementComparerMatcher` (i.e. a self-hosted resource per the template above) - the official `WireMock.Net.Aspire` container resource has no way to load a custom .NET matcher type. Where WireMock's own strict, non-semantic textual matching is instead wanted against a self-hosted resource, configure `JsonElementComparerOptions.ValueComparison` to `JsonElementComparison.Exact` rather than falling back to `WithJsonBody`.
-
-The same shared interface also brings across Tier 1's [YAML/JSON configuration](#YAML/JSON-configuration) - `await tester.HttpMock("erp").WithRequestsFromResourceAsync<MyTestClass>("my.mock.unittestex.yaml")` loads the exact same embedded resource schema against a real WireMock.Net resource.
-
-### Pre-seeding stubs from `AppHost.cs`
-
-`tester.HttpMock(resourceName)` requires an `AspireTester` - fine for tests, but not when a developer just wants to `aspire run`/`dotnet run` the `AppHost` directly (exploratory/manual use, no test in sight) - any un-stubbed external dependency will simply fail with a connection error. The `DistributedApplication.HttpMock(resourceName, endpointName?, jsonComparerOptions?)` extension method (also on `UnitTestEx.Aspire`, alongside `AddMockHostProject`/`WithMockHostEnvironment`) exposes the exact same fluent `AspireHttpMockClient` API directly against a started `DistributedApplication` - no tester required - so `AppHost.cs` itself can pre-seed sensible default stubs:
-
-``` csharp
-// AppHost.cs
-var app = builder.Build();
-await app.StartAsync();
-
-await app.WaitForResourceAsync("erp");
-await app.HttpMock("erp")
-    .Request(HttpMethod.Get, "products/abc")
-    .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
-
-await app.WaitForShutdownAsync();
-```
-
-This replaces the simpler `await app.RunAsync();` one-liner with the equivalent `StartAsync`/`WaitForShutdownAsync` pair (standard, supported Aspire usage) so there's a point after start-up, but before the host blocks, to seed mappings. A test can still layer its own stubs over these defaults (or `ResetAsync()` first to clear them) via `tester.HttpMock(...)` as normal - the AppHost's stubs are just a starting point, not a constraint on what a test may configure.
-
-_Important:_ this pre-seeding code only ever runs for a real `aspire run`/`dotnet run` of the AppHost - it does **not** run under an `AspireTester`-driven test. `AspireTester`/`AspireTesterBase` build the AppHost via Aspire's own `DistributedApplicationTestingBuilder.CreateAsync<TAppHost>()`, which intercepts the AppHost's `Program.cs` at `builder.Build()` and hands the (still-unbuilt) builder straight back to the test - none of `AppHost.cs`'s own code *after* that line (the `StartAsync`/`HttpMock`/`WaitForShutdownAsync` block above) is ever reached when driven via a test, so a test relying solely on it for a stub it actually depends on will fail with a genuine (not un-stubbed-but-otherwise-passing, and not flaky/racy) connection or 404 error every time. A test that needs the same stub must register it itself, most naturally via `BeforeStart`/`AfterStart` (the latter, once the mock host resource is actually up):
-
-``` csharp
-await using var tester = AspireTester.Create<Projects.MyAppHost>()
-    .AfterStart(async app =>
-    {
-        await app.WaitForResourceAsync("erp");
-        await app.HttpMock("erp")
-            .Request(HttpMethod.Get, "products/abc")
-            .Respond.WithJsonAsync(new { id = "Abc", description = "A blue carrot" });
-    });
-```
-
-### Failing on unexpected resource error logs
-
-A real inter-domain test can pass its own assertions while a background/hosted service (or a request that was never explicitly checked via `Http`) quietly logs an error or worse elsewhere in the `DistributedApplication` - `ErrorWhenLogContains` catches this by continuously watching every resource's forwarded log output for entries at or above a given `LogLevel` (`Error` by default) and failing the test the moment one appears:
-
-``` csharp
-await using var tester = AspireTester.Create<Projects.MyAppHost>()
-    .ErrorWhenLogContains(exclude: ["*a known, benign warning*"]); // Optional: only needed to change the level, or add exclude/include patterns.
-
-await tester.WaitForResourceAsync("shopping");
-
-tester.Http("shopping").Run(HttpMethod.Get, "orders/123").AssertOK();
-
-tester.Checkpoint("Final log check."); // Recommended: drains and checks any activity not otherwise seen by Http/Delay above.
-```
-
-This is **enabled by default** at `LogLevel.Error` for every `AspireTester` - there is no need to call `ErrorWhenLogContains` at all unless you want to change the `minimumLevel`, add wildcard (`*`/`?`) `exclude`/`include` patterns, or opt out entirely via `ErrorWhenLogContains(LogLevel.None)` (needed for a test that deliberately induces a resource-level error as its own subject, e.g. asserting a `500` response). `exclude` is the common case - known/expected noise that should not trigger a failure despite otherwise qualifying; a match here always wins. `include` is the rarer, opposite case - it *narrows* rather than widens what is checked, requiring an otherwise-qualifying entry to also match at least one `include` pattern to be reported (leave it `null`/empty, the default, to check every qualifying entry regardless of text). Each call fully **replaces** the prior configuration (level, `exclude` and `include` alike) rather than merging with it - pass the complete desired state each time. A resource log entry is only checked once *drained* - by `Checkpoint`, `Delay` or `Http` - so a trailing `Test.Checkpoint("Final log check.")` at the end of a test is recommended to also catch activity (e.g. shutdown-time logging) that nothing else happens to drain.
-
-_Important:_ `include`/`exclude` only ever **narrow what counts as a violation** of the streaming check above - they are not a "was this text logged" positive assertion, and there is no aggregate, end-of-test tally of `include` patterns. If an `include` pattern never matches anything, the test simply never fails because of it; nothing confirms it was actually hit. For that - "assert this text *was* (or was *not*) logged, by any resource, at any point" - use `AssertLogContains`/`AssertLogNotContains` instead (below).
-
-### Asserting expected resource log content
-
-Unlike `ErrorWhenLogContains` above (a continuous check applied only as entries are subsequently *drained*), `AssertLogContains`/`AssertLogNotContains` are immediate, one-shot checks against **every** resource log entry captured for the lifetime of the test so far - drained or not, across every resource by default (or scoped to one via the optional `resourceName`):
-
-``` csharp
-await using var tester = AspireTester.Create<Projects.MyAppHost>();
-
-await tester.WaitForResourceAsync("shopping");
-
-tester.Http("shopping").Run(HttpMethod.Get, "orders/123").AssertOK();
-
-tester.AssertLogContains("Order 123 processed successfully."); // Across every resource.
-tester.AssertLogContains("Order 123 processed successfully.", "shopping"); // Scoped to just the 'shopping' resource.
-tester.AssertLogNotContains("*unexpected*");
-```
-
-Because every resource log entry is retained for the whole test (not just what has been drained), there is no "did I check at the right moment" ambiguity to reason about - call this whenever (and as many times as) needed, typically right after whatever action is expected to have produced the entry; no trailing `Checkpoint` is required first (though calling it after one is perfectly fine too). Both accept the same wildcard (`*`/`?`), case-insensitive "contains" pattern matching as `ErrorWhenLogContains`'s `exclude`/`include`.
-
-### Resetting captured logs
-
-Every resource log entry captured is retained for the lifetime of the underlying `AspireTester` instance, not just a single test - normally a non-issue, since each test creates and disposes its own instance. If instead you deliberately **reuse** one `AspireTester`/`DistributedApplication` host across multiple tests (e.g. via a shared fixture, to avoid repeatedly paying its start-up cost), an earlier test's log activity would otherwise still be visible to a later test's `ErrorWhenLogContains`/`AssertLogContains`/`AssertLogNotContains` checks. Call `ResetLogs()` to discard everything captured so far - typically as the first line of such a test:
-
-``` csharp
-tester.ResetLogs(); // Discards all previously captured resource log entries (e.g. from a prior test sharing this host).
-
-tester.Http("shopping").Run(HttpMethod.Get, "orders/123").AssertOK();
-
-tester.AssertLogContains("Order 123 processed successfully."); // Only sees activity logged since the reset above.
-```
-
-This is deliberately explicit rather than automatic - unlike Tier 1, which resets its equivalent captured state automatically per Act (there being a single, well-defined Act boundary to hang it off), Tier 2/3 has no such boundary, and background/hosted-service activity occurring between calls is exactly what this capture exists to surface; an automatic reset would risk silently discarding it. `ResetLogs()` only clears previously captured log data - it does not reset any `ErrorWhenLogContains` configuration (level, `exclude`, `include`).
-
-_Note:_ Aspire-hosted resources are real OS processes (containers, where you opt into one), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
-
-_Note:_ Since Tier 2/3 resources are real, reachable URLs (not in-process fakes), a UI/frontend resource hosted in the `AppHost` can be driven directly with [Playwright](https://playwright.dev/dotnet/) - this is an ordinary consequence of the resources being real processes, not a UnitTestEx-specific feature; see Microsoft's own [Aspire + Playwright guide](https://learn.microsoft.com/en-us/dotnet/aspire/testing/write-your-first-test?tabs=xunit#creating-a-playwright-test) for the pattern.
-
-<br/>
-
-## Expectations
-
-By default _UnitTestEx_ provides out-of-the-box `Assert*` capabilities that are applied after execution to verify the test results. However, by adding the `UnitTestEx.Expectations` namespace in a test additional `Expect*` capabilities will be enabled (where applicable). These allow expectations to be defined prior to the execution which are automatically asserted on execution. 
-
-The following is an [example](./tests/UnitTestEx.NUnit.Test/PersonControllerTest.cs).
-
-``` csharp
-using var test = ApiTester.Create<Startup>();
-test.Controller<PersonController>()
-    .ExpectStatusCode(System.Net.HttpStatusCode.BadRequest)
-    .ExpectErrors(
-        "First name is required.",
-        "Last name is required.")
-    .Run(c => c.Update(1, new Person { FirstName = null, LastName = null }));
+using var test = GenericTester.Create<EntryPoint>();
+test.ExpectException().Type<DivideByZeroException>()
+    .Run<Gin>(gin => gin.Stir());
 ```
 
 <br/>
 
-## appsettings.unittest.json
+## Capabilities
 
-_UnitTestEx_ supports the addition of a `appsettings.unittest.json` within the test project that will get loaded automatically when executing tests. This enables settings to be added or modified specifically for the unit testing external to the referenced projects being tested.
+Each row links to the docs and to a test that shows it working.
 
-Additionally, this can also be used to change the default JSON Serializer for the tests. Defaults to `UnitTestEx.Json.JsonSerializer` (leverages `System.Text.Json`). By adding the following setting the default JSON serializer will be updated at first test execution and will essentially override for all tests. To change serializer for a specific test then use the test classes to specify explicitly.
+Capability | Applies to | Example
+-|-|-
+Controller tests from a method expression; route, method and body are inferred | API | [`Get_Test1`](./tests/UnitTestEx.NUnit.Test/PersonControllerTest.cs)
+Raw HTTP requests, typed responses | API | [`Http_Update_Http2`](./tests/UnitTestEx.NUnit.Test/PersonControllerTest.cs)
+`ValidationProblemDetails` / error assertions | API, Function | [`ValidationProblemDetails`](./tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs)
+HTTP trigger: `HttpRequest` → `IActionResult` / `IResult` | Function | [`HttpTrigger_ActionResult_Sync`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`HttpTrigger_Result_Async`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs)
+HTTP trigger: `HttpRequestData` → `HttpResponseData` | Function | [`HttpTrigger_RequestData_Json`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs)
+HTTP method/route validated against `[HttpTrigger]` | Function | [`HttpTrigger_RequestData_RouteCheck`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`WithPathAndQueryCheck`](./tests/UnitTestEx.NUnit.Test/PersonFunctionTest.cs)
+Multi-output bindings | Function | [`HttpTrigger_MultiOutput`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs)
+Service Bus trigger and message settlement | Function | [`ServiceBusMessage_Success`](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs), [`ServiceBusMessage_AssertActions`](./tests/UnitTestEx.NUnit.Test/ServiceBusFunctionTest.cs)
+Event Grid (`EventGridEvent` / `CloudEvent`) builders | Function | [`EventGridEvent_FromValue`](./tests/UnitTestEx.NUnit.Test/EventGridExtensionMethodsTest.cs), [`CloudEvent_FromJson`](./tests/UnitTestEx.NUnit.Test/EventGridExtensionMethodsTest.cs)
+Worker middleware pipeline (logging, short-circuit, exception mapping) | Function | [`Middleware_ShortCircuit_ActionResult`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`Middleware_HandlesException_HttpResponseData`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs)
+Other triggers (Timer, Blob, Queue, ...) | Function | [`TimerTriggered`](./tests/UnitTestEx.NUnit.Test/ProductFunctionTest.cs), [`BlobTrigger_Bytes`](./tests/UnitTestEx.NUnit.Test/StorageTriggerTest.cs), [`QueueTrigger_Person`](./tests/UnitTestEx.NUnit.Test/StorageTriggerTest.cs), [`GenericTrigger_ServiceBus`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs)
+Real `Program.cs` with test overrides; worker never started | Function | [`Program_TestOverrides`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`Program_ServicesUsed_WorkerNotStarted`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs)
+Run any service, sync or async | Generic | [`Run_Service`](./tests/UnitTestEx.NUnit.Test/Other/GenericTest.cs)
+Scoped services (`ScopedType<T>`) | All | [`ScopedType_RunsWithinServiceScope`](./tests/UnitTestEx.NUnit.Test/Other/DependencyInjectionTest.cs)
+Replace / mock DI registrations | All | [`ReplaceSingleton_OverridesRegistration`](./tests/UnitTestEx.NUnit.Test/Other/DependencyInjectionTest.cs), [`MockSingleton_UsesMoqObject`](./tests/UnitTestEx.NUnit.Test/Other/DependencyInjectionTest.cs)
+Configuration overrides, `appsettings.unittest.json` | All | [`Configuration_Overrride_Use`](./tests/UnitTestEx.NUnit.Test/Other/GenericTest.cs)
+`HttpClient` mocking: match, sequence, delay, times, YAML | All | [`MockSequence`](./tests/UnitTestEx.NUnit.Test/MockHttpClientTest.cs), [`WithYamlRequests`](./tests/UnitTestEx.NUnit.Test/MockHttpClientTest.cs)
+`Expect*` before or `Assert*` after | All | [`Update_Test5_ExpectationFailure`](./tests/UnitTestEx.NUnit.Test/PersonControllerTest.cs), [`ExpectValue_WithFunc`](./tests/UnitTestEx.NUnit.Test/Other/ExpectationsTest.cs)
+JSON-diff comparison with paths to ignore | All | [`PathsToIgnore_PropertyName`](./tests/UnitTestEx.NUnit.Test/Other/ObjectComparerTest.cs)
+Log capture and log assertions | All | [`Get_Test1_ExpectLogNotContains_Failure`](./tests/UnitTestEx.NUnit.Test/PersonControllerTest.cs), [`Checkpoint_WritesReasonAndFlushesLogsToOutput`](./tests/UnitTestEx.NUnit.Test/Other/CheckpointAndDelayTest.cs)
+One-off assembly set-up and tester extensions | All | [`TesterExtensions_FunctionTester`](./tests/UnitTestEx.NUnit.Test/Other/OneOffTestSetUpTest.cs)
+Multi-host tests with WireMock stubs and log checks | Aspire | [`HttpMock_StubsExternalMockHostDependency_Product`](./tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs), [`ErrorWhenLogContains_DefaultsToEnabled_ThrowsWithoutExplicitRegistration`](./tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
 
-``` json
-{
-  "DefaultJsonSerializer": "UnitTestEx.MSTest.Test.NewtonsoftJsonSerializer, UnitTestEx.MSTest.Test"
-}
-```
+<br/>
+
+## Documentation
+
+- [API testing](./docs/api-testing.md)
+- [Azure Functions testing](./docs/azure-functions.md), including [limitations](./docs/azure-functions.md#limitations)
+- [Generic testing](./docs/generic-testing.md)
+- [Dependency injection and configuration](./docs/dependency-injection-and-configuration.md)
+- [HTTP client mocking](./docs/http-client-mocking.md)
+- [Assertions, expectations and logging](./docs/assertions-and-expectations.md)
+- [Test set-up and extensibility](./docs/test-setup-and-extensibility.md)
+- [Aspire multi-host testing](./docs/aspire.md)
+- [Migrating from v5 to v6](./docs/migration-v6.md)
 
 <br/>
 
 ## Examples
 
-As _UnitTestEx_ is intended for testing, look at the tests for further details on how to leverage:
-- [UnitTestEx.MSTest.Test](./tests/UnitTestEx.MSTest.Test)
+The tests in this repository are the reference examples. Equivalent tests exist for each framework, with only framework-specific differences:
 - [UnitTestEx.NUnit.Test](./tests/UnitTestEx.NUnit.Test)
+- [UnitTestEx.MSTest.Test](./tests/UnitTestEx.MSTest.Test)
 - [UnitTestEx.Xunit.Test](./tests/UnitTestEx.Xunit.Test)
-- [UnitTestEx.Aspire.Xunit.Test](./tests/UnitTestEx.Aspire.Xunit.Test) - Aspire multi-host testing (see [above](#Aspire-multi-host-testing))
-
-_Note:_ There may be some slight variations in how the tests are constructed per test capability, this is to account for any differences between the frameworks themselves. For the most part the code should be near identical.
+- [UnitTestEx.Aspire.Xunit.Test](./tests/UnitTestEx.Aspire.Xunit.Test), [UnitTestEx.Aspire.NUnit.Test](./tests/UnitTestEx.Aspire.NUnit.Test), [UnitTestEx.Aspire.MSTest.Test](./tests/UnitTestEx.Aspire.MSTest.Test)
 
 <br/>
 

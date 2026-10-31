@@ -3,6 +3,7 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
+using Azure.Messaging.EventGrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -14,6 +15,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -244,9 +246,9 @@ namespace UnitTestEx.Aspire
                 _appTask = null;
             }
 
-            if (appTask is { IsCompletedSuccessfully: true })
+            if (appTask is not null)
             {
-                appTask.Result.Dispose();
+                appTask.GetAwaiter().GetResult().Dispose();
                 Implementor.WriteLine("");
                 Implementor.WriteLine("** The underlying UnitTestEx 'AspireTester' distributed application host has been reset. **");
                 Implementor.WriteLine("");
@@ -298,6 +300,101 @@ namespace UnitTestEx.Aspire
             if (resourceNames is null) throw new ArgumentNullException(nameof(resourceNames));
 
             await Task.WhenAll(resourceNames.Distinct().Select(rn => WaitForResourceAsync(rn, timeout))).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Waits for the named Azure Functions resource's admin API to return its indexed functions, then returns their names.
+        /// </summary>
+        /// <param name="resourceName">The Functions resource name (as configured within the AppHost).</param>
+        /// <param name="expectedFunctionNames">Optional function names that must have been indexed.</param>
+        /// <param name="timeout">The maximum wait (defaults to <see cref="DefaultWaitForResourceTimeout"/>); pass <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> to wait indefinitely.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The function names reported by the Functions host after indexing.</returns>
+        /// <exception cref="InvalidOperationException">The host returned an invalid function list, or one or more expected functions are missing.</exception>
+        /// <exception cref="HttpRequestException">The Functions host admin API returned a non-success status other than a transient not-found or service-unavailable status.</exception>
+        /// <exception cref="TimeoutException">The Functions host did not expose its function list within <paramref name="timeout"/>.</exception>
+        /// <remarks>Uses the Functions host's <c>/admin/functions</c> endpoint rather than parsing log output or assuming that Aspire's resource health means functions are registered.
+        /// It verifies indexing and can check expected function names, but does not guarantee that trigger listeners can connect to their backing services or that external trigger delivery works.</remarks>
+        public async Task<IReadOnlyList<string>> WaitForFunctionsAsync(
+            string resourceName,
+            IEnumerable<string>? expectedFunctionNames = null,
+            TimeSpan? timeout = null,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(resourceName);
+
+            var expected = expectedFunctionNames?.ToArray() ?? [];
+            if (expected.Any(string.IsNullOrWhiteSpace))
+                throw new ArgumentException("Expected function names must not be null or whitespace.", nameof(expectedFunctionNames));
+
+            var app = await GetDistributedApplicationAsync().ConfigureAwait(false);
+            using var client = app.CreateHttpClient(resourceName);
+            string? lastTransientResponse = null;
+            IReadOnlyList<string> lastFunctionNames = [];
+            IReadOnlyList<string>? functionNames;
+            try
+            {
+                functionNames = await EventuallyAsync<IReadOnlyList<string>?>(
+                    async token =>
+                    {
+                        HttpResponseMessage response;
+                        try
+                        {
+                            response = await client.GetAsync("admin/functions", token).ConfigureAwait(false);
+                        }
+                        catch (HttpRequestException ex) when (ex.StatusCode is null)
+                        {
+                            lastTransientResponse = ex.Message;
+                            return null;
+                        }
+
+                        using (response)
+                        {
+                            if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.ServiceUnavailable)
+                            {
+                                lastTransientResponse = $"{(int)response.StatusCode} ({response.ReasonPhrase}): {await response.Content.ReadAsStringAsync(token).ConfigureAwait(false)}";
+                                return null;
+                            }
+
+                            if (!response.IsSuccessStatusCode)
+                            {
+                                var body = await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
+                                throw new HttpRequestException(
+                                    $"Functions resource '{resourceName}' returned {(int)response.StatusCode} ({response.ReasonPhrase}) from /admin/functions: {body}",
+                                    null,
+                                    response.StatusCode);
+                            }
+
+                            using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false), cancellationToken: token).ConfigureAwait(false);
+                            if (document.RootElement.ValueKind != JsonValueKind.Array)
+                                throw new InvalidOperationException($"Functions resource '{resourceName}' returned an invalid /admin/functions response; expected a JSON array.");
+
+                            var names = document.RootElement.EnumerateArray()
+                                .Select(function => function.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String ? name.GetString() : null)
+                                .Where(name => !string.IsNullOrWhiteSpace(name))
+                                .Cast<string>()
+                                .Distinct(StringComparer.Ordinal)
+                                .ToArray();
+                            lastFunctionNames = names;
+                            return names;
+                        }
+                    },
+                    names => names is not null && expected.All(expectedName => names.Contains(expectedName, StringComparer.Ordinal)),
+                    timeout ?? DefaultWaitForResourceTimeout,
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+            catch (TimeoutException ex)
+            {
+                throw new TimeoutException(
+                    $"Functions resource '{resourceName}' did not expose its function list{(expected.Length == 0 ? string.Empty : $" containing the expected function(s): {string.Join(", ", expected)}")} within {timeout ?? DefaultWaitForResourceTimeout}. Last indexed functions: {string.Join(", ", lastFunctionNames)}. Last transient response: {lastTransientResponse ?? "none"}",
+                    ex);
+            }
+
+            var missing = expected.Except(functionNames!, StringComparer.Ordinal).ToArray();
+            if (missing.Length > 0)
+                throw new InvalidOperationException($"Functions resource '{resourceName}' initialized without the expected function(s): {string.Join(", ", missing)}. Indexed functions: {string.Join(", ", functionNames!)}.");
+
+            return functionNames!;
         }
 
         /// <inheritdoc/>
@@ -447,6 +544,23 @@ namespace UnitTestEx.Aspire
         /// <param name="endpointName">The optional endpoint name. Where not specified, the "https" endpoint is preferred when available, falling back to "http" (see <see cref="DistributedApplicationHostingTestingExtensions.CreateHttpClient(DistributedApplication, string, string?)"/>).</param>
         /// <returns>The <see cref="HttpTester"/>.</returns>
         public HttpTester Http(string resourceName, string? endpointName = null) => new(this, new ResourceHttpClientSource(this, resourceName, endpointName));
+
+        /// <summary>
+        /// Creates a client for posting Event Grid notifications to an Azure Functions resource.
+        /// </summary>
+        /// <param name="resourceName">The Functions resource name (as configured within the AppHost).</param>
+        /// <param name="endpointName">The optional endpoint name. Where not specified, Aspire selects the resource's default HTTP endpoint.</param>
+        /// <returns>A client that posts to the Functions Event Grid and blob-trigger webhook routes.</returns>
+        public FunctionsWebhookClient FunctionsWebhook(string resourceName, string? endpointName = null)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(resourceName);
+
+            return new FunctionsWebhookClient(async () =>
+            {
+                var app = await GetDistributedApplicationAsync().ConfigureAwait(false);
+                return app.CreateHttpClient(resourceName, endpointName);
+            });
+        }
 
         /// <summary>
         /// Enables a test <see cref="System.Net.Http.HttpRequestMessage"/> to be sent to the named resource with an expected response value <see cref="System.Type"/>.
@@ -626,6 +740,9 @@ namespace UnitTestEx.Aspire
                     }
                 }
 
+                /// <summary>
+                /// Flushes the pending log entry to the buffer; the caller must hold <c>_lock</c>.
+                /// </summary>
                 private void FlushPendingNoLock()
                 {
                     if (_pendingTimestamp is null)
@@ -746,15 +863,18 @@ namespace UnitTestEx.Aspire
             if (appTask is null)
                 return;
 
+            DistributedApplication app;
             try
             {
-                var app = await appTask.ConfigureAwait(false);
-                await app.DisposeAsync().ConfigureAwait(false);
+                app = await appTask.ConfigureAwait(false);
             }
             catch
             {
                 // Swallow; there is nothing meaningful to dispose where the underlying host failed to build/start.
+                return;
             }
+
+            await app.DisposeAsync().ConfigureAwait(false);
         }
     }
 }

@@ -1,6 +1,6 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Threading.Tasks;
-using UnitTestEx.Function;
+using UnitTestEx.IsolatedFunction;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -13,10 +13,10 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public async Task NoData()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<PersonFunction>();
             (await test.HttpTrigger<PersonFunction>()
                 .WithNoRouteCheck()
-                .RunAsync(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person"), test.Logger)))
+                .RunAsync(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person"))))
                 .AssertOK()
                 .AssertContent("This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response.");
         }
@@ -24,10 +24,10 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void QueryString()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<PersonFunction>();
             test.HttpTrigger<PersonFunction>()
                 .WithNoRouteCheck()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person?name=Trevor"), test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person?name=Trevor")))
                 .AssertOK()
                 .AssertContent("Hello, Trevor. This HTTP triggered function executed successfully.");
         }
@@ -35,10 +35,10 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void WithBody()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<PersonFunction>();
             test.HttpTrigger<PersonFunction>()
                 .WithNoRouteCheck()
-                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Get, "person", new { name = "Jane" }), test.Logger))
+                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Get, "person", new { name = "Jane" })))
                 .AssertOK()
                 .AssertContent("Hello, Jane. This HTTP triggered function executed successfully.");
         }
@@ -46,10 +46,10 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void BadRequest1()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<PersonFunction>();
             test.HttpTrigger<PersonFunction>()
                 .WithNoRouteCheck()
-                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Post, "person", new { name = "Brian" }), test.Logger))
+                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Post, "person", new { name = "Brian" })))
                 .AssertBadRequest()
                 .AssertErrors("Name cannot be Brian.");
         }
@@ -57,10 +57,10 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void BadRequest2()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<PersonFunction>();
             test.HttpTrigger<PersonFunction>()
                 .WithNoRouteCheck()
-                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Post, "person", new { name = "Brian" }), test.Logger))
+                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Post, "person", new { name = "Brian" })))
                 .AssertBadRequest()
                 .AssertErrors(new ApiError("name", "Name cannot be Brian."));
         }
@@ -68,10 +68,10 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void BadRequest4()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<PersonFunction>();
             test.HttpTrigger<PersonFunction>()
                 .WithNoRouteCheck()
-                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Post, "person", new { name = "Bruce" }), test.Logger))
+                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Post, "person", new { name = "Bruce" })))
                 .AssertBadRequest()
                 .AssertErrors("Name cannot be Bruce.");
         }
@@ -79,10 +79,10 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void ValidJson()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<PersonFunction>();
             test.HttpTrigger<PersonFunction>()
                 .WithNoRouteCheck()
-                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Get, "person", new { name = "Rachel" }), test.Logger))
+                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Get, "person", new { name = "Rachel" })))
                 .AssertOK()
                 .AssertValue(new { FirstName = "Rachel", LastName = "Smith" });
         }
@@ -90,10 +90,10 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void ValidJsonResource()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<PersonFunction>();
             test.HttpTrigger<PersonFunction>()
                 .WithNoRouteCheck()
-                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Get, "person", new { name = "Rachel" }), test.Logger))
+                .Run(f => f.Run(test.CreateJsonHttpRequest(HttpMethod.Get, "person", new { name = "Rachel" })))
                 .AssertOK()
                 .AssertValueFromJsonResource<Person>("FunctionTest-ValidJsonResource.json");
         }
@@ -101,9 +101,9 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void ValueVsHttpRequestObject()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<PersonFunction>();
             test.HttpTrigger<PersonFunction>()
-                .Run(f => f.RunWithValue(new Person { FirstName = "Rachel", LastName = "Smith" }, test.Logger))
+                .Run(f => f.RunWithValue(test.CreateJsonHttpRequest(HttpMethod.Post, "people/rachel", new Person { FirstName = "Rachel", LastName = "Smith" }), "rachel"))
                 .AssertOK()
                 .AssertValue(new { first = "Rachel", last = "Smith" });
         }
@@ -111,9 +111,9 @@ namespace UnitTestEx.Xunit.Test
         [Fact]
         public void ValueVsHttpRequestContent()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<PersonFunction>();
             test.HttpTrigger<PersonFunction>()
-                .Run(f => f.RunWithContent(new Person { FirstName = "Rachel", LastName = "Smith" }, test.Logger))
+                .Run(f => f.RunWithContent(test.CreateJsonHttpRequest(HttpMethod.Post, "people/content/rachel", new Person { FirstName = "Rachel", LastName = "Smith" }), "rachel"))
                 .AssertOK()
                 .AssertValue(new { first = "Rachel", last = "Smith" });
         }

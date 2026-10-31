@@ -2,7 +2,7 @@
 using System;
 using System.Net;
 using System.Net.Http;
-using UnitTestEx.Function;
+using UnitTestEx.IsolatedFunction;
 
 namespace UnitTestEx.MSTest.Test
 {
@@ -16,10 +16,10 @@ namespace UnitTestEx.MSTest.Test
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Get, "products/xyz").Respond.With(HttpStatusCode.NotFound);
 
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<ProductFunction>();
             test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/xyz"), "xyz", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/xyz"), "xyz"))
                 .AssertNotFound();
         }
 
@@ -30,10 +30,10 @@ namespace UnitTestEx.MSTest.Test
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<ProductFunction>();
             test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc"))
                 .AssertOK()
                 .AssertValue(new { id = "Abc", description = "A blue carrot" });
         }
@@ -45,10 +45,10 @@ namespace UnitTestEx.MSTest.Test
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<ProductFunction>();
             test.ReplaceHttpClientFactory(mcf)
                 .Type<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc"))
                 .ToActionResultAssertor()
                     .AssertOK()
                     .AssertValue(new { id = "Abc", description = "A blue carrot" });
@@ -59,10 +59,10 @@ namespace UnitTestEx.MSTest.Test
         {
             var mcf = MockHttpClientFactory.Create();
 
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<ProductFunction>();
             test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/exception"), "exception", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/exception"), "exception"))
                 .AssertException<InvalidOperationException>("An unexpected exception occured.");
         }
     }
