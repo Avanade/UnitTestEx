@@ -551,7 +551,17 @@ namespace UnitTestEx.Aspire.Xunit.Test
 
             await stub.VerifyAsync();
 
-            tester.Checkpoint("Final log check.");
+            await tester.EventuallyAsync(
+                async cancellationToken =>
+                {
+                    await Task.Delay(100, cancellationToken);
+                    tester.Checkpoint("Waiting for mockhost request/response logs.");
+                    return spy.Lines.Exists(l => l != null && l.Contains("UnitTestEx > Sending HTTP request GET /products/abc") && l.Contains("(mockhost)]"))
+                        && spy.Lines.Exists(l => l != null && l.Contains("UnitTestEx > Received HTTP response 200") && l.Contains("(mockhost)]"));
+                },
+                logsCaptured => logsCaptured,
+                timeout: TimeSpan.FromSeconds(10),
+                interval: TimeSpan.FromMilliseconds(150));
 
             Assert.Contains(spy.Lines, l => l != null && l.Contains("UnitTestEx > Sending HTTP request GET /products/abc") && l.Contains("(mockhost)]"));
             Assert.Contains(spy.Lines, l => l != null && l.Contains("UnitTestEx > Received HTTP response 200") && l.Contains("(mockhost)]"));
