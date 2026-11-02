@@ -68,6 +68,7 @@ public sealed class AzuriteBlobTriggerTest
 
         Assert.That(processed, Is.EqualTo(content));
         tester.Checkpoint("Azurite blob trigger completed.");
+        await Task.Delay(300); // Allow the forwarded worker log line time to arrive/be captured.
         tester.AssertLogContains("Middleware before BlobTrigger.");
     }
 
