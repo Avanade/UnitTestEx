@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
@@ -252,10 +253,12 @@ namespace UnitTestEx.Xunit.Test
             Assert.Equal(HttpStatusCode.Accepted, res.StatusCode);
             Assert.Equal("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync());
 
-            // WithAnyBody is a true wildcard - it also matches a request with no body at all.
-            var res2 = await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz"));
+            // WithAnyBody requires a non-empty body, but does not inspect its content.
+            var res2 = await hc.PostAsync("products/xyz", new StringContent("arbitrary body"));
             Assert.Equal(HttpStatusCode.Accepted, res2.StatusCode);
             Assert.Equal("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res2.Content.ReadAsStringAsync());
+            await Assert.ThrowsAsync<MockHttpClientException>(() => hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
+            await Assert.ThrowsAsync<MockHttpClientException>(() => hc.PostAsync("products/xyz", new StringContent("")));
 
             await Assert.ThrowsAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Get, "products/xyz")));
         }

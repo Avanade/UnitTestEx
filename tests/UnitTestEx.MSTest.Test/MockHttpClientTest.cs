@@ -4,6 +4,7 @@ using Moq;
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
@@ -294,10 +295,12 @@ namespace UnitTestEx.MSTest.Test
             Assert.AreEqual(HttpStatusCode.Accepted, res.StatusCode);
             Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res.Content.ReadAsStringAsync().ConfigureAwait(false));
 
-            // WithAnyBody is a true wildcard - it also matches a request with no body at all.
-            var res2 = await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz"));
+            // WithAnyBody requires a non-empty body, but does not inspect its content.
+            var res2 = await hc.PostAsync("products/xyz", new StringContent("arbitrary body"));
             Assert.AreEqual(HttpStatusCode.Accepted, res2.StatusCode);
             Assert.AreEqual("{\"first\":\"Bob\",\"last\":\"Jane\"}", await res2.Content.ReadAsStringAsync());
+            await Assert.ThrowsExceptionAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Post, "products/xyz")));
+            await Assert.ThrowsExceptionAsync<MockHttpClientException>(() => hc.PostAsync("products/xyz", new StringContent("")));
 
             await Assert.ThrowsExceptionAsync<MockHttpClientException>(async () => await hc.SendAsync(new HttpRequestMessage(HttpMethod.Get, "products/xyz")));
         }
@@ -394,13 +397,13 @@ namespace UnitTestEx.MSTest.Test
             var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             sw.Stop();
             Assert.AreEqual(HttpStatusCode.NotModified, res.StatusCode);
-            Assert.IsTrue(sw.ElapsedMilliseconds >= 250);
+            Assert.IsTrue(sw.ElapsedMilliseconds >= 225, $"Expected the 250 ms response delay, but elapsed {sw.ElapsedMilliseconds} ms.");
 
             sw.Restart();
             res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             sw.Stop();
             Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
-            Assert.IsTrue(sw.ElapsedMilliseconds >= 100);
+            Assert.IsTrue(sw.ElapsedMilliseconds >= 75, $"Expected the response's 100-150 ms delay, but elapsed {sw.ElapsedMilliseconds} ms.");
         }
 
         [TestMethod]

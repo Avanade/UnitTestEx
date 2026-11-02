@@ -25,11 +25,7 @@ namespace UnitTestEx.Logging
         public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
 
         /// <inheritdoc />
-#if NET6_0_OR_GREATER
         public IDisposable BeginScope<TState>(TState state) where TState : notnull => _scopeProvider.Push(state);
-#else
-        public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
-#endif
 
         /// <inheritdoc />
         public bool IsEnabled(LogLevel logLevel) => true;

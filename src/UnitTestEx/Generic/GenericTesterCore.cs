@@ -59,7 +59,6 @@ namespace UnitTestEx.Generic
 
                 var ep = new EntryPoint(Activator.CreateInstance<TEntryPoint>());
 
-#if NET8_0_OR_GREATER
                 var settings = new HostApplicationBuilderSettings
                 {
                     EnvironmentName = TestSetUp.Environment,
@@ -108,41 +107,6 @@ namespace UnitTestEx.Generic
                 _host = builder.Build();
                 OnHostStartUp();
                 return _host;
-#else
-                _host ??= Host.CreateDefaultBuilder()
-                    .UseEnvironment(TestSetUp.Environment)
-                    .ConfigureLogging((lb) => { lb.SetMinimumLevel(SetUp.MinimumLogLevel); lb.ClearProviders(); lb.AddProvider(LoggerProvider); })
-                    .ConfigureHostConfiguration(cb =>
-                    {
-                        cb.SetBasePath(Environment.CurrentDirectory);
-                        ep.ConfigureHostConfiguration(cb);
-                        cb.AddJsonFile("appsettings.json", optional: true)
-                          .AddJsonFile($"appsettings.{TestSetUp.Environment.ToLowerInvariant()}.json", optional: true);
-                    })
-                    .ConfigureAppConfiguration((hbc, cb) =>
-                    {
-                        ep.ConfigureAppConfiguration(hbc, cb);
-                        cb.AddJsonFile("appsettings.unittest.json", optional: true)
-                          .AddEnvironmentVariables();
-
-                        if (AdditionalConfiguration != null)
-                            cb.AddInMemoryCollection(AdditionalConfiguration);
-                    })
-                    .ConfigureServices(sc =>
-                    {
-                        ep.ConfigureServices(sc);
-                        sc.ReplaceScoped(_ => SharedState);
-
-                        foreach (var tec in TestSetUp.Extensions)
-                            tec.ConfigureServices(this, sc);
-
-                        SetUp.ConfigureServices?.Invoke(sc);
-                        AddConfiguredServices(sc);
-                    }).Build();
-                
-                OnHostStartUp();
-                return _host;
-#endif
             }
         }
 

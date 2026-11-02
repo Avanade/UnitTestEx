@@ -85,7 +85,7 @@ namespace UnitTestEx.Azure.Functions
         }
 
         /// <summary>
-        /// Logs the result of the <see cref="WebJobsServiceBusMessageActionsAssertor"/>.
+        /// Logs the result of the worker Service Bus message actions.
         /// </summary>
         internal void LogResult()
         {
@@ -123,19 +123,19 @@ namespace UnitTestEx.Azure.Functions
         /// <summary>
         /// Asserts that the <see cref="AbandonMessageAsync(ServiceBusReceivedMessage, IDictionary{string, object}?, CancellationToken)"/> was invoked.
         /// </summary>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        /// <returns>The <see cref="WorkerServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
         public WorkerServiceBusMessageActionsAssertor AssertAbandon() => AssertStatus(ServiceBusMessageActionStatus.Abandon);
 
         /// <summary>
         /// Asserts that the <see cref="CompleteMessageAsync(ServiceBusReceivedMessage, CancellationToken)"/> was invoked.
         /// </summary>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        /// <returns>The <see cref="WorkerServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
         public WorkerServiceBusMessageActionsAssertor AssertComplete() => AssertStatus(ServiceBusMessageActionStatus.Complete);
 
         /// <summary>
         /// Asserts that the <see cref="DeferMessageAsync(ServiceBusReceivedMessage, IDictionary{string, object}?, CancellationToken)"/> was invoked.
         /// </summary>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        /// <returns>The <see cref="WorkerServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
         public WorkerServiceBusMessageActionsAssertor AssertDefer() => AssertStatus(ServiceBusMessageActionStatus.Defer);
 
         /// <summary>
@@ -143,7 +143,7 @@ namespace UnitTestEx.Azure.Functions
         /// </summary>
         /// <param name="reasonContains">Asserts that the resulting <see cref="DeadLetterReason"/> contains the specified content.</param>
         /// <param name="errorDescriptionContains">Asserts that the resulting <see cref="DeadLetterErrorDescription"/> contains the specified content.</param>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        /// <returns>The <see cref="WorkerServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
         public WorkerServiceBusMessageActionsAssertor AssertDeadLetter(string? reasonContains = default, string? errorDescriptionContains = default)
         {
             AssertStatus(ServiceBusMessageActionStatus.DeadLetter);
@@ -165,7 +165,7 @@ namespace UnitTestEx.Azure.Functions
         /// <summary>
         /// Asserts that <i>no</i> methods were invoked.
         /// </summary>
-        /// <returns>The <see cref="WebJobsServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
+        /// <returns>The <see cref="WorkerServiceBusMessageActionsAssertor"/> to support fluent-style method-chaining.</returns>
         public WorkerServiceBusMessageActionsAssertor AssertNone() => AssertStatus(ServiceBusMessageActionStatus.None);
     }
 }

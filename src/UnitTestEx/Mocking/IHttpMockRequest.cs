@@ -1,4 +1,4 @@
-// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
+﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
 using Moq;
 using System;
@@ -27,10 +27,17 @@ namespace UnitTestEx.Mocking
         IHttpMockRequest Times(Times times);
 
         /// <summary>
-        /// Indicates that the request will match regardless of the body content.
+        /// Indicates that the request must have a non-empty body, regardless of its content.
         /// </summary>
         /// <returns>The <see cref="IHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         IHttpMockRequestBody WithAnyBody();
+
+        /// <summary>
+        /// Indicates that the request must have no body; i.e. the content is absent or zero-length.
+        /// </summary>
+        /// <returns>The <see cref="IHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
+        /// <remarks>An absent body and a zero-length body are indistinguishable on the wire (both send <c>Content-Length: 0</c>), so both tiers deliberately treat them identically.</remarks>
+        IHttpMockRequestBody WithNoBody();
 
         /// <summary>
         /// Indicates that the request body must match the specified <paramref name="body"/> exactly, with the specified <paramref name="mediaType"/>.
@@ -48,11 +55,7 @@ namespace UnitTestEx.Mocking
         /// <returns>The <see cref="IHttpMockRequestBody"/> to continue the fluent-style configuration.</returns>
         /// <remarks>The exact JSON comparison semantics (including how <paramref name="pathsToIgnore"/> is interpreted) are tier-specific - see the native <c>WithJsonBody</c> documentation
         /// on the concrete implementation being used; they are <b>not</b> guaranteed to be equivalent between tiers.</remarks>
-#if NET7_0_OR_GREATER
         IHttpMockRequestBody WithJsonBody([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore);
-#else
-        IHttpMockRequestBody WithJsonBody(string json, params string[] pathsToIgnore);
-#endif
 
         /// <summary>
         /// Indicates that the request body must match the JSON serialized representation of the specified <paramref name="value"/>.

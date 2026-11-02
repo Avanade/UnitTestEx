@@ -111,6 +111,10 @@ namespace UnitTestEx.NUnit.Test.Other
             public string Name { get; set; }
         }
 
+        /// <summary>
+        /// Runs an asynchronous expectations assertion synchronously and unwraps assertion failures from task exceptions.
+        /// </summary>
+        /// <param name="func">The asynchronous assertion to execute.</param>
         private static void ArrangerAssert(Func<Task> func)
         {
             try

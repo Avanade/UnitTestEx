@@ -14,3 +14,8 @@
     status: 202
     body: |
       {"id":"Abc","description":"matched"}
+
+- method: post
+  uri: /resource-config/no-body
+  response:
+    status: 204

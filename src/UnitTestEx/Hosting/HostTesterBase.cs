@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Json;
@@ -93,13 +94,13 @@ namespace UnitTestEx.Hosting
 
             onBeforeRun?.Invoke(@params, paramAttribute, paramValue);
 
-            var h = CreateHost(null);
+            var h = mce.Method.IsStatic ? null : CreateHost(null);
             var sw = Stopwatch.StartNew();
 
             try
             {
                 var p = @params.Select(x => x.Value).ToArray();
-                await ((Task)mce.Method.Invoke(h, p)!).ConfigureAwait(false);
+                await InvokeAsync(mce.Method, p, async () => { await ((Task)mce.Method.Invoke(h, BindingFlags.DoNotWrapExceptions, null, p, null)!).ConfigureAwait(false); return true; }).ConfigureAwait(false);
                 sw.Stop();
                 return (null, sw.Elapsed.TotalMilliseconds);
             }
@@ -123,7 +124,30 @@ namespace UnitTestEx.Hosting
         /// <param name="paramAttributeTypes">The optional parameter <see cref="Attribute"/> <see cref="Type"/> array to find.</param>
         /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
         /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
-        protected async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<TService, Task<TValue>>> expression, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
+        protected Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunAsync<TValue>(Expression<Func<TService, Task<TValue>>> expression, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
+            => RunCoreAsync<TValue>(expression, result => (Task<TValue>)result!, paramAttributeTypes, onBeforeRun);
+
+        /// <summary>
+        /// Orchestrates the execution of a synchronous method as described by the <paramref name="expression"/> returning a result of <see cref="Type"/> <typeparamref name="TValue"/>.
+        /// </summary>
+        /// <typeparam name="TValue">The result value <see cref="Type"/>.</typeparam>
+        /// <param name="expression">The method execution expression.</param>
+        /// <param name="paramAttributeTypes">The optional parameter <see cref="Attribute"/> <see cref="Type"/> array to find.</param>
+        /// <param name="onBeforeRun">Action to verify the method parameters prior to method invocation.</param>
+        /// <returns>The resulting value, resulting exception if any, and elapsed milliseconds.</returns>
+        internal Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunSyncAsync<TValue>(Expression<Func<TService, TValue>> expression, Type[]? paramAttributeTypes, Action<(string? Name, object? Value)[], Attribute?, object?>? onBeforeRun)
+            => RunCoreAsync<TValue>(expression, result => Task.FromResult((TValue)result!), paramAttributeTypes, onBeforeRun is null ? null : (parameters, attribute, value) => onBeforeRun(parameters, attribute, value));
+
+        /// <summary>
+        /// Executes a synchronous method that does not return a value.
+        /// </summary>
+        internal Task<(bool Result, Exception? Exception, double ElapsedMilliseconds)> RunSyncAsync(Expression<Action<TService>> expression, Type[]? paramAttributeTypes, Action<(string? Name, object? Value)[], Attribute?, object?>? onBeforeRun)
+            => RunCoreAsync<bool>(expression, _ => Task.FromResult(true), paramAttributeTypes, onBeforeRun is null ? null : (parameters, attribute, value) => onBeforeRun(parameters, attribute, value));
+
+        /// <summary>
+        /// Orchestrates the execution of a method as described by the <paramref name="expression"/> using the <paramref name="getResult"/> to obtain a result of <see cref="Type"/> <typeparamref name="TValue"/>.
+        /// </summary>
+        private async Task<(TValue Result, Exception? Exception, double ElapsedMilliseconds)> RunCoreAsync<TValue>(LambdaExpression expression, Func<object?, Task<TValue>> getResult, Type[]? paramAttributeTypes, OnBeforeRun? onBeforeRun)
         {
             TestSetUp.LogAutoSetUpOutputs(Implementor);
 
@@ -154,12 +178,13 @@ namespace UnitTestEx.Hosting
 
             onBeforeRun?.Invoke(@params, paramAttribute, paramValue);
 
-            var h = CreateHost(null);
+            var h = mce.Method.IsStatic ? null : CreateHost(null);
             var sw = Stopwatch.StartNew();
 
             try
             {
-                var mr = await expression.Compile().Invoke(h).ConfigureAwait(false);
+                var p = @params.Select(x => x.Value).ToArray();
+                var mr = await InvokeAsync(mce.Method, p, () => getResult(mce.Method.Invoke(h, BindingFlags.DoNotWrapExceptions, null, p, null))).ConfigureAwait(false);
                 sw.Stop();
                 return (mr, null, sw.Elapsed.TotalMilliseconds);
             }
@@ -174,6 +199,14 @@ namespace UnitTestEx.Hosting
                 return (default!, ex, sw.Elapsed.TotalMilliseconds);
             }
         }
+
+        /// <summary>
+        /// Wraps the actual method invocation; enables a derived tester to execute within a host-specific pipeline (e.g. Azure Functions worker middleware).
+        /// </summary>
+        /// <param name="method">The method being invoked.</param>
+        /// <param name="arguments">The method arguments.</param>
+        /// <param name="invoke">The function that performs the actual method invocation.</param>
+        internal virtual Task<TValue> InvokeAsync<TValue>(MethodInfo method, object?[] arguments, Func<Task<TValue>> invoke) => invoke();
 
         /// <summary>
         /// Represents the on before run delegate.
@@ -200,7 +233,7 @@ namespace UnitTestEx.Hosting
             if (lex.Body is not MethodCallExpression mce)
                 throw new ArgumentException($"Expression must be of Type '{nameof(MethodCallExpression)}'.", nameof(expression));
 
-            if (mce.Object == null || mce.Object.NodeType != ExpressionType.Parameter)
+            if (mce.Object is not null && mce.Object.NodeType != ExpressionType.Parameter)
                 throw new InvalidOperationException($"UnitTestEx methods that enable an expression must not include method-chaining '{mce}'; i.e. must be an invocation of a single method with zero or more arguments only." 
                     + Environment.NewLine + $"This is because UnitTestEx is reflecting the underlying type and arguments to validate, log, and in some instances refactor the execution using this information. If this is not the desired " 
                     + "behavior then consider using one of the other methods that does not use expressions to execute the test.");

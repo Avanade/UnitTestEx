@@ -152,6 +152,9 @@ namespace UnitTestEx
         /// <returns>The value.</returns>
         public static T? DeserializeJson<T>(this TextReader json, IJsonSerializer? jsonSerializer = null) => (jsonSerializer ?? JsonSerializer.Default).Deserialize<T>(json.ReadToEnd());
 
+        /// <summary>
+        /// Resolves plain YAML scalars to JSON-compatible primitive types while preserving leading-zero values as strings.
+        /// </summary>
         private class YamlNodeTypeResolver : INodeTypeResolver
         {
             private static readonly string[] boolValues = ["true", "false"];

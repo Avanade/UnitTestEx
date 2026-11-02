@@ -1,12 +1,8 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
-#if NET7_0_OR_GREATER
-
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Net.Http;
 using UnitTestEx.Abstractions;
 
@@ -31,6 +27,8 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <param name="httpRequest">The optional requesting <see cref="HttpRequest"/> with <see cref="HttpContext"/>; otherwise, will default.</param>
         /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
+        /// <remarks>Executes the returned result in a fresh capture buffer and restores the original response stream afterward, including on failure.
+        /// Does not include previously written bytes; use <see cref="AssertorBase{TSelf}.SnapshotHttpResponse"/> for an already-written response.</remarks>
         public HttpResponseMessageAssertor ToHttpResponseMessageAssertor(HttpRequest? httpRequest = null) => ToHttpResponseMessageAssertor(Owner, Result, LogMessages, httpRequest);
 
         /// <summary>
@@ -42,31 +40,6 @@ namespace UnitTestEx.Assertors
         /// <param name="httpRequest">The optional requesting <see cref="HttpRequest"/> with <see cref="HttpContext"/>; otherwise, will default.</param>
         /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
         internal static HttpResponseMessageAssertor ToHttpResponseMessageAssertor(TesterBase owner, IResult result, IEnumerable<string?>? logs, HttpRequest? httpRequest)
-        {
-            var sw = Stopwatch.StartNew();
-            using var ms = new MemoryStream();
-            var context = httpRequest?.HttpContext ?? new DefaultHttpContext { RequestServices = owner.Services };
-            context.Response.Body = ms;
-
-            result.ExecuteAsync(context).GetAwaiter().GetResult();
-
-            var hr = new HttpResponseMessage((System.Net.HttpStatusCode)context.Response.StatusCode);
-            foreach (var h in context.Response.Headers)
-                hr.Headers.TryAddWithoutValidation(h.Key, [.. h.Value]);
-
-            ms.Position = 0;
-            hr.Content = new ByteArrayContent(ms.ToArray());
-
-            hr.Content.Headers.ContentLength = context.Response.ContentLength;
-            if (context.Response.ContentType is not null && System.Net.Http.Headers.MediaTypeHeaderValue.TryParse(context.Response.ContentType, out var ct))
-                hr.Content.Headers.ContentType = ct;
-
-            sw.Stop();
-            owner.LogHttpResponseMessage(hr, sw);
-
-            return new HttpResponseMessageAssertor(owner, logs, hr);
-        }
+            => HttpResponseMessageAssertor.ExecuteResult(owner, logs, httpRequest, result.ExecuteAsync);
     }
 }
-
-#endif

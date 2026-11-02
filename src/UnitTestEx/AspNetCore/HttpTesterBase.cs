@@ -84,11 +84,7 @@ namespace UnitTestEx.AspNetCore
         /// <param name="requestUri">The string that represents the request <see cref="Uri"/>.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-#if NET7_0_OR_GREATER
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, Action<HttpRequestMessage>? requestModifier)
-#else
-        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, Action<HttpRequestMessage>? requestModifier)
-#endif
         {
             try
             {
@@ -117,11 +113,7 @@ namespace UnitTestEx.AspNetCore
         /// <param name="contentType">The content type.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-#if NET7_0_OR_GREATER
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
-#else
-        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
-#endif
         {
             try
             {
@@ -152,11 +144,7 @@ namespace UnitTestEx.AspNetCore
         /// <param name="value">The value to be JSON serialized.</param>
         /// <param name="requestModifier">The optional <see cref="HttpRequestMessage"/> modifier.</param>
         /// <returns>The <see cref="HttpResponseMessageAssertor"/>.</returns>
-#if NET7_0_OR_GREATER
         protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
-#else
-        protected async Task<HttpResponseMessageAssertor> SendAsync(HttpMethod httpMethod, string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
-#endif
         {
             try
             {
@@ -198,31 +186,19 @@ namespace UnitTestEx.AspNetCore
             /// <summary>
             /// Sends with no content.
             /// </summary>
-#if NET7_0_OR_GREATER
             public async Task<HttpResponseMessage> SendAsync(HttpMethod method, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, Action<HttpRequestMessage>? requestModifier)
-#else
-            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, Action<HttpRequestMessage>? requestModifier)
-#endif
                 => await SendAsync(CreateRequest(method, requestUri ?? "", null, requestModifier), default).ConfigureAwait(false);
 
             /// <summary>
             /// Sends with content.
             /// </summary>
-#if NET7_0_OR_GREATER
             public async Task<HttpResponseMessage> SendAsync(HttpMethod method, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
-#else
-            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, string? content, string? contentType, Action<HttpRequestMessage>? requestModifier)
-#endif
                 => await SendAsync(CreateRequest(method, requestUri ?? "", new StringContent(content ?? string.Empty, Encoding.UTF8, contentType ?? MediaTypeNames.Text.Plain), requestModifier), default).ConfigureAwait(false);
 
             /// <summary>
             /// Sends with JSON value.
             /// </summary>
-#if NET7_0_OR_GREATER
             public async Task<HttpResponseMessage> SendAsync(HttpMethod method, [StringSyntax(StringSyntaxAttribute.Uri)] string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
-#else
-            public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string? requestUri, object? value, Action<HttpRequestMessage>? requestModifier)
-#endif
                 => await SendAsync(CreateRequest(method, requestUri ?? "", new StringContent(_httpTester.JsonSerializer.Serialize(value), Encoding.UTF8, MediaTypeNames.Application.Json), requestModifier), default).ConfigureAwait(false);
 
             /// <summary>

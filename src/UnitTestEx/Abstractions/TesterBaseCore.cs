@@ -4,10 +4,12 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
+using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Expectations;
 using UnitTestEx.Json;
@@ -134,6 +136,129 @@ namespace UnitTestEx.Abstractions
             options.JsonSerializer ??= JsonSerializer;
             return new JsonElementComparer(options);
         }
+
+        /// <summary>
+        /// Repeatedly invokes an asynchronous operation until its result satisfies the specified condition.
+        /// </summary>
+        /// <typeparam name="T">The operation result type.</typeparam>
+        /// <param name="action">The asynchronous operation to repeat.</param>
+        /// <param name="condition">The condition that indicates success.</param>
+        /// <param name="timeout">The maximum wait (defaults to 30 seconds); pass <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> to wait indefinitely.</param>
+        /// <param name="interval">The delay between attempts (defaults to 250 milliseconds).</param>
+        /// <param name="cancellationToken">The <see cref="CancellationToken"/>.</param>
+        /// <returns>The first result that satisfies <paramref name="condition"/>.</returns>
+        /// <exception cref="TimeoutException">The condition was not satisfied within <paramref name="timeout"/>.</exception>
+        /// <remarks>Exceptions thrown by <paramref name="action"/> or <paramref name="condition"/> are propagated; use the action to handle expected "not ready yet" results (e.g. a missing blob)
+        /// and return a value that does not yet satisfy the condition. Timeout and cancellation bound the wait for each asynchronous operation; an operation that ignores its token
+        /// may continue running after the wait ends. Failures report the attempt count and last completed observation (via <c>ToString()</c>, bounded to 1024 characters);
+        /// return a descriptive result when polling so this observation is useful. No observation is available if no operation completed.</remarks>
+        public async Task<T> EventuallyAsync<T>(Func<CancellationToken, Task<T>> action, Func<T, bool> condition, TimeSpan? timeout = null, TimeSpan? interval = null, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(action);
+            ArgumentNullException.ThrowIfNull(condition);
+
+            var effectiveTimeout = timeout ?? TimeSpan.FromSeconds(30);
+            var effectiveInterval = interval ?? TimeSpan.FromMilliseconds(250);
+            if (effectiveTimeout != System.Threading.Timeout.InfiniteTimeSpan && effectiveTimeout <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be positive or Timeout.InfiniteTimeSpan.");
+            if (effectiveInterval <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(interval), "Interval must be positive.");
+
+            var stopwatch = Stopwatch.StartNew();
+            using var timeoutSource = effectiveTimeout == System.Threading.Timeout.InfiniteTimeSpan
+                ? null
+                : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutSource?.CancelAfter(effectiveTimeout);
+            var operationToken = timeoutSource?.Token ?? cancellationToken;
+            var attempts = 0;
+            var hasObservation = false;
+            T? lastObservation = default;
+
+            try
+            {
+                while (true)
+                {
+                    operationToken.ThrowIfCancellationRequested();
+
+                    attempts++;
+                    var result = await action(operationToken).WaitAsync(operationToken).ConfigureAwait(false);
+                    lastObservation = result;
+                    hasObservation = true;
+                    operationToken.ThrowIfCancellationRequested();
+                    if (condition(result))
+                        return result;
+
+                    var remaining = effectiveTimeout == System.Threading.Timeout.InfiniteTimeSpan
+                        ? effectiveInterval
+                        : effectiveTimeout - stopwatch.Elapsed;
+                    if (remaining <= TimeSpan.Zero)
+                        throw new TimeoutException($"The condition was not satisfied within {effectiveTimeout}. {DescribePollingObservation(attempts, hasObservation, lastObservation)}");
+
+                    await Task.Delay(remaining < effectiveInterval ? remaining : effectiveInterval, operationToken).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeoutSource?.IsCancellationRequested == true)
+            {
+                var exception = new TimeoutException($"The condition was not satisfied within {effectiveTimeout}. {DescribePollingObservation(attempts, hasObservation, lastObservation)}");
+                ReportFailureDiagnostics(exception.Message);
+                throw exception;
+            }
+            catch (Exception ex)
+            {
+                ReportFailureDiagnostics($"Polling failed: {ex.GetType().Name}: {ex.Message}. {DescribePollingObservation(attempts, hasObservation, lastObservation)}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Formats a bounded polling observation while preserving failures to format the observed value.
+        /// </summary>
+        /// <typeparam name="T">The observation type.</typeparam>
+        /// <param name="attempts">The number of operations attempted.</param>
+        /// <param name="hasObservation">Whether an operation completed with a result.</param>
+        /// <param name="lastObservation">The last completed result.</param>
+        /// <returns>The attempt count and bounded observation description.</returns>
+        private static string DescribePollingObservation<T>(int attempts, bool hasObservation, T? lastObservation)
+        {
+            string observation;
+            try
+            {
+                observation = !hasObservation ? "<no completed observation>"
+                    : lastObservation is null ? "<null>"
+                    : Convert.ToString(lastObservation, CultureInfo.InvariantCulture) ?? "<null>";
+            }
+            catch (Exception ex)
+            {
+                observation = $"<observation formatting failed: {ex.GetType().Name}: {ex.Message}>";
+            }
+
+            if (observation.Length > 1024)
+                observation = observation[..1024] + " [truncated]";
+
+            return $"Attempts: {attempts}. Last observation: {observation}";
+        }
+
+        /// <summary>
+        /// Reports failure context without allowing diagnostic failures to replace the original exception.
+        /// </summary>
+        /// <param name="reason">The failure context.</param>
+        protected void ReportFailureDiagnostics(string reason)
+        {
+            try
+            {
+                WriteFailureDiagnostics(reason);
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError($"UnitTestEx could not write failure diagnostics: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// Writes failure context; hosting-specific testers can add diagnostic snapshots without starting or waiting for a host.
+        /// </summary>
+        /// <param name="reason">The failure context.</param>
+        protected virtual void WriteFailureDiagnostics(string reason) => Implementor.WriteLine($"FAILURE > {reason}");
 
         /// <summary>
         /// Resets the underlying host to instantiate a new instance.

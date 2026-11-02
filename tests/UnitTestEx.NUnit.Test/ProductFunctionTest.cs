@@ -1,13 +1,10 @@
-﻿using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Timers;
-using Moq;
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using UnitTestEx.Expectations;
-using UnitTestEx.Function;
+using UnitTestEx.IsolatedFunction;
 
 namespace UnitTestEx.NUnit.Test
 {
@@ -21,10 +18,10 @@ namespace UnitTestEx.NUnit.Test
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Get, "products/xyz").Respond.With(HttpStatusCode.NotFound);
 
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<ProductFunction>();
             test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/xyz"), "xyz", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/xyz"), "xyz"))
                 .AssertNotFound();
         }
 
@@ -35,11 +32,11 @@ namespace UnitTestEx.NUnit.Test
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<ProductFunction>();
             var assertor =test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
                 .ExpectLogContains("C# HTTP trigger function processed a request.")
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc"))
                 .AssertOK()
                 .AssertValue(new { id = "Abc", description = "A blue carrot" });
 
@@ -53,10 +50,10 @@ namespace UnitTestEx.NUnit.Test
             mcf.CreateClient("XXX", new Uri("https://d365test"))
                 .Request(HttpMethod.Get, "products/abc").Respond.WithJson(new { id = "Abc", description = "A blue carrot" });
 
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<ProductFunction>();
             test.ReplaceHttpClientFactory(mcf)
                 .Type<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "person/abc"), "abc"))
                 .ToActionResultAssertor()
                     .AssertOK()
                     .AssertValue(new { id = "Abc", description = "A blue carrot" });
@@ -67,21 +64,21 @@ namespace UnitTestEx.NUnit.Test
         {
             var mcf = MockHttpClientFactory.Create();
 
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<ProductFunction>();
             test.ReplaceHttpClientFactory(mcf)
                 .HttpTrigger<ProductFunction>()
-                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/exception"), "exception", test.Logger))
+                .Run(f => f.Run(test.CreateHttpRequest(HttpMethod.Get, "product/exception"), "exception"))
                 .AssertException<InvalidOperationException>("An unexpected exception occured.");
         }
 
         [Test]
         public void TimerTriggered()
         {
-            using var test = FunctionTester.Create<Startup>();
+            using var test = FunctionTester.Create<ProductFunction>();
             test.Type<ProductFunction>()
                 .ExpectLogContains("(DI)")
                 .ExpectLogContains("(method)")
-                .Run(f => f.DailyRun(new TimerInfo(new DailySchedule("2:00:00"), It.IsAny<ScheduleStatus>(), false), test.Logger))
+                .Run(f => f.DailyRun(default!))
                 .AssertSuccess();
         }   
     }

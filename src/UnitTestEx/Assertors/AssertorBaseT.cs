@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using UnitTestEx.Abstractions;
@@ -14,6 +15,22 @@ namespace UnitTestEx.Assertors
     /// <param name="exception">The <see cref="Exception"/> (if any).</param>
     public abstract class AssertorBase<TSelf>(TesterBase owner, IEnumerable<string?>? logs, Exception? exception) : AssertorBase(owner, logs, exception) where TSelf : AssertorBase<TSelf>
     {
+        /// <summary>
+        /// Snapshots an already-written HTTP response without executing the returned result or server response callbacks.
+        /// </summary>
+        /// <param name="response">The response whose status, headers and complete buffered body are to be asserted.</param>
+        /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
+        /// <exception cref="NotSupportedException">The response body is not readable and seekable.</exception>
+        /// <remarks>Asserts invocation success first. The caller retains ownership of the response stream; its position is restored after reading.
+        /// Use a readable, seekable buffer before invocation and flush any pending body-writer data before taking the snapshot.
+        /// Each call takes a fresh independent copy; it does not re-invoke the function or execute a deferred result.</remarks>
+        public HttpResponseMessageAssertor SnapshotHttpResponse(HttpResponse response)
+        {
+            ArgumentNullException.ThrowIfNull(response);
+            AssertSuccess();
+            return HttpResponseMessageAssertor.Snapshot(Owner, response, LogMessages);
+        }
+
         /// <summary>
         /// Asserts that an <see cref="Exception"/> was thrown during execution.
         /// </summary>

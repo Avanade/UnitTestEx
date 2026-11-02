@@ -6,9 +6,7 @@ using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -375,11 +373,7 @@ namespace UnitTestEx.Assertors
         /// <param name="json">The expected JSON.</param>
         /// <param name="pathsToIgnore">The JSON paths to ignore from the comparison.</param>
         /// <returns>The <see cref="ActionResultAssertor"/> to support fluent-style method-chaining.</returns>
-#if NET7_0_OR_GREATER
         public ActionResultAssertor AssertJson([StringSyntax(StringSyntaxAttribute.Json)] string json, params string[] pathsToIgnore)
-#else
-        public ActionResultAssertor AssertJson(string json, params string[] pathsToIgnore)
-#endif
         {
             if (string.IsNullOrEmpty(json))
                 throw new ArgumentNullException(nameof(json));
@@ -486,6 +480,8 @@ namespace UnitTestEx.Assertors
         /// </summary>
         /// <param name="httpRequest">The optional requesting <see cref="HttpRequest"/> with <see cref="HttpContext"/>; otherwise, will default.</param>
         /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
+        /// <remarks>Executes the returned result in a fresh capture buffer and restores the original response stream afterward, including on failure.
+        /// Does not include previously written bytes; use <see cref="AssertorBase{TSelf}.SnapshotHttpResponse"/> for an already-written response.</remarks>
         public HttpResponseMessageAssertor ToHttpResponseMessageAssertor(HttpRequest? httpRequest = null) => ToHttpResponseMessageAssertor(Owner, Result, LogMessages, httpRequest);
 
         /// <summary>
@@ -497,29 +493,7 @@ namespace UnitTestEx.Assertors
         /// <param name="httpRequest">The optional requesting <see cref="HttpRequest"/>; otherwise, will default.</param>
         /// <returns>The corresponding <see cref="HttpResponseMessageAssertor"/>.</returns>
         internal static HttpResponseMessageAssertor ToHttpResponseMessageAssertor(TesterBase owner, IActionResult result, IEnumerable<string?>? logs, HttpRequest? httpRequest)
-        {
-            var sw = Stopwatch.StartNew();
-            using var ms = new MemoryStream();
-            var context = httpRequest?.HttpContext ?? new DefaultHttpContext { RequestServices = owner.Services };
-            context.Response.Body = ms;
-
-            result.ExecuteResultAsync(new ActionContext(context, new Microsoft.AspNetCore.Routing.RouteData(), new ActionDescriptor())).GetAwaiter().GetResult();
-
-            var hr = new HttpResponseMessage((System.Net.HttpStatusCode)context.Response.StatusCode);
-            foreach (var h in context.Response.Headers)
-                hr.Headers.TryAddWithoutValidation(h.Key, [.. h.Value]);
-
-            ms.Position = 0;
-            hr.Content = new ByteArrayContent(ms.ToArray());
-
-            hr.Content.Headers.ContentLength = context.Response.ContentLength;
-            if (context.Response.ContentType is not null && System.Net.Http.Headers.MediaTypeHeaderValue.TryParse(context.Response.ContentType, out var ct))
-                hr.Content.Headers.ContentType = ct;
-
-            sw.Stop();
-            owner.LogHttpResponseMessage(hr, sw);
-
-            return new HttpResponseMessageAssertor(owner, logs, hr);
-        }
+            => HttpResponseMessageAssertor.ExecuteResult(owner, logs, httpRequest,
+                context => result.ExecuteResultAsync(new ActionContext(context, new Microsoft.AspNetCore.Routing.RouteData(), new ActionDescriptor())));
     }
 }

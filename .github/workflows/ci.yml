@@ -11,17 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v7
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: |
-          6.0.x
-          7.0.x
           8.0.x
           9.0.x
           10.0.x
+
+    - name: Setup Azure Functions Core Tools
+      run: npm install --global azure-functions-core-tools@4 --unsafe-perm true
 
     - name: Restore dependencies
       run: dotnet restore
@@ -29,34 +30,38 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
 
-    - name: Explicit MSTest test
+    - name: MSTest (net8.0, net9.0, net10.0)
       run: |
-        cp tests/UnitTestEx.Api/bin/Debug/net8.0/UnitTestEx.Api.deps.json tests/UnitTestEx.MSTest.Test/bin/Debug/net8.0
-        cd tests/UnitTestEx.MSTest.Test/bin/Debug/net8.0
-        dotnet test UnitTestEx.MSTest.Test.dll --no-build --verbosity normal
+        for framework in net8.0 net9.0 net10.0; do
+          dotnet test tests/UnitTestEx.MSTest.Test/UnitTestEx.MSTest.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
+        done
 
-    - name: Explicit NUnit test
+    - name: NUnit (net8.0, net9.0, net10.0)
       run: |
-        cp tests/UnitTestEx.Api/bin/Debug/net8.0/UnitTestEx.Api.deps.json tests/UnitTestEx.NUnit.Test/bin/Debug/net8.0
-        cd tests/UnitTestEx.NUnit.Test/bin/Debug/net8.0
-        dotnet test UnitTestEx.NUnit.Test.dll --no-build --verbosity normal
+        for framework in net8.0 net9.0 net10.0; do
+          dotnet test tests/UnitTestEx.NUnit.Test/UnitTestEx.NUnit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
+        done
 
-    - name: Explicit Xunit test
+    - name: xUnit (net8.0, net9.0, net10.0)
       run: |
-        cp tests/UnitTestEx.Api/bin/Debug/net8.0/UnitTestEx.Api.deps.json tests/UnitTestEx.Xunit.Test/bin/Debug/net8.0
-        cd tests/UnitTestEx.Xunit.Test/bin/Debug/net8.0
-        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests MockHttpClientTest
-        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests PersonFunctionTest
-        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests ProductFunctionTest
-        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests ServiceBusFunctionTest
-        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests PersonControllerTest
-        dotnet test UnitTestEx.Xunit.Test.dll --no-build --verbosity normal --tests ProductControllerTest
+        for framework in net8.0 net9.0 net10.0; do
+          dotnet test tests/UnitTestEx.Xunit.Test/UnitTestEx.Xunit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
+        done
 
-    - name: Explicit Aspire MSTest test
-      run: dotnet test tests/UnitTestEx.Aspire.MSTest.Test/UnitTestEx.Aspire.MSTest.Test.csproj --no-build --verbosity normal
+    - name: Aspire MSTest (net8.0, net9.0, net10.0)
+      run: |
+        for framework in net8.0 net9.0 net10.0; do
+          dotnet test tests/UnitTestEx.Aspire.MSTest.Test/UnitTestEx.Aspire.MSTest.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
+        done
 
-    - name: Explicit Aspire NUnit test
-      run: dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --no-build --verbosity normal
+    - name: Aspire NUnit (net8.0, net9.0, net10.0)
+      run: |
+        for framework in net8.0 net9.0 net10.0; do
+          dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
+        done
 
-    - name: Explicit Aspire Xunit test
-      run: dotnet test tests/UnitTestEx.Aspire.Xunit.Test/UnitTestEx.Aspire.Xunit.Test.csproj --no-build --verbosity normal
+    - name: Aspire xUnit (net8.0, net9.0, net10.0)
+      run: |
+        for framework in net8.0 net9.0 net10.0; do
+          dotnet test tests/UnitTestEx.Aspire.Xunit.Test/UnitTestEx.Aspire.Xunit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
+        done
