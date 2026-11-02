@@ -348,6 +348,26 @@ namespace UnitTestEx.Aspire
         public static TimeSpan DefaultWaitForResourceTimeout { get; } = TimeSpan.FromSeconds(60);
 
         /// <summary>
+        /// Gets or sets how long an <see cref="Http(string, string?)"/> request waits, after the response is received, for the resource's asynchronously forwarded logging to <i>start</i> arriving
+        /// before concluding the request logged nothing. Defaults to 500 milliseconds.
+        /// </summary>
+        /// <remarks>This is the (unavoidable) cost paid by every request that logs nothing; increase it where resource log forwarding is slow (e.g. a heavily loaded CI agent) and an
+        /// <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/> violation must reliably be detected by the request itself.</remarks>
+        public TimeSpan ResourceLogGracePeriod { get; set; } = TimeSpan.FromMilliseconds(500);
+
+        /// <summary>
+        /// Gets or sets how long the resource's forwarded logging must have been quiet (no new lines) before an <see cref="Http(string, string?)"/> request considers it settled, once
+        /// logging has been observed. Defaults to 150 milliseconds.
+        /// </summary>
+        public TimeSpan ResourceLogQuietPeriod { get; set; } = TimeSpan.FromMilliseconds(150);
+
+        /// <summary>
+        /// Gets or sets the maximum total time an <see cref="Http(string, string?)"/> request waits for the resource's forwarded logging to settle (see <see cref="ResourceLogGracePeriod"/>
+        /// and <see cref="ResourceLogQuietPeriod"/>). Defaults to 3 seconds.
+        /// </summary>
+        public TimeSpan ResourceLogMaxWait { get; set; } = TimeSpan.FromSeconds(3);
+
+        /// <summary>
         /// Waits for the named resource to report a healthy status.
         /// </summary>
         /// <param name="resourceName">The resource name (as configured within the AppHost).</param>
@@ -737,6 +757,21 @@ namespace UnitTestEx.Aspire
             public void Dispose() => FlushPendingEntries();
 
             /// <summary>
+            /// Gets the total number of raw (physical) lines forwarded so far for the named resource, including those not yet reassembled into a buffered entry; used purely as an activity signal.
+            /// </summary>
+            public long GetLineCount(string resourceName)
+            {
+                long count = 0;
+                foreach (var logger in _loggers)
+                {
+                    if (logger.ResourceName == resourceName)
+                        count += logger.LineCount;
+                }
+
+                return count;
+            }
+
+            /// <summary>
             /// Parses and reformats each resource's forwarded, already console-rendered text into the standard UnitTestEx <see cref="Logging.LoggerBase"/> output style, i.e.
             /// "<c>{timestamp} {level}: {message} [{category} ({resourceName})]</c>".
             /// </summary>
@@ -764,6 +799,11 @@ namespace UnitTestEx.Aspire
                 private LogLevel _pendingLevel;
                 private string? _pendingCategory;
                 private readonly List<string> _pendingMessageLines = [];
+                private long _lineCount;
+
+                public string ResourceName => resourceName;
+
+                public long LineCount => Interlocked.Read(ref _lineCount);
 
                 public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -774,6 +814,7 @@ namespace UnitTestEx.Aspire
                     var line = _ansiPattern.Replace(formatter(state, exception), string.Empty);
                     var prefixMatch = _linePrefixPattern.Match(line);
 
+                    Interlocked.Increment(ref _lineCount);
                     lock (_lock)
                     {
                         if (!prefixMatch.Success)
@@ -875,6 +916,8 @@ namespace UnitTestEx.Aspire
         /// log line reported here is claimed and will not also be re-reported by a subsequent <see cref="AspireTesterBase{TAppHost, TSelf}.Delay(TimeSpan?, string?)"/> call (or vice versa).</remarks>
         private sealed class ResourceHttpClientSource(AspireTesterBase owner, string resourceName, string? endpointName) : IHttpClientSource
         {
+            private long _lineCountBaseline;
+
             public HttpClient CreateHttpClient(string? name = null)
             {
                 var app = owner.GetDistributedApplicationAsync().GetAwaiter().GetResult();
@@ -883,6 +926,7 @@ namespace UnitTestEx.Aspire
                 // watermark at the current buffer length (i.e. claim everything already buffered as "seen", not part of this request's own window).
                 owner._resourceLogCaptureProvider?.FlushPendingEntries();
                 owner._elapsedLogLineCounts[resourceName] = owner._resourceLogBuffers.TryGetValue(resourceName, out var buffer) ? buffer.Count : 0;
+                _lineCountBaseline = owner._resourceLogCaptureProvider?.GetLineCount(resourceName) ?? 0;
                 return app.CreateHttpClient(resourceName, endpointName);
             }
 
@@ -891,17 +935,16 @@ namespace UnitTestEx.Aspire
             /// <summary>
             /// Gets the resource's own log lines captured since <see cref="CreateHttpClient(string?)"/> was last invoked, advancing the shared watermark past them so they are claimed.
             /// </summary>
-            /// <remarks>The resource's logging is forwarded asynchronously; a single short grace period is allowed for it to catch up before giving up, rather than an open-ended poll that would
-            /// otherwise tax every request - including the (typical) majority that log nothing at all.</remarks>
+            /// <remarks>The resource's logging is forwarded asynchronously, so it may lag the response. Waits up to <see cref="ResourceLogGracePeriod"/> for any logging to start arriving;
+            /// once it has, keeps waiting until it has been quiet for <see cref="ResourceLogQuietPeriod"/> - so a slow, multi-line burst (e.g. an Information line followed by the Error line
+            /// that <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/> must catch) is not cut short - capped overall at <see cref="ResourceLogMaxWait"/>.</remarks>
             private async Task<IReadOnlyList<string?>> GetNewResourceLogMessagesAsync()
             {
                 if (!owner._resourceLogBuffers.TryGetValue(resourceName, out var buffer))
                     return [];
 
                 var baseline = owner._elapsedLogLineCounts.GetOrAdd(resourceName, buffer.Count);
-
-                if (buffer.Count <= baseline)
-                    await Task.Delay(300).ConfigureAwait(false);
+                await WaitForResourceLogToSettleAsync().ConfigureAwait(false);
 
                 // An entry only becomes visible in the buffer once terminated by a subsequent header line; force-flush whatever is currently pending so the most recently logged entry
                 // (often the interesting one, e.g. the endpoint's own logging for this very request) is not lost while waiting for a line that may never come.
@@ -915,6 +958,41 @@ namespace UnitTestEx.Aspire
 
                 owner.AssertNoErrorWhenLogContainsViolation(newEntries, resourceName);
                 return newEntries.Select(e => e.Text).ToArray();
+            }
+
+            /// <summary>
+            /// Waits for the resource's forwarded logging (since <see cref="CreateHttpClient(string?)"/>) to start and then go quiet; see <see cref="GetNewResourceLogMessagesAsync"/>.
+            /// </summary>
+            private async Task WaitForResourceLogToSettleAsync()
+            {
+                var provider = owner._resourceLogCaptureProvider;
+                if (provider is null)
+                    return;
+
+                var pollInterval = TimeSpan.FromMilliseconds(25);
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var lastCount = provider.GetLineCount(resourceName);
+                var lastChange = TimeSpan.Zero;
+
+                while (sw.Elapsed < owner.ResourceLogMaxWait)
+                {
+                    var count = provider.GetLineCount(resourceName);
+                    if (count != lastCount)
+                    {
+                        lastCount = count;
+                        lastChange = sw.Elapsed;
+                    }
+
+                    if (count == _lineCountBaseline)
+                    {
+                        if (sw.Elapsed >= owner.ResourceLogGracePeriod)
+                            return;
+                    }
+                    else if (sw.Elapsed - lastChange >= owner.ResourceLogQuietPeriod)
+                        return;
+
+                    await Task.Delay(pollInterval).ConfigureAwait(false);
+                }
             }
         }
 
