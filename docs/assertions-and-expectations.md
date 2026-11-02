@@ -51,6 +51,8 @@ Assertor | Returned by | Highlights
 
 Every assertor exposes `LogMessages`, the logs captured during that run, so you can write custom assertions on them.
 
+For in-process invocation assertors, use `SnapshotHttpResponse(request.HttpContext.Response)` when the response was **already written** by the function or adapter. It asserts invocation success and snapshots status, headers and the complete readable, seekable body without executing the returned result. The stream remains caller-owned and its position is preserved. By contrast, `ToHttpResponseMessageAssertor(request)` executes a **deferred** MVC/Minimal API result in a fresh buffer, excludes previously written bytes, and restores the original response stream even on failure. See [HTTP rendering and snapshots](./azure-functions.md#asserting-an-already-written-http-response) for setup and limitations.
+
 <br/>
 
 ## Comparing objects and JSON

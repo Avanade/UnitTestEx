@@ -1,11 +1,15 @@
 // Copyright (c) Avanade. Licensed under the MIT License. See https://github.com/Avanade/UnitTestEx
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Mime;
+using System.Threading.Tasks;
 using UnitTestEx.Abstractions;
 
 namespace UnitTestEx.Assertors
@@ -18,6 +22,87 @@ namespace UnitTestEx.Assertors
     /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
     public class HttpResponseMessageAssertor(TesterBaseCore owner, IEnumerable<string?>? logs, HttpResponseMessage response) : HttpResponseMessageAssertorBase<HttpResponseMessageAssertor>(owner, logs, response)
     {
+        /// <summary>
+        /// Executes a deferred result in a temporary buffer and restores the original response stream on every exit path.
+        /// </summary>
+        /// <param name="owner">The owning tester.</param>
+        /// <param name="logs">The invocation logs.</param>
+        /// <param name="request">The optional request whose context is used for execution.</param>
+        /// <param name="execute">The deferred result executor.</param>
+        /// <returns>The assertor for the rendered response.</returns>
+        internal static HttpResponseMessageAssertor ExecuteResult(TesterBase owner, IEnumerable<string?>? logs, HttpRequest? request, Func<HttpContext, Task> execute)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var context = request?.HttpContext ?? new DefaultHttpContext { RequestServices = owner.Services };
+            var originalBody = context.Response.Body;
+            using var buffer = new MemoryStream();
+            try
+            {
+                context.Response.Body = buffer;
+                execute(context).GetAwaiter().GetResult();
+                return Create(owner, context.Response, buffer.ToArray(), logs, stopwatch);
+            }
+            finally
+            {
+                context.Response.Body = originalBody;
+            }
+        }
+
+        /// <summary>
+        /// Copies an already-written response while preserving ownership and position of its buffered body.
+        /// </summary>
+        /// <param name="owner">The owning tester.</param>
+        /// <param name="response">The already-written response.</param>
+        /// <param name="logs">The invocation logs.</param>
+        /// <returns>An assertor owning an independent copy of the response bytes and headers.</returns>
+        internal static HttpResponseMessageAssertor Snapshot(TesterBaseCore owner, HttpResponse response, IEnumerable<string?>? logs)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var body = response.Body;
+            if (!body.CanRead || !body.CanSeek)
+                throw new NotSupportedException("Cannot snapshot the HTTP response body because it is not readable and seekable. Assign a readable, seekable buffer (such as MemoryStream) to HttpContext.Response.Body before invoking the function, and keep it open until after the snapshot.");
+
+            var position = body.Position;
+            using var buffer = new MemoryStream();
+            try
+            {
+                body.Position = 0;
+                body.CopyTo(buffer);
+            }
+            finally
+            {
+                body.Position = position;
+            }
+
+            return Create(owner, response, buffer.ToArray(), logs, stopwatch);
+        }
+
+        /// <summary>
+        /// Builds and logs an HTTP response message from response metadata and captured bytes.
+        /// </summary>
+        /// <param name="owner">The owning tester.</param>
+        /// <param name="response">The source response metadata.</param>
+        /// <param name="body">The captured response bytes.</param>
+        /// <param name="logs">The invocation logs.</param>
+        /// <param name="stopwatch">The capture timer.</param>
+        /// <returns>The assertor for the copied response.</returns>
+        private static HttpResponseMessageAssertor Create(TesterBaseCore owner, HttpResponse response, byte[] body, IEnumerable<string?>? logs, Stopwatch stopwatch)
+        {
+            var message = new HttpResponseMessage((System.Net.HttpStatusCode)response.StatusCode)
+            {
+                Content = new ByteArrayContent(body)
+            };
+            foreach (var header in response.Headers)
+            {
+                if (!message.Headers.TryAddWithoutValidation(header.Key, [.. header.Value]))
+                    message.Content.Headers.TryAddWithoutValidation(header.Key, [.. header.Value]);
+            }
+
+            stopwatch.Stop();
+            owner.LogHttpResponseMessage(message, stopwatch);
+            return new HttpResponseMessageAssertor(owner, logs, message);
+        }
+
         /// <summary>
         /// Asserts the the <see cref="HttpResponseMessageAssertorBase.Response"/> <see cref="HttpResponseMessage.Headers"/> <see cref="HeaderNames.Location"/> matches the <paramref name="expectedUri"/>.
         /// </summary>

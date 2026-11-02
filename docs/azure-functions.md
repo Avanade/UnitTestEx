@@ -133,9 +133,36 @@ test.HttpTrigger<HttpVariantFunctions>()
     .AssertOK();
 ```
 
-Conversion replaces `HttpContext.Response.Body` with a temporary memory stream, executes the result synchronously, then copies the status, headers and body into an `HttpResponseMessage`. The stream is disposed after conversion; do not reuse that context to write another response or repeatedly execute a result with side effects.
+Conversion temporarily replaces `HttpContext.Response.Body`, executes the result synchronously into a fresh buffer, then copies the status, headers and rendered bytes into an `HttpResponseMessage`. The original response stream is restored in `finally`, including when execution throws, and is never disposed by conversion. Previously written bytes are **not** appended to the deferred result. Repeated conversion re-executes that result, so avoid doing it for results with side effects.
 
 **Response-start/completion callbacks are not driven by this helper.** In the normal `DefaultHttpContext`, registering `Response.OnStarting` or `OnCompleted` does not cause the callback to run during conversion. Supplied custom response features or result code may implement their own behavior, but the helper does not simulate the server lifecycle. It also does not run the full Functions HTTP server pipeline, routing, authentication, transport or platform header handling. Keep real HTTP assertions in Aspire tests for those behaviors.
+
+### Asserting an already-written HTTP response
+
+If a function or adapter writes `HttpContext.Response` directly (or executes a result eagerly) and returns `EmptyResult`/`Results.Empty`, **snapshot the response instead of executing the returned result**:
+
+```csharp
+using var test = FunctionTester.Create<EagerResponseFunction>();
+var request = test.CreateHttpRequest(HttpMethod.Post, "eager-response-proof");
+using var body = new MemoryStream();
+request.HttpContext.Response.Body = body;
+
+var invocation = test.HttpTrigger<EagerResponseFunction>()
+    .Run(function => function.Invoke(request));
+
+invocation.SnapshotHttpResponse(request.HttpContext.Response)
+    .AssertCreated()
+    .AssertNamedHeader("X-Probe", "already-written")
+    .AssertValue(new { value = "example" });
+```
+
+`SnapshotHttpResponse(HttpResponse)` is available on invocation assertors, including `ActionResultAssertor`, `HttpResultAssertor`, `ValueAssertor<T>` and `FunctionOutputAssertor<T>`. It first asserts invocation success, then copies status, headers and the **entire** buffered body from position zero. It does not invoke the function again, execute the returned result, run response callbacks, or guess rendering state from `EmptyResult`, status, headers or content type. Supplying the actual response is mandatory; a fresh context would not contain the written bytes.
+
+The stream must remain readable and seekable. Set a `MemoryStream` before invocation, flush any pending `Response.BodyWriter` output before snapshotting, and keep the stream open until afterward. Snapshotting restores its position, never replaces/disposes it, and returns independent bytes and headers. Repeated snapshots do not duplicate output or re-execute rendering. Empty buffered responses and the default `Stream.Null` yield an empty body; unreadable, disposed or non-seekable streams produce an actionable `NotSupportedException`, not a silently empty response.
+
+`ToHttpResponseMessageAssertor(request)` retains its deferred-execution semantics: an `EmptyResult` writes no bytes, even if the original response buffer contains a body. Use the snapshot path for eager responses; ordinary deferred `ObjectResult`, `ContentResult` and `IResult` tests continue to use conversion.
+
+Examples and ownership regressions: [`HttpRenderingTest`](../tests/UnitTestEx.NUnit.Test/Other/HttpRenderingTest.cs). Real Core Tools/Aspire HTTP tests remain necessary to prove the final wire response.
 
 ### Multi-output functions
 
