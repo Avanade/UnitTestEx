@@ -398,6 +398,8 @@ namespace UnitTestEx.Aspire.Xunit.Test
 
             tester.Http("api").Run(HttpMethod.Get, "Person/test/log/error").AssertOK();
 
+            await Task.Delay(300); // Allow the forwarded resource log line time to arrive/be captured.
+
             tester.AssertLogContains("Simulated error log*"); // Across every resource.
             tester.AssertLogContains("Simulated error log*", "api"); // Scoped to just the 'api' resource.
             tester.AssertLogNotContains("This text was never logged.");
