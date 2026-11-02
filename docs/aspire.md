@@ -196,6 +196,8 @@ This is deliberately explicit rather than automatic - unlike Tier 1, which reset
 
 ### Driving Azure Functions triggers and waiting for background work
 
+For a complete package/namespace map and a runnable upload-to-output test, see the [Functions Blob integration guide](./azure-functions.md#runnable-blob-integration-example). `CreateBlobCreatedEvent` requires `UnitTestEx.Azure.Functions`; the webhook client requires `UnitTestEx.Aspire`, even though both use the `UnitTestEx` namespace.
+
 Some Azure Functions triggers are delivered by the Functions host's HTTP webhook rather than by a normal HTTP endpoint. `FunctionsWebhook(resourceName)` resolves the resource's Aspire endpoint and can post Event Grid-schema events to either the blob-trigger route (`/runtime/webhooks/blobs`) or the Event Grid trigger route (`/runtime/webhooks/EventGrid`). The helper adds the `aeg-event-type: Notification` header and returns the raw response so the test can assert it:
 
 ```csharp
@@ -250,6 +252,16 @@ The AppHost also starts the emulator's SQL Edge dependency and Azurite for Funct
 
 The resources are declared directly in the dedicated Aspire AppHost rather than maintained in a second `compose.yml`; the same integration test starts them locally and in CI. Run only this test with `dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --framework net8.0 --filter FullyQualifiedName~ServiceBusEmulatorTest`. Ports `5672`, `5300`, `7072` and `10000`-`10002` must be free. Run these emulator fixtures and target frameworks sequentially because they use fixed ports.
 
+### Automatic failure diagnostics
+
+`EventuallyAsync` failures report the attempt count and the last completed observation, using its `ToString()` value bounded to 1024 characters. A timeout before the first result explicitly reports that no observation completed. Return a descriptive observation (rather than only `false`) when you need useful polling context.
+
+For an `AspireTester`, polling failures, instance `WaitForResourceAsync` failures, and failures during `BeforeStart`/application start/`AfterStart` also write current resource states and recent captured logs automatically. The log report includes at most 50 entries per resource, truncated to 4096 characters each. It includes previously drained entries and flushes pending entries without changing log watermarks or triggering `ErrorWhenLogContains`; diagnostics must not hide the original failure. Resource state is reported as unavailable when Aspire has not published it or the name identifies multiple replicas.
+
+This is not a test-framework-wide failure hook: arbitrary assertions, SDK operations outside polling, and direct `DistributedApplication` extension calls after startup still need an explicit `Checkpoint` or other failure handling. If construction fails before a `DistributedApplication` exists, resource states are not available. Diagnostic output failures are traced rather than replacing the original exception. Captured logs retain their existing lifetime; these limits bound the failure **report**, not the in-memory log history. Logs and observations may contain application data, so apply the same redaction/access controls as normal test output.
+
+Failed startup still disposes the built application; if cleanup also fails, both errors are reported in an `AggregateException`. `ResetHost()` can clear a failed startup for a retry, disposal is idempotent, and accessing an already-disposed tester throws rather than starting another application. These guarantees do not establish that Core Tools child-process trees are cleaned up under every Windows failure mode; verify those with real process-level lifecycle tests on the target environment.
+
 _Note:_ Aspire-hosted resources are real OS processes (containers, where you opt into one), so `AspireTester` tests are inherently slower than the in-process Tier 1 testers - use them where the inter-process interaction itself is what needs proving.
 
 _Note:_ Since Tier 2/3 resources are real, reachable URLs (not in-process fakes), a UI/frontend resource hosted in the `AppHost` can be driven directly with [Playwright](https://playwright.dev/dotnet/) - this is an ordinary consequence of the resources being real processes, not a UnitTestEx-specific feature; see Microsoft's own [Aspire + Playwright guide](https://learn.microsoft.com/en-us/dotnet/aspire/testing/write-your-first-test?tabs=xunit#creating-a-playwright-test) for the pattern.
@@ -266,6 +278,7 @@ Capability | Example (xUnit; NUnit and MSTest equivalents live in [UnitTestEx.As
 Basic request through a real resource | [`Http_Get_ReturnsSuccess`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
 Resource environment / lifecycle hooks | [`WithResourceEnvironment_AppliedBeforeBuild`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs), [`BeforeStart_InvokedInOrder_BeforeAnyResourceStarts`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs), [`AfterStart_CanWaitForResourceHealthy_UsingExtensionMethod`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
 Log aggregation (Checkpoint/Delay) | [`Checkpoint_And_Delay_AggregatesResourceLogs`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
+Automatic failure diagnostics and failed-start reset/disposal | [`FailureDiagnosticsTest`](../tests/UnitTestEx.Aspire.NUnit.Test/FailureDiagnosticsTest.cs), [`AspireTesterTest`](../tests/UnitTestEx.Aspire.NUnit.Test/AspireTesterTest.cs) (NUnit).
 Failing on resource error logs | [`ErrorWhenLogContains_DefaultsToEnabled_ThrowsWithoutExplicitRegistration`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs), [`ErrorWhenLogContains_ExcludeWildcard_SuppressesOtherwiseViolatingEntry`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs), [`ErrorWhenLogContains_ChecksOnFinalCheckpoint_ForActivityNotDrainedByHttp`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
 Asserting log content | [`AssertLogContains_FindsExpectedText_AcrossAllOrASpecificResource`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs), [`AssertLogNotContains_ThrowsWhenTextFound`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs), [`ResetLogs_DiscardsPreviouslyCapturedEntries`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)
 Stubbing external dependencies (WireMock) | [`HttpMock_StubsExternalMockHostDependency_Product`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs), [`HttpMock_WithSequenceAsync_ReturnsResponsesInOrderThenExhausts`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs), [`HttpMock_WithJsonBody_PathsToIgnore_IgnoresSpecifiedProperty`](../tests/UnitTestEx.Aspire.Xunit.Test/AspireTesterTest.cs)

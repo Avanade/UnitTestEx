@@ -41,6 +41,7 @@ namespace UnitTestEx.Aspire
         private readonly ConcurrentDictionary<string, int> _elapsedLogLineCounts = new();
         private ResourceLogCaptureProvider? _resourceLogCaptureProvider;
         private Task<DistributedApplication>? _appTask;
+        private DistributedApplication? _diagnosticApplication;
         private bool _disposed;
 
         /// <summary>
@@ -160,6 +161,7 @@ namespace UnitTestEx.Aspire
         {
             lock (SyncRoot)
             {
+                ObjectDisposedException.ThrowIf(_disposed, this);
                 return _appTask ??= CreateDistributedApplicationAsync();
             }
         }
@@ -221,13 +223,84 @@ namespace UnitTestEx.Aspire
                     await afterStart(app).ConfigureAwait(false);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                await app.DisposeAsync().ConfigureAwait(false);
+                ReportApplicationFailure(app, $"AppHost startup failed: {ex.GetType().Name}: {ex.Message}");
+                try
+                {
+                    await app.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception cleanupException)
+                {
+                    throw new AggregateException("AppHost startup and cleanup both failed.", ex, cleanupException);
+                }
+
                 throw;
             }
 
+            _diagnosticApplication = app;
             return app;
+        }
+
+        /// <summary>
+        /// Writes failure context with resource states and bounded recent resource logs.
+        /// </summary>
+        /// <param name="reason">The failure context.</param>
+        protected override void WriteFailureDiagnostics(string reason)
+        {
+            base.WriteFailureDiagnostics(reason);
+            WriteApplicationDiagnostics(_diagnosticApplication);
+        }
+
+        /// <summary>
+        /// Reports startup diagnostics before cleanup without replacing the startup failure.
+        /// </summary>
+        /// <param name="app">The built application whose startup failed.</param>
+        /// <param name="reason">The failure context.</param>
+        private void ReportApplicationFailure(DistributedApplication app, string reason)
+        {
+            try
+            {
+                base.WriteFailureDiagnostics(reason);
+                WriteApplicationDiagnostics(app);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError($"UnitTestEx could not write Aspire failure diagnostics: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// Writes available resource states and bounded recent logs without draining or asserting them.
+        /// </summary>
+        /// <param name="app">The built application, or <see langword="null"/> when unavailable.</param>
+        private void WriteApplicationDiagnostics(DistributedApplication? app)
+        {
+            Implementor.WriteLine("RESOURCE STATES >");
+            if (app is null)
+                Implementor.WriteLine("No built application is available.");
+            else
+            {
+                foreach (var resource in app.Services.GetRequiredService<DistributedApplicationModel>().Resources.OrderBy(r => r.Name, StringComparer.Ordinal))
+                {
+                    if (app.ResourceNotifications.TryGetCurrentState(resource.Name, out var current) && current is not null)
+                    {
+                        var state = current.Snapshot.State?.Text;
+                        Implementor.WriteLine($"{resource.Name}: {(string.IsNullOrEmpty(state) ? "unknown" : state)}; exit code: {current.Snapshot.ExitCode?.ToString(CultureInfo.InvariantCulture) ?? "none"}");
+                    }
+                    else
+                        Implementor.WriteLine($"{resource.Name}: state unavailable (not yet reported or multiple replicas).");
+                }
+            }
+
+            _resourceLogCaptureProvider?.FlushPendingEntries();
+            Implementor.WriteLine("RECENT RESOURCE LOGS > (last 50 entries per resource, at most 4096 characters each)");
+            foreach (var (resourceName, buffer) in _resourceLogBuffers.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            {
+                Implementor.WriteLine($"Resource '{resourceName}':");
+                foreach (var entry in buffer.TakeLast(50))
+                    Implementor.WriteLine(entry.Text is { Length: > 4096 } text ? text[..4096] + " [truncated]" : entry.Text);
+            }
         }
 
         /// <inheritdoc/>
@@ -248,7 +321,15 @@ namespace UnitTestEx.Aspire
 
             if (appTask is not null)
             {
-                appTask.GetAwaiter().GetResult().Dispose();
+                try
+                {
+                    if (!appTask.IsFaulted && !appTask.IsCanceled)
+                        appTask.GetAwaiter().GetResult().Dispose();
+                }
+                finally
+                {
+                    _diagnosticApplication = null;
+                }
                 Implementor.WriteLine("");
                 Implementor.WriteLine("** The underlying UnitTestEx 'AspireTester' distributed application host has been reset. **");
                 Implementor.WriteLine("");
@@ -281,7 +362,15 @@ namespace UnitTestEx.Aspire
             ArgumentException.ThrowIfNullOrEmpty(resourceName);
 
             var app = await GetDistributedApplicationAsync().ConfigureAwait(false);
-            await app.WaitForResourceAsync(resourceName, timeout).ConfigureAwait(false);
+            try
+            {
+                await app.WaitForResourceAsync(resourceName, timeout).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                ReportFailureDiagnostics($"Waiting for resource '{resourceName}' failed: {ex.GetType().Name}: {ex.Message}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -874,7 +963,14 @@ namespace UnitTestEx.Aspire
                 return;
             }
 
-            await app.DisposeAsync().ConfigureAwait(false);
+            try
+            {
+                await app.DisposeAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                _diagnosticApplication = null;
+            }
         }
     }
 }

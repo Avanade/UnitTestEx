@@ -6,6 +6,22 @@
 
 <br/>
 
+## Proof boundary: invocation versus runtime
+
+**A passing `FunctionTester` test is not proof that the Functions runtime can index, bind or deliver the trigger, or render the final HTTP response.** Choose the tier for the claim:
+
+Claim | Test with
+-|-
+Function logic, worker middleware, scoped DI, already-converted SDK arguments and explicit settlement calls | `FunctionTester`.
+Trigger indexing, binding conversion, output bindings, actual HTTP rendering, broker retries/redelivery and Blob poison behavior | A running Functions host (Aspire/Core Tools) and its backing services or emulators.
+Azure Event Grid subscription configuration, filtering and delivery/retry behavior | Azure Event Grid, not a manually posted webhook.
+
+An Aspire test using Azurite and `FunctionsWebhook` runs the real Functions host against real emulator storage, but **simulates the notification delivery step**. It does not turn Azurite into Event Grid. Likewise, recorded Service Bus settlement calls prove what your function requested, not that a broker accepted those calls or redelivered a message.
+
+The [runnable Blob integration example](#runnable-blob-integration-example) shows the runtime tier; the invocation examples below intentionally stop at the function boundary.
+
+<br/>
+
 ## How it works
 
 1. `FunctionTester.Create<TEntryPoint>()` runs the function app's **own** entry point (`Program.cs`, top-level statements and all). It does this through `HostFactoryResolver`, the same mechanism `WebApplicationFactory` uses. You don't need a `Program` class, a `BuildHost` method or any other test-only structure.
@@ -95,6 +111,31 @@ Method | Effect
 `WithRouteCheck(RouteCheckOption)` | Sets the route check: `Path`, `PathAndQuery`, `PathAndQueryStartsWith`, etc.
 
 Example: [`HttpTrigger_RequestData_MethodCheck`](../tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`HttpTrigger_RequestData_RouteCheck`](../tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`WithPathAndQueryCheck`](../tests/UnitTestEx.NUnit.Test/PersonFunctionTest.cs), [`WithPathAndQueryStartsWithCheck`](../tests/UnitTestEx.NUnit.Test/PersonFunctionTest.cs).
+
+### What HTTP response conversion executes
+
+`ToHttpResponseMessageAssertor(request)` is **in-process result execution**, not a request sent through the Functions HTTP server:
+
+Result | What happens
+-|-
+`IActionResult` | Calls `ExecuteResultAsync` with an `ActionContext` (empty route data and action descriptor).
+`IResult` | Calls `ExecuteAsync` with the selected `HttpContext`.
+`HttpResponseData` | Copies the already-written status, headers, cookies and body; it does not execute an ASP.NET Core result. This overload takes no request.
+Multi-output `[HttpResult]` property | Uses the corresponding conversion above for the property's value.
+
+For `IActionResult`/`IResult`, passing the **same request used for invocation** reuses its `HttpContext`: request headers (such as `Accept`), method, query, features, scoped `RequestServices`, and response headers already written by middleware remain available to the result executor. Without a request, conversion creates a fresh `DefaultHttpContext` using the tester's root services; it does not automatically recover the invocation request or its scope.
+
+```csharp
+var request = test.CreateHttpRequest(HttpMethod.Get, "action/sync");
+test.HttpTrigger<HttpVariantFunctions>()
+    .Run(function => function.ActionSync(request))
+    .ToHttpResponseMessageAssertor(request)
+    .AssertOK();
+```
+
+Conversion replaces `HttpContext.Response.Body` with a temporary memory stream, executes the result synchronously, then copies the status, headers and body into an `HttpResponseMessage`. The stream is disposed after conversion; do not reuse that context to write another response or repeatedly execute a result with side effects.
+
+**Response-start/completion callbacks are not driven by this helper.** In the normal `DefaultHttpContext`, registering `Response.OnStarting` or `OnCompleted` does not cause the callback to run during conversion. Supplied custom response features or result code may implement their own behavior, but the helper does not simulate the server lifecycle. It also does not run the full Functions HTTP server pipeline, routing, authentication, transport or platform header handling. Keep real HTTP assertions in Aspire tests for those behaviors.
 
 ### Multi-output functions
 
@@ -251,6 +292,8 @@ Example: [`Middleware_Logs_Captured_Http`](../tests/UnitTestEx.NUnit.Test/Isolat
 
 Not exercised | Why it matters | Where to test it instead
 -|-|-
+**Trigger indexing** | Checking an attribute is not Functions host discovery/indexing or listener startup. | `WaitForFunctionsAsync` plus a real delivery test in [Aspire](./aspire.md).
+**Final runtime HTTP behavior** | Result execution against a test context does not drive the server lifecycle or response-start callbacks. | A real HTTP request to the Aspire-hosted Functions app.
 **Trigger metadata / raw binding data** | Middleware sees empty `BindingContext.BindingData` and trigger metadata, because the payload is passed as already-converted arguments. | [Aspire testing](./aspire.md).
 **Input/output binding conversion** | Real binding converters, such as JSON-to-POCO, `[BlobInput]` and output bindings, aren't run. You supply the already-converted arguments, and outputs are returned values. | [Aspire testing](./aspire.md) with Azurite or emulators.
 **Trigger delivery semantics** | Retries, poison queues, Service Bus auto-complete, Event Grid filtering and batching are runtime behaviour. | [Aspire testing](./aspire.md) with emulators.
@@ -259,5 +302,46 @@ Not exercised | Why it matters | Where to test it instead
 **Code after `Build()` in `Program.cs`** | The host is captured at `Build()`. Code after it, such as `host.Run()`, never runs. | -
 
 `FunctionContext`, where a function needs one, is a test `FunctionContext` backed by the test host's `IServiceProvider`. `HttpRequestData.FunctionContext.GetHttpContext()` is supported.
+
+## Runnable Blob integration example
+
+Use the existing checked-in example rather than inventing a test-only `Program` or a second infrastructure setup:
+
+Project | References and purpose
+-|-
+[`UnitTestEx.IsolatedFunction`](../tests/UnitTestEx.IsolatedFunction/UnitTestEx.IsolatedFunction.csproj) | Worker SDK, `Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs`; [`StorageTriggerFunctions`](../tests/UnitTestEx.IsolatedFunction/StorageTriggerFunctions.cs) reads `unittestex` with `Source = BlobTriggerSource.EventGrid` and writes `processed/result.txt`.
+[`UnitTestEx.Aspire.Functions.AppHost`](../tests/UnitTestEx.Aspire.Functions.AppHost/UnitTestEx.Aspire.Functions.AppHost.csproj) | `Aspire.Hosting.AppHost` and the function project; [`AppHost.cs`](../tests/UnitTestEx.Aspire.Functions.AppHost/AppHost.cs) provisions Azurite and starts Core Tools against the built function output, restricted to `BlobTrigger`.
+[`UnitTestEx.Aspire.NUnit.Test`](../tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj) | `UnitTestEx.Aspire`, **`UnitTestEx.Azure.Functions`**, `UnitTestEx.NUnit`, `Azure.Storage.Blobs` and the AppHost project.
+
+Both helpers below use the **`UnitTestEx` namespace**, but they ship in different packages:
+
+```csharp
+using UnitTestEx;                // Both helpers; reference both packages.
+using Aspire.Hosting.Testing;    // app.GetEndpoint(...)
+using Azure.Storage;
+using Azure.Storage.Blobs;
+using System.Text;
+
+// After uploading inputBlob and creating the output container:
+var createdEvent = EventGridExtensionMethods.CreateBlobCreatedEvent( // UnitTestEx.Azure.Functions
+    "unittestex", "customers.csv", inputBlob.Uri,
+    upload.Value.ETag.ToString(), "text/csv", Encoding.UTF8.GetByteCount(content));
+
+using var response = await tester.FunctionsWebhook("functions")     // UnitTestEx.Aspire
+    .PostBlobCreatedAsync("Host.Functions.BlobTrigger", createdEvent);
+response.EnsureSuccessStatusCode();
+```
+
+The complete [`AzuriteBlobTriggerTest`](../tests/UnitTestEx.Aspire.NUnit.Test/Functions/AzuriteBlobTriggerTest.cs) includes all imports, emulator credentials, storage endpoint resolution, container provisioning, upload, notification delivery and output polling. It first calls `WaitForFunctionsAsync("functions", ["BlobTrigger"])`, then uses the upload's actual ETag and UTF-8 byte length. It handles only an expected storage 404 while waiting; other storage errors fail the test.
+
+From the repository root on Windows, with .NET SDKs for the repository's targets, an Aspire-compatible container runtime (Docker or Podman), and Azure Functions Core Tools v4 on `PATH`:
+
+```powershell
+dotnet test tests\UnitTestEx.Aspire.NUnit.Test\UnitTestEx.Aspire.NUnit.Test.csproj --framework net8.0 --filter FullyQualifiedName~AzuriteBlobTriggerTest
+```
+
+Keep ports `7071` and `10000`-`10002` free and run fixed-port emulator fixtures/frameworks sequentially. The AppHost starts and disposes its resources; the test does not require a separately running `func start`.
+
+For JSON report blobs, deserialize with options matching the producer's contract, for example `JsonSerializer.Deserialize<Report>(text, new JsonSerializerOptions(JsonSerializerDefaults.Web))` for a web-default producer. UnitTestEx's assertion serializer does not configure independent storage SDK or `System.Text.Json` calls. For Blob poison inspection, configure `QueueClientOptions.MessageEncoding = QueueMessageEncoding.Base64` when the host writes Base64 queue messages (or decode explicitly once). Do not deserialize encoded text or decode a message twice. The sample above verifies text output; it does not claim poison/retry coverage.
 
 [← Back to README](../README.md)

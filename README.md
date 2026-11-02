@@ -33,6 +33,8 @@ Multiple real services together | `AspireTester` | `UnitTestEx.Aspire` | .NET As
 
 The framework package (`UnitTestEx.NUnit`, `UnitTestEx.MSTest` or `UnitTestEx.Xunit`) wires output and assertions into your test framework.
 
+> **Functions proof boundary:** `FunctionTester` proves invocation behavior, not trigger indexing, binding conversion, broker delivery or final runtime HTTP behavior. Use Aspire/Core Tools with the backing service or emulator for those checks. Posting a BlobCreated webhook simulates notification delivery; it does not test Azure Event Grid. Start with the [Functions guide](./docs/azure-functions.md#proof-boundary-invocation-versus-runtime) and [runnable Blob example](./docs/azure-functions.md#runnable-blob-integration-example).
+
 <br/>
 
 ## Quick start

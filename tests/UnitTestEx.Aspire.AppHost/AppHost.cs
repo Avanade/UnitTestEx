@@ -48,6 +48,9 @@ var builder = DistributedApplication.CreateBuilder(args);
 builder.Configuration["ConnectionStrings:test-db"] = "Data Source=unit-test;";
 var testDb = builder.AddConnectionString("test-db");
 
+builder.AddExecutable("never-ready", "dotnet", builder.AppHostDirectory, "--version")
+    .WithExplicitStart();
+
 // dotnet dev-certs https --trust is not fully supported on Linux, so the ASP.NET Core dev cert used by the
 // "api" resource's https endpoint is not OS-trusted on Linux CI runners. Both the health check probe above and
 // AspireTesterBase's CreateHttpClient() resolve their HttpClient via this same DI container's IHttpClientFactory,

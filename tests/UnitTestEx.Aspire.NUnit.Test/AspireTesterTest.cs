@@ -1,4 +1,5 @@
 using Aspire.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Azure.Messaging.EventGrid;
 using Moq;
 using System;
@@ -120,12 +121,19 @@ namespace UnitTestEx.Aspire.NUnit.Test
         [Test]
         public async Task BeforeStart_Throws_AbortsStartUpAndPropagates()
         {
+            DistributedApplication? application = null;
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
-                .BeforeStart(_ => throw new InvalidOperationException("Simulated pre-start failure."));
+                .BeforeStart(app =>
+                {
+                    application = app;
+                    throw new InvalidOperationException("Simulated pre-start failure.");
+                });
 
             var ex = Assert.ThrowsAsync<InvalidOperationException>(() => tester.WaitForResourceAsync("api"));
             Assert.That(ex.Message, Is.EqualTo("Simulated pre-start failure."));
+            Assert.That(application, Is.Not.Null);
+            Assert.Throws<ObjectDisposedException>(() => application!.Services.GetRequiredService<IServiceScopeFactory>());
         }
 
         [Test]
@@ -176,15 +184,34 @@ namespace UnitTestEx.Aspire.NUnit.Test
             Assert.That(order, Is.EqualTo(new[] { "before", "first", "second" }));
         }
 
-        [Test]
-        public async Task AfterStart_Throws_AbortsStartUpAndPropagates()
+        [TestCase("failure")]
+        [TestCase("timeout")]
+        [TestCase("cancellation")]
+        public async Task AfterStart_Throws_AbortsStartUpAndPropagates(string kind)
         {
+            DistributedApplication? application = null;
+            var failure = new InvalidOperationException("Simulated post-start failure.");
             await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>()
                 .WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
-                .AfterStart(_ => throw new InvalidOperationException("Simulated post-start failure."));
+                .AfterStart(async app =>
+                {
+                    application = app;
+                    if (kind == "timeout")
+                        await app.WaitForResourceAsync("never-ready", TimeSpan.FromMilliseconds(20));
+                    if (kind == "cancellation")
+                        throw new OperationCanceledException(new System.Threading.CancellationToken(true));
+                    throw failure;
+                });
 
-            var ex = Assert.ThrowsAsync<InvalidOperationException>(() => tester.WaitForResourceAsync("api"));
-            Assert.That(ex.Message, Is.EqualTo("Simulated post-start failure."));
+            var ex = Assert.CatchAsync<Exception>(() => tester.WaitForResourceAsync("api"));
+            if (kind == "timeout")
+                Assert.That(ex, Is.TypeOf<TimeoutException>());
+            else if (kind == "cancellation")
+                Assert.That(ex, Is.InstanceOf<OperationCanceledException>());
+            else
+                Assert.That(ex, Is.SameAs(failure));
+            Assert.That(application, Is.Not.Null);
+            Assert.Throws<ObjectDisposedException>(() => application!.Services.GetRequiredService<IServiceScopeFactory>());
         }
 
         [Test]
@@ -250,6 +277,48 @@ namespace UnitTestEx.Aspire.NUnit.Test
         }
 
         private readonly System.Collections.Generic.List<string> LifecycleCallbacks = [];
+
+        [Test]
+        public void PollingFailure_ReportsRunningResourceStatesAndRetainsLogs()
+        {
+            var originalImplementor = Test.Implementor;
+            var spy = new SpyTestFrameworkImplementor(originalImplementor);
+            Test.ReplaceTestFrameworkImplementor(spy);
+            try
+            {
+                Test.Http("api").Run(HttpMethod.Get, "Person/1").AssertOK();
+                Assert.ThrowsAsync<TimeoutException>(() => Test.EventuallyAsync(
+                    _ => Task.FromResult("report missing"),
+                    _ => false,
+                    timeout: TimeSpan.FromMilliseconds(20)));
+
+                Assert.That(spy.Lines.Any(line => line?.StartsWith("api: Running;", StringComparison.Ordinal) == true), Is.True);
+                Assert.That(spy.Lines.Any(line => line?.Contains("Get using identifier 1.", StringComparison.Ordinal) == true), Is.True);
+                Test.AssertLogContains("Get using identifier 1.", "api");
+            }
+            finally
+            {
+                Test.ReplaceTestFrameworkImplementor(originalImplementor);
+            }
+        }
+
+        [Test]
+        public void ResourceReadinessTimeout_ReportsResourceNameAndStates()
+        {
+            var originalImplementor = Test.Implementor;
+            var spy = new SpyTestFrameworkImplementor(originalImplementor);
+            Test.ReplaceTestFrameworkImplementor(spy);
+            try
+            {
+                Assert.ThrowsAsync<TimeoutException>(() => Test.WaitForResourceAsync("never-ready", TimeSpan.FromMilliseconds(20)));
+                Assert.That(spy.Lines.Any(line => line?.Contains("Waiting for resource 'never-ready' failed:", StringComparison.Ordinal) == true), Is.True);
+                Assert.That(spy.Lines, Does.Contain("RESOURCE STATES >"));
+            }
+            finally
+            {
+                Test.ReplaceTestFrameworkImplementor(originalImplementor);
+            }
+        }
 
         protected override Task OnBeforeStartAsync(DistributedApplication app)
         {
