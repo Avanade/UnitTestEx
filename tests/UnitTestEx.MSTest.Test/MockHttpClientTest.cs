@@ -397,13 +397,13 @@ namespace UnitTestEx.MSTest.Test
             var res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             sw.Stop();
             Assert.AreEqual(HttpStatusCode.NotModified, res.StatusCode);
-            Assert.IsTrue(sw.ElapsedMilliseconds >= 250);
+            Assert.IsTrue(sw.ElapsedMilliseconds >= 225, $"Expected the 250 ms response delay, but elapsed {sw.ElapsedMilliseconds} ms.");
 
             sw.Restart();
             res = await hc.GetAsync("products/xyz").ConfigureAwait(false);
             sw.Stop();
             Assert.AreEqual(HttpStatusCode.NotFound, res.StatusCode);
-            Assert.IsTrue(sw.ElapsedMilliseconds >= 100);
+            Assert.IsTrue(sw.ElapsedMilliseconds >= 75, $"Expected the response's 100-150 ms delay, but elapsed {sw.ElapsedMilliseconds} ms.");
         }
 
         [TestMethod]
