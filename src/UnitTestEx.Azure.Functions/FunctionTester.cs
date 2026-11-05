@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Azure.Functions;
 
 namespace UnitTestEx
@@ -18,9 +19,10 @@ namespace UnitTestEx
         /// <param name="includeUnitTestConfiguration">Indicates whether to include '<c>appsettings.unittest.json</c>' configuration file.</param>
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
+        /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
         /// <returns>The <see cref="FunctionTester{TEntryPoint}"/>.</returns>
-        public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration = null)
+        public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration = null, Func<TestFrameworkImplementor>? createFactory = null)
             where TEntryPoint : class
-            => new(includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration);
+            => new(includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration, createFactory);
     }
 }
