@@ -211,6 +211,17 @@ response.EnsureSuccessStatusCode();
 
 Webhook payloads preserve each event's `Topic`; when it is absent or empty, the helper supplies `UnitTestEx` as the placeholder required by the runtime webhook.
 
+To use an already-running Functions host without creating an Aspire fixture, construct `UnitTestEx.Aspire.FunctionsWebhookClient` with an existing `HttpClient`. This still requires the `UnitTestEx.Aspire` package:
+
+```csharp
+using var httpClient = new HttpClient { BaseAddress = new Uri("http://localhost:7071/") };
+var webhookClient = new UnitTestEx.Aspire.FunctionsWebhookClient(httpClient);
+using var response = await webhookClient.PostBlobCreatedAsync("Host.Functions.CustomerImport", created);
+response.EnsureSuccessStatusCode();
+```
+
+Set `BaseAddress` to the Functions host endpoint (including a trailing `/` for any path prefix) and configure any required authentication on the supplied client. The caller retains ownership: `FunctionsWebhookClient` never disposes or reconfigures that client, including after failed or canceled requests. It can be reused for multiple webhook calls; dispose it only after those calls finish. Each returned response must also be disposed by the caller. The Aspire `tester.FunctionsWebhook(...)` path continues to create and dispose its own HTTP client per request.
+
 `WaitForResourceAsync("functions")` only waits for Aspire's resource health check; an HTTP health endpoint can respond before the Functions isolated worker has finished indexing. Use `WaitForFunctionsAsync` when a test needs function registration to be ready:
 
 ```csharp

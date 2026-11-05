@@ -2,6 +2,10 @@
 
 Represents the **NuGet** versions.
 
+## v6.1.0
+- *Enhancement:* Added `FunctionsWebhookClient(HttpClient)` for posting Functions webhook events without an Aspire fixture; the caller retains ownership of the supplied client and returned responses.
+- *Enhancement:* Added framework-neutral `WithFunctionTester<TEntryPoint>` for fixture-level testing and disposal, with an optional `TestFrameworkImplementor` factory also supported by `FunctionTester.Create` and the concrete tester constructor.
+
 ## v6.0.0
 - *Breaking:* Target frameworks are now `net8.0`, `net9.0` and `net10.0` only; `net6.0` and `net7.0` (both out of support) have been removed.
 - *Breaking:* `UnitTestEx.Azure.Functions` supports the Azure Functions **v4 isolated worker** model only; in-process (WebJobs) support has been removed, including the `FunctionsStartup` entry point and `CreateWebJobsServiceBus*MessageActions`. See [Migrating from v5 to v6](./docs/migration-v6.md).

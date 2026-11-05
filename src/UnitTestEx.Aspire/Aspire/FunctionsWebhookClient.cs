@@ -18,11 +18,29 @@ namespace UnitTestEx.Aspire
     public sealed class FunctionsWebhookClient
     {
         private readonly Func<Task<HttpClient>> _httpClientFactory;
+        private readonly bool _disposeHttpClient = true;
+
+        /// <summary>
+        /// Creates a webhook client using an existing HTTP client without starting an Aspire application.
+        /// </summary>
+        /// <param name="httpClient">The HTTP client with <see cref="HttpClient.BaseAddress"/> set to the Functions host endpoint.</param>
+        /// <remarks>
+        /// The caller retains ownership of <paramref name="httpClient"/> and is responsible for disposing it.
+        /// This webhook client never disposes or reconfigures it. The caller must also dispose each returned response.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="httpClient"/> is <see langword="null"/>.</exception>
+        public FunctionsWebhookClient(HttpClient httpClient)
+        {
+            ArgumentNullException.ThrowIfNull(httpClient);
+            _httpClientFactory = () => Task.FromResult(httpClient);
+            _disposeHttpClient = false;
+        }
 
         /// <summary>
         /// Creates a webhook client that obtains its HTTP client from the specified factory.
         /// </summary>
         /// <param name="httpClientFactory">The factory that creates an HTTP client for the Functions resource.</param>
+        /// <remarks>Each factory-created HTTP client is disposed after its request completes.</remarks>
         internal FunctionsWebhookClient(Func<Task<HttpClient>> httpClientFactory) => _httpClientFactory = httpClientFactory;
 
         /// <summary>
@@ -77,7 +95,8 @@ namespace UnitTestEx.Aspire
             var payload = JsonSerializer.Serialize(eventArray.Select(ToEventGridSchemaEvent));
             var requestUri = $"{route}?functionName={Uri.EscapeDataString(functionName)}";
 
-            using var client = await _httpClientFactory().ConfigureAwait(false);
+            var client = await _httpClientFactory().ConfigureAwait(false);
+            using var ownedClient = _disposeHttpClient ? client : null;
             using var request = new HttpRequestMessage(HttpMethod.Post, requestUri)
             {
                 Content = new StringContent(payload, Encoding.UTF8, "application/json")

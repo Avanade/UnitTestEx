@@ -58,6 +58,52 @@ Scopes created by `HttpTrigger`, `ServiceBusTrigger`, and `Trigger` belong to th
 
 <br/>
 
+## Fixture-level testing
+
+`WithFunctionTester<TEntryPoint>` (in the `UnitTestEx` namespace, package `UnitTestEx.Azure.Functions`) exposes a `Test` property and implements `IDisposable` to release the tester, its trigger scopes and its host. The host is built lazily, so configure `Test` before accessing its services or invoking a function. There are no application-start lifecycle hooks because the worker is never started.
+
+For an NUnit fixture that shares one tester across its test methods:
+
+```csharp
+[TestFixture]
+public sealed class ProductFunctionTests : WithFunctionTester<ProductFunction>
+{
+    [Test]
+    public void GetProduct()
+    {
+        Test.HttpTrigger<ProductFunction>()
+            .Run(f => f.Run(Test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc"))
+            .AssertOK();
+    }
+}
+```
+
+The protected constructor accepts an optional `Func<TestFrameworkImplementor> createFactory`, like `WithAspireTester`. Passing `null` uses the normal framework resolution. An xUnit test class can pass its output helper explicitly:
+
+```csharp
+public sealed class ProductFunctionTests : WithFunctionTester<ProductFunction>
+{
+    public ProductFunctionTests(ITestOutputHelper output)
+        : base(() => XunitTestImplementor.Create(output)) { }
+
+    [Fact]
+    public void GetProduct()
+    {
+        Test.HttpTrigger<ProductFunction>()
+            .Run(f => f.Run(Test.CreateHttpRequest(HttpMethod.Get, "product/abc"), "abc"))
+            .AssertOK();
+    }
+}
+```
+
+`XunitTestImplementor` is in `UnitTestEx.Xunit.Internal`; `ITestOutputHelper` is in `Xunit.Abstractions`. The explicit factory is also available through `FunctionTester.Create<TEntryPoint>(createFactory: ...)` and the concrete tester constructor; existing configuration arguments retain their order.
+
+Sharing follows the framework's fixture lifetime. xUnit creates a test-class instance per test, so inheriting this base does **not** share the host across methods. Use an xUnit class or collection fixture for that lifetime; rebind its shared tester to the current test's output with `fixture.Test.ReplaceTestFrameworkImplementor(XunitTestImplementor.Create(output))` in the test-class constructor, rather than retaining one test's output helper. Ensure the owning fixture is disposed. Shared hosts and tester state can contaminate later tests; isolate mutable state, use `Test.ResetHost()` when needed, and do not use the shared tester concurrently.
+
+Examples and lifecycle regressions: [`WithFunctionTesterTest` (NUnit)](../tests/UnitTestEx.NUnit.Test/WithFunctionTesterTest.cs), [`WithFunctionTesterTest` (xUnit)](../tests/UnitTestEx.Xunit.Test/WithFunctionTesterTest.cs).
+
+<br/>
+
 ## HTTP triggers
 
 Both HTTP programming models are supported:
