@@ -47,6 +47,7 @@
     <ProjectReference Include="..\..\src\UnitTestEx.NUnit\UnitTestEx.NUnit.csproj" />
     <ProjectReference Include="..\..\src\UnitTestEx\UnitTestEx.csproj" />
     <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" />
+    <ProjectReference Include="..\UnitTestEx.DurableFunction\UnitTestEx.DurableFunction.csproj" />
     <ProjectReference Include="..\UnitTestEx.IsolatedFunction\UnitTestEx.IsolatedFunction.csproj" />
   </ItemGroup>
 

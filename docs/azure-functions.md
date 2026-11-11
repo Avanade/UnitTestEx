@@ -58,6 +58,37 @@ Scopes created by `HttpTrigger`, `ServiceBusTrigger`, and `Trigger` belong to th
 
 <br/>
 
+## Durable activity invocation
+
+`Trigger<TFunction>()` can invoke real `[ActivityTrigger]` methods using the existing Functions package. The [Durable sample](../tests/UnitTestEx.DurableFunction/Program.cs) uses normal application startup; [its activity tests](../tests/UnitTestEx.NUnit.Test/DurableActivityTest.cs) cover synchronous value/void, `Task`/`Task<T>`, DTO/collection inputs, DI, logging, and exceptions.
+
+```csharp
+using var test = FunctionTester.Create<WorkflowActivities>();
+test.Trigger<WorkflowActivities>()
+    .Run(_ => ActivityTransforms.NormalizeReference(" order-1 "))
+    .AssertSuccess()
+    .AssertValue("ORDER-1");
+
+var trigger = test.Trigger<WorkflowActivities>();
+var context = new TestFunctionContext(trigger.Services);
+trigger.ExpectLogContains("Processing item A.")
+    .Run(f => f.ProcessItem(new WorkItem("A", 3m), context))
+    .AssertSuccess()
+    .AssertValue(new ItemResult("A", 6m));
+```
+
+`ActivityTransforms` is a static class, so it cannot be a generic type argument. Use an ordinary application type as the marker and a static method call in the expression, as above; validation inspects the invoked method's trigger attribute. The sample types are in `UnitTestEx.DurableFunction`; `TestFunctionContext` is in `UnitTestEx.Azure.Functions`, and `ExpectLogContains` uses `UnitTestEx.Expectations`.
+
+These tests build but do not start the app host or connect to a durable backend. An activity failure is asserted as its original exception; only an actual orchestration execution supplies durable failure translation. This is **activity-method testing**, not an orchestration/replay harness or proof of trigger binding/serialization. The sample's orchestration bodies are fixtures for the [proposed Durable design](./azure-durable-functions-design.md); their execution is not yet verified.
+
+Run the baseline for each supported framework, for example:
+
+```powershell
+dotnet test tests\UnitTestEx.NUnit.Test\UnitTestEx.NUnit.Test.csproj --framework net8.0 --filter FullyQualifiedName~DurableActivityTest
+```
+
+<br/>
+
 ## Fixture-level testing
 
 `WithFunctionTester<TEntryPoint>` (in the `UnitTestEx` namespace, package `UnitTestEx.Azure.Functions`) exposes a `Test` property and implements `IDisposable` to release the tester, its trigger scopes and its host. The host is built lazily, so configure `Test` before accessing its services or invoking a function. There are no application-start lifecycle hooks because the worker is never started.
