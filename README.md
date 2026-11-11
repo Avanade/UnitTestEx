@@ -8,7 +8,7 @@
 
 _UnitTestEx_ provides [.NET testing](https://learn.microsoft.com/en-us/dotnet/core/testing/) extensions for [MSTest](https://github.com/Microsoft/testfx-docs), [NUnit](https://nunit.org/) and [xUnit](https://xunit.net/). It hosts your **real** application (API, Azure Function, or any DI-composed code) inside the test, lets you replace or mock its dependencies, and gives you fluent _Arrange, Act, Assert_ testing with captured logging and detailed JSON-diff assertions.
 
-> **v6** targets .NET 8, 9 and 10, and the Azure Functions **v4 isolated worker** model only. Upgrading? See [Migrating from v5 to v6](./docs/migration-v6.md).
+> **v6** targets .NET 8, 9, 10 and (from v6.2) 11, and the Azure Functions **v4 isolated worker** model only. Upgrading? See [Migrating from v5 to v6](./docs/migration-v6.md).
 
 <br/>
 

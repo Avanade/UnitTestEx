@@ -1,7 +1,7 @@
 # Azure Durable Functions testing design
 
 **Status:** Phase 0 activity baseline implemented; Phase 1 engine spike not started.
-**Scope:** Azure Functions v4 isolated worker on .NET 8, 9, and 10; no in-process/WebJobs support.
+**Scope:** Azure Functions v4 isolated worker on .NET 8, 9, 10, and 11; no in-process/WebJobs support.
 
 ## Outcome and proof boundary
 

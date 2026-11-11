@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0;net10.0;net11.0</TargetFrameworks>
     <RootNamespace>UnitTestEx</RootNamespace>
     <Product>UnitTestEx</Product>
     <Title>UnitTestEx Aspire Multi-Host Test Extensions.</Title>
@@ -11,8 +11,9 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.EventGrid" Version="5.0.0" />
-    <PackageReference Include="Aspire.Hosting.Testing" Version="13.5.4" />
-    <PackageReference Include="MessagePack" Version="2.5.303" />
+    <PackageReference Include="Aspire.Hosting.Testing" Version="13.6.5" />
+    <PackageReference Include="MessagePack" Version="2.5.307" />
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.3.14" />
     <PackageReference Include="WireMock.Net.RestClient" Version="2.18.0" />
     <!-- WireMock.Net.Shared transitively pulls Humanizer 2.14.1 (which pins Humanizer.Core and every locale sub-package to exactly 2.14.1), conflicting with Aspire.Hosting's own
          Humanizer.Core 3.0.10 - pinning the top-level Humanizer package directly (rather than Humanizer.Core) resolves the NU1608 warning, since it replaces the whole 2.14.1

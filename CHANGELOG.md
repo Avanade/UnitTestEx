@@ -2,6 +2,14 @@
 
 Represents the **NuGet** versions.
 
+## v6.2.0 (Unreleased)
+- *Enhancement:* Added a representative Durable Functions sample and direct activity tests using the existing `FunctionTester`; orchestration execution and replay testing are not yet supported.
+- *Enhancement:* Added `net11.0` targets alongside .NET 8, 9 and 10, with matching ASP.NET Core dependencies and CI coverage.
+- *Build:* Removed the `global.json` SDK pin and preview language setting; building the full repository requires the .NET 11 SDK. Migrated Functions samples to `Azure.Functions.Sdk/1.0.2`.
+- *Build:* Moved fixed Aspire AppHosts and integration-test resources to .NET 10. Aspire test suites now target .NET 10 and 11; library targets remain unchanged apart from adding .NET 11.
+- *Security:* Updated Aspire hosting/testing dependencies and sample AppHost SDKs to 13.6.5 for CVE-2026-120006; aligned MessagePack with Aspire's required minimum of 2.5.307.
+- *Security:* Pinned the transitive `Microsoft.AspNetCore.WebUtilities` dependency in `UnitTestEx.Aspire` to 2.3.14 for CVE-2026-118750. The Durable sample's separately restored host-side extension payload still reports the advisory.
+
 ## v6.1.0
 - *Enhancement:* Added `FunctionsWebhookClient(HttpClient)` for posting Functions webhook events without an Aspire fixture; the caller retains ownership of the supplied client and returned responses.
 - *Enhancement:* Added framework-neutral `WithFunctionTester<TEntryPoint>` for fixture-level testing and disposal, with an optional `TestFrameworkImplementor` factory also supported by `FunctionTester.Create` and the concrete tester constructor.

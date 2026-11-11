@@ -20,6 +20,7 @@ jobs:
           8.0.x
           9.0.x
           10.0.x
+          11.0.x
 
     - name: Setup Azure Functions Core Tools
       run: npm install --global azure-functions-core-tools@4 --unsafe-perm true
@@ -30,38 +31,38 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
 
-    - name: MSTest (net8.0, net9.0, net10.0)
+    - name: MSTest (net8.0, net9.0, net10.0, net11.0)
       run: |
-        for framework in net8.0 net9.0 net10.0; do
+        for framework in net8.0 net9.0 net10.0 net11.0; do
           dotnet test tests/UnitTestEx.MSTest.Test/UnitTestEx.MSTest.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
         done
 
-    - name: NUnit (net8.0, net9.0, net10.0)
+    - name: NUnit (net8.0, net9.0, net10.0, net11.0)
       run: |
-        for framework in net8.0 net9.0 net10.0; do
+        for framework in net8.0 net9.0 net10.0 net11.0; do
           dotnet test tests/UnitTestEx.NUnit.Test/UnitTestEx.NUnit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
         done
 
-    - name: xUnit (net8.0, net9.0, net10.0)
+    - name: xUnit (net8.0, net9.0, net10.0, net11.0)
       run: |
-        for framework in net8.0 net9.0 net10.0; do
+        for framework in net8.0 net9.0 net10.0 net11.0; do
           dotnet test tests/UnitTestEx.Xunit.Test/UnitTestEx.Xunit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
         done
 
-    - name: Aspire MSTest (net8.0, net9.0, net10.0)
+    - name: Aspire MSTest (net10.0, net11.0)
       run: |
-        for framework in net8.0 net9.0 net10.0; do
+        for framework in net10.0 net11.0; do
           dotnet test tests/UnitTestEx.Aspire.MSTest.Test/UnitTestEx.Aspire.MSTest.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
         done
 
-    - name: Aspire NUnit (net8.0, net9.0, net10.0)
+    - name: Aspire NUnit (net10.0, net11.0)
       run: |
-        for framework in net8.0 net9.0 net10.0; do
+        for framework in net10.0 net11.0; do
           dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
         done
 
-    - name: Aspire xUnit (net8.0, net9.0, net10.0)
+    - name: Aspire xUnit (net10.0, net11.0)
       run: |
-        for framework in net8.0 net9.0 net10.0; do
+        for framework in net10.0 net11.0; do
           dotnet test tests/UnitTestEx.Aspire.Xunit.Test/UnitTestEx.Aspire.Xunit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
         done

@@ -1,6 +1,8 @@
 # Azure Functions testing
 
-`FunctionTester` (package `UnitTestEx.Azure.Functions`) tests Azure Functions written for the **v4 isolated worker model** on .NET 8, 9 and 10. The in-process (WebJobs) model is not supported from v6 onwards; see [Migrating to v6](./migration-v6.md).
+`FunctionTester` (package `UnitTestEx.Azure.Functions`) tests Azure Functions written for the **v4 isolated worker model** on .NET 8, 9, 10 and (from v6.2) 11. The in-process (WebJobs) model is not supported from v6 onwards; see [Migrating to v6](./migration-v6.md).
+
+.NET 11 function apps require `Azure.Functions.Sdk` 1.0.1 or later as the project SDK, replacing `Microsoft.NET.Sdk` and the `Microsoft.Azure.Functions.Worker.Sdk` package reference. Keep an explicit `Microsoft.Azure.Functions.Worker` reference. The multi-targeted samples use `Azure.Functions.Sdk/1.0.2`; existing apps on older frameworks do not need to migrate just to use UnitTestEx. See [Microsoft's migration guidance](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide#migrate-to-azurefunctionssdk).
 
 [← Back to README](../README.md)
 
@@ -441,7 +443,7 @@ The complete [`AzuriteBlobTriggerTest`](../tests/UnitTestEx.Aspire.NUnit.Test/Fu
 From the repository root on Windows, with .NET SDKs for the repository's targets, an Aspire-compatible container runtime (Docker or Podman), and Azure Functions Core Tools v4 on `PATH`:
 
 ```powershell
-dotnet test tests\UnitTestEx.Aspire.NUnit.Test\UnitTestEx.Aspire.NUnit.Test.csproj --framework net8.0 --filter FullyQualifiedName~AzuriteBlobTriggerTest
+dotnet test tests\UnitTestEx.Aspire.NUnit.Test\UnitTestEx.Aspire.NUnit.Test.csproj --framework net10.0 --filter FullyQualifiedName~AzuriteBlobTriggerTest
 ```
 
 Keep ports `7071` and `10000`-`10002` free and run fixed-port emulator fixtures/frameworks sequentially. The AppHost starts and disposes its resources; the test does not require a separately running `func start`.

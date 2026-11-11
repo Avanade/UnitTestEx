@@ -24,6 +24,18 @@ This project, and people participating in it, are governed by our [code of condu
 
 <br/>
 
+## Build prerequisites
+
+Install the stable .NET 11 SDK to build all targets. There is no `global.json` SDK pin; the CLI selects the highest installed SDK. Check `dotnet --version` if multiple SDKs are installed.
+
+The libraries and ordinary API/Functions test suites target .NET 8, 9, 10 and 11. Install the corresponding .NET and ASP.NET Core runtimes to run all test targets (CI installs each SDK). Aspire AppHosts and fixed integration-test resources target .NET 10; the Aspire test suites target .NET 10 and 11 because they reference the AppHost assemblies directly.
+
+Use `dotnet restore UnitTestEx.sln`, then `dotnet build UnitTestEx.sln --no-restore`. `Directory.Solution.targets` runs the new Functions SDK's extension-generation restore hook for solution restores. If restoring a test project directly instead, also restore its referenced Functions app projects directly before building; see [AZFW0108](https://learn.microsoft.com/en-us/azure/azure-functions/errors-diagnostics/msbuild-sdk-rules/azfw0108).
+
+Functions runtime integration tests also require Azure Functions Core Tools v4; container-backed tests require Docker and the relevant emulators.
+
+<br/>
+
 ## Coding guidelines
 
 The most general guideline is that we use all the VS default settings in terms of code formatting; if in doubt, follow the coding convention of the existing code base.
