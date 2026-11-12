@@ -12,6 +12,21 @@ namespace UnitTestEx.Azure.Functions.Durable.TestHost;
 public static class DurableTaskTestHostExtensions
 {
     /// <summary>
+    /// Creates a fluent in-memory Durable Task test builder.
+    /// </summary>
+    /// <typeparam name="TEntryPoint">A type from the isolated-worker application assembly.</typeparam>
+    /// <typeparam name="TSelf">The concrete FunctionTester type.</typeparam>
+    /// <param name="functionTester">The FunctionTester supplying captured logging.</param>
+    /// <returns>A builder for registering an orchestration and its handlers.</returns>
+    public static DurableTaskTestBuilder<TEntryPoint, TSelf> DurableTask<TEntryPoint, TSelf>(this FunctionTesterBase<TEntryPoint, TSelf> functionTester)
+        where TEntryPoint : class
+        where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
+    {
+        ArgumentNullException.ThrowIfNull(functionTester);
+        return new DurableTaskTestBuilder<TEntryPoint, TSelf>(functionTester);
+    }
+
+    /// <summary>
     /// Starts an in-memory Durable Task host using the FunctionTester's captured logger factory.
     /// </summary>
     /// <typeparam name="TEntryPoint">A type from the isolated-worker application assembly.</typeparam>

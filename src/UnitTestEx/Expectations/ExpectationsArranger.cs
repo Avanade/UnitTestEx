@@ -31,6 +31,11 @@ namespace UnitTestEx.Expectations
         public TTester Tester { get; } = tester ?? throw new ArgumentNullException(nameof(tester));
 
         /// <summary>
+        /// Indicates whether any expectations have been arranged.
+        /// </summary>
+        public bool HasExpectations => _expectations.Count > 0;
+
+        /// <summary>
         /// Gets the collection of JSON paths to ignore where comparing a result value (where applicable).
         /// </summary>
         /// <remarks>See <see cref="JsonElementComparer"/>.</remarks>

@@ -6,7 +6,7 @@
     <RootNamespace>UnitTestEx</RootNamespace>
     <Product>UnitTestEx</Product>
     <Title>UnitTestEx Azure Functions Durable Test Host Extensions.</Title>
-    <Description>Experimental FunctionTester integration and diagnostics for the in-memory Durable Task test host.</Description>
+    <Description>Experimental fluent FunctionTester integration and diagnostics for the in-memory Durable Task test host.</Description>
     <PackageTags>unittestex azure functions durable test host</PackageTags>
   </PropertyGroup>
 

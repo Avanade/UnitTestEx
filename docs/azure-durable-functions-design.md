@@ -1,6 +1,6 @@
 # Azure Durable Functions testing design
 
-**Status:** Day 1-5 feasibility decision recorded; non-packable source-project prototypes now exist for the narrow context helper and optional host diagnostics. Runtime probes remain isolated under `tests` and have only been executed on net10.
+**Status:** Day 1-5 feasibility decision recorded; non-packable source-project prototypes now include the narrow context helper, fluent SDK-host facade, and optional host diagnostics. Runtime probes remain isolated under `tests` and have only been executed on net10.
 **Scope:** Azure Functions v4 isolated worker on .NET 8, 9, 10, and 11; no in-process/WebJobs support.
 
 ## Outcome and proof boundary
@@ -281,7 +281,7 @@ This proves only the production method's coordination against the provided conte
 
 ## Initial API proposal for review
 
-**Evidence-backed initial test scope (net10 only; not a released contract):** keep the two prototype paths distinct. The SDK host can execute selected real static and instance Azure Functions orchestration method bodies, plus typed SDK `TaskOrchestrator<TIn,TOut>` implementations, with test-registered activity/child delegates, serialization boundaries, failure details, replay, events, custom status, and bounded host disposal. The method-level context can exercise real orchestration-method timer/event coordination with virtual time, but has no durable engine, history, or replay. The dedicated suite now passes 35/35 on net10, including FIFO delivery of multiple same-name events raised before waits, `SetCustomStatus(null)` clearing running and terminal metadata, nested activity failure details from a typed SDK orchestrator, and host disposal returning while a blocked activity delegate remains incomplete.
+**Evidence-backed initial test scope (net10 only; not a released contract):** keep the two prototype paths distinct. The SDK host can execute selected real static and instance Azure Functions orchestration method bodies, plus typed SDK `TaskOrchestrator<TIn,TOut>` implementations, with test-registered activity/child delegates, serialization boundaries, failure details, replay, events, custom status, and bounded host disposal. The fluent facade runs on this same SDK host, exposes completed/failed metadata through UnitTestEx-style assertions, and warns when registered function-based orchestration methods schedule real-time timers. The method-level context can exercise real orchestration-method timer/event coordination with virtual time, but has no durable engine, history, or replay. The dedicated suite now passes 38/38 on net10, including fluent output/failure assertions and the wall-clock timer warning.
 
 Do not extend those observations into a Functions-worker or binding claim, custom serializer parity, host virtual-clock support, exact same-deadline event/timer arbitration, or general activity/child cancellation. The host-disposal probe releases its blocked delegate after disposal; it demonstrates that disposal does not wait for or cancel that delegate, not worker shutdown semantics. The virtual-time helper's same-name waiter behavior is helper-specific and is not an SDK-host event-delivery contract.
 
@@ -289,7 +289,7 @@ Keep the two opt-in paths separate and thin. These are candidate public shapes, 
 
 | Path | Candidate API shape | Initial promise |
 |---|---|---|
-| SDK host (`UnitTestEx.Azure.Functions.Durable.TestHost`) | Make a UnitTestEx fluent builder on `FunctionTester` the primary entry point. The builder registers orchestrators and activity/child handlers, accepts input, starts the run, waits with a caller-supplied bound, and returns a result wrapper. It composes on the upstream `DurableTaskRegistry`, host client, and metadata APIs. | Real SDK engine execution, serialization boundaries, failure details, replay, and selected event/status/lifecycle behavior. Function-based methods and typed SDK `TaskOrchestrator<TIn,TOut>` are separate registration forms. |
+| SDK host (`UnitTestEx.Azure.Functions.Durable.TestHost`) | Make a UnitTestEx fluent builder on `FunctionTester` the primary entry point. The builder registers orchestrators and activity/child handlers, accepts input, starts the run, waits with a caller-supplied bound, and returns a result wrapper. It composes on the upstream `DurableTaskRegistry`, host client, and metadata APIs. Function-based registrations add a replay-safe wall-clock timer warning. | Real SDK engine execution, serialization boundaries, failure details, replay, and selected event/status/lifecycle behavior. Function-based methods and typed SDK `TaskOrchestrator<TIn,TOut>` are separate registration forms. The class-based SDK registration path remains available through the low-level `StartDurableTaskTestHostAsync` extension. |
 | Virtual-time context (`UnitTestEx.Azure.Functions.Durable`) | Construct `VirtualTimeOrchestrationContext` with orchestration name/input; call the real method directly; control waits with `AdvanceBy` and `RaiseEvent`; await the method's returned task. | Method-level timer/event coordination against the helper's virtual clock, without durable engine history or replay. Activity and child calls remain explicitly unsupported. |
 
 Illustrative fluent shape (names and exact types remain open):
@@ -302,12 +302,10 @@ var run = await functions.DurableTask()
     .Activity<WorkItem, ItemResult>(
         nameof(WorkflowActivities.ProcessItem),
         (_, item) => InvokeRealActivityThroughFunctionTesterAsync(item))
-    .WithInput(request)
-    .StartAsync();
+    .StartAsync(request);
 
 var result = await run.WaitForCompletionAsync(TimeSpan.FromSeconds(5));
-result.AssertCompleted();
-Assert.That(result.ReadOutputAs<BatchResult>(), Is.EqualTo(expected));
+result.AssertCompleted().AssertOutput(expected);
 ```
 
 The fluent API is the primary developer experience, but it must be a facade over the SDK host—not a second orchestration engine. Keep registration explicit and let activity handlers either invoke real methods through caller-owned FunctionTester scopes or provide deliberate test delegates. Do not start with general strict matching, call-record snapshots, or simulated failure/replay semantics. Expose an advanced escape hatch to the upstream host/client for SDK features the fluent surface does not model; whether that is a builder property or a separate low-level entry point remains an API naming/design detail. Do not implicitly copy the FunctionTester service provider into the host.
