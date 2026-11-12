@@ -11,6 +11,22 @@ namespace UnitTestEx.Azure.Functions.Durable.TestHost;
 public static class DurableTaskRegistryExtensions
 {
     /// <summary>
+    /// Registers a no-input orchestration delegate that emits a replay-safe warning when it schedules a future, wall-clock timer.
+    /// </summary>
+    /// <typeparam name="TOutput">The orchestration output type.</typeparam>
+    /// <param name="registry">The Durable Task registry.</param>
+    /// <param name="name">The orchestration name.</param>
+    /// <param name="orchestrator">The orchestration delegate.</param>
+    public static void AddOrchestratorFuncWithTimerDiagnostics<TOutput>(this DurableTaskRegistry registry, string name, Func<TaskOrchestrationContext, Task<TOutput>> orchestrator)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(orchestrator);
+
+        registry.AddOrchestratorFunc<TOutput>(name, context => orchestrator(new WallClockTimerDiagnosticContext(context)));
+    }
+
+    /// <summary>
     /// Registers an orchestration delegate that emits a replay-safe warning when it schedules a future, wall-clock timer in the in-memory test host.
     /// </summary>
     /// <typeparam name="TInput">The orchestration input type.</typeparam>

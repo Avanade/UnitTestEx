@@ -57,6 +57,22 @@ public sealed class DurableTaskTestBuilder<TEntryPoint, TSelf>
             Append(_configureRegistry, registry => registry.AddOrchestratorFuncWithTimerDiagnostics(name, orchestrator)), _configureServices);
     }
 
+    /// <summary>
+    /// Registers a no-input orchestration delegate for this test.
+    /// </summary>
+    /// <typeparam name="TOutput">The orchestration output type.</typeparam>
+    /// <param name="name">The orchestration name.</param>
+    /// <param name="orchestrator">The orchestration delegate, typically calling the real function method.</param>
+    /// <returns>A builder for registering handlers and starting the orchestration without input.</returns>
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> Orchestrator<TOutput>(string name, Func<TaskOrchestrationContext, Task<TOutput>> orchestrator)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(orchestrator);
+
+        return new DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput>(_functionTester, name,
+            Append(_configureRegistry, registry => registry.AddOrchestratorFuncWithTimerDiagnostics(name, orchestrator)), _configureServices);
+    }
+
     /// <summary>Returns a registry callback that applies an additional registration after existing registrations.</summary>
     private static Action<DurableTaskRegistry> Append(Action<DurableTaskRegistry> existing, Action<DurableTaskRegistry> next)
         => registry =>
@@ -156,6 +172,21 @@ public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInp
     }
 
     /// <summary>
+    /// Registers a no-input child orchestration delegate.
+    /// </summary>
+    /// <typeparam name="TChildOutput">The child orchestration output type.</typeparam>
+    /// <param name="name">The child orchestration name.</param>
+    /// <param name="orchestrator">The child orchestration delegate.</param>
+    /// <returns>A new builder with the child orchestration registered.</returns>
+    public DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> SubOrchestrator<TChildOutput>(string name, Func<TaskOrchestrationContext, Task<TChildOutput>> orchestrator)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(orchestrator);
+
+        return Append(registry => registry.AddOrchestratorFuncWithTimerDiagnostics(name, orchestrator));
+    }
+
+    /// <summary>
     /// Adds services to the in-memory Durable Task host's service collection.
     /// </summary>
     /// <param name="configureServices">The host service configuration callback.</param>
@@ -188,6 +219,162 @@ public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInp
 
     /// <summary>Returns a new builder with the specified registry registration appended.</summary>
     private DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> Append(Action<DurableTaskRegistry> registration)
+        => new(_functionTester, _orchestrationName,
+            registry =>
+            {
+                _configureRegistry(registry);
+                registration(registry);
+            },
+            _configureServices);
+
+    /// <summary>Returns a service callback that applies an additional configuration after existing configurations.</summary>
+    private static Action<IServiceCollection> Combine(Action<IServiceCollection>? existing, Action<IServiceCollection> next)
+        => services =>
+        {
+            existing?.Invoke(services);
+            next(services);
+        };
+}
+
+/// <summary>
+/// Configures handlers for a no-input orchestration and starts its in-memory SDK-host test.
+/// </summary>
+/// <typeparam name="TEntryPoint">A type from the isolated-worker application assembly.</typeparam>
+/// <typeparam name="TSelf">The concrete FunctionTester type.</typeparam>
+/// <typeparam name="TOutput">The orchestration output type.</typeparam>
+public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput>
+    where TEntryPoint : class
+    where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
+{
+    private readonly FunctionTesterBase<TEntryPoint, TSelf> _functionTester;
+    private readonly string _orchestrationName;
+    private readonly Action<DurableTaskRegistry> _configureRegistry;
+    private readonly Action<IServiceCollection>? _configureServices;
+
+    /// <summary>Initializes a no-input orchestration builder.</summary>
+    /// <param name="functionTester">The owning FunctionTester.</param>
+    /// <param name="orchestrationName">The orchestration name to start.</param>
+    /// <param name="configureRegistry">The SDK registry configuration.</param>
+    /// <param name="configureServices">The optional SDK host service configuration.</param>
+    internal DurableTaskNoInputOrchestrationTestBuilder(
+        FunctionTesterBase<TEntryPoint, TSelf> functionTester,
+        string orchestrationName,
+        Action<DurableTaskRegistry> configureRegistry,
+        Action<IServiceCollection>? configureServices)
+    {
+        _functionTester = functionTester;
+        _orchestrationName = orchestrationName;
+        _configureRegistry = configureRegistry;
+        _configureServices = configureServices;
+    }
+
+    /// <summary>
+    /// Registers an asynchronous activity handler.
+    /// </summary>
+    /// <typeparam name="TActivityInput">The activity input type.</typeparam>
+    /// <typeparam name="TActivityOutput">The activity output type.</typeparam>
+    /// <param name="name">The activity name.</param>
+    /// <param name="activity">The handler, which may invoke a real activity method.</param>
+    /// <returns>A new builder with the activity handler registered.</returns>
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> Activity<TActivityInput, TActivityOutput>(
+        string name,
+        Func<TaskActivityContext, TActivityInput, Task<TActivityOutput>> activity)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(activity);
+
+        return Append(registry => registry.AddActivityFunc(name, activity));
+    }
+
+    /// <summary>
+    /// Registers a synchronous activity handler.
+    /// </summary>
+    /// <typeparam name="TActivityInput">The activity input type.</typeparam>
+    /// <typeparam name="TActivityOutput">The activity output type.</typeparam>
+    /// <param name="name">The activity name.</param>
+    /// <param name="activity">The handler, which may invoke a real activity method.</param>
+    /// <returns>A new builder with the activity handler registered.</returns>
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> Activity<TActivityInput, TActivityOutput>(
+        string name,
+        Func<TaskActivityContext, TActivityInput, TActivityOutput> activity)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(activity);
+
+        return Append(registry => registry.AddActivityFunc(name, activity));
+    }
+
+    /// <summary>
+    /// Registers a child orchestration delegate.
+    /// </summary>
+    /// <typeparam name="TChildInput">The child orchestration input type.</typeparam>
+    /// <typeparam name="TChildOutput">The child orchestration output type.</typeparam>
+    /// <param name="name">The child orchestration name.</param>
+    /// <param name="orchestrator">The child orchestration delegate.</param>
+    /// <returns>A new builder with the child orchestration registered.</returns>
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> SubOrchestrator<TChildInput, TChildOutput>(
+        string name,
+        Func<TaskOrchestrationContext, TChildInput, Task<TChildOutput>> orchestrator)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(orchestrator);
+
+        return Append(registry => registry.AddOrchestratorFuncWithTimerDiagnostics(name, orchestrator));
+    }
+
+    /// <summary>
+    /// Registers a no-input child orchestration delegate.
+    /// </summary>
+    /// <typeparam name="TChildOutput">The child orchestration output type.</typeparam>
+    /// <param name="name">The child orchestration name.</param>
+    /// <param name="orchestrator">The child orchestration delegate.</param>
+    /// <returns>A new builder with the child orchestration registered.</returns>
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> SubOrchestrator<TChildOutput>(
+        string name,
+        Func<TaskOrchestrationContext, Task<TChildOutput>> orchestrator)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(orchestrator);
+
+        return Append(registry => registry.AddOrchestratorFuncWithTimerDiagnostics(name, orchestrator));
+    }
+
+    /// <summary>
+    /// Adds services to the in-memory Durable Task host's service collection.
+    /// </summary>
+    /// <param name="configureServices">The host service configuration callback.</param>
+    /// <returns>A new builder with the additional host service configuration.</returns>
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> ConfigureHostServices(Action<IServiceCollection> configureServices)
+    {
+        ArgumentNullException.ThrowIfNull(configureServices);
+        return new DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput>(
+            _functionTester,
+            _orchestrationName,
+            _configureRegistry,
+            Combine(_configureServices, configureServices));
+    }
+
+    /// <summary>
+    /// Starts the orchestration without input.
+    /// </summary>
+    /// <returns>A disposable test run exposing the SDK host and bounded completion wait.</returns>
+    public async Task<DurableTaskTestRun<TOutput>> StartAsync()
+    {
+        DurableTaskTestHost host = await _functionTester.StartDurableTaskTestHostAsync(_configureRegistry, _configureServices).ConfigureAwait(false);
+        try
+        {
+            string instanceId = await host.Client.ScheduleNewOrchestrationInstanceAsync(_orchestrationName).ConfigureAwait(false);
+            return new DurableTaskTestRun<TOutput>(_functionTester, host, instanceId);
+        }
+        catch
+        {
+            await host.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    /// <summary>Returns a new builder with the specified registry registration appended.</summary>
+    private DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> Append(Action<DurableTaskRegistry> registration)
         => new(_functionTester, _orchestrationName,
             registry =>
             {

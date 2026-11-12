@@ -9,7 +9,6 @@ using UnitTestEx;
 using UnitTestEx.Azure.Functions;
 using UnitTestEx.Azure.Functions.Durable.TestHost;
 using UnitTestEx.DurableFunction;
-using UnitTestEx.NUnit.Internal;
 
 namespace UnitTestEx.Azure.Functions.Durable.Test;
 
@@ -23,7 +22,7 @@ public sealed class DurableTaskHostTest
     [Test]
     public async Task ExecutesFunctionsBodiesAndCapturesSdkFailureDetails()
     {
-        using var functions = FunctionTester.Create<WorkflowActivities>(createFactory: () => new NUnitTestImplementor());
+        using var functions = FunctionTester.Create<WorkflowActivities>();
         DurableTaskTestHost? host = null;
         int replayCount = 0;
         int retryAttempts = 0;

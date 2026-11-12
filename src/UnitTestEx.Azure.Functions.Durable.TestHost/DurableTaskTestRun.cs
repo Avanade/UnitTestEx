@@ -1,3 +1,5 @@
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Testing;
 using UnitTestEx.Abstractions;
 using UnitTestEx.Expectations;
@@ -44,6 +46,7 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     /// <summary>
     /// Waits for orchestration completion up to the specified timeout.
     /// </summary>
+    /// <remarks>When expectations are arranged, non-completed orchestration metadata is represented by <see cref="DurableTaskOrchestrationException"/>. Host and wait errors propagate directly.</remarks>
     /// <param name="timeout">The maximum amount of time to wait; must be positive.</param>
     /// <returns>An assertor exposing the SDK orchestration metadata and fluent assertions.</returns>
     public async Task<DurableTaskTestAssertor<TOutput>> WaitForCompletionAsync(TimeSpan timeout)
@@ -56,10 +59,18 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
             throw new InvalidOperationException($"The test host returned no metadata for orchestration instance '{InstanceId}'.");
 
         if (ExpectationsArranger.HasExpectations)
-            await ExpectationsArranger.AssertValueAsync(_owner.SharedState.GetLoggerMessages(), metadata).ConfigureAwait(false);
+            await ExpectationsArranger.AssertValueAsync(_owner.SharedState.GetLoggerMessages(), metadata, GetExpectationException(metadata)).ConfigureAwait(false);
 
         return new DurableTaskTestAssertor<TOutput>(_owner, metadata);
     }
+
+    /// <summary>
+    /// Creates the exception value supplied to expectations for a non-completed orchestration.
+    /// </summary>
+    /// <param name="metadata">The orchestration metadata.</param>
+    /// <returns>The expectation exception, or <c>null</c> for a completed orchestration.</returns>
+    private static Exception? GetExpectationException(OrchestrationMetadata metadata)
+        => metadata.RuntimeStatus == OrchestrationRuntimeStatus.Completed ? null : new DurableTaskOrchestrationException(metadata);
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
