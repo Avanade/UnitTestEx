@@ -1,13 +1,13 @@
 # Azure Durable Functions testing design
 
-**Status:** Phase 0 activity baseline implemented; Phase 1 engine spike not started.
+**Status:** Day 1-5 feasibility decision recorded; non-packable source-project prototypes now exist for the narrow context helper and optional host diagnostics. Runtime probes remain isolated under `tests` and have only been executed on net10.
 **Scope:** Azure Functions v4 isolated worker on .NET 8, 9, 10, and 11; no in-process/WebJobs support.
 
 ## Outcome and proof boundary
 
-Start with a normal Durable Functions application, representative orchestration bodies, and direct tests of its activities through the existing `FunctionTester`. This deliverable is a **sample, regression tests, and usage documentation**, not new Durable testing infrastructure. It remains useful if orchestration support is deferred.
+The Phase 0 contribution remains a normal Durable Functions sample and direct activity tests through the existing `FunctionTester`. The feasibility spike has now moved its narrow context helper into a non-packable source-project prototype, with runtime probes still under `tests`; it is not a shipped package or production testing infrastructure. The sample and activity tests remain useful if orchestration support is deferred.
 
-The next decision is whether UnitTestEx should offer a scripted context, adapt Microsoft's in-memory `DurableTaskTestHost`, or provide complementary runners. Activity invocation proves neither orchestration behavior nor runtime indexing/binding. A real Functions host/backend belongs in separate Aspire integration tests.
+The feasibility result favors complementary runners: Microsoft's in-memory `DurableTaskTestHost` for real SDK engine behavior where virtual time is unnecessary, and a narrow context adapter for method-level timer/event tests. Activity invocation proves neither orchestration behavior nor runtime indexing/binding. A real Functions host/backend belongs in separate Aspire integration tests.
 
 Keep application startup ordinary: no custom `Program` class, `BuildHost`, or test-only entry point. The CoreEx standalone Durable Task SDK workflow is a possible future consumer, not a reason to commit to shared public packages now.
 
@@ -46,31 +46,131 @@ These are shared fixtures for later execution tests, not three more coverage mat
 
 **Phase 0 acceptance:** every sample activity has a direct test through `Trigger<T>()`; normal startup/DI works without worker startup or backend connection. Exceptions remain original activity exceptions, not simulated `TaskFailedException`. Sample compilation and generated function metadata are not evidence of orchestration execution. No public API change is required.
 
+## Desired fluent testing experience
+
+**Design goal, not an implemented API:** retain UnitTestEx's fluent Arrange -> Run -> Assert experience, ordinary application startup, captured logs, and useful failure diagnostics. Engine selection must be explicit, but should not force users to hand-wire SDK infrastructure for routine tests. The spike must assess this experience as well as engine mechanics; method signatures and supported capabilities remain provisional.
+
+The sketches below use a **conditional scripted runner**, named `DurableScripted` to distinguish it from `DurableHost`. They do not select the fake in advance or imply that host registration can provide scheduler controls. The host sketch below shows its distinct asynchronous lifecycle; a host wrapper should offer comparable fluent arrangements/assertions where supported, without pretending to offer virtual time.
+
+**Scope after the feasibility decision:** the broad `DurableScripted` examples below are exploratory design sketches, not part of the selected minimum package. The selected method-level path is limited to virtual timers/events and explicit unsupported-operation failures; controlled activity completion, a deterministic pump, and a self-replay fake remain out of scope.
+
+### Successful instance orchestration
+
+Using the real `FinalizeBatch` body, arrange the void/`Task` activities and assert the returned value. Each setup in these examples expects one call; unexpected or unused setups fail. `Completes()` means successful completion without a result.
+
+```csharp
+using var test = FunctionTester.Create<WorkflowActivities>();
+var expected = new BatchResult("ORDER-1", 2m, [new ItemResult("A", 2m)]);
+
+test.DurableScripted<BatchOrchestration>()
+    .WithInput(expected)
+    .OnActivity<string>(nameof(WorkflowActivities.RecordWorkflow), value => value == expected.Reference)
+        .Completes()
+    .OnActivity<BatchResult>(nameof(WorkflowActivities.PublishWorkflow), value => value.Reference == expected.Reference)
+        .Completes()
+    .Run((function, context) => function.FinalizeBatch(context))
+    .AssertSuccess()
+    .AssertValue(expected);
+```
+
+`Run` is a synchronous convenience for scenarios whose arranged operations can complete immediately. An unresolved durable wait must produce a diagnostic directing the test to `Start` and explicit stepping, not hang. Static bodies use a context-only expression as below, or the `(function, context) => StaticFunction.Run(context)` form without instantiating a static class.
+
+### Activity failure and orchestration recovery
+
+`Fails` describes an activity failure at a durable boundary, not a direct throw into the orchestration. The runner must construct production-shaped `TaskFailedException.FailureDetails`, allowing the real `IsCausedBy<WorkflowRejectedException>()` catch filter to execute.
+
+```csharp
+test.DurableScripted<FailureOrchestration>()
+    .WithInput("order-1")
+    .OnActivity<string, string>(nameof(ActivityTransforms.RejectWorkflow), value => value == "order-1")
+        .Fails(new WorkflowRejectedException("Rejected"))
+    .Run(context => FailureOrchestration.RecoverWorkflow(context))
+    .AssertSuccess()
+    .AssertValue("Declined");
+```
+
+### Controlled fan-out/fan-in: scripted-runner capability
+
+Use the real `ProcessBatch` body, completing three same-name activities in C/B/A order. Typed predicates select setups; typed call records select the specific pending invocation. A `Returns(call => ...)` callback receives a call record whose `Input` is a deserialized inspection copy typed by its arrangement.
+
+```csharp
+var request = new BatchRequest("order-1", [new("A", 1m), new("B", 2m), new("C", 3m)]);
+var expected = new BatchResult("ORDER-1", 12m, [new("A", 2m), new("B", 4m), new("C", 6m)]);
+var script = test.DurableScripted<BatchOrchestration>()
+    .WithInput(request)
+    .OnActivity<string, string>(nameof(ActivityTransforms.NormalizeReference), value => value == request.Reference)
+        .Returns(expected.Reference)
+    .OnActivity<ItemResult[], decimal>(nameof(ActivityTransforms.TotalItems), _ => true)
+        .Returns(expected.Total)
+    .OnSubOrchestrator<BatchResult, BatchResult>(nameof(BatchOrchestration.FinalizeBatch), _ => true)
+        .Returns(call => call.Input);
+foreach (var item in request.Items)
+    script.OnActivity<WorkItem, ItemResult>(nameof(WorkflowActivities.ProcessItem), value => value.Id == item.Id)
+        .RemainsPending();
+
+using var run = script.Start(context => BatchOrchestration.ProcessBatch(context));
+run.RunUntilBlocked().AssertPending();
+var calls = run.ActivityCalls<WorkItem>(nameof(WorkflowActivities.ProcessItem));
+foreach (var id in new[] { "C", "B" })
+{
+    run.CompleteActivity(calls.Single(call => call.Input.Id == id), expected.Items.Single(item => item.Id == id));
+    run.RunUntilBlocked().AssertPending();
+}
+run.CompleteActivity(calls.Single(call => call.Input.Id == "A"), expected.Items[0]);
+run.RunUntilBlocked().AssertCompleted();
+run.Result.AssertSuccess().AssertValue(expected);
+```
+
+The result must retain A/B/C task-list order despite C/B/A completion. The child is scripted here, not executed; a separately registered real child is a different test. `RemainsPending`, selected completions and synchronous stepping require a scheduler-capable runner. A host would use gated activity stubs and bounded asynchronous observation instead.
+
+### Virtual time and an external-event race: scripted-runner capability
+
+Exercise the production 24-hour timeout without shortening it or sleeping. Deliver approval halfway through, then verify the losing timer was canceled by the orchestration.
+
+```csharp
+using var run = test.DurableScripted<ApprovalOrchestration>()
+    .WithInput(new ApprovalRequest(TimeSpan.FromHours(24)))
+    .Start(context => ApprovalOrchestration.AwaitApproval(context));
+run.RunUntilBlocked().AssertPending();
+run.AdvanceBy(TimeSpan.FromHours(12));
+run.RunUntilBlocked().AssertPending();
+run.RaiseEvent("Approved", new ApprovalDecision(true));
+run.RunUntilBlocked().AssertCompleted();
+run.Result.AssertSuccess().AssertValue(new ApprovalDecision(true));
+run.AssertTimerCanceled();
+```
+
+A separate timeout case advances to 24 hours and expects `ApprovalDecision(false)`, with the event wait canceled. Only `AdvanceBy`/`AdvanceTo` fire timers, in due order; there is no manual per-timer completion. These controls are not host capabilities unless Phase 1 proves supported clock integration.
+
 ## Engine decision and package boundary
 
-**Current hypothesis:** both engines may be useful: a fake for controlled hour/day timer scenarios, and the host for real engine history/replay. First try to disprove the need for the fake. A supported host clock facility meeting the virtual-time requirement would favor host-only. A host wrapper adding no value beyond direct SDK use should not become a package.
+**Selected direction (design only; no production implementation or publication yet):** pursue a minimal opt-in Durable testing package with two explicitly separate test paths. The current evidence supports complementary value: the SDK host exercises real engine history/replay but has wall-clock timers; a narrow public-context helper can test real method-level timer/event coordination with virtual time but has no engine replay.
 
-**Initial package preference:** one new `UnitTestEx.Azure.Functions.Durable` package, if implementation is justified. Keep any host-neutral harness internal and structured for extraction, not exposed as a speculative `UnitTestEx.DurableTask` API. Extract a shared public core only when a second actual consumer requires it. This avoids moving already-public types later.
+| Optional package | Minimum responsibility | Explicit boundary |
+|---|---|---|
+| `UnitTestEx.Azure.Functions.Durable` (provisional name) | A narrow method-level context helper for virtual timers, external events, input, and cancellation inspection. Keep it independent of the test-host package. | No activity/child scripting, general fake, replay, serialization simulation, Functions worker, or backend. Unsupported context operations fail explicitly. |
+| `UnitTestEx.Azure.Functions.Durable.TestHost` (provisional name) | A thin wrapper around Microsoft's in-memory test host for selected real SDK orchestration execution/replay, with UnitTestEx DI/logging/context bridges, result diagnostics, bounded waits, and disposal. A context decorator forwards calls and warns on wall-clock timers. | Optional dependency graph; no virtual-clock claim, no Functions worker/binding/backend fidelity, and no timer override that bypasses the engine. Keep prerelease while based on the preview host package. |
 
-If both engines are justified, do not make fake users inherit the host dependency graph: keep the host prototype as direct SDK usage until its wrapper earns a separate optional package, provisionally `UnitTestEx.Azure.Functions.Durable.TestHost`. The general `UnitTestEx.Azure.Functions` package must not acquire Durable dependencies. Exact cross-package contracts remain a spike outcome.
+The existing `UnitTestEx.Azure.Functions` package must not acquire Durable dependencies. Do not expose a speculative host-neutral public core or a general `UnitTestEx.DurableTask` API; extract shared public types only when a second actual consumer requires them. Package names, exact APIs, and target-framework support remain provisional pending implementation and compatibility checks.
+
+**Prototype boundary:** the source projects are currently non-packable and are not release artifacts. The context project contains the narrow virtual-time context. The host project starts the SDK host with the FunctionTester's captured logger factory and adds the registry helper that warns about real-time timers. Activity scopes, `FunctionContext` creation, orchestration registration, result assertions, and bounded waits remain caller-owned; this is not a finished package API.
 
 The upstream test-host project references Durable Task Core, gRPC server/client, Protobuf, and SDK gRPC client/worker projects. Confirm the selected published NuGet graph and release maturity; upstream `main` is not a compatibility guarantee. Publish dependency minimums, not upper caps; validate minimum/current supported versions and all target frameworks.
 
 ### Capability matrix
 
-SDK facilities are not implemented UnitTestEx features. "Prototype" means feasibility remains unproven. Two engines must have explicit selection and distinct control APIs.
+These paths are not interchangeable. The host provides engine execution without virtual time; the context adapter provides method-level virtual time without an engine. The probes do not make either path a production UnitTestEx feature.
 
-| Capability | In-memory host | Scripted fake |
+| Capability | In-memory SDK host | Method-level context adapter |
 |---|---|---|
-| Functions/class-based bodies | SDK delegate/class registration; Functions services/context adaptation is a prototype | Invocation/context adapter prototype |
-| Activity/child outcomes and matching | Registered stub delegates plus recording/verification adapter | Scripted result/failure and strict matching prototype |
-| Fan-out/fan-in and controlled completions | Gated stubs, bounded asynchronous observation | Synchronous pump and selected activity/child completions |
-| Timers/event races | Real engine timers/client events; no documented virtual clock found yet | `AdvanceBy`/`AdvanceTo`, event delivery and cancellation inspection prototype |
-| Replay | Real engine history; episode coverage must be demonstrated | Optional self-replay research, not runtime replay |
-| Serialization/failures | SDK behavior; Functions compatibility must be compared | Explicit boundary snapshots/failure details prototype |
-| Invalid awaits | Engine checks with documented diagnostic limits | Provenance/ownership research; no universal detector promised |
-| Lifetime | Asynchronous client/worker, in-process gRPC listener, explicit disposal | Synchronous steps/results, no listener |
-| Functions host/backend | Neither engine proves indexing, binding, or production backend behavior | Aspire/runtime tests required |
+| Orchestration execution/replay | Real SDK engine; selected replay scenarios observed. No Functions worker. | Calls the real method directly; no engine history and `IsReplaying` is always false. |
+| Activity and child calls | Registered delegates; selected activity/child paths executed. | Unsupported; calls fail explicitly. |
+| Fan-out/fan-in | Selected real batch flow ran; general controlled completion ordering is not established. | Selected method test controlled C/B/A completions; no general scheduler or pump. |
+| Timers/events | Host timers use wall-clock time; no virtual clock API. The wrapper warns and forwards. | `AdvanceBy` and manual event delivery for supported method-level cases; no durable timer history. Due timers fire before `AdvanceBy` returns, so this adapter does not model atomic same-deadline event/timer arbitration. |
+| Serialization/failures | DTOs, nullable values, enums, nested collections, and selected failure-details paths tested; Functions compatibility remains unproven. | No boundary serialization; one failure-catch probe constructs an SDK exception directly. |
+| Invalid awaits | Limited diagnostics; several non-durable await probes did not reach a terminal state under the watchdog. | No task-provenance or general invalid-await detector. |
+| Lifetime/dependencies | Async host/client and in-process gRPC sidecar; explicit disposal; preview dependency graph. | Direct context use and disposal; no listener or host dependency. |
+| Functions worker/backend | Does not prove Functions indexing, binding, or backend behavior. | Does not exercise the Functions worker or a backend. |
 
 ### Why wrap the host?
 
@@ -93,14 +193,70 @@ result.AssertSuccess().AssertValue(expected);
 
 Registration overloads, input type inference, and exact client signatures must be checked against the selected SDK. Registered stubs provide scripted outcomes and record serialized inputs/counts. Host tests use client events and status/history; they do not expose `RunUntilBlocked`, per-timer completion, or pretend to advance time. Without a supported clock, exercise short real timers, not silently rewritten production delays.
 
-## Phase 1: decision-first feasibility spike (on hold)
+## Phase 1: decision-first feasibility spike
+
+### Day 1: published in-memory host evidence
+
+**Observed from the published artifact:** pin `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1** for the disposable probe. The NuGet feed lists five versions (0.1.0-preview.1 through 0.2.3-preview.1), all prerelease; there is no stable release. Its nuspec and package contain `net6.0`, `net8.0`, and `net10.0` assets. Nearest-framework selection would use net8 for net9 and net10 for net11; only net10 has been built and tested.
+
+The published nuspec declares minimum dependencies `Microsoft.DurableTask.Client.Grpc`, `.Grpc`, and `.Worker.Grpc` 1.23.3; `Google.Protobuf` 3.33.5; `Grpc.AspNetCore.Server` 2.76.0 for net8/net10 (2.71.0 for net6); `Grpc.Net.Client` 2.76.0; and `Microsoft.Azure.DurableTask.Core` 3.7.1. These are the package's published requirements, not the resolved graph for this application.
+
+**Source-supported conclusions, pinned to the nuspec repository commit `28d937706cb4ae7aacdf02de4198c26240637673` (not upstream `main`):**
+
+- `DurableTaskTestHost.StartAsync` has public delegate registration for SDK function-style orchestrators and activities. The pinned SDK tests execute those delegates. `ProcessBatch` can be registered as a static delegate; `FinalizeBatch` can be called from a delegate on an instance. No attributes, private reflection, or Functions worker startup are needed for that SDK call path.
+- The package creates its own Durable Task SDK worker host and an HTTP/2 loopback gRPC sidecar. It does not start the Azure Functions isolated worker or contact a Durable backend. This is an in-process SDK host, not a Functions runtime.
+- Public `DurableTaskTestHostOptions` exposes `ConfigureServices`, `LoggerFactory`, and `Port`; `DurableTaskTestHost.Services` exposes its worker service provider. These can accept the application's registrations/instances and its `ILoggerFactory`. They do not automatically share the `FunctionTester` provider: a probe must explicitly bridge the needed application services.
+- The host does not provide `FunctionContext`. UnitTestEx's public `TestFunctionContext` can be explicitly constructed with a service provider and passed by an activity delegate. That is an adapter at the probe boundary, not Functions worker behavior.
+- There is no host clock injection or advance operation in the pinned public options/API. More importantly, the pinned `InMemoryOrchestrationService` compares scheduled messages with `DateTime.UtcNow` and enqueues future work through `Task.Delay(delay)`. A production one-hour or 24-hour durable timer therefore remains a real-time delay; a `TimeProvider` elsewhere would not establish virtual timer behavior. Do not run a production-length timer to reconfirm this.
+
+Locally, `FunctionTesterBase` builds the application's entry point as-is and captures the host at `Build()` without starting its worker; `TestFunctionContext` accepts an `IServiceProvider`. Those existing hooks support a direct adapter without changing the app's `Program.cs`.
+
+**Observed net10 dependency graph:** restore selected Durable Task abstractions/client/gRPC/worker gRPC **1.28.0**, `Microsoft.Azure.DurableTask.Core` **3.11.2**, `Google.Protobuf` **3.36.2**, `Grpc.AspNetCore.Server` **2.76.0**, and `Grpc.Net.Client` **2.84.0**. The Functions extension's higher minimums unified the host's lower 1.23.3/3.7.1/2.76.0 declarations without restore conflict. This net10 graph built and ran successfully; compatibility on net8/net9/net11 remains unverified. Keep the host dependency in the isolated net10 probe, not the multi-target production libraries. The published package has net8 and net10 assets rather than net9/net11-specific assets.
+
+**Observed net10 runtime result:** the host probe suite passed all seven tests. The actual static `ProcessBatch` body and instance `FinalizeBatch` child completed through public function delegates; DTO input/output values and item ordering survived the SDK boundary. `ProcessBatch` observed `context.IsReplaying` on a later engine episode. The probe used the FunctionTester's service provider to construct scoped activities and supplied `TestFunctionContext` from each activity scope; the package extension reused the FunctionTester's logger factory, and the captured activity log assertion passed without changing application startup or starting the Functions worker. The actual `RecoverWorkflow` body caught the failed activity and returned `Declined`. The actual `DeclineWorkflow` body failed; returned orchestration metadata had root `TaskFailedException` details and nested `WorkflowRejectedException` type/message details. This is standalone SDK behavior, not Functions worker failure mapping.
+
+**Observed net10 test:** [`DurableTaskHostTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskHostTest.cs) also ran the real `ProcessBatch` body with a child delegate that failed during finalization. The parent completed as failed, and host metadata contained nested `TaskFailedException` and `WorkflowRejectedException` details. The child failure is deliberately injected at the SDK registration boundary; this does not establish Functions-worker failure mapping. A separate bounded test covers one SDK child-retry policy.
+
+**Observed net10 tests:** the same host test gated the first activity, mutated the caller-owned input array after scheduling, and confirmed the orchestration output retained the original item; it also failed one item-activity attempt and observed the configured SDK retry succeed on the second attempt. [`ReplayDeterminismTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/ReplayDeterminismTest.cs) changed the activity name on replay while registering both names and verified the host's nondeterminism diagnostic. These are SDK-host behaviors, not Functions-worker fidelity.
+
+**Additional net10 tests:** `DurableTaskHostTest` also verified output-read isolation by mutating one deserialized `BatchResult` and confirming the next read was unchanged; an activity that fails every time stopped after the configured three attempts and left nested failure metadata. [`EarlyExternalEventTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/EarlyExternalEventTest.cs) raised a structured event while the real SDK orchestration was held at an activity, before its event wait existed, then verified buffered delivery and payload deserialization. [`PendingOrchestrationDisposalTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/PendingOrchestrationDisposalTest.cs) disposed the SDK host within five seconds while an orchestration remained pending on an external event.
+
+**Additional net10 behavior:** [`ApprovalHostEventTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/ApprovalHostEventTest.cs) also confirmed an explicit 100 ms input timeout completes with a denied decision and that a late event leaves a completed instance's output unchanged. [`SubOrchestrationRetryTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/SubOrchestrationRetryTest.cs) verified child retries recover on the third attempt and that exhaustion produces failure metadata with nested `WorkflowRejectedException` details. [`OrchestrationTerminationTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/OrchestrationTerminationTest.cs) terminated a parent waiting on a child; the child completed or failed from its own external event, and the parent remained `Terminated`. [`ActivityTerminationTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/ActivityTerminationTest.cs) held an activity until after parent termination, then observed the activity delegate finish while the parent remained `Terminated`. The pinned `TaskActivityContext` API documentation lists `Name`, `InstanceId`, `Version`, and input access, but no cancellation-token property. `DurableTaskHostTest` reads the real batch orchestration's `Finalizing` status while its child is pending and after completion; [`CustomStatusProgressionTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/CustomStatusProgressionTest.cs) observed successive status values while running and the last value after completion. [`DurableSerializationTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/DurableSerializationTest.cs) round-tripped a nullable value, enum, and nested collection through standalone SDK orchestration/activity boundaries. The virtual-time suite now covers due/past deadlines, negative clock advances, non-UTC deadlines, multiple timers due in one advance, same-name wait selection, and the post-advance timeout/event boundary. Because `AdvanceBy` fires due timers before returning, exact same-deadline event/timer arbitration remains unmodeled.
+
+**Published host serializer configuration inspection:** the pinned `Microsoft.DurableTask.InProcessTestHost` 0.2.3-preview.1 README and net10 API XML document `DurableTaskTestHostOptions` properties for `Port`, `LoggerFactory`, and `ConfigureServices`. They do not document a `DataConverter`, serializer, or serializer-options property; `ConfigureServices` is described as registration for application dependencies. Accordingly, the probe only establishes default SDK serialization, not custom serializer parity. Registering a converter service through the generic DI callback would not by itself prove the host consumes it, and no private override was attempted.
+
+**Class-based SDK registration probe:** [`ClassBasedOrchestrationTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/ClassBasedOrchestrationTest.cs) uses the pinned host's public `DurableTaskRegistry.AddOrchestrator<TOrchestrator>()` registration path with a typed `TaskOrchestrator<string,string>`. On net10, the class-based orchestration called a registered activity and returned the result. This establishes only the standalone SDK class path; it does not establish Azure Functions worker integration, DI-based orchestrator construction, or a reusable UnitTestEx arrangement API.
+
+**Still unproven:** this is standalone Durable Task SDK behavior, not Functions serialization/failure mapping; the host bypasses the Functions extension's input converters and worker. No timer completion or virtual-time runtime behavior was exercised because the pinned source has no clock control and future timers use real `Task.Delay`.
+
+**Generated Functions dependency fix:** the sample's generated extension project now pins `Microsoft.AspNetCore.WebUtilities` **2.3.14**, the patched version for [GHSA-6527-9fp8-r4x6](https://github.com/advisories/GHSA-6527-9fp8-r4x6). The net10 dedicated suite passed 11/11 with no `NU1902`; the warning originated in the generated project, not the UnitTestEx package graph. Because Azure.Functions.Sdk 1.0.2 isolates that generated project from directory-wide targets, this fixture-scoped workaround injects the pin through its internal `_AzureFunctionPackageReference`/`WriteExtensionProject` seam. Remove it when the upstream dependency is patched or the SDK provides a supported generated-project override.
+
+**Day-1 disposition and next branch:** the host invocation, serialization, explicit DI/logging/context bridge, and SDK failure-details probe pass on net10. The host may remain useful for real orchestration execution, but its pinned timer path cannot satisfy virtual-time scenarios. The test-only public context probe now shows that bounded virtual timers, ordered fan-in, and orchestration handling of SDK failure details are feasible as method-level tests. Keep the host as an optional real-engine path; do not add a timer wait to the host probe or silently shorten a production delay. No source evidence supports testing the Functions worker/runtime through this host.
+
+### Day 2: public-context virtual-time feasibility
+
+**Source-supported conclusion:** Durable Task abstractions 1.28.0 expose `TaskOrchestrationContext` as an abstract public type with overridable timer/event seams: `CurrentUtcDateTime`, `CreateTimer(DateTime, CancellationToken)`, and `WaitForExternalEvent<T>(string, CancellationToken)`. Its default `CreateTimer(TimeSpan, ...)` derives the deadline from `CurrentUtcDateTime`. This makes a minimal test-only context adapter technically possible without private APIs: control the clock, complete due timer tasks, and deliver/cancel event tasks while invoking the real `ApprovalOrchestration.AwaitApproval` method.
+
+This proves only the production method's coordination against the provided context contract. It does not prove Durable Task engine replay, timer history/serialization, Functions extension behavior, or equivalence with the in-memory host. Unsupported context operations fail explicitly; this is not a general orchestration fake or a proposed production API.
+
+**Experimental project and observed runtime result:** [`UnitTestEx.Azure.Functions.Durable`](../src/UnitTestEx.Azure.Functions.Durable/UnitTestEx.Azure.Functions.Durable.csproj) is a non-packable source-project prototype pinned to Durable Task abstractions 1.28.0; only its net10 target has been exercised. Its [`VirtualTimeOrchestrationContext`](../src/UnitTestEx.Azure.Functions.Durable/VirtualTimeOrchestrationContext.cs) supports virtual timers, external events, input, and cancellation observation; activity/child calls, custom status, `ContinueAsNew`, and `NewGuid` throw `NotSupportedException`. `IsReplaying` is always false. The dedicated [`UnitTestEx.Azure.Functions.Durable.Test`](../tests/UnitTestEx.Azure.Functions.Durable.Test/UnitTestEx.Azure.Functions.Durable.Test.csproj) project is in the solution, is non-packable, and its current suite has 17 method-level and 14 SDK-host tests. The real 24-hour approval body completed after a virtual 12-hour advance plus event delivery, with its timer canceled; advancing directly 24 virtual hours completed the timeout path and canceled the event wait. Additional tests observed that pre-canceled timer/event waits stay canceled (a later event is rejected), and an event delivered one tick before the timeout completes the approval path and cancels the timer. Multiple timers due within one advance all complete. A same-name event completes the most recent pending wait in this helper, leaving another wait pending for cancellation; this is not an engine contract. `AdvanceBy` fires due timers before it returns, so the adapter cannot test atomic same-deadline arbitration. The suite does not wait for production-duration timers.
+
+**Observed hostless call/failure result:** [`BatchOrchestrationTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/BatchOrchestrationTest.cs) runs the real static `ProcessBatch` body. Three `ProcessItem` tasks were completed in C/B/A order; the body remained pending until all completed, then passed A/B/C results to `TotalItems` and the finalization child. A second test supplied a public SDK `TaskFailedException` carrying `TaskFailureDetails.FromException(...)`; the real `RecoverWorkflow` catch filter recognized `WorkflowRejectedException` and returned `Declined`. The earlier five-test net10 probe suite passed in 107 ms. This failure test constructs the SDK exception directly; it does not demonstrate how a Durable Task engine or Functions worker maps an activity exception.
+
+**Still unproven:** these contexts invoke method bodies directly and model only the calls needed by their tests. They do not model durable history/replay, engine scheduling, exact same-deadline timer/event arbitration, serialization, Functions failure mapping, or production failure details. The timer context can complete multiple timers due in one advance, but does not model engine event/timer ordering. The evidence supports a narrowly scoped test-only context adapter, not general orchestration fidelity or a production API.
+
+### Invalid-await escape gate
+
+**Observed on the pinned host, net10:** [`InvalidAwaitProbe`](../tests/UnitTestEx.DurableFunction.HostProbe/InvalidAwaitProbe.cs) ran four bounded cases. `Task.Delay` before a durable activity, `Task.Run` around a durable call, and `ConfigureAwait(false)` between durable calls each failed to reach a terminal state within the five-second watchdog; no engine diagnostic was returned before cancellation. The build emitted analyzer warnings `DURABLE0003` for `Task.Delay` and `DURABLE0004` for `Task.Run`; it emitted no warning for `ConfigureAwait(false)`. The direct-I/O case read `ReadA`, then an activity changed the file so replay attempted `ReadB`; the host failed it with `NonDeterministicOrchestrationException` and identified the activity-name mismatch at sequence 0. All four observations are asserted by the probe tests; the seven-test host probe suite passed.
+
+**Conclusion and limit:** the host detects this induced history divergence, but the other cases show that these invalid-await patterns did not fail promptly with an actionable diagnostic in this setup. A watchdog timeout is not proof the orchestration could never complete. The test-only contexts above have no task-provenance or ambient-await guard, so they cannot claim to diagnose arbitrary `Task.Delay`, `Task.Run`, `ConfigureAwait(false)`, or direct I/O. Any initial context-backed surface must narrowly document supported awaits and fail explicitly for unsupported context operations; a general-purpose deterministic-pump claim is not supported by this evidence.
 
 **Proposed budget:** five engineer-days for a decision, not a promise to implement nine gates across two engines. Phase 0 is separate. Owner: TBD.
 
-1. **Day 1, host kill probes:** pin a published host package; register a real Functions body and required stubs; check services/context/serialization adaptation. Inspect public APIs/source for a supported clock facility. Test clock behavior, not just the presence of a `TimeProvider` type. If the host meets virtual-time needs, skip fake research.
-2. **Days 2-3, selected branch:** if host invocation works but supported virtual time does not, prototype only the minimum fake needed for ordered fan-in, failure details, and virtual timers. Probe invalid-await limits early; abandon a general deterministic-pump claim if escapes cannot be diagnosed. If host invocation itself fails, establish whether a small adapter solves it before spending the remaining budget.
-3. **Day 4, evidence gaps:** compare the decision-critical fixtures on viable engines; sample the required follow-on capabilities below. Fake self-replay is optional research, not a parallel engine project.
-4. **Day 5, decision:** record pass/fail/unproven evidence, dependency graph, measured timer behavior, remaining work, and the smallest viable public scope. Do not treat unproven capabilities as supported.
+1. **Day 1, host kill probes:** source review, package pin, and passing net10 runtime probe are recorded above. No supported host clock was found in the pinned public API or timer source.
+2. **Days 2-3, selected branch:** bounded public-context probes cover virtual timers, ordered fan-in, and the orchestration's failure-details catch path. The invalid-await gate found one diagnosed replay divergence but three non-durable await cases without a terminal diagnostic under the watchdog. These probes do not validate Functions behavior or justify a general fake.
+3. **Day 4, fixture comparison:** host evidence covers the real batch/child flow, replay, and both production failure-orchestration paths; the context probe covers the production approval body's timer/event coordination without wall-clock delay. These are complementary, not equivalent: the approval body's production-length timer was not exercised on the host, and the context has no engine replay. Exact same-deadline behavior, Functions-worker mapping, and broader cancellation/replay guarantees remain unproven. Fake self-replay remains optional research, not a parallel engine project.
+4. **Day 5, decision:** use the real host for engine-backed orchestration tests that do not require virtual time, keeping its preview dependency isolated. A public-context adapter is a conditional, narrowly scoped option for method-level coordination and virtual-time tests; it must not claim engine replay, Functions behavior, or general deterministic-await detection. The context source-project prototype is non-packable; its runtime probes live under `tests`, so it is not a production API. Do not start a general fake. If the required contract demands production-duration timers with engine fidelity, host support remains blocked on a public clock seam such as [microsoft/durabletask-dotnet#843](https://github.com/microsoft/durabletask-dotnet/issues/843).
 
 ### Tiered evidence checklist
 
@@ -108,40 +264,71 @@ Registration overloads, input type inference, and exact client signatures must b
 
 | Gate | Concrete evidence |
 |---|---|
-| Invocation | Static/instance Functions bodies execute without app restructuring/private reflection/backend connection. Phase 0 supplies activity evidence; class-based body adaptation is a follow-on reuse probe. |
+| Invocation | Static and instance Azure Functions orchestration method bodies execute through public SDK delegate registration without app restructuring/private reflection/backend connection. Phase 0 supplies direct activity evidence. The SDK `TaskOrchestrator<TIn,TOut>` registration path is separately probed; this does not prove Functions-worker discovery or activation of `[Function]` methods. |
 | Matching/fan-in | Three same-name calls matched by typed inputs complete C/B/A; pending after C/B; output retains task-list order. Unexpected and unused scripted calls fail diagnostically. |
 | Serialization/failures | Mutating caller objects cannot alter boundary snapshots/results. DTO/enum settings are exercised. `TaskFailedException.FailureDetails.IsCausedBy<T>()`, type/message and nested causes match an executed SDK failure. Record Functions serializer differences. |
-| Virtual time | Compare the same 1-hour and 24-hour timer fixture over repeated warm runs: no duration-proportional sleeping; the 24-hour median is within the larger of twice the 1-hour median or the 1-hour median plus measured no-op pump overhead. Record timer firings/clock values. Do not use a fixed five-second CI performance assertion. Missing clock support makes the host ineligible for virtual-time control, not unusable for all testing. |
+| Virtual time | For the pinned host, source shows duration-proportional real delay and no public clock control; it is ineligible for virtual-time scenarios without an upstream/public capability change. Do not await 1-hour/24-hour timers or shorten production delays. Apply the repeated warm-run comparison only to a candidate virtual-time engine; missing clock support does not disqualify the host for other tests. |
 
 **Required follow-on, not engine-decision blockers:** a failed/unproven probe narrows the initial supported surface and creates an explicit implementation item. It does not discard passing decision-critical evidence. Only tested capabilities can be advertised; no universal fidelity claim is made for a narrower release.
 
 | Area | Probe and consequence |
 |---|---|
-| Cancellation | Timer/event wait tokens, timeout overloads, pre-canceled tokens, losing-timer cleanup, bounded harness disposal. Do not invent activity/child cancellation. Unproven cases remain unsupported. |
-| Sub-orchestrations | Script child outcomes/verify options; host registers a real child. Keep nested-orchestration claims out until proven, rather than making basic activity orchestration wait on them. |
-| Replay | Force multiple engine episodes with a gated activity; verify normal replay. For a negative fixture, an isolated test-only static counter changes the activity name on each body entry; register both names so failure is history divergence, not missing registration. Use a fresh host, reset counter, bounded wait, and verify a nondeterminism diagnostic. No public history injection is assumed. If caching prevents a replay, record the gap rather than claim this test passed. |
-| Invalid awaits | Probe `WhenAny(Task.Delay(...), WaitForExternalEvent(...))`, direct I/O, `Task.Run`, and `ConfigureAwait(false)`. Record what ownership/provenance guards catch and what escapes. An empty durable-pending set or a timeout is not a complete detector. Narrow fake validity claims if reliable provenance is infeasible. |
+| Cancellation | Timer/event wait tokens, timeout overloads, pre-canceled tokens, cancellation of pending waits, losing-wait cleanup, bounded SDK-host disposal, parent termination with an independently completing or failing child, and an activity delegate finishing after parent termination are tested. The pinned activity-context API exposes no cancellation-token property. |
+| Sub-orchestrations | Child success/failure, input/options propagation, retry recovery, retry exhaustion, and host failure metadata are tested. General nested-orchestration arrangements remain unproven. |
+| Replay | The suite now forces host replay and uses a test-only counter to change the activity name, registering both names so failure is history divergence rather than missing registration. A bounded wait verifies `NonDeterministicOrchestrationException`. No public history injection or general invalid-await detector is assumed. |
+| Invalid awaits | The pinned host diagnosed one replay divergence caused by changing direct-I/O output, but `Task.Delay`, `Task.Run`, and `ConfigureAwait(false)` cases produced no terminal state within five seconds. The build warned on the first two only. A timeout is not a complete detector; narrow context validity claims unless reliable provenance is demonstrated. |
 | Dependencies/compatibility | Check published package graph, framework support and isolation. Restore/type incompatibilities block the affected package release, not all other fixture research. |
 
-## Proposed invocation and behavior contract
+## Initial API proposal for review
 
-Function-based invocation validates the expression's method and `[OrchestrationTrigger]` parameter. Support `(f, ctx) => f.Run(ctx)`, `(_, ctx) => OrderOrchestration.Run(ctx)`, and a context-only overload for static classes. Do not instantiate static function types. Class-based `TaskOrchestrator<TIn,TOut>.RunAsync(ctx,input)` needs a separate adapter, not generated-attribute assumptions.
+**Evidence-backed initial test scope (net10 only; not a released contract):** keep the two prototype paths distinct. The SDK host can execute selected real static and instance Azure Functions orchestration method bodies, plus typed SDK `TaskOrchestrator<TIn,TOut>` implementations, with test-registered activity/child delegates, serialization boundaries, failure details, replay, events, custom status, and bounded host disposal. The method-level context can exercise real orchestration-method timer/event coordination with virtual time, but has no durable engine, history, or replay. The dedicated suite now passes 35/35 on net10, including FIFO delivery of multiple same-name events raised before waits, `SetCustomStatus(null)` clearing running and terminal metadata, nested activity failure details from a typed SDK orchestrator, and host disposal returning while a blocked activity delegate remains incomplete.
 
-Arrange orchestration input with `.WithInput(request)`; activity setup inputs are separate. Use `OnActivity`/`OnSubOrchestrator` for setup and `AssertActivityCalled` for verification. Strict matching is unordered by default, with explicit counts and failure on unexpected/unused setup. Call records retain serialized snapshots and expose deserialized inspection copies typed by registration/arrangement.
+Do not extend those observations into a Functions-worker or binding claim, custom serializer parity, host virtual-clock support, exact same-deadline event/timer arbitration, or general activity/child cancellation. The host-disposal probe releases its blocked delegate after disposal; it demonstrates that disposal does not wait for or cancel that delegate, not worker shutdown semantics. The virtual-time helper's same-name waiter behavior is helper-specific and is not an SDK-host event-delivery contract.
 
-Serialization occurs at durable boundaries, not arbitrary local calls. **Input identity is adapter-specific:** the SDK `TaskOrchestrationContextWrapper.GetInput<T>()` returns its retained typed object; the Functions wrapper returns an already-compatible input or uses an input converter which deserializes for each conversion call. Match the selected Functions path; do not universally mandate once-per-episode identity.
+Keep the two opt-in paths separate and thin. These are candidate public shapes, not approved or implemented package contracts.
 
-Failures use serialized `TaskFailureDetails` and a production-shaped `TaskFailedException`, not the original activity exception. The public exception-taking constructor populates details through `TaskFailureDetails.FromException` but retains the original exception; a fake should round-trip the details and use the details-taking constructor. Preserve type/message/nullable stack/nested failures; do not fabricate a stack for an exception never thrown. Compare observable details against the pinned SDK worker.
+| Path | Candidate API shape | Initial promise |
+|---|---|---|
+| SDK host (`UnitTestEx.Azure.Functions.Durable.TestHost`) | Make a UnitTestEx fluent builder on `FunctionTester` the primary entry point. The builder registers orchestrators and activity/child handlers, accepts input, starts the run, waits with a caller-supplied bound, and returns a result wrapper. It composes on the upstream `DurableTaskRegistry`, host client, and metadata APIs. | Real SDK engine execution, serialization boundaries, failure details, replay, and selected event/status/lifecycle behavior. Function-based methods and typed SDK `TaskOrchestrator<TIn,TOut>` are separate registration forms. |
+| Virtual-time context (`UnitTestEx.Azure.Functions.Durable`) | Construct `VirtualTimeOrchestrationContext` with orchestration name/input; call the real method directly; control waits with `AdvanceBy` and `RaiseEvent`; await the method's returned task. | Method-level timer/event coordination against the helper's virtual clock, without durable engine history or replay. Activity and child calls remain explicitly unsupported. |
 
-Cancellation means timer/event waits and test lifecycle. Canceling a wait or terminating a parent does not cancel activities/child instances. Capture status, replay-safe logs, context time/IDs, and retry **configuration**; a fake does not prove runtime retry execution.
+Illustrative fluent shape (names and exact types remain open):
+
+```csharp
+var run = await functions.DurableTask()
+    .Orchestrator<BatchRequest, BatchResult>(
+        nameof(BatchOrchestration.ProcessBatch),
+        (context, _) => BatchOrchestration.ProcessBatch(context))
+    .Activity<WorkItem, ItemResult>(
+        nameof(WorkflowActivities.ProcessItem),
+        (_, item) => InvokeRealActivityThroughFunctionTesterAsync(item))
+    .WithInput(request)
+    .StartAsync();
+
+var result = await run.WaitForCompletionAsync(TimeSpan.FromSeconds(5));
+result.AssertCompleted();
+Assert.That(result.ReadOutputAs<BatchResult>(), Is.EqualTo(expected));
+```
+
+The fluent API is the primary developer experience, but it must be a facade over the SDK host—not a second orchestration engine. Keep registration explicit and let activity handlers either invoke real methods through caller-owned FunctionTester scopes or provide deliberate test delegates. Do not start with general strict matching, call-record snapshots, or simulated failure/replay semantics. Expose an advanced escape hatch to the upstream host/client for SDK features the fluent surface does not model; whether that is a builder property or a separate low-level entry point remains an API naming/design detail. Do not implicitly copy the FunctionTester service provider into the host.
+
+For the context helper, initially expose only the clock/event controls and the state needed to test those controls. Document that same-deadline timer/event arbitration is not modeled and that same-name event selection is helper-specific. Do not present this as SDK-host behavior or as a general orchestration fake.
+
+Neither path starts the Functions worker or proves function discovery, trigger binding, Functions serializer/failure mapping, or backend behavior. Host timers remain real wall-clock timers; the host has no virtual clock. Cancellation claims remain limited to the specific wait, termination, and disposal probes. Keep `UnitTestEx.Azure.Functions` dependency-free of Durable Task and do not change the existing `Trigger<T>()` behavior.
+
+**Host context decoration and timer diagnostics (requirement):** the host-testing adapter may decorate the host-supplied `TaskOrchestrationContext` for logging and diagnostics. Its default behavior must transparently forward calls, including `CreateTimer`, preserving the host's engine behavior. When the pinned host handles a timer without virtual-clock support, emit an actionable test diagnostic that the timer uses real wall-clock time and may wait for its requested duration; avoid repeating the same diagnostic on every replay. The warning does not prevent a long wait. Any future timer override must be explicit and must not imply engine timer/replay fidelity unless it participates in the host scheduler. Do not silently shorten production timers.
+
+**Observed net10 probe:** [`HostTimerDiagnosticTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/HostTimerDiagnosticTest.cs) wrapped the host-provided context, forwarded a test-only 100 ms timer, and completed the orchestration through a subsequent activity. The host replayed the orchestration; exactly one warning was captured, and elapsed time exceeded 50 ms, showing the timer was not replaced by an immediately completed task. This checks transparent forwarding and replay-safe diagnostics for this short probe only; it does not provide virtual time or establish production-duration timer behavior.
+
+**Observed net10 test:** [`ApprovalHostEventTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/ApprovalHostEventTest.cs) scheduled the real approval orchestration with its 24-hour input timeout, raised the `Approved` event after the instance started, and observed completion within a bounded five-second wait. The host emitted the real-wall-clock timer diagnostic; this confirms the event can win without waiting for or shortening the production-length timer, but does not establish same-deadline arbitration.
 
 **Compatibility:** generic `Trigger<T>()` currently accepts orchestration/entity attributes and can be used with caller mocks. Preserve that behavior now. Rejection is not committed; if proposed later, it requires a major version of the existing Functions package, release notes, and an error linking to optional-package guidance even when not installed. Entities remain outside the new tester's scope.
 
 ## Later phases and Aspire
 
-- **Phase 2, smallest runner:** implement only the engine/API justified by Phase 1; retain Phase 0 activity tests, add supported orchestration expressions/arrangements and starter/status-response examples using caller-mocked `DurableTaskClient`.
+- **Phase 2, minimal opt-in implementation:** prototype the two selected packages separately: the method-level timer/event context helper and the optional in-memory SDK host wrapper. Keep the existing `UnitTestEx.Azure.Functions` package dependency-free of Durable Task. The context path must stay narrow; the host path must preserve real engine timers/replay and warn about wall-clock waits. Do not build the broad scripted fake, a reusable UnitTestEx adapter for `TaskOrchestrator<TIn,TOut>`, retry harness, or Functions backend integration as part of this phase.
 - **Phase 3, expanded interactions:** add child orchestration, cancellation edge cases, replay and diagnostic capabilities as their evidence matures; maintain the capability matrix and explicit unsupported-operation failures.
-- **Phase 4, release:** public docs/assertions, dependency/framework matrix, and package isolation. Standalone worker/backend integration, entities, `ContinueAsNew`, and durable HTTP are not initial claims.
+- **Phase 4, release:** public docs/assertions, dependency/framework matrix, and package isolation. README documentation must include a detailed support table organized by Durable Functions type/construct (at minimum activities, static/instance `[Function]` orchestration methods, typed SDK `TaskOrchestrator<TIn,TOut>` implementations, sub-orchestrations, entities, timers, external events, and client/start/status operations). Identify SDK-only behavior separately from Functions-worker behavior. For each, distinguish the test path, supported behavior, unsupported or unproven behavior, and fidelity boundary; distinguish direct `FunctionTester` invocation, the in-memory SDK host, method-level virtual-context tests, and Aspire/real Functions integration. Do not advertise unproven behavior as supported. The interim evidence matrix is [`azure-durable-functions-support-matrix.md`](./azure-durable-functions-support-matrix.md); it is not a substitute for the release README. Standalone worker/backend integration, entities, `ContinueAsNew`, and durable HTTP are not initial claims.
 
 In parallel, reuse the sample with a **separate opt-in** Aspire AppHost/test project: Core Tools plus Azurite/Azure Storage provider, indexing readiness, client scheduling, bounded status/output polling and cleanup. Use a lower test-only `extensions.durableTask.storageProvider.maxQueuePollingInterval` (for example one second; default 30 seconds). Do not add emulator requirements to the existing general/container-free host.
 
@@ -161,8 +348,10 @@ These details matter only if the fake is selected; none is an implemented API or
 ## Sources and current observations
 
 - [Microsoft unit-testing guidance](https://learn.microsoft.com/en-us/azure/durable-task/durable-functions/durable-functions-unit-testing): checked 2026-11-11; Functions pivot uses mocks/static direct invocation, SDK pivot lists the test-host prerequisite. Combined-page prerequisites do not establish a Functions-host adapter.
-- [Test-host README](https://github.com/microsoft/durabletask-dotnet/blob/main/src/InProcessTestHost/README.md) and [project dependencies](https://github.com/microsoft/durabletask-dotnet/blob/main/src/InProcessTestHost/InProcessTestHost.csproj): public registration and dependency evidence, not proof of Functions serializer/clock compatibility.
-- [SDK context wrapper](https://github.com/microsoft/durabletask-dotnet/blob/main/src/Worker/Core/Shims/TaskOrchestrationContextWrapper.cs), [Functions wrapper](https://github.com/Azure/azure-functions-durable-extension/blob/dev/src/Worker.Extensions.DurableTask/FunctionsOrchestrationContext.cs), and [input converters](https://github.com/Azure/azure-functions-durable-extension/blob/dev/src/Worker.Extensions.DurableTask/FunctionsOrchestrationContext.InputConverter.cs): different `GetInput<T>()` paths; recheck selected package versions.
-- [`TaskFailedException`](https://github.com/microsoft/durabletask-dotnet/blob/main/src/Abstractions/TaskFailedException.cs) and [`TaskFailureDetails`](https://github.com/microsoft/durabletask-dotnet/blob/main/src/Abstractions/TaskFailureDetails.cs): public construction and mapping; validate pinned-package behavior.
+- [Published 0.2.3-preview.1 NuGet page](https://www.nuget.org/packages/Microsoft.DurableTask.InProcessTestHost/0.2.3-preview.1), [published nuspec](https://api.nuget.org/v3-flatcontainer/microsoft.durabletask.inprocesstesthost/0.2.3-preview.1/microsoft.durabletask.inprocesstesthost.nuspec), pinned [host API](https://github.com/microsoft/durabletask-dotnet/blob/28d937706cb4ae7aacdf02de4198c26240637673/src/InProcessTestHost/DurableTaskTestHost.cs), and pinned [timer service](https://github.com/microsoft/durabletask-dotnet/blob/28d937706cb4ae7aacdf02de4198c26240637673/src/InProcessTestHost/Sidecar/InMemoryOrchestrationService.cs): release maturity, target groups/dependencies, host API, and wall-clock timer implementation. This replaces upstream `main` as the compatibility reference.
+- [Published Functions Durable extension 1.22.0 nuspec](https://api.nuget.org/v3-flatcontainer/microsoft.azure.functions.worker.extensions.durabletask/1.22.0/microsoft.azure.functions.worker.extensions.durabletask.nuspec): comparison point for the existing sample's Durable SDK dependency minimums.
+- Local [`FunctionTesterBase`](../src/UnitTestEx.Azure.Functions/Azure/Functions/FunctionTesterBase.cs) and [`TestFunctionContext`](../src/UnitTestEx.Azure.Functions/Azure/Functions/TestFunctionContext.cs): startup capture and optional context construction used by the staged probe.
+- [SDK context wrapper](https://github.com/microsoft/durabletask-dotnet/blob/28d937706cb4ae7aacdf02de4198c26240637673/src/Worker/Core/Shims/TaskOrchestrationContextWrapper.cs), [Functions wrapper](https://github.com/Azure/azure-functions-durable-extension/blob/58159da937ad7703d1fadb8ea7112d4e9073ba43/src/Worker.Extensions.DurableTask/FunctionsOrchestrationContext.cs), and [input converters](https://github.com/Azure/azure-functions-durable-extension/blob/58159da937ad7703d1fadb8ea7112d4e9073ba43/src/Worker.Extensions.DurableTask/FunctionsOrchestrationContext.InputConverter.cs): different `GetInput<T>()` paths; the Functions wrapper is pinned to extension 1.22.0's nuspec commit.
+- [`TaskFailedException`](https://github.com/microsoft/durabletask-dotnet/blob/28d937706cb4ae7aacdf02de4198c26240637673/src/Abstractions/TaskFailedException.cs) and [`TaskFailureDetails`](https://github.com/microsoft/durabletask-dotnet/blob/28d937706cb4ae7aacdf02de4198c26240637673/src/Abstractions/TaskFailureDetails.cs): public construction and mapping; validate pinned-package behavior.
 - [Durable analyzer](https://learn.microsoft.com/en-us/azure/azure-functions/durable-functions/durable-functions-roslyn-analyzer), [`host.json` settings](https://learn.microsoft.com/en-us/azure/azure-functions/durable-functions/durable-functions-host-json-settings), and [scheduler quickstart](https://learn.microsoft.com/en-us/azure/durable-task/scheduler/quickstart-durable-task-scheduler).
 - Existing UnitTestEx [Functions](./azure-functions.md) and [Aspire](./aspire.md) documentation define the invocation/runtime proof boundaries.
