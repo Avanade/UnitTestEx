@@ -24,7 +24,7 @@ public sealed class FluentDurableTaskTest
             .StartAsync();
 
         run.ExpectSuccess();
-        var result = await run.WaitForCompletionAsync(TimeSpan.FromSeconds(5));
+        var result = await run.WaitForCompletionAsync();
         result.AssertCompleted().AssertOutput("Completed without input");
     }
 
@@ -72,8 +72,8 @@ public sealed class FluentDurableTaskTest
 
         run.ExpectSuccess().ExpectLogContains("uses the host's real wall clock");
 
-        await run.Host.Client.WaitForInstanceStartAsync(run.InstanceId).WaitAsync(TimeSpan.FromSeconds(5));
-        await run.Host.Client.RaiseEventAsync(run.InstanceId, "Approved", new ApprovalDecision(true));
+        await run.WaitForStartAsync();
+        await run.RaiseEventAsync("Approved", new ApprovalDecision(true));
 
         var result = await run.WaitForCompletionAsync(TimeSpan.FromSeconds(5));
         result.AssertCompleted().AssertOutput(new ApprovalDecision(true));

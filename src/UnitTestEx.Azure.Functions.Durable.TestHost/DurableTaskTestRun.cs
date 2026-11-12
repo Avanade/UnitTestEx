@@ -12,6 +12,7 @@ namespace UnitTestEx.Azure.Functions.Durable.TestHost;
 /// <typeparam name="TOutput">The orchestration output type.</typeparam>
 public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectations<DurableTaskTestRun<TOutput>>
 {
+    private static readonly TimeSpan DefaultWaitTimeout = TimeSpan.FromSeconds(5);
     private readonly TesterBase _owner;
     private DurableTaskTestHost? _host;
 
@@ -39,25 +40,50 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     public string InstanceId { get; }
 
     /// <summary>
+    /// Waits for the orchestration to start up to the specified timeout, defaulting to five seconds.
+    /// </summary>
+    /// <param name="timeout">The maximum amount of time to wait; defaults to five seconds and otherwise must be positive.</param>
+    public async Task WaitForStartAsync(TimeSpan? timeout = null)
+    {
+        TimeSpan waitTimeout = timeout ?? DefaultWaitTimeout;
+        if (waitTimeout <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(timeout), waitTimeout, "The start timeout must be positive.");
+
+        _ = await Host.Client.WaitForInstanceStartAsync(InstanceId).WaitAsync(waitTimeout).ConfigureAwait(false)
+            ?? throw new InvalidOperationException($"The test host returned no metadata for orchestration instance '{InstanceId}'.");
+    }
+
+    /// <summary>
+    /// Raises an external event on this orchestration instance.
+    /// </summary>
+    /// <typeparam name="TEvent">The event payload type.</typeparam>
+    /// <param name="eventName">The event name.</param>
+    /// <param name="eventData">The event payload.</param>
+    /// <returns>A task that completes when the SDK client has raised the event.</returns>
+    public Task RaiseEventAsync<TEvent>(string eventName, TEvent eventData)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+        return Host.Client.RaiseEventAsync(InstanceId, eventName, eventData);
+    }
+
+    /// <summary>
     /// Gets the expectations arranger.
     /// </summary>
     public ExpectationsArranger<DurableTaskTestRun<TOutput>> ExpectationsArranger { get; }
 
     /// <summary>
-    /// Waits for orchestration completion up to the specified timeout.
+    /// Waits for orchestration completion up to the specified timeout, defaulting to five seconds.
     /// </summary>
     /// <remarks>When expectations are arranged, non-completed orchestration metadata is represented by <see cref="DurableTaskOrchestrationException"/>. Host and wait errors propagate directly.</remarks>
-    /// <param name="timeout">The maximum amount of time to wait; must be positive.</param>
+    /// <param name="timeout">The maximum amount of time to wait; defaults to five seconds and otherwise must be positive.</param>
     /// <returns>An assertor exposing the SDK orchestration metadata and fluent assertions.</returns>
-    public async Task<DurableTaskTestAssertor<TOutput>> WaitForCompletionAsync(TimeSpan timeout)
+    public async Task<DurableTaskTestAssertor<TOutput>> WaitForCompletionAsync(TimeSpan? timeout = null)
     {
-        if (timeout <= TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(timeout), timeout, "The completion timeout must be positive.");
+        TimeSpan waitTimeout = timeout ?? DefaultWaitTimeout;
+        if (waitTimeout <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(timeout), waitTimeout, "The completion timeout must be positive.");
 
-        var metadata = await Host.Client.WaitForInstanceCompletionAsync(InstanceId, getInputsAndOutputs: true).WaitAsync(timeout).ConfigureAwait(false);
-        if (metadata is null)
-            throw new InvalidOperationException($"The test host returned no metadata for orchestration instance '{InstanceId}'.");
-
+        var metadata = await Host.Client.WaitForInstanceCompletionAsync(InstanceId, getInputsAndOutputs: true).WaitAsync(waitTimeout).ConfigureAwait(false) ?? throw new InvalidOperationException($"The test host returned no metadata for orchestration instance '{InstanceId}'.");
         if (ExpectationsArranger.HasExpectations)
             await ExpectationsArranger.AssertValueAsync(_owner.SharedState.GetLoggerMessages(), metadata, GetExpectationException(metadata)).ConfigureAwait(false);
 
@@ -69,7 +95,7 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     /// </summary>
     /// <param name="metadata">The orchestration metadata.</param>
     /// <returns>The expectation exception, or <c>null</c> for a completed orchestration.</returns>
-    private static Exception? GetExpectationException(OrchestrationMetadata metadata)
+    private static DurableTaskOrchestrationException? GetExpectationException(OrchestrationMetadata metadata)
         => metadata.RuntimeStatus == OrchestrationRuntimeStatus.Completed ? null : new DurableTaskOrchestrationException(metadata);
 
     /// <inheritdoc/>
