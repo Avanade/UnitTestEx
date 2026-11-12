@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Testing;
@@ -13,18 +14,23 @@ namespace UnitTestEx.Azure.Functions.Durable.TestHost;
 public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectations<DurableTaskTestRun<TOutput>>
 {
     private static readonly TimeSpan DefaultWaitTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan StatusPollingInterval = TimeSpan.FromMilliseconds(20);
     private readonly TesterBase _owner;
+    private readonly DurableTaskActivityVerifier _activityVerifier;
     private DurableTaskTestHost? _host;
+    private bool _completionObserved;
 
     /// <summary>Initializes a scheduled test run and takes ownership of its SDK host.</summary>
     /// <param name="owner">The FunctionTester owning the assertion framework.</param>
     /// <param name="host">The in-memory SDK host.</param>
     /// <param name="instanceId">The scheduled orchestration instance identifier.</param>
-    internal DurableTaskTestRun(TesterBase owner, DurableTaskTestHost host, string instanceId)
+    /// <param name="activityVerifier">The per-run activity invocation verifier.</param>
+    internal DurableTaskTestRun(TesterBase owner, DurableTaskTestHost host, string instanceId, DurableTaskActivityVerifier activityVerifier)
     {
         _owner = owner ?? throw new ArgumentNullException(nameof(owner));
         _host = host;
         InstanceId = instanceId;
+        _activityVerifier = activityVerifier ?? throw new ArgumentNullException(nameof(activityVerifier));
         ExpectationsArranger = new ExpectationsArranger<DurableTaskTestRun<TOutput>>(_owner, this);
     }
 
@@ -67,6 +73,38 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     }
 
     /// <summary>
+    /// Waits until a custom-status predicate matches the latest orchestration metadata.
+    /// </summary>
+    /// <param name="predicate">A predicate that returns true when the desired custom status is visible.</param>
+    /// <param name="timeout">The maximum amount of time to wait; defaults to five seconds and otherwise must be positive.</param>
+    /// <returns>The orchestration metadata snapshot with the matching custom status.</returns>
+    /// <exception cref="TimeoutException">The custom status was not observed before the timeout.</exception>
+    public async Task<OrchestrationMetadata> WaitForCustomStatusAsync(Func<OrchestrationMetadata, bool> predicate, TimeSpan? timeout = null)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        TimeSpan waitTimeout = timeout ?? DefaultWaitTimeout;
+        if (waitTimeout <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(timeout), waitTimeout, "The custom-status timeout must be positive.");
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        while (stopwatch.Elapsed < waitTimeout)
+        {
+            TimeSpan remaining = waitTimeout - stopwatch.Elapsed;
+            OrchestrationMetadata? metadata = await Host.Client.GetInstanceAsync(InstanceId, getInputsAndOutputs: true).WaitAsync(remaining).ConfigureAwait(false);
+            if (metadata is not null && predicate(metadata))
+                return metadata;
+
+            remaining = waitTimeout - stopwatch.Elapsed;
+            if (remaining <= TimeSpan.Zero)
+                break;
+
+            await Task.Delay(remaining < StatusPollingInterval ? remaining : StatusPollingInterval).ConfigureAwait(false);
+        }
+
+        throw new TimeoutException($"The custom status was not observed for orchestration instance '{InstanceId}' within {waitTimeout}.");
+    }
+
+    /// <summary>
     /// Gets the expectations arranger.
     /// </summary>
     public ExpectationsArranger<DurableTaskTestRun<TOutput>> ExpectationsArranger { get; }
@@ -84,10 +122,24 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
             throw new ArgumentOutOfRangeException(nameof(timeout), waitTimeout, "The completion timeout must be positive.");
 
         var metadata = await Host.Client.WaitForInstanceCompletionAsync(InstanceId, getInputsAndOutputs: true).WaitAsync(waitTimeout).ConfigureAwait(false) ?? throw new InvalidOperationException($"The test host returned no metadata for orchestration instance '{InstanceId}'.");
+        _completionObserved = true;
         if (ExpectationsArranger.HasExpectations)
             await ExpectationsArranger.AssertValueAsync(_owner.SharedState.GetLoggerMessages(), metadata, GetExpectationException(metadata)).ConfigureAwait(false);
 
         return new DurableTaskTestAssertor<TOutput>(_owner, metadata);
+    }
+
+    /// <summary>
+    /// Verifies the configured invocation counts for all registered activity handlers.
+    /// </summary>
+    /// <remarks>Each activity registration defaults to at least one invocation; retries count as separate handler invocations.</remarks>
+    /// <exception cref="InvalidOperationException">Completion has not been observed, or an activity count does not meet its expectation.</exception>
+    public void Verify()
+    {
+        if (!_completionObserved)
+            throw new InvalidOperationException("WaitForCompletionAsync must complete before activity verification.");
+
+        _activityVerifier.Verify();
     }
 
     /// <summary>

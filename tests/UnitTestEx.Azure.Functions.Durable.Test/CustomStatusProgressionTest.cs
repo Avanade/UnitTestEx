@@ -1,8 +1,10 @@
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
-using Microsoft.DurableTask.Testing;
 using NUnit.Framework;
 using System.Text.Json;
+using UnitTestEx.Azure.Functions;
+using UnitTestEx.Azure.Functions.Durable.TestHost;
+using UnitTestEx.DurableFunction;
 
 namespace UnitTestEx.Azure.Functions.Durable.Test;
 
@@ -16,146 +18,105 @@ public sealed class CustomStatusProgressionTest
     [Test]
     public async Task LatestCustomStatusIsVisibleDuringAndAfterExecution()
     {
-        DurableTaskTestHost? host = null;
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        await using var run = await functions.DurableTask()
+            .Orchestrator<string, string>("CustomStatusProgression",
+                async (context, input) =>
+                {
+                    context.SetCustomStatus(new { Stage = "Started", Version = 1 });
+                    await context.WaitForExternalEvent<string>("Advance");
 
-        try
+                    context.SetCustomStatus(new { Stage = "Waiting", Version = 2 });
+                    await context.WaitForExternalEvent<string>("Finish");
+
+                    context.SetCustomStatus(new { Stage = "Completed", Version = 3 });
+                    return input;
+                })
+            .StartAsync("done");
+
+        var started = await run.WaitForCustomStatusAsync(metadata => HasCustomStatus(metadata, "Started", 1));
+        AssertCustomStatus(started.ReadCustomStatusAs<JsonElement>(), "Started", 1);
+        Assert.ThrowsAsync<TimeoutException>(async () =>
+            await run.WaitForCustomStatusAsync(_ => false, TimeSpan.FromMilliseconds(50)));
+
+        await run.RaiseEventAsync("Advance", "advance");
+        var waiting = await run.WaitForCustomStatusAsync(metadata => HasCustomStatus(metadata, "Waiting", 2));
+        AssertCustomStatus(waiting.ReadCustomStatusAs<JsonElement>(), "Waiting", 2);
+
+        await run.RaiseEventAsync("Finish", "finish");
+        var completed = await run.WaitForCompletionAsync();
+
+        Assert.Multiple(() =>
         {
-            host = await DurableTaskTestHost.StartAsync(registry =>
-                registry.AddOrchestratorFunc<string, string>(
-                    "CustomStatusProgression",
-                    async (context, input) =>
-                    {
-                        context.SetCustomStatus(new { Stage = "Started", Version = 1 });
-                        await context.WaitForExternalEvent<string>("Advance");
-                        context.SetCustomStatus(new { Stage = "Waiting", Version = 2 });
-                        await context.WaitForExternalEvent<string>("Finish");
-                        context.SetCustomStatus(new { Stage = "Completed", Version = 3 });
-                        return input;
-                    }));
+            Assert.That(completed.Metadata.RuntimeStatus, Is.EqualTo(OrchestrationRuntimeStatus.Completed));
+            Assert.That(completed.Metadata.ReadOutputAs<string>(), Is.EqualTo("done"));
+        });
 
-            var instanceId = await host.Client.ScheduleNewOrchestrationInstanceAsync("CustomStatusProgression", "done");
-            await host.Client.WaitForInstanceStartAsync(instanceId).WaitAsync(TimeSpan.FromSeconds(5));
-            await WaitForCustomStatusAsync(host.Client, instanceId, "Started");
-
-            await host.Client.RaiseEventAsync(instanceId, "Advance", "advance");
-            await WaitForCustomStatusAsync(host.Client, instanceId, "Waiting");
-
-            await host.Client.RaiseEventAsync(instanceId, "Finish", "finish");
-            var completed = await host.Client.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true)
-                .WaitAsync(TimeSpan.FromSeconds(5));
-
-            Assert.That(completed!.RuntimeStatus, Is.EqualTo(OrchestrationRuntimeStatus.Completed));
-            Assert.That(completed.ReadOutputAs<string>(), Is.EqualTo("done"));
-            AssertCustomStatus(completed.ReadCustomStatusAs<JsonElement>(), "Completed", 3);
-        }
-        finally
-        {
-            if (host is not null)
-                await host.DisposeAsync();
-        }
+        AssertCustomStatus(completed.Metadata.ReadCustomStatusAs<JsonElement>(), "Completed", 3);
     }
 
     /// <summary>Verifies assigning null clears custom status from running and completed metadata.</summary>
     [Test]
     public async Task NullCustomStatusClearsRunningAndTerminalMetadata()
     {
-        DurableTaskTestHost? host = null;
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        await using var run = await functions.DurableTask()
+            .Orchestrator<string, string>(
+                "CustomStatusClear",
+                async (context, input) =>
+                {
+                    context.SetCustomStatus(new { Stage = "Started", Version = 1 });
+                    await context.WaitForExternalEvent<string>("Clear");
 
-        try
+                    context.SetCustomStatus(null);
+                    await context.WaitForExternalEvent<string>("Finish");
+
+                    return input;
+                })
+            .StartAsync("done");
+
+        var started = await run.WaitForCustomStatusAsync(metadata => HasCustomStatus(metadata, "Started", 1));
+        AssertCustomStatus(started.ReadCustomStatusAs<JsonElement>(), "Started", 1);
+
+        await run.RaiseEventAsync("Clear", "clear");
+        var clearedMetadata = await run.WaitForCustomStatusAsync(metadata => metadata.SerializedCustomStatus is null);
+        Assert.Multiple(() =>
         {
-            host = await DurableTaskTestHost.StartAsync(registry =>
-                registry.AddOrchestratorFunc<string, string>(
-                    "CustomStatusClear",
-                    async (context, input) =>
-                    {
-                        context.SetCustomStatus(new { Stage = "Started", Version = 1 });
-                        await context.WaitForExternalEvent<string>("Clear");
-                        context.SetCustomStatus(null);
-                        await context.WaitForExternalEvent<string>("Finish");
-                        return input;
-                    }));
-
-            var instanceId = await host.Client.ScheduleNewOrchestrationInstanceAsync("CustomStatusClear", "done");
-            await host.Client.WaitForInstanceStartAsync(instanceId).WaitAsync(TimeSpan.FromSeconds(5));
-            await WaitForCustomStatusAsync(host.Client, instanceId, "Started");
-
-            await host.Client.RaiseEventAsync(instanceId, "Clear", "clear");
-            var clearedMetadata = await WaitForCustomStatusClearedAsync(host.Client, instanceId);
             Assert.That(clearedMetadata.RuntimeStatus, Is.EqualTo(OrchestrationRuntimeStatus.Running));
             Assert.That(clearedMetadata.SerializedCustomStatus, Is.Null);
+        });
 
-            await host.Client.RaiseEventAsync(instanceId, "Finish", "finish");
-            var completed = await host.Client.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true)
-                .WaitAsync(TimeSpan.FromSeconds(5));
-
-            Assert.That(completed!.RuntimeStatus, Is.EqualTo(OrchestrationRuntimeStatus.Completed));
-            Assert.That(completed.SerializedCustomStatus, Is.Null);
-        }
-        finally
+        await run.RaiseEventAsync("Finish", "finish");
+        var completed = await run.WaitForCompletionAsync();
+        Assert.Multiple(() =>
         {
-            if (host is not null)
-                await host.DisposeAsync();
-        }
+            Assert.That(completed.Metadata.RuntimeStatus, Is.EqualTo(OrchestrationRuntimeStatus.Completed));
+            Assert.That(completed.Metadata.SerializedCustomStatus, Is.Null);
+        });
     }
 
-    /// <summary>Waits until the requested status is visible from the test-host client.</summary>
-    /// <param name="client">The test-host client.</param>
-    /// <param name="instanceId">The orchestration instance ID.</param>
+    /// <summary>Checks whether the metadata contains the requested custom-status stage and version.</summary>
+    /// <param name="metadata">The orchestration metadata.</param>
     /// <param name="stage">The expected stage name.</param>
-    /// <returns>A task that completes when the status is observed.</returns>
-    private static async Task WaitForCustomStatusAsync(DurableTaskClient client, string instanceId, string stage)
+    /// <param name="version">The expected status version.</param>
+    /// <returns>True when both values match.</returns>
+    private static bool HasCustomStatus(OrchestrationMetadata metadata, string stage, int version)
     {
-        DateTime deadline = DateTime.UtcNow.AddSeconds(5);
-        while (DateTime.UtcNow < deadline)
-        {
-            var metadata = await client.GetInstanceAsync(instanceId, getInputsAndOutputs: true);
-            if (metadata is not null)
-            {
-                JsonElement status = metadata.ReadCustomStatusAs<JsonElement>();
-                if (status.ValueKind == JsonValueKind.Object
-                    && status.TryGetProperty("Stage", out JsonElement actualStage)
-                    && actualStage.GetString() == stage)
-                {
-                    int expectedVersion = stage switch
-                    {
-                        "Started" => 1,
-                        "Waiting" => 2,
-                        _ => throw new ArgumentOutOfRangeException(nameof(stage)),
-                    };
-                    AssertCustomStatus(status, stage, expectedVersion);
-                    return;
-                }
-            }
+        if (metadata.SerializedCustomStatus is null)
+            return false;
 
-            await Task.Delay(TimeSpan.FromMilliseconds(20));
-        }
-
-        throw new TimeoutException($"Custom status '{stage}' was not observed for orchestration '{instanceId}'.");
-    }
-
-    /// <summary>Waits until the orchestration metadata no longer contains serialized custom status.</summary>
-    /// <param name="client">The test-host client.</param>
-    /// <param name="instanceId">The orchestration instance ID.</param>
-    /// <returns>The metadata snapshot with custom status cleared.</returns>
-    private static async Task<OrchestrationMetadata> WaitForCustomStatusClearedAsync(DurableTaskClient client, string instanceId)
-    {
-        DateTime deadline = DateTime.UtcNow.AddSeconds(5);
-        while (DateTime.UtcNow < deadline)
-        {
-            var metadata = await client.GetInstanceAsync(instanceId, getInputsAndOutputs: true);
-            if (metadata is not null && metadata.SerializedCustomStatus is null)
-                return metadata;
-
-            await Task.Delay(TimeSpan.FromMilliseconds(20));
-        }
-
-        throw new TimeoutException($"Custom status was not cleared for orchestration '{instanceId}'.");
+        JsonElement status = metadata.ReadCustomStatusAs<JsonElement>();
+        return status.ValueKind == JsonValueKind.Object
+            && status.TryGetProperty("Stage", out JsonElement actualStage)
+            && actualStage.GetString() == stage
+            && status.TryGetProperty("Version", out JsonElement actualVersion)
+            && actualVersion.GetInt32() == version;
     }
 
     /// <summary>Asserts the stage and version in a custom-status payload.</summary>
     /// <param name="status">The status payload.</param>
-    /// <param name="stage">The expected stage.</param>
-    /// <param name="version">The expected version.</param>
+    /// <param name="stage">The expected stage name.</param>
+    /// <param name="version">The expected status version.</param>
     private static void AssertCustomStatus(JsonElement status, string stage, int version)
     {
         Assert.That(status.GetProperty("Stage").GetString(), Is.EqualTo(stage));
