@@ -105,7 +105,8 @@ jobs:
             10.0.x
             11.0.x
           # Keep net10 available for libraries referenced by the fixed-net10 AppHosts.
-          target-frameworks: net10.0%3Bnet11.0
+          # The commands pass literal quotes to MSBuild to preserve framework-list separators.
+          target-frameworks: 'net10.0;net11.0'
     env:
       TARGET_FRAMEWORK: ${{ matrix.framework }}
       TARGET_FRAMEWORKS: ${{ matrix.target-frameworks }}
@@ -126,7 +127,7 @@ jobs:
       run: >-
         dotnet test tests/UnitTestEx.Aspire.MSTest.Test/UnitTestEx.Aspire.MSTest.Test.csproj
         --framework "$TARGET_FRAMEWORK" --configuration Debug
-        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
+        -p:TargetFrameworks="\"$TARGET_FRAMEWORKS\"" -p:GeneratePackageOnBuild=false
         --logger "trx;LogFileName=results.trx"
         --results-directory "$RUNNER_TEMP/test-results/mstest" --verbosity normal
 
@@ -135,7 +136,7 @@ jobs:
       run: >-
         dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj
         --framework "$TARGET_FRAMEWORK" --configuration Debug
-        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
+        -p:TargetFrameworks="\"$TARGET_FRAMEWORKS\"" -p:GeneratePackageOnBuild=false
         --logger "trx;LogFileName=results.trx"
         --results-directory "$RUNNER_TEMP/test-results/nunit" --verbosity normal
 
@@ -144,7 +145,7 @@ jobs:
       run: >-
         dotnet test tests/UnitTestEx.Aspire.Xunit.Test/UnitTestEx.Aspire.Xunit.Test.csproj
         --framework "$TARGET_FRAMEWORK" --configuration Debug
-        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
+        -p:TargetFrameworks="\"$TARGET_FRAMEWORKS\"" -p:GeneratePackageOnBuild=false
         --logger "trx;LogFileName=results.trx"
         --results-directory "$RUNNER_TEMP/test-results/xunit" --verbosity normal
 

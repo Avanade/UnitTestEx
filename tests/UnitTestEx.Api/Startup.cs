@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +31,7 @@ namespace UnitTestEx.Api
             // reach into and replace across process boundaries.
             services.AddHttpClient("XXX", hc => hc.BaseAddress = new System.Uri(Configuration["XXX:BaseUrl"] ?? "https://somesys"))
                 .AddHttpMessageHandler(_ => new MessageProcessingHandler())
-                .ConfigureHttpClient(hc => hc.DefaultRequestVersion = new Version(1, 2));
+                .ConfigureHttpClient(hc => hc.DefaultRequestVersion = HttpVersion.Version11);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

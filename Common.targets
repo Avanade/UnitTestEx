@@ -30,11 +30,6 @@
     <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
-    <EnablePreviewFeatures>true</EnablePreviewFeatures>
-    <Features>$(Features);runtime-async=on</Features>
-  </PropertyGroup>
-
   <ItemGroup>
     <None Include="..\..\images\Logo256x256.png" Link="Logo256x256.png">
       <PackagePath>\</PackagePath>
