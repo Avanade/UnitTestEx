@@ -10,9 +10,7 @@ namespace UnitTestEx.Azure.Functions.Durable.TestHost;
 /// </summary>
 /// <typeparam name="TEntryPoint">A type from the isolated-worker application assembly.</typeparam>
 /// <typeparam name="TSelf">The concrete FunctionTester type.</typeparam>
-public sealed class DurableTaskTestBuilder<TEntryPoint, TSelf>
-    where TEntryPoint : class
-    where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
+public sealed class DurableTaskTestBuilder<TEntryPoint, TSelf> where TEntryPoint : class where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
 {
     private readonly FunctionTesterBase<TEntryPoint, TSelf> _functionTester;
     private readonly Action<DurableTaskRegistry> _configureRegistry;
@@ -97,9 +95,7 @@ public sealed class DurableTaskTestBuilder<TEntryPoint, TSelf>
 /// <typeparam name="TSelf">The concrete FunctionTester type.</typeparam>
 /// <typeparam name="TInput">The orchestration input type.</typeparam>
 /// <typeparam name="TOutput">The orchestration output type.</typeparam>
-public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput>
-    where TEntryPoint : class
-    where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
+public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> where TEntryPoint : class where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
 {
     private readonly FunctionTesterBase<TEntryPoint, TSelf> _functionTester;
     private readonly string _orchestrationName;
@@ -113,12 +109,8 @@ public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInp
     /// <param name="configureRegistry">The SDK registry configuration.</param>
     /// <param name="configureServices">The optional SDK host service configuration.</param>
     /// <param name="activityRegistrations">The activity registrations with their per-run invocation expectations.</param>
-    internal DurableTaskOrchestrationTestBuilder(
-        FunctionTesterBase<TEntryPoint, TSelf> functionTester,
-        string orchestrationName,
-        Action<DurableTaskRegistry> configureRegistry,
-        Action<IServiceCollection>? configureServices,
-        IReadOnlyList<Action<DurableTaskRegistry, DurableTaskActivityVerifier>>? activityRegistrations = null)
+    internal DurableTaskOrchestrationTestBuilder(FunctionTesterBase<TEntryPoint, TSelf> functionTester, string orchestrationName, Action<DurableTaskRegistry> configureRegistry,
+        Action<IServiceCollection>? configureServices, IReadOnlyList<Action<DurableTaskRegistry, DurableTaskActivityVerifier>>? activityRegistrations = null)
     {
         _functionTester = functionTester;
         _orchestrationName = orchestrationName;
@@ -136,10 +128,8 @@ public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInp
     /// <param name="activity">The handler, which may invoke a real activity method.</param>
     /// <param name="configure">Optional invocation verification configuration for this activity handler.</param>
     /// <returns>A new builder with the activity handler registered.</returns>
-    public DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> Activity<TActivityInput, TActivityOutput>(
-        string name,
-        Func<TaskActivityContext, TActivityInput, Task<TActivityOutput>> activity,
-        Action<DurableTaskActivityOptions>? configure = null)
+    public DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> Activity<TActivityInput, TActivityOutput>(string name,
+        Func<TaskActivityContext, TActivityInput, Task<TActivityOutput>> activity, Action<DurableTaskActivityOptions>? configure = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(activity);
@@ -166,10 +156,8 @@ public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInp
     /// <param name="activity">The handler, which may invoke a real activity method.</param>
     /// <param name="configure">Optional invocation verification configuration for this activity handler.</param>
     /// <returns>A new builder with the activity handler registered.</returns>
-    public DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> Activity<TActivityInput, TActivityOutput>(
-        string name,
-        Func<TaskActivityContext, TActivityInput, TActivityOutput> activity,
-        Action<DurableTaskActivityOptions>? configure = null)
+    public DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> Activity<TActivityInput, TActivityOutput>(string name,
+        Func<TaskActivityContext, TActivityInput, TActivityOutput> activity, Action<DurableTaskActivityOptions>? configure = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(activity);
@@ -244,7 +232,9 @@ public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInp
             foreach (Action<DurableTaskRegistry, DurableTaskActivityVerifier> registration in _activityRegistrations)
                 registration(registry, verifier);
         };
+
         DurableTaskTestHost host = await _functionTester.StartDurableTaskTestHostAsync(configureRegistry, _configureServices).ConfigureAwait(false);
+
         try
         {
             string instanceId = await host.Client.ScheduleNewOrchestrationInstanceAsync(_orchestrationName, input).ConfigureAwait(false);
@@ -265,14 +255,12 @@ public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInp
                 _configureRegistry(registry);
                 registration(registry);
             },
-            _configureServices,
-            _activityRegistrations);
+            _configureServices, _activityRegistrations);
 
     /// <summary>Returns a builder with an additional activity registration.</summary>
     /// <param name="registration">The activity registration callback.</param>
     /// <returns>A new builder containing the additional activity registration.</returns>
-    private DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> AppendActivity(
-        Action<DurableTaskRegistry, DurableTaskActivityVerifier> registration)
+    private DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> AppendActivity(Action<DurableTaskRegistry, DurableTaskActivityVerifier> registration)
         => new(_functionTester, _orchestrationName, _configureRegistry, _configureServices, _activityRegistrations.Append(registration).ToArray());
 
     /// <summary>Returns a service callback that applies an additional configuration after existing configurations.</summary>
@@ -290,9 +278,7 @@ public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInp
 /// <typeparam name="TEntryPoint">A type from the isolated-worker application assembly.</typeparam>
 /// <typeparam name="TSelf">The concrete FunctionTester type.</typeparam>
 /// <typeparam name="TOutput">The orchestration output type.</typeparam>
-public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput>
-    where TEntryPoint : class
-    where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
+public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> where TEntryPoint : class where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
 {
     private readonly FunctionTesterBase<TEntryPoint, TSelf> _functionTester;
     private readonly string _orchestrationName;
@@ -306,12 +292,8 @@ public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSel
     /// <param name="configureRegistry">The SDK registry configuration.</param>
     /// <param name="configureServices">The optional SDK host service configuration.</param>
     /// <param name="activityRegistrations">The activity registrations with their per-run invocation expectations.</param>
-    internal DurableTaskNoInputOrchestrationTestBuilder(
-        FunctionTesterBase<TEntryPoint, TSelf> functionTester,
-        string orchestrationName,
-        Action<DurableTaskRegistry> configureRegistry,
-        Action<IServiceCollection>? configureServices,
-        IReadOnlyList<Action<DurableTaskRegistry, DurableTaskActivityVerifier>>? activityRegistrations = null)
+    internal DurableTaskNoInputOrchestrationTestBuilder(FunctionTesterBase<TEntryPoint, TSelf> functionTester, string orchestrationName, Action<DurableTaskRegistry> configureRegistry,
+        Action<IServiceCollection>? configureServices, IReadOnlyList<Action<DurableTaskRegistry, DurableTaskActivityVerifier>>? activityRegistrations = null)
     {
         _functionTester = functionTester;
         _orchestrationName = orchestrationName;
@@ -329,16 +311,15 @@ public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSel
     /// <param name="activity">The handler, which may invoke a real activity method.</param>
     /// <param name="configure">Optional invocation verification configuration for this activity handler.</param>
     /// <returns>A new builder with the activity handler registered.</returns>
-    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> Activity<TActivityInput, TActivityOutput>(
-        string name,
-        Func<TaskActivityContext, TActivityInput, Task<TActivityOutput>> activity,
-        Action<DurableTaskActivityOptions>? configure = null)
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> Activity<TActivityInput, TActivityOutput>(string name,
+        Func<TaskActivityContext, TActivityInput, Task<TActivityOutput>> activity, Action<DurableTaskActivityOptions>? configure = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(activity);
 
         var options = new DurableTaskActivityOptions();
         configure?.Invoke(options);
+
         return AppendActivity((registry, verifier) =>
         {
             Action recordInvocation = verifier.Register(name, options.ExpectedTimes);
@@ -359,16 +340,15 @@ public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSel
     /// <param name="activity">The handler, which may invoke a real activity method.</param>
     /// <param name="configure">Optional invocation verification configuration for this activity handler.</param>
     /// <returns>A new builder with the activity handler registered.</returns>
-    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> Activity<TActivityInput, TActivityOutput>(
-        string name,
-        Func<TaskActivityContext, TActivityInput, TActivityOutput> activity,
-        Action<DurableTaskActivityOptions>? configure = null)
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> Activity<TActivityInput, TActivityOutput>(string name,
+        Func<TaskActivityContext, TActivityInput, TActivityOutput> activity, Action<DurableTaskActivityOptions>? configure = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(activity);
 
         var options = new DurableTaskActivityOptions();
         configure?.Invoke(options);
+
         return AppendActivity((registry, verifier) =>
         {
             Action recordInvocation = verifier.Register(name, options.ExpectedTimes);
@@ -388,9 +368,7 @@ public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSel
     /// <param name="name">The child orchestration name.</param>
     /// <param name="orchestrator">The child orchestration delegate.</param>
     /// <returns>A new builder with the child orchestration registered.</returns>
-    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> SubOrchestrator<TChildInput, TChildOutput>(
-        string name,
-        Func<TaskOrchestrationContext, TChildInput, Task<TChildOutput>> orchestrator)
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> SubOrchestrator<TChildInput, TChildOutput>(string name, Func<TaskOrchestrationContext, TChildInput, Task<TChildOutput>> orchestrator)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(orchestrator);
@@ -405,9 +383,7 @@ public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSel
     /// <param name="name">The child orchestration name.</param>
     /// <param name="orchestrator">The child orchestration delegate.</param>
     /// <returns>A new builder with the child orchestration registered.</returns>
-    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> SubOrchestrator<TChildOutput>(
-        string name,
-        Func<TaskOrchestrationContext, Task<TChildOutput>> orchestrator)
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> SubOrchestrator<TChildOutput>(string name, Func<TaskOrchestrationContext, Task<TChildOutput>> orchestrator)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(orchestrator);
@@ -444,7 +420,9 @@ public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSel
             foreach (Action<DurableTaskRegistry, DurableTaskActivityVerifier> registration in _activityRegistrations)
                 registration(registry, verifier);
         };
+
         DurableTaskTestHost host = await _functionTester.StartDurableTaskTestHostAsync(configureRegistry, _configureServices).ConfigureAwait(false);
+
         try
         {
             string instanceId = await host.Client.ScheduleNewOrchestrationInstanceAsync(_orchestrationName).ConfigureAwait(false);
@@ -465,14 +443,12 @@ public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSel
                 _configureRegistry(registry);
                 registration(registry);
             },
-            _configureServices,
-            _activityRegistrations);
+            _configureServices, _activityRegistrations);
 
     /// <summary>Returns a builder with an additional activity registration.</summary>
     /// <param name="registration">The activity registration callback.</param>
     /// <returns>A new builder containing the additional activity registration.</returns>
-    private DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> AppendActivity(
-        Action<DurableTaskRegistry, DurableTaskActivityVerifier> registration)
+    private DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> AppendActivity(Action<DurableTaskRegistry, DurableTaskActivityVerifier> registration)
         => new(_functionTester, _orchestrationName, _configureRegistry, _configureServices, _activityRegistrations.Append(registration).ToArray());
 
     /// <summary>Returns a service callback that applies an additional configuration after existing configurations.</summary>

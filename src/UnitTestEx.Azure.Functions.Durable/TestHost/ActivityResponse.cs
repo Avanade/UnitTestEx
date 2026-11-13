@@ -9,16 +9,14 @@ public static class ActivityResponse
     /// <param name="matches">The input matcher.</param>
     /// <param name="createOutput">The output factory.</param>
     /// <returns>An input-matched response plan.</returns>
-    public static ActivityResponse<TInput, TOutput> Match<TInput, TOutput>(Func<TInput, bool> matches, Func<TInput, TOutput> createOutput)
-        => new(matches ?? throw new ArgumentNullException(nameof(matches)), createOutput);
+    public static ActivityResponse<TInput, TOutput> Match<TInput, TOutput>(Func<TInput, bool> matches, Func<TInput, TOutput> createOutput) => new(matches ?? throw new ArgumentNullException(nameof(matches)), createOutput);
 
     /// <summary>Creates a response selected by its position in the invocation sequence.</summary>
     /// <typeparam name="TInput">The activity input type.</typeparam>
     /// <typeparam name="TOutput">The activity output type.</typeparam>
     /// <param name="createOutput">The output factory.</param>
     /// <returns>An invocation-ordered response plan.</returns>
-    public static ActivityResponse<TInput, TOutput> Next<TInput, TOutput>(Func<TInput, TOutput> createOutput)
-        => new(null, createOutput);
+    public static ActivityResponse<TInput, TOutput> Next<TInput, TOutput>(Func<TInput, TOutput> createOutput) => new(null, createOutput);
 }
 
 /// <summary>Defines one input-matched or invocation-ordered activity response.</summary>
@@ -30,8 +28,13 @@ public static class ActivityResponse
 /// <typeparam name="TOutput">The activity output type.</typeparam>
 public sealed class ActivityResponse<TInput, TOutput>
 {
+#if NET8_0
     /// <summary>Synchronizes response configuration and handler ownership.</summary>
     internal static readonly object ConfigurationSync = new();
+#else
+    /// <summary>Synchronizes response configuration and handler ownership.</summary>
+    internal static readonly Lock ConfigurationSync = new();
+#endif
     private readonly Func<TInput, bool>? _matches;
     private readonly Func<TInput, TOutput> _createOutput;
     private TimeSpan? _delay;
@@ -87,6 +90,7 @@ public sealed class ActivityResponse<TInput, TOutput>
         {
             if (IsAttached)
                 throw new InvalidOperationException("A response cannot be modified after it is attached to a handler.");
+
             if (_completionConfigured)
                 throw new InvalidOperationException("A response can have only one completion strategy.");
 
@@ -104,6 +108,7 @@ public sealed class ActivityResponse<TInput, TOutput>
         {
             if (IsAttached)
                 throw new InvalidOperationException("A response cannot be modified after it is attached to a handler.");
+
             if (_completionConfigured)
                 throw new InvalidOperationException("A response can have only one completion strategy.");
 

@@ -14,9 +14,17 @@ _UnitTestEx_ provides [.NET testing](https://learn.microsoft.com/en-us/dotnet/co
 
 ## Status
 
-CI | `UnitTestEx` | `UnitTestEx.Azure.Functions` | `UnitTestEx.Aspire` | `UnitTestEx.MSTest` | `UnitTestEx.NUnit` | `UnitTestEx.Xunit`
--|-|-|-|-|-|-
-[![CI](https://github.com/Avanade/UnitTestEx/workflows/CI/badge.svg)](https://github.com/Avanade/UnitTestEx/actions?query=workflow%3ACI) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.svg)](https://badge.fury.io/nu/UnitTestEx) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Azure.Functions.svg)](https://badge.fury.io/nu/UnitTestEx.Azure.Functions) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Aspire.svg)](https://badge.fury.io/nu/UnitTestEx.Aspire) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.MSTest.svg)](https://badge.fury.io/nu/UnitTestEx.MSTest) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.NUnit.svg)](https://badge.fury.io/nu/UnitTestEx.NUnit) | [![NuGet version](https://badge.fury.io/nu/UnitTestEx.Xunit.svg)](https://badge.fury.io/nu/UnitTestEx.Xunit)
+The build status is [![CI](https://github.com/Avanade/UnitTestEx/workflows/CI/badge.svg)](https://github.com/Avanade/UnitTestEx/actions?query=workflow%3ACI) with the NuGet package status as follows, including links to the underlying source code and documentation:
+
+Project/Package | Description | Source | Docs
+-|-|-|-
+`UnitTestEx`<br/>[![NuGet version](https://badge.fury.io/nu/UnitTestEx.svg)](https://badge.fury.io/nu/UnitTestEx) | Core API and DI-composed service testers, with HTTP-client mocking, dependency overrides, fluent assertions and captured logging. Use with a test-framework integration package. | [Source](./src/UnitTestEx) | [API testing](./docs/api-testing.md), [Generic testing](./docs/generic-testing.md), [HTTP mocking](./docs/http-client-mocking.md), [DI/configuration](./docs/dependency-injection-and-configuration.md), [Assertions/logging](./docs/assertions-and-expectations.md), [Set-up/extensibility](./docs/test-setup-and-extensibility.md)
+`UnitTestEx.Azure.Functions`<br/>[![NuGet version](https://badge.fury.io/nu/UnitTestEx.Azure.Functions.svg)](https://badge.fury.io/nu/UnitTestEx.Azure.Functions) | Tests isolated-worker Functions using their normal application startup, scoped services and worker middleware. Invokes function methods without starting the Azure Functions worker/runtime. | [Source](./src/UnitTestEx.Azure.Functions) | [Azure Functions](./docs/azure-functions.md), [DI/configuration](./docs/dependency-injection-and-configuration.md), [Assertions/logging](./docs/assertions-and-expectations.md), [Set-up/extensibility](./docs/test-setup-and-extensibility.md)
+`UnitTestEx.Azure.Functions.Durable`<br/>[![NuGet version (preview)](https://img.shields.io/nuget/vpre/UnitTestEx.Azure.Functions.Durable.svg)](https://www.nuget.org/packages/UnitTestEx.Azure.Functions.Durable) | Tests real orchestration bodies through the in-memory Durable Task SDK host, with activity mocks, fluent assertions and diagnostics. Also includes a separate method-level virtual-time context; neither mode exercises the Azure Functions worker/runtime. | [Source](./src/UnitTestEx.Azure.Functions.Durable) | [Durable testing](./docs/azure-durable-functions.md), [Support matrix](./docs/azure-durable-functions.md#support-matrix), [Design/implementation](./docs/azure-durable-functions-design.md)
+`UnitTestEx.Aspire`<br/>[![NuGet version](https://badge.fury.io/nu/UnitTestEx.Aspire.svg)](https://badge.fury.io/nu/UnitTestEx.Aspire) | Runs multi-service tests against a real .NET Aspire distributed application. Provides resource readiness checks, HTTP helpers, captured resource logs and external HTTP mocking. | [Source](./src/UnitTestEx.Aspire) | [Aspire testing](./docs/aspire.md)
+`UnitTestEx.MSTest`<br/>[![NuGet version](https://badge.fury.io/nu/UnitTestEx.MSTest.svg)](https://badge.fury.io/nu/UnitTestEx.MSTest) | Connects UnitTestEx assertions and test output to MSTest. Use alongside the core or specialized tester packages. | [Source](./src/UnitTestEx.MSTest) | [Set-up/extensibility](./docs/test-setup-and-extensibility.md), [Assertions/logging](./docs/assertions-and-expectations.md)
+`UnitTestEx.NUnit`<br/>[![NuGet version](https://badge.fury.io/nu/UnitTestEx.NUnit.svg)](https://badge.fury.io/nu/UnitTestEx.NUnit) | Connects UnitTestEx assertions and test output to NUnit. Use alongside the core or specialized tester packages. | [Source](./src/UnitTestEx.NUnit) | [Set-up/extensibility](./docs/test-setup-and-extensibility.md), [Assertions/logging](./docs/assertions-and-expectations.md)
+`UnitTestEx.Xunit`<br/>[![NuGet version](https://badge.fury.io/nu/UnitTestEx.Xunit.svg)](https://badge.fury.io/nu/UnitTestEx.Xunit) | Connects UnitTestEx assertions and test output to xUnit, including its output-helper integration. Use alongside the core or specialized tester packages. | [Source](./src/UnitTestEx.Xunit) | [Set-up/extensibility](./docs/test-setup-and-extensibility.md), [Assertions/logging](./docs/assertions-and-expectations.md)
 
 The [change log](CHANGELOG.md) details all key changes per published version.
 
@@ -114,6 +122,7 @@ Multi-host tests with WireMock stubs and log checks | Aspire | [`HttpMock_StubsE
 
 - [API testing](./docs/api-testing.md)
 - [Azure Functions testing](./docs/azure-functions.md), including [limitations](./docs/azure-functions.md#limitations)
+- [Durable Functions testing (preview)](./docs/azure-durable-functions.md), including a [commented fan-out/fan-in showcase](./tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskShowcaseTest.cs)
 - [Generic testing](./docs/generic-testing.md)
 - [Dependency injection and configuration](./docs/dependency-injection-and-configuration.md)
 - [HTTP client mocking](./docs/http-client-mocking.md)
@@ -131,6 +140,29 @@ The tests in this repository are the reference examples. Equivalent tests exist 
 - [UnitTestEx.MSTest.Test](./tests/UnitTestEx.MSTest.Test)
 - [UnitTestEx.Xunit.Test](./tests/UnitTestEx.Xunit.Test)
 - [UnitTestEx.Aspire.Xunit.Test](./tests/UnitTestEx.Aspire.Xunit.Test), [UnitTestEx.Aspire.NUnit.Test](./tests/UnitTestEx.Aspire.NUnit.Test), [UnitTestEx.Aspire.MSTest.Test](./tests/UnitTestEx.Aspire.MSTest.Test)
+
+<br/>
+
+## Durable Functions testing (preview)
+
+The optional **`UnitTestEx.Azure.Functions.Durable`** preview package combines the SDK-host facade and the separate method-level virtual-time context. Its version follows `Common.targets` with `-preview` appended: currently **`6.2.0-preview`**, alongside regular **`6.2.0`** UnitTestEx packages; the next coordinated `6.2.1` release produces `6.2.1-preview`. Only .NET 10 execution has been verified; its .NET 8/9/11 targets are not validated. The SDK host pins Microsoft's preview `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1**.
+
+The [Durable guide](./docs/azure-durable-functions.md) shows `FunctionTester.DurableTask()`, `ActivityMock`, assertions and diagnostics. The [runnable showcase](./tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskShowcaseTest.cs) runs the real batch orchestration with controlled activity responses; the guide's [support matrix](./docs/azure-durable-functions.md#support-matrix) records the evidence and remaining limits.
+
+Construct | Test path | Demonstrated behavior | Unsupported or unproven boundary
+-|-|-|-
+Activity functions | Existing `FunctionTester.Trigger<T>()` | Real static/instance method invocation, DI, logs and original exceptions | No Functions trigger binding, runtime delivery or Durable failure translation.
+Static/instance `[Function]` orchestration methods | In-memory SDK host | Explicit delegates execute real bodies with SDK serialization, replay and failure details | No automatic discovery, Functions worker or extension input conversion.
+Typed SDK `TaskOrchestrator<TIn,TOut>` | Low-level SDK registry | Selected typed orchestrators execute and expose nested activity failures | Not a class-based Functions worker path; DI construction and a fluent typed-class API are unproven.
+Activity calls and fan-out/fan-in | SDK host and `ActivityMock` | Input-matched/ordered responses, controlled completion, input-order fan-in and opt-in invocation verification | Mocked activity bodies are not tested; handler completion is not engine result-processing order.
+Sub-orchestrations | SDK host | Real/delegate child registration; selected success, failure and retry scenarios | Not general cancellation propagation or Functions child delivery.
+Durable timers | SDK host or method-level virtual context | Host timers use real time with a warning; the narrow context advances timer/event logic instantly | No host virtual clock. Method-level context has no engine history/replay and rejects activities/children.
+External events/custom status | SDK host | Selected buffered-event, event-before-timeout and in-flight status scenarios | No Functions delivery/serializer parity or established same-deadline arbitration.
+Replay | SDK host | Replay observed; changed activity name diagnosed as nondeterministic | Not a universal detector of invalid awaits or arbitrary I/O; virtual context never replays.
+Entities | No demonstrated new Durable support | Existing generic trigger invocation remains unchanged | No entity execution/state testing through the new host facade.
+Client/start/status operations | SDK host/client | Schedule, bounded waits, typed events, metadata and output assertions | Not production `DurableTaskClient`, Functions starter triggers or HTTP status endpoints.
+`ContinueAsNew`, durable HTTP | Not established | No end-to-end capability claimed | SDK API availability is not evidence of UnitTestEx support.
+Functions worker/backend integration | Separate real-host tier, e.g. Aspire/Core Tools | Not demonstrated by the Durable suite | SDK host/direct methods do not prove indexing, binding, storage, Azure authentication or deployed behavior.
 
 <br/>
 

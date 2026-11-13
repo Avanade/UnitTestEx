@@ -81,7 +81,7 @@ trigger.ExpectLogContains("Processing item A.")
 
 `ActivityTransforms` is a static class, so it cannot be a generic type argument. Use an ordinary application type as the marker and a static method call in the expression, as above; validation inspects the invoked method's trigger attribute. The sample types are in `UnitTestEx.DurableFunction`; `TestFunctionContext` is in `UnitTestEx.Azure.Functions`, and `ExpectLogContains` uses `UnitTestEx.Expectations`.
 
-These tests build but do not start the app host or connect to a durable backend. An activity failure is asserted as its original exception; only an actual orchestration execution supplies durable failure translation. This is **activity-method testing**, not an orchestration/replay harness or proof of trigger binding/serialization. The sample's orchestration bodies are fixtures for the [proposed Durable design](./azure-durable-functions-design.md); their execution is not yet verified.
+These tests build but do not start the app host or connect to a durable backend. An activity failure is asserted as its original exception; only an actual orchestration execution supplies durable failure translation. This is **activity-method testing**, not an orchestration/replay harness or proof of trigger binding/serialization. Selected sample orchestration bodies now execute through the separate in-memory SDK host in the optional `UnitTestEx.Azure.Functions.Durable` preview package, with runtime evidence on .NET 10 only. See the [Durable testing guide and showcase](./azure-durable-functions.md) and its [support matrix](./azure-durable-functions.md#support-matrix); neither Durable test mode exercises the Azure Functions worker/runtime.
 
 Run the baseline for each supported framework, for example:
 

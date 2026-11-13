@@ -9,7 +9,11 @@ namespace UnitTestEx.Azure.Functions.Durable;
 /// </summary>
 public sealed class VirtualTimeOrchestrationContext : TaskOrchestrationContext, IDisposable
 {
-    private readonly object _gate = new();
+#if NET8_0
+    private readonly object _lock = new();
+#else
+    private readonly Lock _lock = new();
+#endif
     private readonly List<TimerWait> _timers = [];
     private readonly List<EventWait> _eventWaits = [];
     private readonly TaskName _name;
@@ -48,7 +52,7 @@ public sealed class VirtualTimeOrchestrationContext : TaskOrchestrationContext, 
     {
         get
         {
-            lock (_gate)
+            lock (_lock)
                 return _currentUtcDateTime;
         }
     }
@@ -64,7 +68,7 @@ public sealed class VirtualTimeOrchestrationContext : TaskOrchestrationContext, 
     {
         get
         {
-            lock (_gate)
+            lock (_lock)
                 return [.. _timers];
         }
     }
@@ -74,7 +78,7 @@ public sealed class VirtualTimeOrchestrationContext : TaskOrchestrationContext, 
     {
         get
         {
-            lock (_gate)
+            lock (_lock)
                 return [.. _eventWaits.Select(wait => new EventWaitState(wait.Name, wait.IsCompleted, wait.IsCanceled))];
         }
     }
@@ -119,7 +123,7 @@ public sealed class VirtualTimeOrchestrationContext : TaskOrchestrationContext, 
             throw new ArgumentException("Timer deadlines must be UTC.", nameof(fireAt));
 
         var timer = new TimerWait(fireAt);
-        lock (_gate)
+        lock (_lock)
             _timers.Add(timer);
 
         timer.RegisterCancellation(cancellationToken);
@@ -137,7 +141,7 @@ public sealed class VirtualTimeOrchestrationContext : TaskOrchestrationContext, 
     public override Task<T> WaitForExternalEvent<T>(string eventName, CancellationToken cancellationToken = default)
     {
         var wait = new EventWait<T>(eventName);
-        lock (_gate)
+        lock (_lock)
             _eventWaits.Add(wait);
 
         wait.RegisterCancellation(cancellationToken);
@@ -151,7 +155,7 @@ public sealed class VirtualTimeOrchestrationContext : TaskOrchestrationContext, 
         ArgumentOutOfRangeException.ThrowIfLessThan(duration, TimeSpan.Zero);
 
         TimerWait[] dueTimers;
-        lock (_gate)
+        lock (_lock)
         {
             _currentUtcDateTime = _currentUtcDateTime.Add(duration);
             dueTimers = [.. _timers.Where(timer => timer.Deadline <= _currentUtcDateTime).OrderBy(timer => timer.Deadline)];
@@ -168,7 +172,7 @@ public sealed class VirtualTimeOrchestrationContext : TaskOrchestrationContext, 
     public void RaiseEvent<T>(string eventName, T payload)
     {
         EventWait? wait;
-        lock (_gate)
+        lock (_lock)
         {
             wait = _eventWaits.LastOrDefault(candidate => !candidate.IsCompleted && string.Equals(candidate.Name, eventName, StringComparison.OrdinalIgnoreCase));
         }
@@ -207,7 +211,7 @@ public sealed class VirtualTimeOrchestrationContext : TaskOrchestrationContext, 
     {
         TimerWait[] timers;
         EventWait[] waits;
-        lock (_gate)
+        lock (_lock)
         {
             timers = [.. _timers];
             waits = [.. _eventWaits];

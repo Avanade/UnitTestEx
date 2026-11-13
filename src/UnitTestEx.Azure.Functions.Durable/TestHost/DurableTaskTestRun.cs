@@ -22,7 +22,11 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     private readonly Stopwatch _elapsed = Stopwatch.StartNew();
     private int _resultWritten;
     private readonly List<string?> _logs = [];
+#if NET8_0
     private readonly object _logsSync = new();
+#else
+    private readonly Lock _logsSync = new();
+#endif
 
     /// <summary>Initializes a scheduled test run and takes ownership of its SDK host.</summary>
     /// <param name="owner">The FunctionTester owning the assertion framework.</param>
@@ -42,7 +46,7 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     /// Gets the SDK host for advanced access to its client and other SDK APIs.
     /// </summary>
     /// <exception cref="ObjectDisposedException">The test run has been disposed.</exception>
-    public DurableTaskTestHost Host => _host ?? throw new ObjectDisposedException(nameof(DurableTaskTestRun<TOutput>));
+    public DurableTaskTestHost Host => _host ?? throw new ObjectDisposedException(nameof(DurableTaskTestRun<>));
 
     /// <summary>
     /// Gets the scheduled orchestration instance identifier.
@@ -59,8 +63,7 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
         if (waitTimeout <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(timeout), waitTimeout, "The start timeout must be positive.");
 
-        _ = await Host.Client.WaitForInstanceStartAsync(InstanceId).WaitAsync(waitTimeout).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"The test host returned no metadata for orchestration instance '{InstanceId}'.");
+        _ = await Host.Client.WaitForInstanceStartAsync(InstanceId).WaitAsync(waitTimeout).ConfigureAwait(false) ?? throw new InvalidOperationException($"The test host returned no metadata for orchestration instance '{InstanceId}'.");
     }
 
     /// <summary>
@@ -91,6 +94,7 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
             throw new ArgumentOutOfRangeException(nameof(timeout), waitTimeout, "The custom-status timeout must be positive.");
 
         Stopwatch stopwatch = Stopwatch.StartNew();
+
         while (stopwatch.Elapsed < waitTimeout)
         {
             TimeSpan remaining = waitTimeout - stopwatch.Elapsed;
@@ -142,6 +146,7 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
         string?[] logs = CaptureLogs();
         if (Interlocked.Exchange(ref _resultWritten, 1) == 0)
             WriteResult(metadata, logs);
+
         if (ExpectationsArranger.HasExpectations)
             await ExpectationsArranger.AssertValueAsync(logs, metadata, GetExpectationException(metadata)).ConfigureAwait(false);
 
@@ -179,9 +184,11 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
         output.WriteLine($"Elapsed (ms): {_elapsed.Elapsed.TotalMilliseconds:F3}");
         if (timeout is not null)
             output.WriteLine($"Completion wait timed out after {timeout}; this is not an orchestration failure.");
+
         output.WriteLine($"{(timeout is null ? "Status" : "Last observed status")}: {metadata?.RuntimeStatus.ToString() ?? "<unavailable>"}");
         if (metadataError is not null)
             output.WriteLine($"Metadata retrieval failed: {metadataError.Message} [{metadataError.GetType().Name}]");
+
         if (metadata is not null)
         {
             output.WriteLine($"Custom status: {metadata.SerializedCustomStatus ?? "<none>"}");
@@ -210,13 +217,11 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
         Exception? metadataError = null;
         try
         {
-            metadata = await Host.Client.GetInstanceAsync(InstanceId, getInputsAndOutputs: true)
-                .WaitAsync(TimeSpan.FromMilliseconds(250)).ConfigureAwait(false);
+            metadata = await Host.Client.GetInstanceAsync(InstanceId, getInputsAndOutputs: true).WaitAsync(TimeSpan.FromMilliseconds(250)).ConfigureAwait(false);
         }
         catch (Exception error)
         {
-            // Diagnostic retrieval must not replace the original completion timeout.
-            metadataError = error;
+            metadataError = error;  // Diagnostic retrieval must not replace the original completion timeout.
         }
 
         WriteResult(metadata, CaptureLogs(), timeout, metadataError);

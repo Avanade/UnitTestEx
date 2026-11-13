@@ -25,7 +25,6 @@
   <ItemGroup>
     <ProjectReference Include="..\UnitTestEx.DurableFunction\UnitTestEx.DurableFunction.csproj" />
     <ProjectReference Include="..\..\src\UnitTestEx.Azure.Functions.Durable\UnitTestEx.Azure.Functions.Durable.csproj" />
-    <ProjectReference Include="..\..\src\UnitTestEx.Azure.Functions.Durable.TestHost\UnitTestEx.Azure.Functions.Durable.TestHost.csproj" />
     <ProjectReference Include="..\..\src\UnitTestEx.Azure.Functions\UnitTestEx.Azure.Functions.csproj" />
     <ProjectReference Include="..\..\src\UnitTestEx.NUnit\UnitTestEx.NUnit.csproj" />
   </ItemGroup>

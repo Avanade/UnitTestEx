@@ -148,8 +148,7 @@ public static class DurableTaskRegistryExtensions
 
         /// <summary>Continues the orchestration using the specified options.</summary>
         /// <param name="options">The continuation options.</param>
-        public override void ContinueAsNew(ContinueAsNewOptions options)
-            => _inner.ContinueAsNew(options);
+        public override void ContinueAsNew(ContinueAsNewOptions options) => _inner.ContinueAsNew(options);
 
         /// <summary>Creates a deterministic GUID through the host context.</summary>
         /// <returns>The generated GUID.</returns>
@@ -163,8 +162,7 @@ public static class DurableTaskRegistryExtensions
             if (delay <= TimeSpan.Zero || IsReplaying)
                 return;
 
-            _logger.LogWarning("Durable timer for orchestration {OrchestrationName} ({InstanceId}) uses the host's real wall clock; virtual time is unavailable and the timer may wait {Delay} until {FireAtUtc}.",
-                Name, InstanceId, delay, fireAt);
+            _logger.LogWarning("Durable timer for orchestration {OrchestrationName} ({InstanceId}) uses the host's real wall clock; virtual time is unavailable and the timer may wait {Delay} until {FireAtUtc}.", Name, InstanceId, delay, fireAt);
         }
     }
 }

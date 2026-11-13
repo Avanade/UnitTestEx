@@ -2,8 +2,8 @@
 
 Represents the **NuGet** versions.
 
-## v6.2.0 (Unreleased)
-- *Enhancement:* Added a representative Durable Functions sample and direct activity tests using the existing `FunctionTester`; orchestration execution and replay testing are not yet supported.
+## v6.2.0
+- *Enhancement:* Added the optional `UnitTestEx.Azure.Functions.Durable` preview package (`6.2.0-preview`), with fluent SDK-host orchestration tests, activity mocks, invocation verification, managed diagnostics and a separate method-level virtual-time context. Includes a representative Functions sample, direct activity tests and a [commented showcase](./tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskShowcaseTest.cs); see the [Durable guide and support matrix](./docs/azure-durable-functions.md). The SDK host exercises orchestration execution/replay, not the Azure Functions worker/runtime; only .NET 10 has been validated.
 - *Enhancement:* Added `net11.0` targets alongside .NET 8, 9 and 10, with matching ASP.NET Core dependencies and CI coverage.
 - *Build:* Removed the `global.json` SDK pin and preview language setting; building the full repository requires the .NET 11 SDK. Migrated Functions samples to `Azure.Functions.Sdk/1.0.2`.
 - *Build:* Moved fixed Aspire AppHosts and integration-test resources to .NET 10. Aspire test suites now target .NET 10 and 11; library targets remain unchanged apart from adding .NET 11.

@@ -124,6 +124,7 @@ public sealed class FluentBatchOrchestrationTest
     [Test]
     public async Task FansOutAndFansInWithScriptedActivityResponses()
     {
+        // Arrange a fan-out activity that matches each work item by ID and returns a delayed response for the last item.
         using var processItems = ActivityMock.ByMatch(
         [
             ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "A", item => new ItemResult(item.Id, item.Amount * 2m)).Pending(),
@@ -131,9 +132,11 @@ public sealed class FluentBatchOrchestrationTest
             ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "C", item => new ItemResult(item.Id, item.Amount * 2m)).After(TimeSpan.FromMilliseconds(100))
         ]);
 
+        // Arrange a batch request with three work items.
         using var workflowFunc = FunctionTester.Create<WorkflowActivities>();
         var request = new BatchRequest(" batch-7 ", [new("A", 10m), new("B", 20m), new("C", 30m)]);
 
+        // Act as a test orchestrator that fans out the work items, waits for all to complete, and then fans in the results.
         await using var test = await workflowFunc.DurableTask()
             .Orchestrator<BatchRequest, BatchResult>(nameof(BatchOrchestration.ProcessBatch), (context, _) => BatchOrchestration.ProcessBatch(context))
             .Activity<string, string>(nameof(ActivityTransforms.NormalizeReference), (_, reference) => ActivityTransforms.NormalizeReference(reference), configure: options => options.Times(Times.Once()))
@@ -142,15 +145,17 @@ public sealed class FluentBatchOrchestrationTest
             .SubOrchestrator<BatchResult, BatchResult>(nameof(BatchOrchestration.FinalizeBatch), (_, input) => Task.FromResult(input))
             .StartAsync(request);
 
+        // Assert that all three activities are invoked, then release the last two and wait for completion.
         await processItems.WaitForAllInvocationsAsync();
         await processItems[2].WaitForCompletionAsync(TimeSpan.FromSeconds(5));
         await processItems[1].ReleaseAsync(TimeSpan.FromSeconds(5));
         await processItems[0].ReleaseAsync(TimeSpan.FromSeconds(5));
 
+        // Assert that the orchestration completes with the expected output and that the activities were invoked in the expected order.
         var expectedResult = new BatchResult("BATCH-7", 120m, [new("A", 20m), new("B", 40m), new("C", 60m)]);
-
         await test.WaitForCompletionAsync(TimeSpan.FromSeconds(10), r => r.AssertCompleted().AssertOutput(expectedResult));
 
+        // Assert that the activities were invoked in the expected order and that the test verification passes.
         Assert.That(processItems.CompletionOrder.Select(item => item.Id), Is.EqualTo(new[] { "C", "B", "A" }));
         test.Verify();
     }

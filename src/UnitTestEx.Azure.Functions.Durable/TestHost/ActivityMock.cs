@@ -11,16 +11,14 @@ public static class ActivityMock
     /// <typeparam name="TOutput">The activity output type.</typeparam>
     /// <param name="responses">The input-matched responses.</param>
     /// <returns>An input-matched mock.</returns>
-    public static ActivityMock<TInput, TOutput> ByMatch<TInput, TOutput>(params ActivityResponse<TInput, TOutput>[] responses)
-        => new(true, responses);
+    public static ActivityMock<TInput, TOutput> ByMatch<TInput, TOutput>(params ActivityResponse<TInput, TOutput>[] responses) => new(true, responses);
 
     /// <summary>Creates a mock that assigns responses by handler invocation order.</summary>
     /// <typeparam name="TInput">The activity input type.</typeparam>
     /// <typeparam name="TOutput">The activity output type.</typeparam>
     /// <param name="responses">The ordered responses.</param>
     /// <returns>An invocation-ordered mock.</returns>
-    public static ActivityMock<TInput, TOutput> InOrder<TInput, TOutput>(params ActivityResponse<TInput, TOutput>[] responses)
-        => new(false, responses);
+    public static ActivityMock<TInput, TOutput> InOrder<TInput, TOutput>(params ActivityResponse<TInput, TOutput>[] responses) => new(false, responses);
 }
 
 /// <summary>Routes activity invocations to one uniquely matching response plan.</summary>
@@ -33,7 +31,11 @@ public static class ActivityMock
 /// <typeparam name="TOutput">The activity output type.</typeparam>
 public sealed class ActivityMock<TInput, TOutput> : IDisposable
 {
-    private readonly object _sync = new();
+#if NET8_0
+    private readonly object _lock = new();
+#else
+    private readonly Lock _lock = new();
+#endif
     private readonly ActivityResponse<TInput, TOutput>[] _responses;
     private readonly ConcurrentQueue<TInput> _completionOrder = new();
     private readonly TaskCompletionSource _allInvocations = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -65,6 +67,7 @@ public sealed class ActivityMock<TInput, TOutput> : IDisposable
             foreach (var response in _responses)
                 response.Attach();
         }
+
         _matchByInput = matchByInput;
     }
 
@@ -100,12 +103,9 @@ public sealed class ActivityMock<TInput, TOutput> : IDisposable
     /// <exception cref="InvalidOperationException">One or more response plans were not invoked.</exception>
     public void Verify()
     {
-        lock (_sync)
+        lock (_lock)
         {
-            int[] unused = [.. _responses.Select((response, index) => (response, index))
-                .Where(entry => !entry.response.IsConsumed)
-                .Select(entry => entry.index + 1)];
-
+            int[] unused = [.. _responses.Select((response, index) => (response, index)).Where(entry => !entry.response.IsConsumed).Select(entry => entry.index + 1)];
             if (unused.Length != 0)
                 throw new InvalidOperationException($"Scripted activity responses not invoked (1-based positions): {string.Join(", ", unused)}.");
         }
@@ -121,6 +121,7 @@ public sealed class ActivityMock<TInput, TOutput> : IDisposable
     public async Task<TOutput> InvokeAsync(TaskActivityContext context, TInput input)
     {
         ActivityResponse<TInput, TOutput> response = ReserveResponse(input);
+
         try
         {
             TOutput output = await response.ExecuteAsync(input).ConfigureAwait(false);
@@ -141,7 +142,7 @@ public sealed class ActivityMock<TInput, TOutput> : IDisposable
     /// <exception cref="InvalidOperationException">No response or multiple responses match the input.</exception>
     private ActivityResponse<TInput, TOutput> ReserveResponse(TInput input)
     {
-        lock (_sync)
+        lock (_lock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             ActivityResponse<TInput, TOutput>[] matching = _matchByInput
@@ -172,7 +173,7 @@ public sealed class ActivityMock<TInput, TOutput> : IDisposable
     /// <summary>Cancels pending responses without invoking their output factories.</summary>
     public void Dispose()
     {
-        lock (_sync)
+        lock (_lock)
         {
             if (_disposed)
                 return;

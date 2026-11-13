@@ -18,9 +18,7 @@ public static class DurableTaskTestHostExtensions
     /// <typeparam name="TSelf">The concrete FunctionTester type.</typeparam>
     /// <param name="functionTester">The FunctionTester supplying captured logging.</param>
     /// <returns>A builder for registering an orchestration and its handlers.</returns>
-    public static DurableTaskTestBuilder<TEntryPoint, TSelf> DurableTask<TEntryPoint, TSelf>(this FunctionTesterBase<TEntryPoint, TSelf> functionTester)
-        where TEntryPoint : class
-        where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
+    public static DurableTaskTestBuilder<TEntryPoint, TSelf> DurableTask<TEntryPoint, TSelf>(this FunctionTesterBase<TEntryPoint, TSelf> functionTester) where TEntryPoint : class where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
         ArgumentNullException.ThrowIfNull(functionTester);
         return new DurableTaskTestBuilder<TEntryPoint, TSelf>(functionTester);
@@ -36,8 +34,7 @@ public static class DurableTaskTestHostExtensions
     /// <param name="configureServices">Optional configuration for the Durable Task host's services.</param>
     /// <returns>The started in-memory Durable Task host.</returns>
     public static Task<DurableTaskTestHost> StartDurableTaskTestHostAsync<TEntryPoint, TSelf>(this FunctionTesterBase<TEntryPoint, TSelf> functionTester, Action<DurableTaskRegistry> configure, Action<IServiceCollection>? configureServices = null)
-        where TEntryPoint : class
-        where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
+        where TEntryPoint : class where TSelf : FunctionTesterBase<TEntryPoint, TSelf>
     {
         ArgumentNullException.ThrowIfNull(functionTester);
         ArgumentNullException.ThrowIfNull(configure);
