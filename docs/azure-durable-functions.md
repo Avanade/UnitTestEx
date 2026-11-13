@@ -12,7 +12,7 @@ Add the package alongside your chosen UnitTestEx test-framework integration:
 <PackageReference Include="UnitTestEx.Azure.Functions.Durable" Version="6.2.0-preview" />
 ```
 
-The host API retains the `UnitTestEx.Azure.Functions.Durable.TestHost` namespace; this is not a separate package. `VirtualTimeOrchestrationContext` remains in `UnitTestEx.Azure.Functions.Durable`. Runtime evidence is **.NET 10 only**.
+The host API retains the `UnitTestEx.Azure.Functions.Durable.TestHost` namespace; this is not a separate package. `VirtualTimeOrchestrationContext` remains in `UnitTestEx.Azure.Functions.Durable`. CI builds the Durable library on **.NET 8/9/10/11**; the dedicated orchestration/context suite now targets **.NET 10/11**, with recorded runtime evidence on **.NET 10 only** until the expanded matrix runs. See [CI evidence](#ci-evidence).
 
 [Back to README](../README.md) | [Support matrix](#support-matrix) | [Design and implementation status](./azure-durable-functions-design.md)
 
@@ -25,7 +25,7 @@ The host API retains the `UnitTestEx.Azure.Functions.Durable.TestHost` namespace
 | Does timer/event coordination work when advancing a long timeout instantly? | `VirtualTimeOrchestrationContext` in the optional Durable package. | Narrow method-level context, not engine scheduling, history or replay. It rejects activity and child calls. |
 | Can Functions discover, bind and run the workflow against a backend? | A real Functions host with backing services, for example a separate opt-in Aspire/Core Tools test. | Not demonstrated by the current Durable suite. |
 
-The existing Functions package remains independent of Durable Task. The optional Durable package references it, not the other way around. Both testing modes share this one package and its host dependencies; they remain distinct execution models. The host pins `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1**; its framework/dependency implications are recorded [below](#dependency-and-framework-boundary). Source targets include .NET 8/9/10/11, but only .NET 10 has been exercised.
+The existing Functions package remains independent of Durable Task. The optional Durable package references it, not the other way around. Both testing modes share this one package and its host dependencies; they remain distinct execution models. The host pins `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1**; its framework/dependency implications are recorded [below](#dependency-and-framework-boundary). All .NET 8/9/10/11 library targets compile in CI; the dedicated Durable suite is configured for .NET 10/11.
 
 ## Showcase: fan-out, controlled completion, fan-in
 
@@ -183,7 +183,7 @@ No Functions worker, Core Tools, storage emulator or external Durable backend is
 
 ## Support matrix
 
-**Direct invocation**, **SDK host**, and **method-level context** identify different test paths, not interchangeable engines. The table records implemented APIs and the specific scenarios demonstrated by their tests. **Not established** means untested or only partially tested; do not infer support from SDK APIs, sample code, or a nearby passing test. Runtime evidence in this matrix is **.NET 10 only**.
+**Direct invocation**, **SDK host**, and **method-level context** identify different test paths, not interchangeable engines. The table records implemented APIs and the specific scenarios demonstrated by their tests. **Not established** means untested or only partially tested; do not infer support from SDK APIs, sample code, or a nearby passing test. Direct activity tests execute on **.NET 8/9/10/11** through the core NUnit suite; dedicated SDK-host and method-level context runtime evidence remains **.NET 10 only**. See [CI evidence](#ci-evidence).
 
 | Durable Functions type or capability | What is demonstrated | What is not supported or remains unproven |
 |---|---|---|
@@ -206,10 +206,25 @@ No Functions worker, Core Tools, storage emulator or external Durable backend is
 | **Host lifecycle - SDK host** | [`PendingOrchestrationDisposalTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/PendingOrchestrationDisposalTest.cs) disposes within five seconds with an event or blocked activity pending; the test then releases its own delegate. [`OrchestrationTerminationTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/OrchestrationTerminationTest.cs) observes terminated parent metadata. | Not worker shutdown or Azure cleanup. Disposal does not wait for or cancel blocked delegates; general activity/child cancellation is unproven. |
 | **Functions worker, bindings and backend integration - separate integration tier** | Existing activity tests invoke methods directly. A real-host Durable test belongs in a separate opt-in Aspire/Core Tools integration project. | The SDK host and method-level context do not prove indexing, binding, worker startup, storage behavior, Azure authentication or deployed backend behavior. |
 
+## CI evidence
+
+The [successful Ubuntu CI run](https://github.com/Avanade/UnitTestEx/actions/runs/43517961818) for commit `3bda54c` on 2026-11-13 passed all **seven jobs**. The [workflow](../.github/workflows/ci.yml) uses independent framework matrices, keeps running other suites after a failure and uploads test results even when a job fails.
+
+| Check | Frameworks | Observed result |
+|---|---|---|
+| Library Debug builds, including Aspire and Durable | .NET 8/9/10/11 | All passed. |
+| Core MSTest/NUnit/xUnit suites | .NET 8/9/10/11 | All passed, including the direct Durable activity tests in NUnit. |
+| Aspire MSTest/NUnit/xUnit suites | .NET 10/11 | All passed; AppHosts and integration resources remain fixed at .NET 10. |
+| Dedicated Durable orchestration/context suite | .NET 10 | 56/56 passed. |
+
+The dedicated [Durable test project](../tests/UnitTestEx.Azure.Functions.Durable.Test/UnitTestEx.Azure.Functions.Durable.Test.csproj) and workflow now target **.NET 10/11**, adding an eighth CI job for Durable on .NET 11. The expanded matrix has not yet been run; the table above records the earlier seven-job result, not a passing .NET 11 Durable result. Dedicated Durable runtime tests on .NET 8/9 are outside the selected validation scope; those targets retain library-build coverage.
+
+The recorded run cleared the initial preview-opt-in, framework-list escaping and invalid HTTP-version blockers. It does **not** establish dedicated Durable runtime compatibility on .NET 11, validate a multi-target Release package or exercise the Durable Functions worker/backend. Those checks and the separate future integration scope remain in the [design checklist](./azure-durable-functions-design.md#implementation-status-and-remaining-work).
+
 ## Dependency and framework boundary
 
-The consolidated project targets **.NET 8, 9, 10 and 11**. Runtime and local package-content evidence is **.NET 10 only**; full multi-framework validation is tracked in the [design checklist](./azure-durable-functions-design.md#implementation-status-and-remaining-work).
+The consolidated project targets **.NET 8, 9, 10 and 11**, and all four library targets compile in CI. The dedicated Durable suite targets **.NET 10/11**; its recorded runtime and local package-content evidence remains **.NET 10 only**. Confirmation of .NET 11 Durable execution and complete Release-package validation are tracked in the [design checklist](./azure-durable-functions-design.md#implementation-status-and-remaining-work).
 
-The project pins `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1** and `Microsoft.DurableTask.Abstractions` **1.28.0**. The Microsoft host has `net6.0`, `net8.0` and `net10.0` assets; nearest-framework selection uses net8 assets for net9 and net10 assets for net11, but those combinations have not been built or tested here. Abstractions 1.28.0 supplies a `netstandard2.0` asset. The recorded net10 graph resolves shared Durable Task SDK packages to **1.28.0** and `Microsoft.Azure.DurableTask.Core` to **3.11.2**; asset/graph inspection alone does not validate other frameworks.
+The project pins `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1** and `Microsoft.DurableTask.Abstractions` **1.28.0**. The Microsoft host has `net6.0`, `net8.0` and `net10.0` assets; nearest-framework selection uses net8 assets for net9 and net10 assets for net11. CI now validates library compilation with these selections, but not dedicated Durable execution on net9/net11. Abstractions 1.28.0 supplies a `netstandard2.0` asset. The recorded net10 graph resolves shared Durable Task SDK packages to **1.28.0** and `Microsoft.Azure.DurableTask.Core` to **3.11.2**; passing Debug builds do not establish runtime or package-consumer compatibility on the other frameworks.
 
 Both testing modes share the same host dependency graph. The Durable package references regular-version `UnitTestEx.Azure.Functions`; the existing Functions package does not acquire a Durable dependency. NuGet package versioning adds `-preview` to the shared base version without changing numeric assembly versioning. The pinned upstream source and detailed dependency evidence remain in the [design record](./azure-durable-functions-design.md).

@@ -1,6 +1,6 @@
 # Azure Durable Functions testing design
 
-**Status:** The selected implementation is complete in the optional `UnitTestEx.Azure.Functions.Durable` preview package: fluent SDK-host facade, narrow virtual-time context, diagnostics, activity mocks and opt-in invocation verification. Remaining release validation and future integration work are tracked below. Runtime evidence is net10 only.
+**Status:** The selected implementation is complete in the optional `UnitTestEx.Azure.Functions.Durable` preview package: fluent SDK-host facade, narrow virtual-time context, diagnostics, activity mocks and opt-in invocation verification. Library Debug builds pass on net8/net9/net10/net11; the recorded core, Aspire and net10 Durable CI suites are green. The dedicated Durable suite and CI now target net10/net11; net11 execution is not yet verified. Remaining release validation and future integration work are tracked below.
 **Scope:** Azure Functions v4 isolated worker on .NET 8, 9, 10, and 11; no in-process/WebJobs support.
 
 ## Outcome and proof boundary
@@ -27,11 +27,18 @@ Completed implementation and evidence:
 - [x] One optional package, `$(Version)-preview` versioning, regular-version UnitTestEx dependencies and default publishing-set inclusion.
 - [x] Recorded 56/56 net10 suite result and local net10 package-content inspection; numeric assembly version is unchanged.
 - [x] User guide, consolidated support matrix, README package badge/support table, commented showcase and release notes.
-- [x] Dedicated Durable net10 CI job alongside independent core (net8/net9/net10/net11) and Aspire (net10/net11) framework matrices, with test-result uploads even on failure.
+- [x] Dedicated Durable net10/net11 test-project and CI matrix configuration alongside independent core (net8/net9/net10/net11) and Aspire (net10/net11) framework matrices, with test-result uploads even on failure.
+- [x] Debug compilation of all libraries, including Aspire and Durable, on net8/net9/net10/net11.
+- [x] Core MSTest/NUnit/xUnit suites on net8/net9/net10/net11 and Aspire MSTest/NUnit/xUnit suites on net10/net11; fixed Aspire AppHosts/resources remain net10.
+- [x] First matrix-run blockers cleared: shared net11 preview/runtime-async settings removed, multi-framework MSBuild quoting corrected and the sample named HTTP client changed to HTTP/1.1. All seven jobs passed on commit `3bda54c`; the dedicated Durable job passed 56/56.
+
+The recorded [successful CI run](https://github.com/Avanade/UnitTestEx/actions/runs/43517961818) executed on Ubuntu on 2026-11-13. The guide's [CI evidence table](./azure-durable-functions.md#ci-evidence) distinguishes library compilation from each suite's runtime coverage; these Debug/source-project checks do not validate the Release NuGet package.
+
+The dedicated Durable suite's runtime-validation scope is **net10/net11**. Libraries retain net8/net9 build coverage; dedicated Durable runtime tests on those frameworks are not required by this scope.
 
 Remaining release work:
 
-- [ ] Validate net8/net9/net11 builds and runtime compatibility; existing execution evidence covers net10 only.
+- [ ] Confirm the dedicated Durable orchestration/context suite passes on both net10 and net11 in the new eight-job CI configuration. The recorded net10 result is 56/56; net11 execution remains unverified.
 - [ ] Produce and inspect the complete multi-target Release package and verify package installation/consumption with matching UnitTestEx versions. The inspected package was a net10-only Debug artifact.
 - [ ] Validate minimum/current supported dependency combinations and review advisories for the final release graph, including the separately restored sample extension payload.
 - [ ] Complete NuGet package README/metadata review; the local pack reported a missing package README.
@@ -339,7 +346,9 @@ Neither path starts the Functions worker or proves function discovery, trigger b
 - [x] **Phase 2 - implementation:** two distinct modes in one optional package; existing Functions dependencies/startup preserved; real host timers forwarded unchanged.
 - [x] **Phase 3 - selected interactions:** child/retry/cancellation/replay evidence, activity mocks, status/events and managed diagnostics. Broader capabilities remain bounded by the [support matrix](./azure-durable-functions.md#support-matrix).
 - [x] **Phase 4 - documentation/package configuration:** guide, support matrix, README, showcase, assertions and coordinated preview versioning.
-- [ ] **Phase 4 - remaining release validation:** full framework/dependency/package checks and CI/package metadata work listed in the [implementation checklist](#implementation-status-and-remaining-work).
+- [x] **Phase 4 - framework builds and CI:** all-framework library Debug builds, core net8/net9/net10/net11 suites, Aspire net10/net11 suites and Durable net10 suite passed in the seven-job matrix.
+- [x] **Phase 4 - Durable matrix configuration:** the dedicated test project and CI now target net10/net11, bringing the workflow to eight independent jobs.
+- [ ] **Phase 4 - remaining release validation:** dedicated Durable net10/net11 CI confirmation, dependency compatibility/advisories, full Release-package consumption and package metadata work listed in the [implementation checklist](#implementation-status-and-remaining-work).
 
 **Future integration, not part of the initial preview:** reuse the sample with a separate opt-in Aspire AppHost/test project: Core Tools plus Azurite/Azure Storage provider, indexing readiness, client scheduling, bounded status/output polling and cleanup. Use a lower test-only `extensions.durableTask.storageProvider.maxQueuePollingInterval` (for example one second; default 30 seconds). Do not add emulator requirements to the existing container-free host. Entities, `ContinueAsNew`, durable HTTP and broader cancellation guarantees remain outside the initial claims.
 

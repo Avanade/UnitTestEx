@@ -158,8 +158,19 @@ jobs:
         if-no-files-found: warn
 
   durable:
-    name: Durable (net10.0)
+    name: Durable (${{ matrix.framework }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - framework: net10.0
+          sdk: 10.0.x
+        - framework: net11.0
+          sdk: 11.0.x
+    env:
+      TARGET_FRAMEWORK: ${{ matrix.framework }}
+      TARGET_FRAMEWORKS: ${{ matrix.framework }}
 
     steps:
     - uses: actions/checkout@v7
@@ -167,13 +178,13 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: 10.0.x
+        dotnet-version: ${{ matrix.sdk }}
 
     - name: Durable NUnit
       run: >-
         dotnet test tests/UnitTestEx.Azure.Functions.Durable.Test/UnitTestEx.Azure.Functions.Durable.Test.csproj
-        --framework net10.0 --configuration Debug
-        -p:TargetFrameworks=net10.0 -p:GeneratePackageOnBuild=false
+        --framework "$TARGET_FRAMEWORK" --configuration Debug
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
         --logger "trx;LogFileName=results.trx"
         --results-directory "$RUNNER_TEMP/test-results/durable" --verbosity normal
 
@@ -181,6 +192,6 @@ jobs:
       if: ${{ always() }}
       uses: actions/upload-artifact@v7
       with:
-        name: durable-net10.0-test-results
+        name: durable-${{ matrix.framework }}-test-results
         path: ${{ runner.temp }}/test-results
         if-no-files-found: warn
