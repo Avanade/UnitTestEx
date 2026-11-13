@@ -1,6 +1,9 @@
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
+using System.Collections.Concurrent;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Azure.Functions;
 using UnitTestEx.Azure.Functions.Durable.TestHost;
 using UnitTestEx.DurableFunction;
@@ -14,6 +17,71 @@ namespace UnitTestEx.Azure.Functions.Durable.Test;
 [TestFixture]
 public sealed class FluentDurableTaskTest
 {
+    /// <summary>Writes managed output before assertions and only once for repeated completion waits.</summary>
+    [Test]
+    public async Task WritesManagedOutputBeforeAssertionsOnce()
+    {
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        var output = new CapturedOutput(functions.Implementor);
+        functions.ReplaceTestFrameworkImplementor(output);
+        await using var run = await functions.DurableTask()
+            .Orchestrator<string, string>("OutputProbe", (context, input) =>
+            {
+                context.CreateReplaySafeLogger("OutputProbe").LogInformation("Application diagnostic");
+                context.SetCustomStatus("finished");
+                return Task.FromResult(input);
+            })
+            .StartAsync("hello");
+
+        await run.WaitForCompletionAsync(assert: result =>
+        {
+            Assert.That(output.Text, Does.Contain("=== BEGIN DURABLE ORCHESTRATION TESTER ===")
+                .And.Contain("Orchestration: OutputProbe").And.Contain(run.InstanceId)
+                .And.Contain("INPUT >").And.Contain("\"hello\"")
+                .And.Contain("LOGGING >").And.Contain("Application diagnostic")
+                .And.Contain("Elapsed (ms):").And.Contain("Status: Completed")
+                .And.Contain("Custom status: \"finished\"").And.Contain("Output: \"hello\""));
+            result.AssertOutput("hello");
+            Assert.That(output.Lines.SkipWhile(line => line != "=== BEGIN DURABLE ORCHESTRATION TESTER ===").Take(2),
+                Is.EqualTo(new[] { "=== BEGIN DURABLE ORCHESTRATION TESTER ===", "" }));
+            Assert.That(output.Lines.TakeLast(3), Is.EqualTo(new[] { "", "=== END DURABLE ORCHESTRATION TESTER ===", "" }));
+        });
+        await run.WaitForCompletionAsync();
+        Assert.That(output.Lines.Count(line => line == "=== BEGIN DURABLE ORCHESTRATION TESTER ==="), Is.EqualTo(1));
+        Assert.That(output.Lines.Count(line => line == "=== END DURABLE ORCHESTRATION TESTER ==="), Is.EqualTo(1));
+    }
+
+    /// <summary>Reports a running snapshot on timeout without preventing later completion diagnostics.</summary>
+    [Test]
+    public async Task TimeoutOutputDoesNotClaimOrchestrationFailed()
+    {
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        var output = new CapturedOutput(functions.Implementor);
+        functions.ReplaceTestFrameworkImplementor(output);
+        await using var run = await functions.DurableTask()
+            .Orchestrator<string>("PendingOutputProbe", context =>
+            {
+                context.CreateReplaySafeLogger("PendingOutputProbe").LogInformation("Waiting for Finish");
+                return context.WaitForExternalEvent<string>("Finish");
+            })
+            .StartAsync();
+
+        run.ExpectSuccess().ExpectLogContains("Waiting for Finish");
+        await run.WaitForStartAsync();
+        Assert.ThrowsAsync<TimeoutException>(async () =>
+            await run.WaitForCompletionAsync(TimeSpan.FromMilliseconds(50)));
+        Assert.That(output.Text, Does.Contain("Completion wait timed out")
+            .And.Contain("Last observed status: Running")
+            .And.Contain("not an orchestration failure"));
+        Assert.That(output.Text, Does.Not.Contain("Status: Failed"));
+        Assert.That(output.Lines.TakeLast(3), Is.EqualTo(new[] { "", "=== END DURABLE ORCHESTRATION TESTER ===", "" }));
+        await run.RaiseEventAsync("Finish", "done");
+        await run.WaitForCompletionAsync(assert: result => result.AssertOutput("done"));
+        Assert.That(output.Text, Does.Contain("Status: Completed"));
+        Assert.That(output.Lines.Count(line => line == "=== BEGIN DURABLE ORCHESTRATION TESTER ==="), Is.EqualTo(2));
+        Assert.That(output.Lines.Count(line => line == "=== END DURABLE ORCHESTRATION TESTER ==="), Is.EqualTo(2));
+    }
+
     /// <summary>Starts a no-input orchestration and asserts its result.</summary>
     [Test]
     public async Task StartsNoInputOrchestration()
@@ -38,6 +106,8 @@ public sealed class FluentDurableTaskTest
     public async Task CompletionAssertionCallbackPropagatesExceptions()
     {
         using var functions = FunctionTester.Create<WorkflowActivities>();
+        var output = new CapturedOutput(functions.Implementor);
+        functions.ReplaceTestFrameworkImplementor(output);
         await using var run = await functions.DurableTask()
             .Orchestrator<string>(nameof(CompleteWithoutInput), CompleteWithoutInput)
             .StartAsync();
@@ -45,6 +115,7 @@ public sealed class FluentDurableTaskTest
         InvalidOperationException error = Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await run.WaitForCompletionAsync(assert: _ => throw new InvalidOperationException("Assertion callback failed")))!;
         Assert.That(error.Message, Is.EqualTo("Assertion callback failed"));
+        Assert.That(output.Text, Does.Contain("Status: Completed").And.Contain("Output: \"Completed without input\""));
     }
 
     /// <summary>Runs a real orchestration method and asserts its recovered result.</summary>
@@ -67,6 +138,8 @@ public sealed class FluentDurableTaskTest
     public async Task ExposesFailureCauseThroughFluentAssertor()
     {
         using var functions = FunctionTester.Create<WorkflowActivities>();
+        var output = new CapturedOutput(functions.Implementor);
+        functions.ReplaceTestFrameworkImplementor(output);
         await using var run = await functions.DurableTask()
             .Orchestrator<string, string>(nameof(FailureOrchestration.DeclineWorkflow), (context, _) => FailureOrchestration.DeclineWorkflow(context))
             .Activity<string, string>(nameof(ActivityTransforms.RejectWorkflow), (_, reference) => ActivityTransforms.RejectWorkflow(reference))
@@ -78,6 +151,9 @@ public sealed class FluentDurableTaskTest
 
         result.AssertFailed().AssertFailureCausedBy<WorkflowRejectedException>();
         Assert.That(result.FailureDetails?.InnerFailure?.ErrorMessage, Is.EqualTo("Workflow ORDER-FAIL was declined."));
+        Assert.That(output.Text, Does.Contain("Status: Failed")
+            .And.Contain("Failure:").And.Contain(nameof(WorkflowRejectedException))
+            .And.Contain("Workflow ORDER-FAIL was declined."));
     }
 
     /// <summary>Warns that a long host timer uses wall-clock time while allowing an event to complete the orchestration.</summary>
@@ -102,4 +178,32 @@ public sealed class FluentDurableTaskTest
     /// <param name="context">The orchestration context.</param>
     /// <returns>The completion result.</returns>
     private static Task<string> CompleteWithoutInput(TaskOrchestrationContext context) => Task.FromResult("Completed without input");
+
+    /// <summary>Captures test diagnostics while preserving framework assertions and output.</summary>
+    /// <param name="inner">The framework implementor to forward to.</param>
+    private sealed class CapturedOutput(TestFrameworkImplementor inner) : TestFrameworkImplementor
+    {
+        /// <summary>Gets captured output lines.</summary>
+        public ConcurrentQueue<string?> Lines { get; } = new();
+
+        /// <summary>Gets captured output as text.</summary>
+        public string Text => string.Join(Environment.NewLine, Lines);
+
+        /// <inheritdoc/>
+        public override void WriteLine(string? message)
+        {
+            Lines.Enqueue(message);
+            inner.WriteLine(message);
+        }
+
+        /// <inheritdoc/>
+        public override void AssertAreEqual<T>(T? expected, T? actual, string? message = null) where T : default
+            => inner.AssertAreEqual(expected, actual, message);
+
+        /// <inheritdoc/>
+        public override void AssertFail(string? message) => inner.AssertFail(message);
+
+        /// <inheritdoc/>
+        public override void AssertInconclusive(string? message) => inner.AssertInconclusive(message);
+    }
 }

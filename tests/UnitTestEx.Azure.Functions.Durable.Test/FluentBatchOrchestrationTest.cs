@@ -124,7 +124,7 @@ public sealed class FluentBatchOrchestrationTest
     [Test]
     public async Task FansOutAndFansInWithScriptedActivityResponses()
     {
-        using var processItems = ScriptedActivityHandler.ByMatch(
+        using var processItems = ActivityMock.ByMatch(
         [
             ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "A", item => new ItemResult(item.Id, item.Amount * 2m)).Pending(),
             ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "B", item => new ItemResult(item.Id, item.Amount * 2m)).Pending(),
@@ -147,8 +147,7 @@ public sealed class FluentBatchOrchestrationTest
         await processItems[1].ReleaseAsync(TimeSpan.FromSeconds(5));
         await processItems[0].ReleaseAsync(TimeSpan.FromSeconds(5));
 
-        ItemResult[] expectedItems = [new("A", 20m), new("B", 40m), new("C", 60m)];
-        var expectedResult = new BatchResult("BATCH-7", 120m, expectedItems);
+        var expectedResult = new BatchResult("BATCH-7", 120m, [new("A", 20m), new("B", 40m), new("C", 60m)]);
 
         await test.WaitForCompletionAsync(TimeSpan.FromSeconds(10), r => r.AssertCompleted().AssertOutput(expectedResult));
 
@@ -158,10 +157,10 @@ public sealed class FluentBatchOrchestrationTest
 
     /// <summary>Verifies explicit invocation-order matching for repeated identical activity inputs.</summary>
     [Test]
-    public async Task ScriptedActivityHandlerCanMatchResponsesByInvocationOrder()
+    public async Task ActivityMockCanMatchResponsesByInvocationOrder()
     {
         using var functions = FunctionTester.Create<WorkflowActivities>();
-        using var processItems = ScriptedActivityHandler.InOrder(
+        using var processItems = ActivityMock.InOrder(
         [
             ActivityResponse.Next<string, string>(_ => "first").Pending(),
             ActivityResponse.Next<string, string>(_ => "second").Pending()
@@ -196,7 +195,7 @@ public sealed class FluentBatchOrchestrationTest
     public async Task ScriptedActivityVerifyReportsUnusedResponse()
     {
         using var functions = FunctionTester.Create<WorkflowActivities>();
-        using var responses = ScriptedActivityHandler.ByMatch(
+        using var responses = ActivityMock.ByMatch(
             ActivityResponse.Match<string, string>(input => input == "called", _ => "done"),
             ActivityResponse.Match<string, string>(input => input == "unused", _ => "unused"));
 
@@ -221,7 +220,7 @@ public sealed class FluentBatchOrchestrationTest
     public async Task ScriptedActivityRejectsInvalidMatches(bool ambiguous, string expectedMessage)
     {
         using var functions = FunctionTester.Create<WorkflowActivities>();
-        using var responses = ScriptedActivityHandler.ByMatch(
+        using var responses = ActivityMock.ByMatch(
             ActivityResponse.Match<string, string>(input => ambiguous && input == "called", _ => "first"),
             ActivityResponse.Match<string, string>(input => ambiguous && input == "called", _ => "second"));
 
@@ -246,7 +245,7 @@ public sealed class FluentBatchOrchestrationTest
         var plans = Enumerable.Range(0, 20).Select(index => byMatch
             ? ActivityResponse.Match<int, int>(input => input == index, _ => index).Pending()
             : ActivityResponse.Next<int, int>(_ => index).Pending()).ToArray();
-        using var handler = byMatch ? ScriptedActivityHandler.ByMatch(plans) : ScriptedActivityHandler.InOrder(plans);
+        using var handler = byMatch ? ActivityMock.ByMatch(plans) : ActivityMock.InOrder(plans);
         Task<int>[] calls = Enumerable.Range(0, plans.Length)
             .Select(input => Task.Run(() => handler.InvokeAsync(null!, input))).ToArray();
 
@@ -267,7 +266,7 @@ public sealed class FluentBatchOrchestrationTest
         var error = new InvalidOperationException("Activity failed");
         var first = ActivityResponse.Next<string, string>(_ => throw error).Pending();
         var second = ActivityResponse.Next<string, string>(_ => "recovered");
-        using var handler = ScriptedActivityHandler.InOrder(first, second);
+        using var handler = ActivityMock.InOrder(first, second);
 
         Task<string> attempt = handler.InvokeAsync(null!, "same");
         Assert.That(Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -289,7 +288,7 @@ public sealed class FluentBatchOrchestrationTest
     {
         using var functions = FunctionTester.Create<WorkflowActivities>();
         var failed = ActivityResponse.Next<string, string>(_ => throw new InvalidOperationException("First attempt failed"));
-        using var handler = ScriptedActivityHandler.InOrder(failed, ActivityResponse.Next<string, string>(_ => "recovered"));
+        using var handler = ActivityMock.InOrder(failed, ActivityResponse.Next<string, string>(_ => "recovered"));
         await using var run = await functions.DurableTask()
             .Orchestrator<string>("RetryScriptedActivity", context => context.CallActivityAsync<string>(
                 "Activity", "same", TaskOptions.FromRetryPolicy(new RetryPolicy(2, TimeSpan.FromMilliseconds(10)))))
@@ -309,7 +308,7 @@ public sealed class FluentBatchOrchestrationTest
         int outputsCreated = 0;
         var pending = ActivityResponse.Next<string, string>(_ => { Interlocked.Increment(ref outputsCreated); return "pending"; }).Pending();
         var delayed = ActivityResponse.Next<string, string>(_ => { Interlocked.Increment(ref outputsCreated); return "delayed"; }).After(TimeSpan.FromHours(24));
-        using var handler = ScriptedActivityHandler.InOrder(pending, delayed);
+        using var handler = ActivityMock.InOrder(pending, delayed);
         Task<string> pendingCall = handler.InvokeAsync(null!, "same");
         Task<string> delayedCall = handler.InvokeAsync(null!, "same");
         await handler.WaitForAllInvocationsAsync();
@@ -327,16 +326,16 @@ public sealed class FluentBatchOrchestrationTest
     public void ScriptedResponseConfigurationIsFrozenAndExclusive()
     {
         var plan = ActivityResponse.Next<string, string>(_ => "output");
-        using var handler = ScriptedActivityHandler.InOrder(plan);
+        using var handler = ActivityMock.InOrder(plan);
         Assert.Throws<InvalidOperationException>(() => plan.Pending());
         Assert.Throws<InvalidOperationException>(() => plan.After(TimeSpan.Zero));
-        Assert.Throws<InvalidOperationException>(() => ScriptedActivityHandler.InOrder(plan));
+        Assert.Throws<InvalidOperationException>(() => ActivityMock.InOrder(plan));
 
         var duplicate = ActivityResponse.Next<string, string>(_ => "output");
-        Assert.Throws<ArgumentException>(() => ScriptedActivityHandler.InOrder(duplicate, duplicate));
+        Assert.Throws<ArgumentException>(() => ActivityMock.InOrder(duplicate, duplicate));
         var matched = ActivityResponse.Match<string, string>(_ => true, _ => "output");
-        Assert.Throws<ArgumentException>(() => ScriptedActivityHandler.InOrder(matched));
-        Assert.Throws<ArgumentException>(() => ScriptedActivityHandler.ByMatch(duplicate));
+        Assert.Throws<ArgumentException>(() => ActivityMock.InOrder(matched));
+        Assert.Throws<ArgumentException>(() => ActivityMock.ByMatch(duplicate));
         var pending = ActivityResponse.Next<string, string>(_ => "output").Pending();
         Assert.Throws<InvalidOperationException>(() => pending.After(TimeSpan.Zero));
     }

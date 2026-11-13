@@ -19,6 +19,10 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     private readonly DurableTaskActivityVerifier _activityVerifier;
     private DurableTaskTestHost? _host;
     private bool _completionObserved;
+    private readonly Stopwatch _elapsed = Stopwatch.StartNew();
+    private int _resultWritten;
+    private readonly List<string?> _logs = [];
+    private readonly object _logsSync = new();
 
     /// <summary>Initializes a scheduled test run and takes ownership of its SDK host.</summary>
     /// <param name="owner">The FunctionTester owning the assertion framework.</param>
@@ -122,14 +126,111 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
         if (waitTimeout <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(timeout), waitTimeout, "The completion timeout must be positive.");
 
-        var metadata = await Host.Client.WaitForInstanceCompletionAsync(InstanceId, getInputsAndOutputs: true).WaitAsync(waitTimeout).ConfigureAwait(false) ?? throw new InvalidOperationException($"The test host returned no metadata for orchestration instance '{InstanceId}'.");
+        OrchestrationMetadata metadata;
+        try
+        {
+            metadata = await Host.Client.WaitForInstanceCompletionAsync(InstanceId, getInputsAndOutputs: true).WaitAsync(waitTimeout).ConfigureAwait(false)
+                ?? throw new InvalidOperationException($"The test host returned no metadata for orchestration instance '{InstanceId}'.");
+        }
+        catch (TimeoutException)
+        {
+            await WriteTimeoutAsync(waitTimeout).ConfigureAwait(false);
+            throw;
+        }
+
         _completionObserved = true;
+        string?[] logs = CaptureLogs();
+        if (Interlocked.Exchange(ref _resultWritten, 1) == 0)
+            WriteResult(metadata, logs);
         if (ExpectationsArranger.HasExpectations)
-            await ExpectationsArranger.AssertValueAsync(_owner.SharedState.GetLoggerMessages(), metadata, GetExpectationException(metadata)).ConfigureAwait(false);
+            await ExpectationsArranger.AssertValueAsync(logs, metadata, GetExpectationException(metadata)).ConfigureAwait(false);
 
         var result = new DurableTaskTestAssertor<TOutput>(_owner, metadata);
         assert?.Invoke(result);
         return result;
+    }
+
+    /// <summary>Writes bookended managed diagnostics for a completed run or a timeout snapshot.</summary>
+    /// <param name="metadata">The orchestration metadata, if available.</param>
+    /// <param name="logs">The captured log snapshot shared with expectations.</param>
+    /// <param name="timeout">The completion timeout, if the wait expired.</param>
+    /// <param name="metadataError">The error preventing timeout metadata retrieval, if any.</param>
+    private void WriteResult(OrchestrationMetadata? metadata, string?[] logs, TimeSpan? timeout = null, Exception? metadataError = null)
+    {
+        var output = _owner.Implementor;
+        output.WriteLine("");
+        output.WriteLine("=== BEGIN DURABLE ORCHESTRATION TESTER ===");
+        output.WriteLine("");
+        output.WriteLine($"Orchestration: {metadata?.Name.ToString() ?? "<unavailable>"}");
+        output.WriteLine($"Instance: {InstanceId}");
+        output.WriteLine("");
+        output.WriteLine("INPUT >");
+        output.WriteLine(metadata is null ? "<unavailable>" : metadata.SerializedInput ?? "<none>");
+        output.WriteLine("");
+        output.WriteLine("LOGGING >");
+        if (logs.Length == 0)
+            output.WriteLine("None.");
+        else
+            foreach (string? log in logs)
+                output.WriteLine(log);
+
+        output.WriteLine("");
+        output.WriteLine("RESULT >");
+        output.WriteLine($"Elapsed (ms): {_elapsed.Elapsed.TotalMilliseconds:F3}");
+        if (timeout is not null)
+            output.WriteLine($"Completion wait timed out after {timeout}; this is not an orchestration failure.");
+        output.WriteLine($"{(timeout is null ? "Status" : "Last observed status")}: {metadata?.RuntimeStatus.ToString() ?? "<unavailable>"}");
+        if (metadataError is not null)
+            output.WriteLine($"Metadata retrieval failed: {metadataError.Message} [{metadataError.GetType().Name}]");
+        if (metadata is not null)
+        {
+            output.WriteLine($"Custom status: {metadata.SerializedCustomStatus ?? "<none>"}");
+            output.WriteLine($"Output: {metadata.SerializedOutput ?? "<none>"}");
+            int depth = 0;
+            for (TaskFailureDetails? failure = metadata.FailureDetails; failure is not null; failure = failure.InnerFailure)
+            {
+                string indent = new(' ', depth++ * 2);
+                output.WriteLine($"{indent}Failure: {failure.ErrorMessage} [{failure.ErrorType}]");
+                if (!string.IsNullOrEmpty(failure.StackTrace))
+                    output.WriteLine($"{indent}{failure.StackTrace}");
+            }
+        }
+
+        output.WriteLine("");
+        output.WriteLine("=== END DURABLE ORCHESTRATION TESTER ===");
+        output.WriteLine("");
+    }
+
+    /// <summary>Obtains a bounded status snapshot for a timed-out completion wait.</summary>
+    /// <param name="timeout">The timeout that expired.</param>
+    /// <returns>A task that completes after diagnostics have been written.</returns>
+    private async Task WriteTimeoutAsync(TimeSpan timeout)
+    {
+        OrchestrationMetadata? metadata = null;
+        Exception? metadataError = null;
+        try
+        {
+            metadata = await Host.Client.GetInstanceAsync(InstanceId, getInputsAndOutputs: true)
+                .WaitAsync(TimeSpan.FromMilliseconds(250)).ConfigureAwait(false);
+        }
+        catch (Exception error)
+        {
+            // Diagnostic retrieval must not replace the original completion timeout.
+            metadataError = error;
+        }
+
+        WriteResult(metadata, CaptureLogs(), timeout, metadataError);
+    }
+
+    /// <summary>Drains shared log messages while preserving earlier timeout snapshots for expectations.</summary>
+    /// <returns>All logs captured by this run so far.</returns>
+    private string?[] CaptureLogs()
+    {
+        lock (_logsSync)
+        {
+            _logs.AddRange(_owner.SharedState.GetLoggerMessages());
+            return [.. _logs];
+        }
     }
 
     /// <summary>

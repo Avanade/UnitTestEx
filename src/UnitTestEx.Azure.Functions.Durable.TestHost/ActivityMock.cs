@@ -3,35 +3,35 @@ using Microsoft.DurableTask;
 
 namespace UnitTestEx.Azure.Functions.Durable.TestHost;
 
-/// <summary>Creates scripted activity handlers with an explicit matching strategy.</summary>
-public static class ScriptedActivityHandler
+/// <summary>Creates activity mocks with an explicit matching strategy.</summary>
+public static class ActivityMock
 {
-    /// <summary>Creates a script that assigns responses by matching each activity input.</summary>
+    /// <summary>Creates a mock that assigns responses by matching each activity input.</summary>
     /// <typeparam name="TInput">The activity input type.</typeparam>
     /// <typeparam name="TOutput">The activity output type.</typeparam>
     /// <param name="responses">The input-matched responses.</param>
-    /// <returns>An input-matched script.</returns>
-    public static ScriptedActivityHandler<TInput, TOutput> ByMatch<TInput, TOutput>(params ActivityResponse<TInput, TOutput>[] responses)
+    /// <returns>An input-matched mock.</returns>
+    public static ActivityMock<TInput, TOutput> ByMatch<TInput, TOutput>(params ActivityResponse<TInput, TOutput>[] responses)
         => new(true, responses);
 
-    /// <summary>Creates a script that assigns responses by handler invocation order.</summary>
+    /// <summary>Creates a mock that assigns responses by handler invocation order.</summary>
     /// <typeparam name="TInput">The activity input type.</typeparam>
     /// <typeparam name="TOutput">The activity output type.</typeparam>
     /// <param name="responses">The ordered responses.</param>
-    /// <returns>An invocation-ordered script.</returns>
-    public static ScriptedActivityHandler<TInput, TOutput> InOrder<TInput, TOutput>(params ActivityResponse<TInput, TOutput>[] responses)
+    /// <returns>An invocation-ordered mock.</returns>
+    public static ActivityMock<TInput, TOutput> InOrder<TInput, TOutput>(params ActivityResponse<TInput, TOutput>[] responses)
         => new(false, responses);
 }
 
 /// <summary>Routes activity invocations to one uniquely matching response plan.</summary>
 /// <remarks>
-/// Each invocation, including a retry, consumes one response. Ordered scripts use handler arrival order,
-/// not guaranteed orchestration scheduling order. Dispose the handler to cancel pending responses.
+/// Each invocation, including a retry, consumes one response. Ordered mocks use handler arrival order,
+/// not guaranteed orchestration scheduling order. Dispose the mock to cancel pending responses.
 /// Completion signals describe handler completion, not engine processing of its result.
 /// </remarks>
 /// <typeparam name="TInput">The activity input type.</typeparam>
 /// <typeparam name="TOutput">The activity output type.</typeparam>
-public sealed class ScriptedActivityHandler<TInput, TOutput> : IDisposable
+public sealed class ActivityMock<TInput, TOutput> : IDisposable
 {
     private readonly object _sync = new();
     private readonly ActivityResponse<TInput, TOutput>[] _responses;
@@ -41,10 +41,10 @@ public sealed class ScriptedActivityHandler<TInput, TOutput> : IDisposable
     private readonly CancellationTokenSource _shutdown = new();
     private bool _disposed;
 
-    /// <summary>Initializes an activity response script with an explicit matching mode.</summary>
+    /// <summary>Initializes an activity mock with an explicit matching mode.</summary>
     /// <param name="matchByInput">Whether responses are matched by input rather than invocation order.</param>
     /// <param name="responses">The responses available to incoming invocations.</param>
-    internal ScriptedActivityHandler(bool matchByInput, params ActivityResponse<TInput, TOutput>[] responses)
+    internal ActivityMock(bool matchByInput, params ActivityResponse<TInput, TOutput>[] responses)
     {
         ArgumentNullException.ThrowIfNull(responses);
         if (responses.Length == 0 || responses.Any(response => response is null))
