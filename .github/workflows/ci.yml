@@ -2,6 +2,11 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      durable-integration:
+        description: Run the opt-in real Functions worker/Azurite Durable suite
+        type: boolean
+        default: false
   push:
     branches: [ main ]
   pull_request:
@@ -193,5 +198,38 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: durable-${{ matrix.framework }}-test-results
+        path: ${{ runner.temp }}/test-results
+        if-no-files-found: warn
+
+  durable-integration:
+    name: Durable Functions integration (net10.0)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.durable-integration }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Setup Azure Functions Core Tools
+      run: npm install --global azure-functions-core-tools@4 --unsafe-perm true
+
+    - name: Real Durable Functions integration
+      run: >-
+        dotnet test tests/UnitTestEx.Azure.Functions.Durable.Integration.Test/UnitTestEx.Azure.Functions.Durable.Integration.Test.csproj
+        --framework net10.0 --configuration Debug
+        -p:TargetFrameworks=net10.0 -p:GeneratePackageOnBuild=false
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/durable-integration" --verbosity normal
+
+    - name: Upload integration results
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: durable-integration-net10.0-test-results
         path: ${{ runner.temp }}/test-results
         if-no-files-found: warn

@@ -306,6 +306,47 @@ public sealed class FluentBatchOrchestrationTest
         run.Verify();
     }
 
+    /// <summary>Uses SDK failure details and attempt numbers to recover, exhaust retries or reject a nonretryable activity failure.</summary>
+    /// <param name="retryable">Whether the first failure is eligible for retry.</param>
+    /// <param name="recover">Whether the second attempt succeeds.</param>
+    [TestCase(true, true)]
+    [TestCase(true, false)]
+    [TestCase(false, false)]
+    public async Task CustomActivityRetryUsesFailureDetailsAndAttemptLimit(bool retryable, bool recover)
+    {
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        Exception failure = retryable ? new WorkflowRejectedException("First attempt failed.") : new ArgumentException("First attempt failed.");
+        var responses = new List<ActivityResponse<string, string>> { ActivityResponse.Next<string, string>(_ => throw failure) };
+        if (retryable)
+            responses.Add(ActivityResponse.Next<string, string>(_ => recover ? "recovered" : throw new WorkflowRejectedException("Second attempt failed.")));
+
+        int attempts = retryable ? 2 : 1;
+        using var handler = ActivityMock.InOrder(responses.ToArray());
+        await using var run = await functions.DurableTask()
+            .Orchestrator<string>("CustomActivityRetry", context => context.CallActivityAsync<string>("Activity", "same", TaskOptions.FromRetryHandler(retry =>
+            {
+                retry.OrchestrationContext.SetCustomStatus($"retry:{retry.LastAttemptNumber}");
+                return retry.LastAttemptNumber < 2 && retry.LastFailure.IsCausedBy<WorkflowRejectedException>();
+            })))
+            .Activity<string, string>("Activity", handler.InvokeAsync, configure: options => options.Times(Times.Exactly(attempts)))
+            .StartAsync();
+
+        var result = await run.WaitForCompletionAsync();
+        if (recover)
+            result.AssertCompleted().AssertOutput("recovered");
+        else if (retryable)
+            result.AssertFailed().AssertFailureCausedBy<WorkflowRejectedException>();
+        else
+            result.AssertFailed().AssertFailureCausedBy<ArgumentException>();
+
+        Assert.That(result.Metadata.ReadCustomStatusAs<string>(), Is.EqualTo($"retry:{(recover ? 1 : attempts)}"));
+        if (!recover)
+            Assert.That(result.FailureDetails?.InnerFailure?.ErrorMessage, Is.EqualTo(retryable ? "Second attempt failed." : "First attempt failed."));
+
+        handler.Verify();
+        run.Verify();
+    }
+
     /// <summary>Verifies disposal cancels pending and delayed calls without running their output factories.</summary>
     [Test]
     public async Task DisposingScriptCancelsBlockedResponses()

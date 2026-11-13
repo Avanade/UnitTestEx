@@ -7,12 +7,14 @@ The single-host testers (`ApiTester`, `FunctionTester`, `GenericTester`, etc.) h
 
 Sometimes, though, you genuinely need to prove that two or more **real**, separately-hosted services interact correctly over the network (inter-domain testing) - for example a [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) distributed application where a "shopping" API calls a "products" API. For this, the [`UnitTestEx.Aspire`](../src/UnitTestEx.Aspire) package provides `AspireTester`, which spins up the **entire AppHost** - every project, container and executable resource it declares - as separate, real OS processes wired together with Aspire's actual service discovery, exactly as they'd run in production. This is deliberately a second, opt-in tier rather than an extension of the first: pick the tier per test based on what you're actually trying to prove, don't force a hybrid.
 
-The repository's fixed AppHosts and integration-test resources target .NET 10. Its Aspire test suites target .NET 10 and 11 because the test project must target the same or a newer framework than the referenced AppHost assembly. The libraries target .NET 8/9/10/11. The [successful matrix CI run](https://github.com/Avanade/UnitTestEx/actions/runs/43517961818) compiled all library targets and passed the Aspire MSTest/NUnit/xUnit suites on both .NET 10 and 11; see the [CI evidence table](./azure-durable-functions.md#ci-evidence).
+The repository's fixed AppHosts and integration-test resources target .NET 10. Its Aspire test suites target .NET 10 and 11 because the test project must target the same or a newer framework than the referenced AppHost assembly. The libraries target .NET 8/9/10/11.
 
 This isn't a UnitTestEx-specific compromise - it matches Aspire's own guidance verbatim:
 
 > "If your goal is to test a single project in isolation, run components in-memory, or mock external dependencies, consider using `WebApplicationFactory<T>` instead."
 > — [aspire.dev/testing/overview](https://aspire.dev/testing/overview/)
+
+For Durable workflows, the separate opt-in [real Functions worker/Azurite integration suite](./azure-durable-functions.md#real-functions-workerbackend-integration) hosts the unchanged sample on .NET 10. It includes batch, recovery and external-event scenarios and is separate from the in-memory SDK-host suite.
 
 ``` csharp
 await using var tester = AspireTester.Create<Projects.MyAppHost>();

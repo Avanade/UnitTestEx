@@ -1,6 +1,8 @@
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
 using NUnit.Framework;
 using System.Collections.Concurrent;
 using UnitTestEx.Abstractions;
@@ -174,10 +176,64 @@ public sealed class FluentDurableTaskTest
         result.AssertCompleted().AssertOutput(new ApprovalDecision(true));
     }
 
+    /// <summary>Runs a typed instance with application DI, managed diagnostics and an unchanged long timer.</summary>
+    [Test]
+    public async Task TypedOrchestratorUsesApplicationDiAndManagedDiagnostics()
+    {
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        using var scope = functions.Services.CreateScope();
+        var orchestrator = ActivatorUtilities.CreateInstance<LoggedTypedOrchestrator>(scope.ServiceProvider);
+        var output = new CapturedOutput(functions.Implementor);
+        functions.ReplaceTestFrameworkImplementor(output);
+        await using var run = await functions.DurableTask()
+            .Orchestrator("TypedWithDi", orchestrator)
+            .Activity<string, string>("ClassBasedEchoActivity", (_, input) => $"processed:{input}", configure: options => options.Times(Times.Once()))
+            .StartAsync("hello");
+
+        run.ExpectSuccess().ExpectLogContains("Typed orchestration input: hello").ExpectLogContains("uses the host's real wall clock");
+        await run.WaitForCustomStatusAsync(metadata => metadata.ReadCustomStatusAs<string>() == "waiting");
+        await run.RaiseEventAsync("Finish", "done");
+        await run.WaitForCompletionAsync(assert: result =>
+        {
+            result.AssertCompleted().AssertOutput("processed:hello:done");
+            Assert.That(output.Text, Does.Contain("Orchestration: TypedWithDi").And.Contain("Status: Completed").And.Contain("=== END DURABLE ORCHESTRATION TESTER ==="));
+        });
+        run.Verify();
+    }
+
     /// <summary>Completes without reading orchestration input.</summary>
     /// <param name="context">The orchestration context.</param>
     /// <returns>The completion result.</returns>
     private static Task<string> CompleteWithoutInput(TaskOrchestrationContext context) => Task.FromResult("Completed without input");
+
+    /// <summary>Uses an application logger and races a real host timer against an external event.</summary>
+    /// <param name="logger">The logger resolved from application services.</param>
+    private sealed class LoggedTypedOrchestrator(ILogger<LoggedTypedOrchestrator> logger) : TaskOrchestrator<string, string>
+    {
+        /// <summary>Calls an activity and waits for an event without shortening the timer.</summary>
+        /// <param name="context">The SDK orchestration context.</param>
+        /// <param name="input">The activity input.</param>
+        /// <returns>The activity result combined with the event payload, or the timeout result.</returns>
+        public override async Task<string> RunAsync(TaskOrchestrationContext context, string input)
+        {
+            if (!context.IsReplaying)
+                logger.LogInformation("Typed orchestration input: {Input}", input);
+
+            string result = await context.CallActivityAsync<string>("ClassBasedEchoActivity", input);
+            using var cancellation = new CancellationTokenSource();
+            Task timer = context.CreateTimer(TimeSpan.FromHours(24), cancellation.Token);
+            Task<string> finish = context.WaitForExternalEvent<string>("Finish");
+            context.SetCustomStatus("waiting");
+            if (await Task.WhenAny(timer, finish) == timer)
+            {
+                await timer;
+                return "timed out";
+            }
+
+            cancellation.Cancel();
+            return $"{result}:{await finish}";
+        }
+    }
 
     /// <summary>Captures test diagnostics while preserving framework assertions and output.</summary>
     /// <param name="inner">The framework implementor to forward to.</param>

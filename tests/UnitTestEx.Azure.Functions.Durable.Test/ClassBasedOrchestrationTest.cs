@@ -1,9 +1,11 @@
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Testing;
+using Moq;
 using NUnit.Framework;
 using UnitTestEx.Azure.Functions.Durable.TestHost;
 using UnitTestEx.DurableFunction;
+using UnitTestEx.Expectations;
 
 namespace UnitTestEx.Azure.Functions.Durable.Test;
 
@@ -75,5 +77,47 @@ public sealed class ClassBasedOrchestrationTest
             if (host is not null)
                 await host.DisposeAsync();
         }
+    }
+
+    /// <summary>Exposes typed orchestration failures through fluent assertions and managed expectations.</summary>
+    [Test]
+    public async Task FluentTypedOrchestratorRetainsNestedActivityFailure()
+    {
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        await using var run = await functions.DurableTask()
+            .Orchestrator("FluentClassBasedFailure", new ClassBasedFailureOrchestrator())
+            .Activity<string, string>("ClassBasedFailureActivity", (_, input) => Task.FromException<string>(new WorkflowRejectedException($"Class-based failure for {input}.")),
+                configure: options => options.Times(Times.Once()))
+            .StartAsync("request-1");
+
+        run.ExpectException().Type<DurableTaskOrchestrationException>("Class-based failure for request-1.");
+        var result = await run.WaitForCompletionAsync();
+        result.AssertFailed().AssertFailureCausedBy<WorkflowRejectedException>();
+        Assert.That(result.FailureDetails?.InnerFailure?.ErrorMessage, Is.EqualTo("Class-based failure for request-1."));
+        run.Verify();
+    }
+
+    /// <summary>Registers a typed child through both input and no-input parent builders.</summary>
+    /// <param name="withInput">Whether the parent is started with input.</param>
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task FluentParentsInvokeTypedChild(bool withInput)
+    {
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        var child = new ClassBasedEchoOrchestrator();
+        await using var run = withInput
+            ? await functions.DurableTask()
+                .Orchestrator<string, string>("InputParent", (context, input) => context.CallSubOrchestratorAsync<string>("TypedChild", input))
+                .SubOrchestrator("TypedChild", child)
+                .Activity<string, string>("ClassBasedEchoActivity", (_, input) => $"processed:{input}", configure: options => options.Times(Times.Once()))
+                .StartAsync("hello")
+            : await functions.DurableTask()
+                .Orchestrator<string>("NoInputParent", context => context.CallSubOrchestratorAsync<string>("TypedChild", "hello"))
+                .SubOrchestrator("TypedChild", child)
+                .Activity<string, string>("ClassBasedEchoActivity", (_, input) => $"processed:{input}", configure: options => options.Times(Times.Once()))
+                .StartAsync();
+
+        await run.WaitForCompletionAsync(assert: result => result.AssertCompleted().AssertOutput("processed:hello"));
+        run.Verify();
     }
 }

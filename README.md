@@ -145,24 +145,26 @@ The tests in this repository are the reference examples. Equivalent tests exist 
 
 ## Durable Functions testing (preview)
 
-The optional **`UnitTestEx.Azure.Functions.Durable`** preview package combines the SDK-host facade and the separate method-level virtual-time context. Its version follows `Common.targets` with `-preview` appended: currently **`6.2.0-preview`**, alongside regular **`6.2.0`** UnitTestEx packages; the next coordinated `6.2.1` release produces `6.2.1-preview`. CI builds all .NET 8/9/10/11 library targets; the dedicated Durable suite is configured for .NET 10/11, with **56/56 tests passing** on .NET 10 and .NET 11 execution awaiting CI. Core suites pass on all four frameworks and Aspire suites on .NET 10/11; see [CI evidence](./docs/azure-durable-functions.md#ci-evidence). The SDK host pins Microsoft's preview `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1**.
+The optional **`UnitTestEx.Azure.Functions.Durable`** preview package combines the SDK-host facade and the separate method-level virtual-time context. Its version follows `Common.targets` with `-preview` appended: currently **`6.2.0-preview`**, alongside regular **`6.2.0`** UnitTestEx packages; the next coordinated `6.2.1` release produces `6.2.1-preview`. Libraries target .NET 8/9/10/11; the dedicated Durable suite targets .NET 10/11. The SDK host pins Microsoft's preview `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1**.
 
-The [Durable guide](./docs/azure-durable-functions.md) shows `FunctionTester.DurableTask()`, `ActivityMock`, assertions and diagnostics. The [runnable showcase](./tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskShowcaseTest.cs) runs the real batch orchestration with controlled activity responses; the guide's [support matrix](./docs/azure-durable-functions.md#support-matrix) records the evidence and remaining limits.
+The [Durable guide](./docs/azure-durable-functions.md) shows `FunctionTester.DurableTask()`, `ActivityMock`, assertions and diagnostics. The [runnable showcase](./tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskShowcaseTest.cs) runs the real batch orchestration with controlled activity responses; see the guide's [support matrix](./docs/azure-durable-functions.md#support-matrix) for APIs and limitations.
 
-Construct | Test path | Demonstrated behavior | Unsupported or unproven boundary
+Construct | Test path | Behavior | Limitations
 -|-|-|-
 Activity functions | Existing `FunctionTester.Trigger<T>()` | Real static/instance method invocation, DI, logs and original exceptions | No Functions trigger binding, runtime delivery or Durable failure translation.
 Static/instance `[Function]` orchestration methods | In-memory SDK host | Explicit delegates execute real bodies with SDK serialization, replay and failure details | No automatic discovery, Functions worker or extension input conversion.
-Typed SDK `TaskOrchestrator<TIn,TOut>` | Low-level SDK registry | Selected typed orchestrators execute and expose nested activity failures | Not a class-based Functions worker path; DI construction and a fluent typed-class API are unproven.
+Typed SDK `TaskOrchestrator<TIn,TOut>` | Fluent SDK host or low-level registry | Explicit root/child instance registration with typed input/output, managed diagnostics and nested failures | Caller owns instances and dependencies; no automatic discovery or Functions class-based worker integration.
 Activity calls and fan-out/fan-in | SDK host and `ActivityMock` | Input-matched/ordered responses, controlled completion, input-order fan-in and opt-in invocation verification | Mocked activity bodies are not tested; handler completion is not engine result-processing order.
 Sub-orchestrations | SDK host | Real/delegate child registration; selected success, failure and retry scenarios | Not general cancellation propagation or Functions child delivery.
 Durable timers | SDK host or method-level virtual context | Host timers use real time with a warning; the narrow context advances timer/event logic instantly | No host virtual clock. Method-level context has no engine history/replay and rejects activities/children.
 External events/custom status | SDK host | Selected buffered-event, event-before-timeout and in-flight status scenarios | No Functions delivery/serializer parity or established same-deadline arbitration.
-Replay | SDK host | Replay observed; changed activity name diagnosed as nondeterministic | Not a universal detector of invalid awaits or arbitrary I/O; virtual context never replays.
-Entities | No demonstrated new Durable support | Existing generic trigger invocation remains unchanged | No entity execution/state testing through the new host facade.
+Replay | SDK host | SDK history replay and detection of divergent durable calls | Not a universal detector of invalid awaits or arbitrary I/O; virtual context never replays.
+Entities | Outside the Durable tester's supported surface | Existing generic trigger invocation remains unchanged | No entity execution/state API through the host facade.
 Client/start/status operations | SDK host/client | Schedule, bounded waits, typed events, metadata and output assertions | Not production `DurableTaskClient`, Functions starter triggers or HTTP status endpoints.
-`ContinueAsNew`, durable HTTP | Not established | No end-to-end capability claimed | SDK API availability is not evidence of UnitTestEx support.
-Functions worker/backend integration | Separate real-host tier, e.g. Aspire/Core Tools | Not demonstrated by the Durable suite | SDK host/direct methods do not prove indexing, binding, storage, Azure authentication or deployed behavior.
+`ContinueAsNew` | SDK host | New generations with serialized input and optional buffered-event preservation; final output and activity counts across generations | No method-level virtual-context support or host virtual clock.
+Custom retry handlers | SDK host | SDK synchronous/asynchronous handlers for activities and children, including failure details and attempt limits | Handler code must be deterministic; timer waits remain wall-clock.
+Durable HTTP | Outside the Durable tester's supported surface | Use a Functions runtime integration for extension-specific HTTP behavior | No built-in SDK-host HTTP implementation or method-level context support.
+Functions worker/backend integration | Separate opt-in [Aspire/Core Tools/Azurite suite](./docs/azure-durable-functions.md#real-functions-workerbackend-integration) | Real batch activities/child, failure recovery and approval-event delivery | Requires Core Tools and containers; local emulator integration excludes deployed Azure authentication, scale and reliability.
 
 <br/>
 

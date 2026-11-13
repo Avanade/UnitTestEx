@@ -2,7 +2,9 @@ using System.Collections.Concurrent;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Testing;
+using Moq;
 using NUnit.Framework;
+using UnitTestEx.Azure.Functions.Durable.TestHost;
 using UnitTestEx.DurableFunction;
 
 namespace UnitTestEx.Azure.Functions.Durable.Test;
@@ -76,5 +78,44 @@ public sealed class SubOrchestrationRetryTest
             if (host is not null)
                 await host.DisposeAsync();
         }
+    }
+
+    /// <summary>Uses an asynchronous custom child retry handler with a durable timer and a bounded attempt count.</summary>
+    /// <param name="recover">Whether the second child attempt succeeds.</param>
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task CustomChildRetryAwaitsDurableTimerAndRespectsAttemptLimit(bool recover)
+    {
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        using var responses = ActivityMock.InOrder(
+            ActivityResponse.Next<string, string>(_ => throw new WorkflowRejectedException("First child attempt failed.")),
+            ActivityResponse.Next<string, string>(_ => recover ? "recovered" : throw new WorkflowRejectedException("Second child attempt failed.")));
+        await using var run = await functions.DurableTask()
+            .Orchestrator<string>("CustomChildRetryParent", context => context.CallSubOrchestratorAsync<string>("CustomRetryChild", "same", TaskOptions.FromRetryHandler(async retry =>
+            {
+                retry.OrchestrationContext.SetCustomStatus($"retry:{retry.LastAttemptNumber}");
+                TaskFailureDetails? failure = retry.LastFailure;
+                while (failure is not null && !failure.IsCausedBy<WorkflowRejectedException>())
+                    failure = failure.InnerFailure;
+
+                if (retry.LastAttemptNumber >= 2 || failure is null)
+                    return false;
+
+                await retry.OrchestrationContext.CreateTimer(TimeSpan.FromMilliseconds(10), CancellationToken.None);
+                return true;
+            })))
+            .SubOrchestrator<string, string>("CustomRetryChild", (context, input) => context.CallActivityAsync<string>("ChildAttempt", input))
+            .Activity<string, string>("ChildAttempt", responses.InvokeAsync, configure: options => options.Times(Times.Exactly(2)))
+            .StartAsync();
+
+        var result = await run.WaitForCompletionAsync();
+        if (recover)
+            result.AssertCompleted().AssertOutput("recovered");
+        else
+            result.AssertFailed().AssertFailureCausedBy<WorkflowRejectedException>();
+
+        Assert.That(result.Metadata.ReadCustomStatusAs<string>(), Is.EqualTo(recover ? "retry:1" : "retry:2"));
+        responses.Verify();
+        run.Verify();
     }
 }

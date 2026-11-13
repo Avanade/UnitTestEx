@@ -56,6 +56,21 @@ public sealed class DurableTaskTestBuilder<TEntryPoint, TSelf> where TEntryPoint
     }
 
     /// <summary>
+    /// Registers a typed orchestration instance using the SDK host and managed timer diagnostics.
+    /// </summary>
+    /// <remarks>The caller constructs and owns the instance and its dependencies, which must remain alive until the test run is disposed. The same instance is used during replay and continuation.</remarks>
+    /// <typeparam name="TInput">The orchestration input type.</typeparam>
+    /// <typeparam name="TOutput">The orchestration output type.</typeparam>
+    /// <param name="name">The orchestration name.</param>
+    /// <param name="orchestrator">The typed orchestration instance, optionally constructed using application services.</param>
+    /// <returns>A typed builder for registering handlers and starting the orchestration.</returns>
+    public DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> Orchestrator<TInput, TOutput>(string name, TaskOrchestrator<TInput, TOutput> orchestrator)
+    {
+        ArgumentNullException.ThrowIfNull(orchestrator);
+        return Orchestrator<TInput, TOutput>(name, orchestrator.RunAsync);
+    }
+
+    /// <summary>
     /// Registers a no-input orchestration delegate for this test.
     /// </summary>
     /// <typeparam name="TOutput">The orchestration output type.</typeparam>
@@ -189,6 +204,21 @@ public sealed class DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInp
         ArgumentNullException.ThrowIfNull(orchestrator);
 
         return Append(registry => registry.AddOrchestratorFuncWithTimerDiagnostics(name, orchestrator));
+    }
+
+    /// <summary>
+    /// Registers a typed child orchestration instance using the SDK host and managed timer diagnostics.
+    /// </summary>
+    /// <remarks>The caller owns the instance and its dependencies for the lifetime of the run. The same instance is used during replay and continuation.</remarks>
+    /// <typeparam name="TChildInput">The child orchestration input type.</typeparam>
+    /// <typeparam name="TChildOutput">The child orchestration output type.</typeparam>
+    /// <param name="name">The child orchestration name.</param>
+    /// <param name="orchestrator">The typed child orchestration instance.</param>
+    /// <returns>A new builder with the child orchestration registered.</returns>
+    public DurableTaskOrchestrationTestBuilder<TEntryPoint, TSelf, TInput, TOutput> SubOrchestrator<TChildInput, TChildOutput>(string name, TaskOrchestrator<TChildInput, TChildOutput> orchestrator)
+    {
+        ArgumentNullException.ThrowIfNull(orchestrator);
+        return SubOrchestrator<TChildInput, TChildOutput>(name, orchestrator.RunAsync);
     }
 
     /// <summary>
@@ -374,6 +404,21 @@ public sealed class DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSel
         ArgumentNullException.ThrowIfNull(orchestrator);
 
         return Append(registry => registry.AddOrchestratorFuncWithTimerDiagnostics(name, orchestrator));
+    }
+
+    /// <summary>
+    /// Registers a typed child orchestration instance using the SDK host and managed timer diagnostics.
+    /// </summary>
+    /// <remarks>The caller owns the instance and its dependencies for the lifetime of the run. The same instance is used during replay and continuation.</remarks>
+    /// <typeparam name="TChildInput">The child orchestration input type.</typeparam>
+    /// <typeparam name="TChildOutput">The child orchestration output type.</typeparam>
+    /// <param name="name">The child orchestration name.</param>
+    /// <param name="orchestrator">The typed child orchestration instance.</param>
+    /// <returns>A new builder with the child orchestration registered.</returns>
+    public DurableTaskNoInputOrchestrationTestBuilder<TEntryPoint, TSelf, TOutput> SubOrchestrator<TChildInput, TChildOutput>(string name, TaskOrchestrator<TChildInput, TChildOutput> orchestrator)
+    {
+        ArgumentNullException.ThrowIfNull(orchestrator);
+        return SubOrchestrator<TChildInput, TChildOutput>(name, orchestrator.RunAsync);
     }
 
     /// <summary>

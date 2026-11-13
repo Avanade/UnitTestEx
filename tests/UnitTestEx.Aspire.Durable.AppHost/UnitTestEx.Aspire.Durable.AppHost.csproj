@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.6.5" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsAspireHost>true</IsAspireHost>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.5" />
+    <ProjectReference Include="..\UnitTestEx.DurableFunction\UnitTestEx.DurableFunction.csproj" SetTargetFramework="TargetFramework=net10.0" />
+  </ItemGroup>
+</Project>
