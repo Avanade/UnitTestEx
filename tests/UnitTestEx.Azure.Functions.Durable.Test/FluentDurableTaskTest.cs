@@ -24,8 +24,27 @@ public sealed class FluentDurableTaskTest
             .StartAsync();
 
         run.ExpectSuccess();
-        var result = await run.WaitForCompletionAsync();
-        result.AssertCompleted().AssertOutput("Completed without input");
+        DurableTaskTestAssertor<string>? callbackResult = null;
+        var result = await run.WaitForCompletionAsync(assert: r =>
+        {
+            callbackResult = r;
+            r.AssertCompleted().AssertOutput("Completed without input");
+        });
+        Assert.That(result, Is.SameAs(callbackResult));
+    }
+
+    /// <summary>Propagates exceptions thrown by the completion assertion callback.</summary>
+    [Test]
+    public async Task CompletionAssertionCallbackPropagatesExceptions()
+    {
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        await using var run = await functions.DurableTask()
+            .Orchestrator<string>(nameof(CompleteWithoutInput), CompleteWithoutInput)
+            .StartAsync();
+
+        InvalidOperationException error = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await run.WaitForCompletionAsync(assert: _ => throw new InvalidOperationException("Assertion callback failed")))!;
+        Assert.That(error.Message, Is.EqualTo("Assertion callback failed"));
     }
 
     /// <summary>Runs a real orchestration method and asserts its recovered result.</summary>

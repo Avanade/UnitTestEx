@@ -112,10 +112,11 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     /// <summary>
     /// Waits for orchestration completion up to the specified timeout, defaulting to five seconds.
     /// </summary>
-    /// <remarks>When expectations are arranged, non-completed orchestration metadata is represented by <see cref="DurableTaskOrchestrationException"/>. Host and wait errors propagate directly.</remarks>
+    /// <remarks>When expectations are arranged, non-completed orchestration metadata is represented by <see cref="DurableTaskOrchestrationException"/>. The assertion callback runs after expectations are checked. Host, wait, and assertion errors propagate directly.</remarks>
     /// <param name="timeout">The maximum amount of time to wait; defaults to five seconds and otherwise must be positive.</param>
+    /// <param name="assert">An optional callback to assert the completion result.</param>
     /// <returns>An assertor exposing the SDK orchestration metadata and fluent assertions.</returns>
-    public async Task<DurableTaskTestAssertor<TOutput>> WaitForCompletionAsync(TimeSpan? timeout = null)
+    public async Task<DurableTaskTestAssertor<TOutput>> WaitForCompletionAsync(TimeSpan? timeout = null, Action<DurableTaskTestAssertor<TOutput>>? assert = null)
     {
         TimeSpan waitTimeout = timeout ?? DefaultWaitTimeout;
         if (waitTimeout <= TimeSpan.Zero)
@@ -126,7 +127,9 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
         if (ExpectationsArranger.HasExpectations)
             await ExpectationsArranger.AssertValueAsync(_owner.SharedState.GetLoggerMessages(), metadata, GetExpectationException(metadata)).ConfigureAwait(false);
 
-        return new DurableTaskTestAssertor<TOutput>(_owner, metadata);
+        var result = new DurableTaskTestAssertor<TOutput>(_owner, metadata);
+        assert?.Invoke(result);
+        return result;
     }
 
     /// <summary>
