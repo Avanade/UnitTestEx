@@ -14,7 +14,7 @@ This isn't a UnitTestEx-specific compromise - it matches Aspire's own guidance v
 > "If your goal is to test a single project in isolation, run components in-memory, or mock external dependencies, consider using `WebApplicationFactory<T>` instead."
 > — [aspire.dev/testing/overview](https://aspire.dev/testing/overview/)
 
-For Durable workflows, the separate opt-in [real Functions worker/Azurite integration suite](./azure-durable-functions.md#real-functions-workerbackend-integration) hosts the unchanged sample on .NET 10. It includes batch, recovery and external-event scenarios and is separate from the in-memory SDK-host suite.
+For Durable workflows, the separate opt-in [real Functions worker/Azurite integration suite](./azure-durable-functions.md#real-functions-workerbackend-integration) hosts the unchanged sample on .NET 10. It includes batch, recovery, approval-event delivery and buffered-event preservation/discard across continuation, and is separate from the in-memory SDK-host suite.
 
 ``` csharp
 await using var tester = AspireTester.Create<Projects.MyAppHost>();

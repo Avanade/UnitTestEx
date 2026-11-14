@@ -36,8 +36,11 @@ Testing... | Use | Package(s) | Hosts | Docs
 -|-|-|-|-
 An ASP.NET Core API (controllers or minimal APIs) | `ApiTester` | `UnitTestEx` + framework package | `WebApplicationFactory`, full HTTP pipeline | [API testing](./docs/api-testing.md)
 An Azure Function (isolated worker) | `FunctionTester` | `UnitTestEx.Azure.Functions` | Your real `Program.cs` host, built but not started; the function is invoked directly | [Azure Functions](./docs/azure-functions.md)
+Durable orchestration bodies with replay, activities and children | `FunctionTester.DurableTask()` | `UnitTestEx.Azure.Functions.Durable` (preview) | In-memory Durable Task SDK host; no Functions worker or backend | [Durable testing](./docs/azure-durable-functions.md)
+Durable timer/event branches with instant time advancement | `VirtualTimeOrchestrationContext` | `UnitTestEx.Azure.Functions.Durable` (preview) | Method-level context; no engine history/replay, activities or children | [Timers and virtual time](./docs/azure-durable-functions.md#timers-and-virtual-time)
 Any DI-composed class or service | `GenericTester` | `UnitTestEx` | Lightweight Generic Host | [Generic testing](./docs/generic-testing.md)
 Multiple real services together | `AspireTester` | `UnitTestEx.Aspire` | .NET Aspire `DistributedApplication` | [Aspire](./docs/aspire.md)
+Durable Functions worker, bindings and backend interactions | `AspireTester` | `UnitTestEx.Aspire` | Core Tools, isolated worker and a backend/emulator; requires Core Tools and containers for the repository suite | [Real Functions integration](./docs/azure-durable-functions.md#real-functions-workerbackend-integration)
 
 The framework package (`UnitTestEx.NUnit`, `UnitTestEx.MSTest` or `UnitTestEx.Xunit`) wires output and assertions into your test framework.
 
@@ -77,6 +80,43 @@ test.ServiceBusTrigger<ServiceBusFunction>()
     .AssertSuccess();
 ```
 
+**Durable orchestration (preview)**: execute real fan-out/fan-in through the SDK host, with input-matched activity responses released in reverse order. This uses the repository's [sample types](./tests/UnitTestEx.DurableFunction); item processing and the finalization child are substituted, and no Functions worker or backend is started.
+
+``` csharp
+using UnitTestEx;
+using UnitTestEx.Azure.Functions;
+using UnitTestEx.Azure.Functions.Durable.TestHost;
+using UnitTestEx.DurableFunction;
+
+using var processItems = ActivityMock.ByMatch(
+[
+    ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "A", item => new ItemResult(item.Id, item.Amount * 2m)).Pending(),
+    ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "B", item => new ItemResult(item.Id, item.Amount * 2m)).Pending(),
+    ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "C", item => new ItemResult(item.Id, item.Amount * 2m)).After(TimeSpan.FromMilliseconds(100))
+]);
+using var functions = FunctionTester.Create<WorkflowActivities>();
+var request = new BatchRequest(" batch-7 ", [new("A", 10m), new("B", 20m), new("C", 30m)]);
+
+await using var test = await functions.DurableTask()
+    .Orchestrator<BatchRequest, BatchResult>(nameof(BatchOrchestration.ProcessBatch), (context, _) => BatchOrchestration.ProcessBatch(context))
+    .Activity<string, string>(nameof(ActivityTransforms.NormalizeReference), (_, reference) => ActivityTransforms.NormalizeReference(reference))
+    .Activity<WorkItem, ItemResult>(nameof(WorkflowActivities.ProcessItem), processItems.InvokeAsync)
+    .Activity<ItemResult[], decimal>(nameof(ActivityTransforms.TotalItems), (_, results) => ActivityTransforms.TotalItems(results))
+    .SubOrchestrator<BatchResult, BatchResult>(nameof(BatchOrchestration.FinalizeBatch), (_, input) => Task.FromResult(input))
+    .StartAsync(request);
+
+await processItems.WaitForAllInvocationsAsync();
+await processItems[2].WaitForCompletionAsync(TimeSpan.FromSeconds(5));
+await processItems[1].ReleaseAsync(TimeSpan.FromSeconds(5));
+await processItems[0].ReleaseAsync(TimeSpan.FromSeconds(5));
+
+var expected = new BatchResult("BATCH-7", 120m, [new("A", 20m), new("B", 40m), new("C", 60m)]);
+await test.WaitForCompletionAsync(TimeSpan.FromSeconds(10), result => result.AssertCompleted().AssertOutput(expected));
+processItems.Verify();
+```
+
+Fan-in retains A/B/C input order despite C/B/A handler completion. The activity delay is real time, not a virtual-clock advance. See the [complete showcase](./tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskShowcaseTest.cs) for completion-order assertions and activity-count verification, or use the [real-worker integration tier](./docs/azure-durable-functions.md#real-functions-workerbackend-integration) to exercise the worker, extension and backend.
+
 **Generic**: any service, with expectations declared up front.
 
 ``` csharp
@@ -105,6 +145,11 @@ Event Grid (`EventGridEvent` / `CloudEvent`) builders | Function | [`EventGridEv
 Worker middleware pipeline (logging, short-circuit, exception mapping) | Function | [`Middleware_ShortCircuit_ActionResult`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`Middleware_HandlesException_HttpResponseData`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs)
 Other triggers (Timer, Blob, Queue, ...) | Function | [`TimerTriggered`](./tests/UnitTestEx.NUnit.Test/ProductFunctionTest.cs), [`BlobTrigger_Bytes`](./tests/UnitTestEx.NUnit.Test/StorageTriggerTest.cs), [`QueueTrigger_Person`](./tests/UnitTestEx.NUnit.Test/StorageTriggerTest.cs), [`GenericTrigger_ServiceBus`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs)
 Real `Program.cs` with test overrides; worker never started | Function | [`Program_TestOverrides`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`Program_ServicesUsed_WorkerNotStarted`](./tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs)
+[Durable activity method invocation with DI, logs and original exceptions](./docs/azure-functions.md#durable-activity-invocation) | Function | [`DurableActivityTest`](./tests/UnitTestEx.NUnit.Test/DurableActivityTest.cs)
+[Durable fan-out/fan-in with controlled activity responses](./docs/azure-durable-functions.md#showcase-fan-out-controlled-completion-fan-in) | Durable SDK host | [`BatchFanOutFanIn`](./tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskShowcaseTest.cs), [`ActivityMockCanMatchResponsesByInvocationOrder`](./tests/UnitTestEx.Azure.Functions.Durable.Test/FluentBatchOrchestrationTest.cs)
+[Durable replay and nested failure diagnostics](./docs/azure-durable-functions.md#support-matrix) | Durable SDK host | [`ReplayDeterminismTest`](./tests/UnitTestEx.Azure.Functions.Durable.Test/ReplayDeterminismTest.cs), [`DurableTaskHostTest`](./tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskHostTest.cs)
+[Instant timer/event advancement without engine replay](./docs/azure-durable-functions.md#timers-and-virtual-time) | Durable method-level context | [`ApprovalVirtualTimeTest`](./tests/UnitTestEx.Azure.Functions.Durable.Test/ApprovalVirtualTimeTest.cs)
+[Real Durable Functions worker/backend and buffered-event continuation](./docs/azure-durable-functions.md#real-functions-workerbackend-integration) | Aspire + Function | [`DurableFunctionsIntegrationTest`](./tests/UnitTestEx.Azure.Functions.Durable.Integration.Test/DurableFunctionsIntegrationTest.cs)
 Run any service, sync or async | Generic | [`Run_Service`](./tests/UnitTestEx.NUnit.Test/Other/GenericTest.cs)
 Scoped services (`ScopedType<T>`) | All | [`ScopedType_RunsWithinServiceScope`](./tests/UnitTestEx.NUnit.Test/Other/DependencyInjectionTest.cs)
 Replace / mock DI registrations | All | [`ReplaceSingleton_OverridesRegistration`](./tests/UnitTestEx.NUnit.Test/Other/DependencyInjectionTest.cs), [`MockSingleton_UsesMoqObject`](./tests/UnitTestEx.NUnit.Test/Other/DependencyInjectionTest.cs)
@@ -135,17 +180,21 @@ Multi-host tests with WireMock stubs and log checks | Aspire | [`HttpMock_StubsE
 
 ## Examples
 
-The tests in this repository are the reference examples. Equivalent tests exist for each framework, with only framework-specific differences:
+The tests in this repository are the reference examples. Core and Aspire examples are grouped by test framework:
 - [UnitTestEx.NUnit.Test](./tests/UnitTestEx.NUnit.Test)
 - [UnitTestEx.MSTest.Test](./tests/UnitTestEx.MSTest.Test)
 - [UnitTestEx.Xunit.Test](./tests/UnitTestEx.Xunit.Test)
 - [UnitTestEx.Aspire.Xunit.Test](./tests/UnitTestEx.Aspire.Xunit.Test), [UnitTestEx.Aspire.NUnit.Test](./tests/UnitTestEx.Aspire.NUnit.Test), [UnitTestEx.Aspire.MSTest.Test](./tests/UnitTestEx.Aspire.MSTest.Test)
 
+Durable reference examples use NUnit:
+- [SDK-host and method-level context suite](./tests/UnitTestEx.Azure.Functions.Durable.Test) - .NET 10/11; no Core Tools, containers or backend.
+- [Real Functions worker/backend integration suite](./tests/UnitTestEx.Azure.Functions.Durable.Integration.Test) - .NET 10; opt-in and requires Core Tools and a container runtime.
+
 <br/>
 
 ## Durable Functions testing (preview)
 
-The optional **`UnitTestEx.Azure.Functions.Durable`** preview package combines the SDK-host facade and the separate method-level virtual-time context. Its version follows `Common.targets` with `-preview` appended: currently **`6.2.0-preview`**, alongside regular **`6.2.0`** UnitTestEx packages; the next coordinated `6.2.1` release produces `6.2.1-preview`. Libraries target .NET 8/9/10/11; the dedicated Durable suite targets .NET 10/11. The SDK host pins Microsoft's preview `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1**.
+The optional **`UnitTestEx.Azure.Functions.Durable`** preview package combines the SDK-host facade and the separate method-level virtual-time context. Its version follows `Common.targets` with `-preview` appended: **`6.2.0-preview`**, alongside regular **`6.2.0`** UnitTestEx packages. Libraries target .NET 8/9/10/11; the dedicated SDK-host/context suite targets .NET 10/11, while real-worker integration targets .NET 10. The SDK host pins Microsoft's preview `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1**; preview APIs may change between releases.
 
 The [Durable guide](./docs/azure-durable-functions.md) shows `FunctionTester.DurableTask()`, `ActivityMock`, assertions and diagnostics. The [runnable showcase](./tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskShowcaseTest.cs) runs the real batch orchestration with controlled activity responses; see the guide's [support matrix](./docs/azure-durable-functions.md#support-matrix) for APIs and limitations.
 
@@ -164,7 +213,7 @@ Client/start/status operations | SDK host/client | Schedule, bounded waits, type
 `ContinueAsNew` | SDK host | New generations with serialized input; final output and activity counts across generations | Buffered-event preservation is unsupported by the pinned host ([upstream issue](https://github.com/microsoft/durabletask-dotnet/issues/844)); no method-level virtual-context support or host virtual clock.
 Custom retry handlers | SDK host | SDK synchronous/asynchronous handlers for activities and children, including failure details and attempt limits | Handler code must be deterministic; timer waits remain wall-clock.
 Durable HTTP | Outside the Durable tester's supported surface | Use a Functions runtime integration for extension-specific HTTP behavior | No built-in SDK-host HTTP implementation or method-level context support.
-Functions worker/backend integration | Separate opt-in [Aspire/Core Tools/Azurite suite](./docs/azure-durable-functions.md#real-functions-workerbackend-integration) | Real batch activities/child, failure recovery and approval-event delivery | Requires Core Tools and containers; local emulator integration excludes deployed Azure authentication, scale and reliability.
+Functions worker/backend integration | Separate opt-in [Aspire/Core Tools/Azurite suite](./docs/azure-durable-functions.md#real-functions-workerbackend-integration) | Real batch activities/child, failure recovery, approval-event delivery and continuation with buffered-event preservation/discard | Requires Core Tools and containers; local emulator integration excludes deployed Azure authentication, scale and reliability.
 
 <br/>
 
