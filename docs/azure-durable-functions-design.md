@@ -73,7 +73,9 @@ Disposing a mock cancels blocked gates, delays and response waiters; it cannot s
 
 ## Continuation and custom retries
 
-`ContinueAsNew(newInput, preserveUnprocessedEvents)` is forwarded to the SDK engine. Each generation receives serialized input and a fresh history under the same instance ID. Buffered events can be preserved or discarded. Orchestrator code must return immediately after the call; its interim return value is not the final workflow output.
+`ContinueAsNew(newInput, preserveUnprocessedEvents)` is forwarded to the SDK engine. Each generation receives serialized input and a fresh history under the same instance ID. Orchestrator code must return immediately after the call; its interim return value is not the final workflow output.
+
+**Buffered-event preservation is unsupported by the pinned in-memory host.** Its continuation dispatcher discards self-events used by the SDK to carry buffered payloads into the next generation; see [microsoft/durabletask-dotnet#844](https://github.com/microsoft/durabletask-dotnet/issues/844). Use `preserveUnprocessedEvents: false` for discard semantics. A preservation request emits a replay-safe warning and is forwarded unchanged, not simulated or repaired by reinjecting events. Use the real Functions backend for preservation behavior.
 
 A fluent run spans these generations: completion assertions use the terminal generation's output and metadata, including its input, while activity verification and mock-plan consumption cover the whole run. Long-running continuations still require bounded waits and explicit completion/termination conditions. The method-level virtual context does not model continuation.
 
@@ -102,6 +104,7 @@ The virtual context supports timer/event wait cancellation. The pinned SDK activ
 - The batch orchestration, real item activities, finalization child and injected journal, including input/output, custom status and worker logs.
 - Activity-failure recovery through the Functions extension boundary.
 - Approval-event delivery while retaining the application's 24-hour timer.
+- Continuation with preservation/discard of buffered events through the real extension and storage provider.
 
 The tests verify indexed functions with `WaitForFunctionsAsync`, schedule through the extension's HTTP management API and poll status with bounded waits. Management URLs are restricted to the test host. Completed parent history is purged; AppHost disposal stops the worker and removes the nonpersistent container, including child history and timer data.
 

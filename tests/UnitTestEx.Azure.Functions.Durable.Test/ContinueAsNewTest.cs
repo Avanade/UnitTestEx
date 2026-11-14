@@ -3,6 +3,7 @@ using Moq;
 using NUnit.Framework;
 using UnitTestEx.Azure.Functions.Durable.TestHost;
 using UnitTestEx.DurableFunction;
+using UnitTestEx.Expectations;
 
 namespace UnitTestEx.Azure.Functions.Durable.Test;
 
@@ -27,7 +28,7 @@ public sealed class ContinueAsNewTest
                 int next = await context.CallActivityAsync<int>("AdvanceGeneration", input);
                 if (next < 3)
                 {
-                    context.ContinueAsNew(next);
+                    context.ContinueAsNew(next, preserveUnprocessedEvents: false);
                     return -1;
                 }
 
@@ -44,42 +45,30 @@ public sealed class ContinueAsNewTest
         run.Verify();
     }
 
-    /// <summary>Preserves or discards an unconsumed event when a new generation starts.</summary>
-    /// <param name="preserveEvents">Whether the continuation preserves buffered events.</param>
+    /// <summary>Characterizes the pinned host's loss of buffered events, including when preservation is requested.</summary>
+    /// <param name="preserveEvents">Whether preservation is requested despite the pinned host's limitation.</param>
     [TestCase(true)]
     [TestCase(false)]
-    public async Task ContinuationControlsBufferedEventDelivery(bool preserveEvents)
+    public async Task PinnedHostDiscardsBufferedEventsOnContinuation(bool preserveEvents)
     {
         using var functions = FunctionTester.Create<WorkflowActivities>();
         await using var run = await functions.DurableTask()
-            .Orchestrator<int, string>("ContinueWithEvents", async (context, generation) =>
-            {
-                if (generation == 0)
-                {
-                    context.SetCustomStatus("initial");
-                    await context.WaitForExternalEvent<string>("Barrier");
-                    context.SetCustomStatus("buffered");
-                    await context.WaitForExternalEvent<string>("Continue");
-                    context.ContinueAsNew(1, preserveEvents);
-                    return "discarded generation output";
-                }
+            .Orchestrator<ContinuationRequest, string>(nameof(ContinuationOrchestration.ContinueWithEvents), (context, _) => ContinuationOrchestration.ContinueWithEvents(context))
+            .StartAsync(new ContinuationRequest(0, preserveEvents));
 
-                context.SetCustomStatus("continued");
-                return await context.WaitForExternalEvent<string>("Payload");
-            })
-            .StartAsync(0);
-
+        run.ExpectSuccess();
+        if (preserveEvents)
+            run.ExpectLogContains("buffered-event preservation is unsupported");
         await run.WaitForCustomStatusAsync(metadata => metadata.ReadCustomStatusAs<string>() == "initial");
         await run.RaiseEventAsync("Payload", "buffered payload");
         await run.RaiseEventAsync("Barrier", "payload sent");
         await run.WaitForCustomStatusAsync(metadata => metadata.ReadCustomStatusAs<string>() == "buffered");
         await run.RaiseEventAsync("Continue", "restart");
         await run.WaitForCustomStatusAsync(metadata => metadata.ReadCustomStatusAs<string>() == "continued");
-        if (!preserveEvents)
-            await run.RaiseEventAsync("Payload", "fresh payload");
+        await run.RaiseEventAsync("Payload", "fresh payload");
 
         var result = await run.WaitForCompletionAsync();
-        result.AssertCompleted().AssertOutput(preserveEvents ? "buffered payload" : "fresh payload");
-        Assert.That(result.Metadata.ReadInputAs<int>(), Is.EqualTo(1));
+        result.AssertCompleted().AssertOutput("fresh payload");
+        Assert.That(result.Metadata.ReadInputAs<ContinuationRequest>()?.Generation, Is.EqualTo(1));
     }
 }

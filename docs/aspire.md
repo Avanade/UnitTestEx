@@ -166,6 +166,8 @@ This is **enabled by default** at `LogLevel.Error` for every `AspireTester` - th
 
 _Important:_ `include`/`exclude` only ever **narrow what counts as a violation** of the streaming check above - they are not a "was this text logged" positive assertion, and there is no aggregate, end-of-test tally of `include` patterns. If an `include` pattern never matches anything, the test simply never fails because of it; nothing confirms it was actually hit. For that - "assert this text *was* (or was *not*) logged, by any resource, at any point" - use `AssertLogContains`/`AssertLogNotContains` instead (below).
 
+`Http` waits for asynchronously forwarded logs even when the resource's first log buffer has not yet been created. `ResourceLogGracePeriod` bounds the initial wait, `ResourceLogQuietPeriod` detects a settled burst and `ResourceLogMaxWait` caps the total wait. A forced flush retains the most recent header's severity/category for delayed message lines; an entry split across flushes can appear as separate fragments without losing its error level.
+
 ### Asserting expected resource log content
 
 Unlike `ErrorWhenLogContains` above (a continuous check applied only as entries are subsequently *drained*), `AssertLogContains`/`AssertLogNotContains` are immediate, one-shot checks against **every** resource log entry captured for the lifetime of the test so far - drained or not, across every resource by default (or scoped to one via the optional `resourceName`):

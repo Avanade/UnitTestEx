@@ -821,7 +821,7 @@ namespace UnitTestEx.Aspire
                         {
                             // Not a recognized Aspire-forwarded console line; flush anything pending and pass this through as-is rather than silently dropping it. Its own severity cannot be
                             // determined (there is no "{level}: " header to parse it from), so it is treated as Information - safely below any sensible ErrorWhenLogContains threshold.
-                            FlushPendingNoLock();
+                            FlushPendingNoLock(completeEntry: true);
                             buffer.Enqueue(new ResourceLogEntry(LogLevel.Information, line));
                             return;
                         }
@@ -831,7 +831,7 @@ namespace UnitTestEx.Aspire
                         if (headerMatch.Success)
                         {
                             // A new header line always terminates any previously pending entry.
-                            FlushPendingNoLock();
+                            FlushPendingNoLock(completeEntry: true);
                             _pendingTimestamp = prefixMatch.Groups["ts"].Value;
                             _pendingLevelText = headerMatch.Groups["level"].Value;
                             _pendingLevel = ParseLevel(_pendingLevelText);
@@ -871,28 +871,35 @@ namespace UnitTestEx.Aspire
                 }
 
                 /// <summary>
-                /// Flushes the pending log entry to the buffer; the caller must hold <c>_lock</c>.
+                /// Flushes available message lines while retaining their header for delayed continuation lines; the caller must hold <c>_lock</c>.
                 /// </summary>
-                private void FlushPendingNoLock()
+                /// <param name="completeEntry">Whether a new header or unrecognized line ends the current entry.</param>
+                private void FlushPendingNoLock(bool completeEntry = false)
                 {
                     if (_pendingTimestamp is null)
                         return;
 
-                    var ts = DateTime.Parse(_pendingTimestamp, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal).ToLocalTime();
-                    var sb = new StringBuilder();
-                    sb.Append($"{ts.ToString("yyyy-MM-ddTHH:mm:ss.fffff", DateTimeFormatInfo.InvariantInfo)} {_pendingLevelText}: {(_pendingMessageLines.Count > 0 ? _pendingMessageLines[0] : string.Empty)} [{_pendingCategory} ({resourceName})]");
-                    for (var i = 1; i < _pendingMessageLines.Count; i++)
+                    if (_pendingMessageLines.Count > 0)
                     {
-                        sb.AppendLine();
-                        sb.Append($"{new string(' ', 32)}{_pendingMessageLines[i]}");
+                        var ts = DateTime.Parse(_pendingTimestamp, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal).ToLocalTime();
+                        var sb = new StringBuilder();
+                        sb.Append($"{ts.ToString("yyyy-MM-ddTHH:mm:ss.fffff", DateTimeFormatInfo.InvariantInfo)} {_pendingLevelText}: {_pendingMessageLines[0]} [{_pendingCategory} ({resourceName})]");
+                        for (var i = 1; i < _pendingMessageLines.Count; i++)
+                        {
+                            sb.AppendLine();
+                            sb.Append($"{new string(' ', 32)}{_pendingMessageLines[i]}");
+                        }
+
+                        buffer.Enqueue(new ResourceLogEntry(_pendingLevel, sb.ToString()));
+                        _pendingMessageLines.Clear();
                     }
 
-                    buffer.Enqueue(new ResourceLogEntry(_pendingLevel, sb.ToString()));
-
-                    _pendingTimestamp = null;
-                    _pendingLevelText = null;
-                    _pendingCategory = null;
-                    _pendingMessageLines.Clear();
+                    if (completeEntry)
+                    {
+                        _pendingTimestamp = null;
+                        _pendingLevelText = null;
+                        _pendingCategory = null;
+                    }
                 }
             }
         }
@@ -940,11 +947,10 @@ namespace UnitTestEx.Aspire
             /// that <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/> must catch) is not cut short - capped overall at <see cref="ResourceLogMaxWait"/>.</remarks>
             private async Task<IReadOnlyList<string?>> GetNewResourceLogMessagesAsync()
             {
+                var baseline = owner._elapsedLogLineCounts.GetOrAdd(resourceName, 0);
+                await WaitForResourceLogToSettleAsync().ConfigureAwait(false);
                 if (!owner._resourceLogBuffers.TryGetValue(resourceName, out var buffer))
                     return [];
-
-                var baseline = owner._elapsedLogLineCounts.GetOrAdd(resourceName, buffer.Count);
-                await WaitForResourceLogToSettleAsync().ConfigureAwait(false);
 
                 // An entry only becomes visible in the buffer once terminated by a subsequent header line; force-flush whatever is currently pending so the most recently logged entry
                 // (often the interesting one, e.g. the endpoint's own logging for this very request) is not lost while waiting for a line that may never come.

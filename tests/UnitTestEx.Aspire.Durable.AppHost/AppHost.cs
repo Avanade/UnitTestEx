@@ -22,7 +22,7 @@ functions
     .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
     .WithEnvironment("AzureWebJobsSecretStorageType", "files")
     .WithEnvironment("AzureWebJobsStorage", storage)
-    .WithEnvironment("AzureFunctionsJobHost__extensions__durableTask__hubName", $"UnitTestEx{Guid.NewGuid():N}")
+    .WithEnvironment("AzureFunctionsJobHost__extensions__durableTask__hubName", "UnitTestEx" + Guid.NewGuid().ToString("N"))
     .WithEnvironment("AzureFunctionsJobHost__extensions__durableTask__storageProvider__type", "azureStorage")
     .WithEnvironment("AzureFunctionsJobHost__extensions__durableTask__storageProvider__maxQueuePollingInterval", "00:00:01")
     .WaitFor(azurite);

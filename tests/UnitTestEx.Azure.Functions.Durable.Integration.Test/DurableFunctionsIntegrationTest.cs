@@ -92,13 +92,52 @@ public sealed class DurableFunctionsIntegrationTest
         var management = await StartAsync(client, nameof(ApprovalOrchestration.AwaitApproval), new ApprovalRequest(TimeSpan.FromHours(24)), deadline.Token);
         await tester.EventuallyAsync(token => ReadStatusAsync(client, management, token), status => status?.GetProperty("runtimeStatus").GetString() == "Running",
             timeout: TimeSpan.FromSeconds(60), cancellationToken: deadline.Token);
-        var eventUrl = management.GetProperty("sendEventPostUri").GetString()!.Replace("{eventName}", "Approved", StringComparison.Ordinal);
-        using var response = await client.PostAsJsonAsync(LocalUri(client, eventUrl), new ApprovalDecision(true), deadline.Token);
-        await RequireStatusAsync(response, HttpStatusCode.Accepted, deadline.Token);
+        await SendEventAsync(client, management, "Approved", new ApprovalDecision(true), deadline.Token);
         var status = await WaitForTerminalAsync(tester, client, management, deadline.Token);
         Assert.That(status.GetProperty("runtimeStatus").GetString(), Is.EqualTo("Completed"), status.ToString());
         Assert.That(status.GetProperty("output").Deserialize<ApprovalDecision>(JsonOptions), Is.EqualTo(new ApprovalDecision(true)));
         await PurgeAsync(client, management, deadline.Token);
+    }
+
+    /// <summary>Checks buffered-event preservation and discard through the real Functions extension and storage provider.</summary>
+    /// <param name="preserveEvents">Whether the first generation preserves its buffered payload.</param>
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task ContinuationControlsBufferedEventsInRealWorker(bool preserveEvents)
+    {
+        await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_Durable_AppHost>();
+        await tester.WaitForFunctionsAsync("durable-functions", [nameof(ContinuationOrchestration.ContinueWithEvents)]);
+        using var client = (await tester.GetDistributedApplicationAsync()).CreateHttpClient("durable-functions");
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        var management = await StartAsync(client, nameof(ContinuationOrchestration.ContinueWithEvents), new ContinuationRequest(0, preserveEvents), deadline.Token);
+        await WaitForCustomStatusAsync(tester, client, management, "initial", deadline.Token);
+        await SendEventAsync(client, management, "Payload", "buffered payload", deadline.Token);
+        await SendEventAsync(client, management, "Barrier", "payload sent", deadline.Token);
+        await WaitForCustomStatusAsync(tester, client, management, "buffered", deadline.Token);
+        await SendEventAsync(client, management, "Continue", "restart", deadline.Token);
+        await WaitForCustomStatusAsync(tester, client, management, "continued", deadline.Token);
+        if (!preserveEvents)
+            await SendEventAsync(client, management, "Payload", "fresh payload", deadline.Token);
+
+        var status = await WaitForTerminalAsync(tester, client, management, deadline.Token);
+        Assert.That(status.GetProperty("runtimeStatus").GetString(), Is.EqualTo("Completed"), status.ToString());
+        Assert.That(status.GetProperty("output").GetString(), Is.EqualTo(preserveEvents ? "buffered payload" : "fresh payload"));
+        Assert.That(status.GetProperty("input").Deserialize<ContinuationRequest>(JsonOptions)?.Generation, Is.EqualTo(1));
+        await PurgeAsync(client, management, deadline.Token);
+    }
+
+    /// <summary>Waits for a persisted orchestration stage before sending the next coordinating event.</summary>
+    private static Task<JsonElement?> WaitForCustomStatusAsync(AspireTesterBase tester, HttpClient client, JsonElement management, string stage, CancellationToken cancellationToken)
+        => tester.EventuallyAsync(token => ReadStatusAsync(client, management, token),
+            value => value is { } status && status.TryGetProperty("customStatus", out var customStatus) && customStatus.ValueKind == JsonValueKind.String && customStatus.GetString() == stage,
+            timeout: TimeSpan.FromSeconds(60), cancellationToken: cancellationToken);
+
+    /// <summary>Sends a typed event through the management URL returned by the extension.</summary>
+    private static async Task SendEventAsync<T>(HttpClient client, JsonElement management, string eventName, T payload, CancellationToken cancellationToken)
+    {
+        var eventUrl = management.GetProperty("sendEventPostUri").GetString()!.Replace("{eventName}", Uri.EscapeDataString(eventName), StringComparison.Ordinal);
+        using var response = await client.PostAsJsonAsync(LocalUri(client, eventUrl), payload, cancellationToken);
+        await RequireStatusAsync(response, HttpStatusCode.Accepted, cancellationToken);
     }
 
     /// <summary>Schedules an instance through the extension's documented HTTP API and retains its returned management URLs.</summary>

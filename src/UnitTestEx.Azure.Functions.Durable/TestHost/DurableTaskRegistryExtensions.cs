@@ -144,15 +144,32 @@ public static class DurableTaskRegistryExtensions
         /// <summary>Continues the orchestration with new input through the host context.</summary>
         /// <param name="newInput">The input for the new orchestration generation.</param>
         /// <param name="preserveUnprocessedEvents">Whether to preserve unprocessed events.</param>
-        public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true) => _inner.ContinueAsNew(newInput, preserveUnprocessedEvents);
+        public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true)
+        {
+            ReportUnsupportedEventPreservation(preserveUnprocessedEvents);
+            _inner.ContinueAsNew(newInput, preserveUnprocessedEvents);
+        }
 
         /// <summary>Continues the orchestration using the specified options.</summary>
         /// <param name="options">The continuation options.</param>
-        public override void ContinueAsNew(ContinueAsNewOptions options) => _inner.ContinueAsNew(options);
+        public override void ContinueAsNew(ContinueAsNewOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            ReportUnsupportedEventPreservation(options.PreserveUnprocessedEvents);
+            _inner.ContinueAsNew(options);
+        }
 
         /// <summary>Creates a deterministic GUID through the host context.</summary>
         /// <returns>The generated GUID.</returns>
         public override Guid NewGuid() => _inner.NewGuid();
+
+        /// <summary>Warns when continuation requests event preservation that the pinned host cannot provide.</summary>
+        /// <param name="preserveEvents">Whether preservation was requested.</param>
+        private void ReportUnsupportedEventPreservation(bool preserveEvents)
+        {
+            if (preserveEvents && !IsReplaying)
+                _logger.LogWarning("ContinueAsNew for orchestration {OrchestrationName} ({InstanceId}) requests buffered-event preservation, but buffered-event preservation is unsupported by the pinned in-memory host; use a Functions backend for this behavior.", Name, InstanceId);
+        }
 
         /// <summary>Writes a warning for future timers outside replay.</summary>
         /// <param name="delay">The delay until the timer fires.</param>
