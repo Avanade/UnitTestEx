@@ -97,7 +97,16 @@ namespace UnitTestEx.Abstractions
         }
 
         /// <inheritdoc/>
-        public override void AssertFail(string? message) => throw CreateFrameworkException(_adapter.AssertionExceptionType, message ?? "Not specified.");
+        public override void AssertFail(string? message)
+        {
+            if (_adapter.Backend == TestFrameworkBackend.NUnit)
+            {
+                (_frameworkApi ?? throw new InvalidOperationException("The NUnit framework API is unavailable.")).NUnitFail(message ?? "Not specified.");
+                return;
+            }
+
+            throw CreateFrameworkException(_adapter.AssertionExceptionType, message ?? "Not specified.");
+        }
 
         /// <inheritdoc/>
         public override void AssertInconclusive(string? message)

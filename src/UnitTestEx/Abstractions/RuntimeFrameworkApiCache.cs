@@ -22,6 +22,7 @@ namespace UnitTestEx.Abstractions
         private readonly ConcurrentDictionary<string, Lazy<ExceptionFactories>> _exceptionFactories = new(StringComparer.Ordinal);
         private readonly Lazy<MethodInfo> _xunitEqualMethod;
         private readonly Lazy<NUnitMethods> _nunitMethods;
+        private readonly Lazy<Action<string>> _nunitFail;
         private readonly Lazy<MethodInfo> _mstestEqualMethod;
         private readonly Lazy<Func<TextWriter?>?> _nunitOutputWriter;
         private readonly Lazy<Action<string, object?[]>?> _mstestOutputWriter;
@@ -35,6 +36,7 @@ namespace UnitTestEx.Abstractions
             _adapter = adapter;
             _xunitEqualMethod = new Lazy<MethodInfo>(FindXunitEqualMethod, LazyThreadSafetyMode.ExecutionAndPublication);
             _nunitMethods = new Lazy<NUnitMethods>(FindNUnitMethods, LazyThreadSafetyMode.ExecutionAndPublication);
+            _nunitFail = new Lazy<Action<string>>(BindNUnitFail, LazyThreadSafetyMode.ExecutionAndPublication);
             _mstestEqualMethod = new Lazy<MethodInfo>(FindMSTestEqualMethod, LazyThreadSafetyMode.ExecutionAndPublication);
             _nunitOutputWriter = new Lazy<Func<TextWriter?>?>(CreateNUnitOutputWriter, LazyThreadSafetyMode.ExecutionAndPublication);
             _mstestOutputWriter = new Lazy<Action<string, object?[]>?>(CreateMSTestOutputWriter, LazyThreadSafetyMode.ExecutionAndPublication);
@@ -62,6 +64,9 @@ namespace UnitTestEx.Abstractions
             var lazy = _equalityAsserts.GetValue(typeof(T), _ => new Lazy<Delegate>(() => CreateEqualityAssert<T>(), LazyThreadSafetyMode.ExecutionAndPublication));
             return (Action<T?, T?, string?>)lazy.Value;
         }
+
+        /// <summary>Invokes NUnit's native failure API, preserving multiple-assert scopes.</summary>
+        public void NUnitFail(string message) => _nunitFail.Value(message);
 
         /// <summary>
         /// Writes through the framework's default output facility when one is available.
@@ -199,6 +204,16 @@ namespace UnitTestEx.Abstractions
 
             var messageConverter = parameters[2].ParameterType.GetMethod("op_Implicit", BindingFlags.Public | BindingFlags.Static, [typeof(string)]);
             return new NUnitMethods(CreateUnaryObjectDelegate(equalTo), assertThat, parameters[2].ParameterType, messageConverter is null ? null : CreateUnaryObjectDelegate(messageConverter), Activator.CreateInstance(parameters[2].ParameterType));
+        }
+
+        /// <summary>Binds NUnit's native failure method once for the framework assembly.</summary>
+        private Action<string> BindNUnitFail()
+        {
+            var assertType = _adapter.Assembly?.GetType("NUnit.Framework.Assert") ?? throw new InvalidOperationException($"The selected test framework assembly '{_adapter.Assembly?.GetName().Name}' does not contain 'NUnit.Framework.Assert'.");
+            var method = assertType.GetMethod("Fail", BindingFlags.Public | BindingFlags.Static, [typeof(string)])
+                ?? throw new InvalidOperationException($"The selected test framework assembly '{_adapter.Assembly?.GetName().Name}' does not expose NUnit's Assert.Fail method.");
+
+            return (Action<string>)method.CreateDelegate(typeof(Action<string>));
         }
 
         /// <summary>

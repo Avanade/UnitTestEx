@@ -10,6 +10,7 @@ namespace UnitTestEx.Abstractions
     public abstract class UnitTestBase : IDisposable
     {
         private bool _disposed;
+        private readonly TestFrameworkImplementor.ImplementorContext? _previousContext;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="UnitTestBase"/> class.
@@ -19,7 +20,8 @@ namespace UnitTestEx.Abstractions
         protected UnitTestBase(object? output = null, Func<TestFrameworkImplementor>? createFactory = null)
         {
             Output = output;
-            TestFrameworkImplementor.SetLocalImplementor(createFactory is null ? TestFrameworkImplementor.CreateForCurrentFramework(output) : createFactory() ?? throw new InvalidOperationException($"The {nameof(createFactory)} has returned null."));
+            _previousContext = TestFrameworkImplementor.CaptureLocalContext();
+            TestFrameworkImplementor.SetLocalContext(TestFrameworkImplementor.CreateLocalContext(createFactory, output));
         }
 
         /// <summary>
@@ -44,7 +46,7 @@ namespace UnitTestEx.Abstractions
                     }
                     finally
                     {
-                        TestFrameworkImplementor.ResetLocalImplementor();
+                        TestFrameworkImplementor.SetLocalContext(_previousContext);
                     }
                 }
             }

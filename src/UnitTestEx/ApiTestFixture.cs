@@ -9,12 +9,19 @@ namespace UnitTestEx
     /// Provides a shared API tester for framework-managed test fixtures.
     /// </summary>
     /// <typeparam name="TEntryPoint">The API startup type.</typeparam>
-    /// <param name="createFactory">An optional framework implementor factory.</param>
-    public class ApiTestFixture<TEntryPoint>(Func<TestFrameworkImplementor>? createFactory = null) : IDisposable where TEntryPoint : class
+    public class ApiTestFixture<TEntryPoint> : IDisposable where TEntryPoint : class
     {
-        private UnitTestEx.AspNetCore.ApiTester<TEntryPoint>? _apiTester = ApiTester.Create<TEntryPoint>(createFactory ?? (() => new LocalTestFrameworkImplementor()));
+        private UnitTestEx.AspNetCore.ApiTester<TEntryPoint>? _apiTester;
         private bool _configured;
         private bool _disposed;
+
+        /// <summary>Initializes a shared fixture using the current per-test implementor.</summary>
+        public ApiTestFixture() : this(null) { }
+
+        /// <summary>Initializes a shared fixture using an optional framework implementor factory.</summary>
+        /// <param name="createFactory">The optional framework implementor factory.</param>
+        protected ApiTestFixture(Func<TestFrameworkImplementor>? createFactory)
+            => _apiTester = ApiTester.Create<TEntryPoint>(createFactory ?? (() => new LocalTestFrameworkImplementor()));
 
         /// <summary>
         /// Provides an opportunity to configure the shared tester before use.

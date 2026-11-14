@@ -59,6 +59,8 @@ UnitTestEx infers xUnit v2/v3, NUnit v4/v5, and MSTest v3/v4 from the loaded tes
 
 For xUnit, pass the per-test output helper to `UnitTestBase`, `WithApiTester<T>`, `WithGenericTester<T>`, or `WithFunctionTester<T>`; this preserves output capture by the runner. Direct `ApiTester`, `GenericTester`, `FunctionTester`, and `AspireTester` creation APIs also accept an `output` sink for per-test instances. NUnit and MSTest use their current test context automatically. Tester-owning fixture bases expose `OnConfiguration()`, called once on first `Test` access, and `OnDispose()` for fixture cleanup. `UnitTestBase` is in `UnitTestEx.Abstractions`; its `OnDispose()` hook runs as part of the standard `Dispose(bool)` pattern. Explicitly supplied `TestFrameworkImplementor` factories take precedence and must handle their own output.
 
+Registered local or global factories also apply to fixture bases. A direct tester's explicit output overrides an automatically detected ambient output, but not a factory-owned implementor. Nested fixtures restore the enclosing implementor when disposed, including when their disposal hook throws. Shared `ApiTestFixture<T>` instances have a parameterless constructor for xUnit; derived fixtures can pass a factory to the protected constructor.
+
 The test code is near-identical across frameworks. Compare [UnitTestEx.NUnit.Test](../tests/UnitTestEx.NUnit.Test), [UnitTestEx.MSTest.Test](../tests/UnitTestEx.MSTest.Test) and [UnitTestEx.Xunit.Test](../tests/UnitTestEx.Xunit.Test).
 
 [← Back to README](../README.md)

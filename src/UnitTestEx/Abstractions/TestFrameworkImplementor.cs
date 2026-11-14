@@ -15,7 +15,7 @@ namespace UnitTestEx.Abstractions
     {
         private static Func<TestFrameworkImplementor>? _createFactory;
         private static readonly AsyncLocal<Func<TestFrameworkImplementor>?> _localCreateFactory = new();
-        private static readonly AsyncLocal<TestFrameworkImplementor?> _localImplementor = new();
+        private static readonly AsyncLocal<ImplementorContext?> _localImplementor = new();
 
         /// <summary>
         /// Gets a <see cref="NullTestImplementor"/> instance that does nothing.
@@ -57,15 +57,33 @@ namespace UnitTestEx.Abstractions
         public static void ResetLocalCreateFactory() => _localCreateFactory.Value = null;
 
         /// <summary>
-        /// Sets the current asynchronous execution context's <see cref="TestFrameworkImplementor"/>.
+        /// Captures the current asynchronous execution context's implementor.
         /// </summary>
-        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
-        internal static void SetLocalImplementor(TestFrameworkImplementor implementor) => _localImplementor.Value = implementor ?? throw new ArgumentNullException(nameof(implementor));
+        internal static ImplementorContext? CaptureLocalContext() => _localImplementor.Value;
 
         /// <summary>
-        /// Resets the current asynchronous execution context's <see cref="TestFrameworkImplementor"/>.
+        /// Sets or restores the current asynchronous execution context's implementor.
         /// </summary>
-        internal static void ResetLocalImplementor() => _localImplementor.Value = null;
+        internal static void SetLocalContext(ImplementorContext? context) => _localImplementor.Value = context;
+
+        /// <summary>Creates a fresh per-test context without inheriting an enclosing test's output binding.</summary>
+        internal static ImplementorContext CreateLocalContext(Func<TestFrameworkImplementor>? createFactory, object? output)
+        {
+            TestSetUp.Force();
+            if (createFactory is not null)
+                return new(createFactory() ?? throw new InvalidOperationException($"The {nameof(createFactory)} has returned null."), true);
+
+            if (_localCreateFactory.Value is not null)
+                return new(_localCreateFactory.Value() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetLocalCreateFactory)} has returned null."), true);
+
+            if (_createFactory is not null)
+                return new(_createFactory() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetGlobalCreateFactory)} has returned null."), true);
+
+            return new(RuntimeTestFrameworkImplementor.Create(output), false);
+        }
+
+        /// <summary>Stores an ambient implementor and whether its output is controlled by a factory.</summary>
+        internal sealed record ImplementorContext(TestFrameworkImplementor Implementor, bool IsFactory);
 
         /// <summary>
         /// Creates a new instance of the <see cref="TestFrameworkImplementor"/> (see <see cref="SetGlobalCreateFactory"/> or <see cref="SetLocalCreateFactory"/>), using <paramref name="output"/> when framework detection creates the implementor.
@@ -80,8 +98,8 @@ namespace UnitTestEx.Abstractions
             if (createFactory is not null)
                 return createFactory() ?? throw new InvalidOperationException($"The {nameof(createFactory)} has returned null.");
 
-            if (_localImplementor.Value is not null)
-                return _localImplementor.Value;
+            if (_localImplementor.Value is { } current)
+                return output is not null && !current.IsFactory ? RuntimeTestFrameworkImplementor.Create(output) : current.Implementor;
 
             if (_localCreateFactory.Value is not null)
                 return _localCreateFactory.Value.Invoke() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetLocalCreateFactory)} has returned null.");
@@ -109,8 +127,8 @@ namespace UnitTestEx.Abstractions
         /// <returns>The active implementor.</returns>
         internal static TestFrameworkImplementor GetCurrentOrDefault()
         {
-            if (_localImplementor.Value is not null)
-                return _localImplementor.Value;
+            if (_localImplementor.Value is { } current)
+                return current.Implementor;
 
             if (_localCreateFactory.Value is not null)
                 return _localCreateFactory.Value() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetLocalCreateFactory)} has returned null.");

@@ -51,10 +51,26 @@ namespace UnitTestEx.NUnit5.Test
                 var implementor = TestFrameworkImplementor.Create();
                 Assert.Throws<AssertionException>(() => implementor.AssertFail("NUnit 5 explicit selection"));
             }
+
             finally
             {
                 TestSetUp.TestFramework = previous;
             }
+        }
+
+        /// <summary>Verifies NUnit 5 records failures without aborting multiple-assert scopes.</summary>
+        [Test]
+        public void AssertFail_RespectsMultipleAssertionScopes()
+        {
+            var continued = false;
+            var failure = Assert.Throws<MultipleAssertException>(() => Assert.Multiple(() =>
+            {
+                TestFrameworkImplementor.CreateForCurrentFramework().AssertFail("recorded failure");
+                continued = true;
+            }));
+
+            Assert.That(continued, Is.True);
+            Assert.That(failure!.Message, Does.Contain("recorded failure"));
         }
     }
 }

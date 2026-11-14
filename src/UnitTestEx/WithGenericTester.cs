@@ -9,12 +9,16 @@ namespace UnitTestEx
     /// Provides a generic tester for use with framework-managed fixture lifetimes.
     /// </summary>
     /// <typeparam name="TEntryPoint">The generic startup type.</typeparam>
-    /// <param name="output">An optional framework output helper or callback.</param>
-    /// <param name="createFactory">An optional framework implementor factory.</param>
-    public abstract class WithGenericTester<TEntryPoint>(object? output = null, Func<TestFrameworkImplementor>? createFactory = null) : UnitTestBase(output, createFactory) where TEntryPoint : class
+    public abstract class WithGenericTester<TEntryPoint> : UnitTestBase where TEntryPoint : class
     {
         private bool _configured;
-        private UnitTestEx.Generic.GenericTester<TEntryPoint>? _genericTester = GenericTester.Create<TEntryPoint>();
+        private UnitTestEx.Generic.GenericTester<TEntryPoint>? _genericTester;
+
+        /// <summary>Initializes a generic tester after the per-test implementor has been installed.</summary>
+        /// <param name="output">An optional framework output helper or callback.</param>
+        /// <param name="createFactory">An optional framework implementor factory.</param>
+        public WithGenericTester(object? output = null, Func<TestFrameworkImplementor>? createFactory = null) : base(output, createFactory)
+            => _genericTester = GenericTester.Create<TEntryPoint>();
 
         /// <summary>
         /// Gets the generic tester.

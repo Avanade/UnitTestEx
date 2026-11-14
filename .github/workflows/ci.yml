@@ -92,6 +92,7 @@ jobs:
       run: >-
         dotnet test tests/UnitTestEx.Xunit3.Test/UnitTestEx.Xunit3.Test.csproj
         --framework net8.0
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
         --logger "trx;LogFileName=results.trx"
         --results-directory "$RUNNER_TEMP/test-results/xunit3" --verbosity normal
 
@@ -100,6 +101,7 @@ jobs:
       run: >-
         dotnet test tests/UnitTestEx.NUnit5.Test/UnitTestEx.NUnit5.Test.csproj
         --framework net8.0
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
         --logger "trx;LogFileName=results.trx"
         --results-directory "$RUNNER_TEMP/test-results/nunit5" --verbosity normal
 
@@ -108,6 +110,7 @@ jobs:
       run: >-
         dotnet test tests/UnitTestEx.MSTest4.Test/UnitTestEx.MSTest4.Test.csproj
         --framework net8.0
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
         --logger "trx;LogFileName=results.trx"
         --results-directory "$RUNNER_TEMP/test-results/mstest4" --verbosity normal
 
@@ -116,6 +119,7 @@ jobs:
       run: >-
         dotnet run --project tests/UnitTestEx.FrameworkFallback.Test/UnitTestEx.FrameworkFallback.Test.csproj
         --framework net8.0 --configuration Debug
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
 
     - name: Verify framework output capture
       if: ${{ matrix.framework == 'net8.0' && !cancelled() }}

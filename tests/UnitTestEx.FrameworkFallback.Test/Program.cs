@@ -19,6 +19,9 @@ internal static class Program
         if (!VerifyFallback(noFramework: true))
             return 1;
 
+        if (!VerifyFactoryScopes())
+            return 1;
+
         AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("nunit.framework"), AssemblyBuilderAccess.Run);
         AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("xunit.assert"), AssemblyBuilderAccess.Run);
         if (!VerifyFallback(noFramework: false))
@@ -26,6 +29,52 @@ internal static class Program
 
         return VerifyInvalidFrameworkSelection() ? 0 : 1;
     }
+
+    /// <summary>Verifies factory precedence and restoration across per-test contexts.</summary>
+    /// <returns>Whether the expected implementors were used.</returns>
+    private static bool VerifyFactoryScopes()
+    {
+        var global = new NullTestImplementor();
+        var local = new NullTestImplementor();
+        var explicitImplementor = new NullTestImplementor();
+        TestFrameworkImplementor.SetGlobalCreateFactory(() => global);
+        try
+        {
+            using var outer = new Fixture();
+            if (!ReferenceEquals(TestFrameworkImplementor.Create(), global))
+                return false;
+
+            TestFrameworkImplementor.SetLocalCreateFactory(() => local);
+            try
+            {
+                using (var inner = new Fixture())
+                {
+                    if (!ReferenceEquals(TestFrameworkImplementor.Create(output: new StringWriter()), local))
+                        return false;
+
+                    using var explicitFixture = new Fixture(() => explicitImplementor);
+                    if (!ReferenceEquals(TestFrameworkImplementor.Create(), explicitImplementor))
+                        return false;
+                }
+
+                if (!ReferenceEquals(TestFrameworkImplementor.Create(), global))
+                    return false;
+            }
+            finally
+            {
+                TestFrameworkImplementor.ResetLocalCreateFactory();
+            }
+
+            return ReferenceEquals(TestFrameworkImplementor.Create(), global);
+        }
+        finally
+        {
+            TestFrameworkImplementor.ResetGlobalCreateFactory();
+        }
+    }
+
+    /// <summary>Creates a per-test scope for framework-free factory checks.</summary>
+    private sealed class Fixture(Func<TestFrameworkImplementor> factory = null) : UnitTestBase(createFactory: factory) { }
 
     /// <summary>
     /// Verifies neutral assertions, diagnostics, and output for no-match or ambiguous detection.

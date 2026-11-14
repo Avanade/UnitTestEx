@@ -49,13 +49,76 @@ namespace UnitTestEx.NUnit.Test.Other
         [Test]
         public void OnDispose_ResetsFrameworkContextWhenHookThrows()
         {
+            var outer = TestFrameworkImplementor.Create();
             var implementor = new NullTestImplementor();
             var fixture = new LifecycleGenericTester(() => implementor, throwOnDispose: true);
 
             Assert.Throws<InvalidOperationException>(fixture.Dispose);
             Assert.That(fixture.DisposeCount, Is.EqualTo(1));
-            Assert.That(TestFrameworkImplementor.Create(), Is.Not.SameAs(implementor));
+            Assert.That(TestFrameworkImplementor.Create(), Is.SameAs(outer));
             Assert.DoesNotThrow(fixture.Dispose);
+        }
+
+        /// <summary>Verifies nested fixtures restore the enclosing context after disposal.</summary>
+        [Test]
+        public void NestedFixtures_RestoreTheOuterImplementor()
+        {
+            var previous = TestFrameworkImplementor.Create();
+            var outer = new NullTestImplementor();
+            var inner = new NullTestImplementor();
+            using (var outerFixture = new LifecycleGenericTester(() => outer))
+            {
+                Assert.That(outerFixture.Test.Implementor, Is.SameAs(outer));
+                using (var innerFixture = new LifecycleGenericTester(() => inner))
+                    Assert.That(innerFixture.Test.Implementor, Is.SameAs(inner));
+
+                Assert.That(TestFrameworkImplementor.Create(), Is.SameAs(outer));
+            }
+
+            Assert.That(TestFrameworkImplementor.Create(), Is.SameAs(previous));
+        }
+
+        /// <summary>Verifies a failed fixture initialization leaves the enclosing context intact.</summary>
+        [Test]
+        public void FailedFixtureConstruction_PreservesOuterContext()
+        {
+            var outer = TestFrameworkImplementor.Create();
+            Assert.Throws<InvalidOperationException>(() => new LifecycleGenericTester(() => null!));
+            Assert.That(TestFrameworkImplementor.Create(), Is.SameAs(outer));
+        }
+
+        /// <summary>Verifies registered local factories are used for fresh fixture contexts.</summary>
+        [Test]
+        public void RegisteredLocalFactory_IsUsedForNestedFixtures()
+        {
+            var factoryImplementor = new NullTestImplementor();
+            TestFrameworkImplementor.SetLocalCreateFactory(() => factoryImplementor);
+            try
+            {
+                using var fixture = new LifecycleGenericTester();
+                Assert.That(fixture.Test.Implementor, Is.SameAs(factoryImplementor));
+                using var direct = GenericTester.Create(output: new System.IO.StringWriter());
+                Assert.That(direct.Implementor, Is.SameAs(factoryImplementor));
+            }
+            finally
+            {
+                TestFrameworkImplementor.ResetLocalCreateFactory();
+            }
+        }
+
+        /// <summary>Verifies NUnit records native failures without aborting multiple-assert scopes.</summary>
+        [Test]
+        public void AssertFail_RespectsMultipleAssertionScopes()
+        {
+            var continued = false;
+            var failure = Assert.Throws<MultipleAssertException>(() => Assert.Multiple(() =>
+            {
+                TestFrameworkImplementor.CreateForCurrentFramework().AssertFail("recorded failure");
+                continued = true;
+            }));
+
+            Assert.That(continued, Is.True);
+            Assert.That(failure!.Message, Does.Contain("recorded failure"));
         }
 
         /// <summary>

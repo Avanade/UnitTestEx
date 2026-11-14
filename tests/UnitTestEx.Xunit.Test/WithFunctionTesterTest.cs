@@ -1,5 +1,6 @@
 using Moq;
 using System.Net.Http;
+using UnitTestEx.Abstractions;
 using UnitTestEx.IsolatedFunction;
 using Xunit;
 using Xunit.Abstractions;
@@ -73,6 +74,34 @@ namespace UnitTestEx.Xunit.Test
                 .AssertValue("Welcome to Azure Functions!");
         }
 
+        /// <summary>Verifies explicit output is honored inside an automatically detected ambient fixture.</summary>
+        [Fact]
+        public void DirectTester_UsesExplicitOutputInsideFixture()
+        {
+            var output = new Mock<ITestOutputHelper>();
+            using var tester = GenericTester.Create(output.Object);
+            tester.Implementor.WriteLine("explicit output");
+            output.Verify(o => o.WriteLine("explicit output"), Times.Once());
+        }
+
+        /// <summary>Verifies generic testers use the output or factory installed by their base constructor.</summary>
+        [Fact]
+        public void GenericFixture_UsesItsOutputAndFactory()
+        {
+            var output = new Mock<ITestOutputHelper>();
+            using (var fixture = new GenericFixture(output.Object))
+            {
+                fixture.Test.Implementor.WriteLine("fixture output");
+                output.Verify(o => o.WriteLine("fixture output"), Times.Once());
+            }
+
+            var implementor = new NullTestImplementor();
+            using var customFixture = new GenericFixture(createFactory: () => implementor);
+            Assert.Same(implementor, customFixture.Test.Implementor);
+            using var direct = GenericTester.Create(output.Object);
+            Assert.Same(implementor, direct.Implementor);
+        }
+
         /// <inheritdoc/>
         protected override void OnConfiguration()
         {
@@ -88,5 +117,9 @@ namespace UnitTestEx.Xunit.Test
         /// </summary>
         private sealed class FunctionFixture(ITestOutputHelper output)
             : WithFunctionTester<HttpFunction>(output: output) { }
+
+        /// <summary>Provides a generic fixture for checking its installed implementor.</summary>
+        private sealed class GenericFixture(object output = null, System.Func<TestFrameworkImplementor> createFactory = null)
+            : WithGenericTester<object>(output, createFactory) { }
     }
 }
