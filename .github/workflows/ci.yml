@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       durable-integration:
-        description: Run the opt-in real Functions worker/Azurite Durable suite
+        description: Run real Functions worker/Azurite Durable integration (PRs always run it)
         type: boolean
         default: false
   push:
@@ -203,7 +203,7 @@ jobs:
 
   durable-integration:
     name: Durable Functions integration (net10.0)
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.durable-integration }}
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.durable-integration) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

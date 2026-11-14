@@ -313,7 +313,7 @@ namespace UnitTestEx.Aspire
         }
 
         /// <summary>
-        /// Discards every resource log entry captured so far, across all resources, along with the per-resource watermarks used by <see cref="Checkpoint"/>/<see cref="Delay(TimeSpan?, string?)"/>
+        /// Discards every resource log entry and unfinished header captured so far, across all resources, along with the per-resource watermarks used by <see cref="Checkpoint"/>/<see cref="Delay(TimeSpan?, string?)"/>
         /// - i.e. puts resource log capture back into the same state as immediately after start-up.
         /// </summary>
         /// <returns>The <typeparamref name="TSelf"/> to support fluent-style method-chaining.</returns>

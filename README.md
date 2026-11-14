@@ -188,7 +188,7 @@ The tests in this repository are the reference examples. Core and Aspire example
 
 Durable reference examples use NUnit:
 - [SDK-host and method-level context suite](./tests/UnitTestEx.Azure.Functions.Durable.Test) - .NET 10/11; no Core Tools, containers or backend.
-- [Real Functions worker/backend integration suite](./tests/UnitTestEx.Azure.Functions.Durable.Integration.Test) - .NET 10; opt-in and requires Core Tools and a container runtime.
+- [Real Functions worker/backend integration suite](./tests/UnitTestEx.Azure.Functions.Durable.Integration.Test) - .NET 10; requires Core Tools and a container runtime.
 
 <br/>
 
@@ -213,7 +213,7 @@ Client/start/status operations | SDK host/client | Schedule, bounded waits, type
 `ContinueAsNew` | SDK host | New generations with serialized input; final output and activity counts across generations | Buffered-event preservation is unsupported by the pinned host ([upstream issue](https://github.com/microsoft/durabletask-dotnet/issues/844)); no method-level virtual-context support or host virtual clock.
 Custom retry handlers | SDK host | SDK synchronous/asynchronous handlers for activities and children, including failure details and attempt limits | Handler code must be deterministic; timer waits remain wall-clock.
 Durable HTTP | Outside the Durable tester's supported surface | Use a Functions runtime integration for extension-specific HTTP behavior | No built-in SDK-host HTTP implementation or method-level context support.
-Functions worker/backend integration | Separate opt-in [Aspire/Core Tools/Azurite suite](./docs/azure-durable-functions.md#real-functions-workerbackend-integration) | Real batch activities/child, failure recovery, approval-event delivery and continuation with buffered-event preservation/discard | Requires Core Tools and containers; local emulator integration excludes deployed Azure authentication, scale and reliability.
+Functions worker/backend integration | Separate [Aspire/Core Tools/Azurite suite](./docs/azure-durable-functions.md#real-functions-workerbackend-integration) | Real batch activities/child, failure recovery, approval-event delivery and continuation with buffered-event preservation/discard | Requires Core Tools and containers; local emulator integration excludes deployed Azure authentication, scale and reliability.
 
 <br/>
 

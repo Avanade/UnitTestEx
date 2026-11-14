@@ -23,7 +23,7 @@ The host API uses the `UnitTestEx.Azure.Functions.Durable.TestHost` namespace; t
 | Does an activity method use its services and return the right value? | Existing `FunctionTester.Trigger<T>()`; see [activity invocation](./azure-functions.md#durable-activity-invocation). | Direct invocation, not Durable scheduling or failure translation. |
 | Does the real orchestration coordinate activities, children, events and failures? | Preview `FunctionTester.DurableTask()` in the optional Durable package. | The standalone in-memory Durable Task SDK engine, including its serialization and replay; not the Functions worker. |
 | Does timer/event coordination work when advancing a long timeout instantly? | `VirtualTimeOrchestrationContext` in the optional Durable package. | Narrow method-level context, not engine scheduling, history or replay. It rejects activity and child calls. |
-| Can Functions discover, bind and run the workflow against a backend? | Separate opt-in [Functions/Azurite integration suite](#real-functions-workerbackend-integration). | Real Functions worker and Azure Storage provider with local emulator storage, not deployed Azure services. |
+| Can Functions discover, bind and run the workflow against a backend? | Separate [Functions/Azurite integration suite](#real-functions-workerbackend-integration). | Real Functions worker and Azure Storage provider with local emulator storage, not deployed Azure services. |
 
 The existing Functions package remains independent of Durable Task. The optional Durable package references it, not the other way around. Both testing modes share this one package and its host dependencies; they remain distinct execution models. The host pins `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1**; see [dependencies and frameworks](#dependency-and-framework-boundary).
 
@@ -237,10 +237,10 @@ Each test owns a fresh AppHost, random task hub and nonpersistent Azurite **3.37
 
 This suite requires **Azure Functions Core Tools v4 and an Aspire-compatible container runtime**. It uses ports **7073 and 11000–11002**; do not run concurrent copies on the same execution host. The test project and hosted application both target .NET 10.
 
-To opt into the integration job, dispatch CI with **`durable-integration: true`** (the default is false):
+PR CI runs the integration job automatically. For a manual CI run, enable it with **`durable-integration: true`** (the manual-dispatch default is false):
 
 ```powershell
-gh workflow run ci.yml --repo Avanade/UnitTestEx --ref feature/durable-functions-testing -f durable-integration=true
+gh workflow run ci.yml --repo Avanade/UnitTestEx -f durable-integration=true
 ```
 
 This is local-emulator integration, not deployed Azure authentication, scale, reliability or publishing-service coverage. The sample journal still only logs. The in-memory suite and method-level context remain separate and container-free.
@@ -270,11 +270,11 @@ This is local-emulator integration, not deployed Azure authentication, scale, re
 | **Entities and durable HTTP** | Outside the Durable tester's higher-level supported surface; use Functions-runtime integration for extension behavior. | No built-in SDK-host entity-testing/HTTP implementation or method-level context support. |
 | **Client/start/status operations - SDK host** | `StartAsync`, bounded start/completion/custom-status waits, typed events, output/failure assertions and an SDK-client escape hatch are implemented. [`FluentDurableTaskTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/FluentDurableTaskTest.cs) checks managed completion/timeout diagnostics. | Not Functions starter triggers, production `DurableTaskClient` behavior or HTTP status endpoints. A completion timeout is not orchestration failure or termination. |
 | **Host lifecycle - SDK host** | Dispose the host/run with `await using`; terminate instances through the SDK client. | Not worker shutdown or Azure cleanup. Disposal does not wait for or cancel blocked delegates. |
-| **Functions worker, bindings and backend integration** | Separate opt-in [Core Tools/Azurite scenarios](#real-functions-workerbackend-integration) for real batch activities/child, failure recovery, approval-event delivery and continuation with buffered-event preservation/discard. | Requires Core Tools and a container runtime. Local emulator integration does not cover deployed Azure authentication, scale or reliability. |
+| **Functions worker, bindings and backend integration** | Separate [Core Tools/Azurite scenarios](#real-functions-workerbackend-integration) for real batch activities/child, failure recovery, approval-event delivery and continuation with buffered-event preservation/discard. | Requires Core Tools and a container runtime. Local emulator integration does not cover deployed Azure authentication, scale or reliability. |
 
 ## Build and test configuration
 
-The [workflow](../.github/workflows/ci.yml) runs independent framework jobs and uploads test results even when a job fails. The Functions integration job is opt-in.
+The [workflow](../.github/workflows/ci.yml) runs independent framework jobs and uploads test results even when a job fails. The Functions integration job runs automatically on PRs; manual dispatch enables it through `durable-integration`.
 
 | Project or suite | Frameworks |
 |---|---|

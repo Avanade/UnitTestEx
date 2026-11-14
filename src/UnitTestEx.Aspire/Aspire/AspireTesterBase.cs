@@ -585,7 +585,7 @@ namespace UnitTestEx.Aspire
         /// <para>Does not reset any <see cref="AspireTesterBase{TAppHost, TSelf}.ErrorWhenLogContains(LogLevel, string[], string[])"/> configuration - only previously captured log data.</para></remarks>
         protected void ResetResourceLogs()
         {
-            _resourceLogCaptureProvider?.FlushPendingEntries();
+            _resourceLogCaptureProvider?.FlushPendingEntries(completeEntries: true);
 
             // Note: each resource's ConcurrentQueue<ResourceLogEntry> instance is bound for the lifetime of the underlying ILogger (see ResourceLogCaptureProvider.CreateLogger, only ever
             // invoked once per category by the logging infrastructure) - so the queue itself must be emptied in place rather than the dictionary entry replaced/removed, otherwise any
@@ -739,15 +739,16 @@ namespace UnitTestEx.Aspire
             }
 
             /// <summary>
-            /// Flushes any pending (not-yet-terminated by a subsequent header line) entry for every resource.
+            /// Flushes available message lines for every resource, optionally ending their retained headers for a log reset.
             /// </summary>
+            /// <param name="completeEntries">Whether to discard the current headers rather than retain them for delayed message lines.</param>
             /// <remarks>An entry only completes once <i>another</i> line (typically the next header) arrives to terminate it, so the most recently logged entry for a resource would otherwise remain
             /// invisible until something else happens to log afterwards; callers that need to observe "everything captured so far" (e.g. before reading a resource's log buffer) must force this.</remarks>
-            public void FlushPendingEntries()
+            public void FlushPendingEntries(bool completeEntries = false)
             {
                 foreach (var logger in _loggers)
                 {
-                    logger.FlushPending();
+                    logger.FlushPending(completeEntries);
                 }
             }
 
@@ -862,11 +863,12 @@ namespace UnitTestEx.Aspire
                 /// <summary>
                 /// Flushes any pending entry to the buffer, reformatted to match <see cref="Logging.LoggerBase"/>'s output style.
                 /// </summary>
-                public void FlushPending()
+                /// <param name="completeEntry">Whether to discard the current header rather than retain it for delayed message lines.</param>
+                public void FlushPending(bool completeEntry = false)
                 {
                     lock (_lock)
                     {
-                        FlushPendingNoLock();
+                        FlushPendingNoLock(completeEntry);
                     }
                 }
 
@@ -898,6 +900,7 @@ namespace UnitTestEx.Aspire
                     {
                         _pendingTimestamp = null;
                         _pendingLevelText = null;
+                        _pendingLevel = LogLevel.Information;
                         _pendingCategory = null;
                     }
                 }

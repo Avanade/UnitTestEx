@@ -70,6 +70,34 @@ public sealed class ResourceLogCaptureTest(ITestOutputHelper output) : UnitTestB
         Assert.Contains("Delayed error message.", exception.Message);
     }
 
+    /// <summary>Discards pending or previously flushed headers on reset without disabling subsequent error checks.</summary>
+    /// <param name="flushHeader">Whether a checkpoint flushes the old header before the reset.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ResetLogsDoesNotCarryErrorHeaderIntoDelayedBody(bool flushHeader)
+    {
+        await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_AppHost>().WithResourceEnvironment("api", "SpecialKey", "VerySpecialValue")
+            .ErrorWhenLogContains(include: ["Delayed error message*", "Current error message*"]);
+        var app = await tester.GetDistributedApplicationAsync();
+        var applicationName = app.Services.GetRequiredService<IHostEnvironment>().ApplicationName;
+        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger($"{applicationName}.Resources.reset-log");
+        WriteForwardedLine(logger, 0, "fail: DelayedResource[0]");
+        if (flushHeader)
+            tester.Checkpoint("Flush the old header before reset.");
+
+        tester.ResetLogs();
+        WriteForwardedLine(logger, 1, "      Delayed error message.");
+        tester.Checkpoint("Capture a delayed body without its discarded header.");
+        tester.AssertLogContains("Delayed error message.", "reset-log");
+        tester.AssertLogNotContains("DelayedResource", "reset-log");
+
+        WriteForwardedLine(logger, 2, "fail: CurrentResource[0]");
+        WriteForwardedLine(logger, 3, "      Current error message.");
+        var exception = Assert.Throws<XunitException>(() => tester.Checkpoint("Check a new error after reset."));
+        Assert.Contains("Current error message.", exception.Message);
+    }
+
     /// <summary>Writes one physical line in the same format as Aspire's console-log forwarding.</summary>
     /// <param name="logger">The AppHost resource-category logger.</param>
     /// <param name="index">The physical line index.</param>

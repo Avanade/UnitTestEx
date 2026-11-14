@@ -108,7 +108,7 @@ The virtual context supports timer/event wait cancellation. The pinned SDK activ
 
 The tests verify indexed functions with `WaitForFunctionsAsync`, schedule through the extension's HTTP management API and poll status with bounded waits. Management URLs are restricted to the test host. Completed parent history is purged; AppHost disposal stops the worker and removes the nonpersistent container, including child history and timer data.
 
-Test configuration reduces storage queue polling to one second, not application timers. Ports 7073 and 11000-11002 require sequential execution on a shared host. The [CI workflow](../.github/workflows/ci.yml) provides a separate opt-in job through `durable-integration: true`.
+Test configuration reduces storage queue polling to one second, not application timers. Ports 7073 and 11000-11002 require sequential execution on a shared host. The [CI workflow](../.github/workflows/ci.yml) runs the separate integration job automatically on PRs; manual dispatch enables it through `durable-integration: true`.
 
 This integration is separate from the container-free SDK-host/context suite and does not add emulator dependencies to the published Durable package. The sample journal only logs; it is not a publishing-service integration.
 

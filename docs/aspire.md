@@ -14,7 +14,7 @@ This isn't a UnitTestEx-specific compromise - it matches Aspire's own guidance v
 > "If your goal is to test a single project in isolation, run components in-memory, or mock external dependencies, consider using `WebApplicationFactory<T>` instead."
 > — [aspire.dev/testing/overview](https://aspire.dev/testing/overview/)
 
-For Durable workflows, the separate opt-in [real Functions worker/Azurite integration suite](./azure-durable-functions.md#real-functions-workerbackend-integration) hosts the unchanged sample on .NET 10. It includes batch, recovery, approval-event delivery and buffered-event preservation/discard across continuation, and is separate from the in-memory SDK-host suite.
+For Durable workflows, the separate [real Functions worker/Azurite integration suite](./azure-durable-functions.md#real-functions-workerbackend-integration) hosts the unchanged sample on .NET 10. It includes batch, recovery, approval-event delivery and buffered-event preservation/discard across continuation, and is separate from the in-memory SDK-host suite. PR CI runs it automatically.
 
 ``` csharp
 await using var tester = AspireTester.Create<Projects.MyAppHost>();
@@ -166,7 +166,7 @@ This is **enabled by default** at `LogLevel.Error` for every `AspireTester` - th
 
 _Important:_ `include`/`exclude` only ever **narrow what counts as a violation** of the streaming check above - they are not a "was this text logged" positive assertion, and there is no aggregate, end-of-test tally of `include` patterns. If an `include` pattern never matches anything, the test simply never fails because of it; nothing confirms it was actually hit. For that - "assert this text *was* (or was *not*) logged, by any resource, at any point" - use `AssertLogContains`/`AssertLogNotContains` instead (below).
 
-`Http` waits for asynchronously forwarded logs even when the resource's first log buffer has not yet been created. `ResourceLogGracePeriod` bounds the initial wait, `ResourceLogQuietPeriod` detects a settled burst and `ResourceLogMaxWait` caps the total wait. A forced flush retains the most recent header's severity/category for delayed message lines; an entry split across flushes can appear as separate fragments without losing its error level.
+`Http` waits for asynchronously forwarded logs even when the resource's first log buffer has not yet been created. `ResourceLogGracePeriod` bounds the initial wait, `ResourceLogQuietPeriod` detects a settled burst and `ResourceLogMaxWait` caps the total wait. A forced flush retains the most recent header's severity/category for delayed message lines; an entry split across flushes can appear as separate fragments without losing its error level. `ResetLogs()` discards buffered entries and unfinished header metadata without changing error-check configuration.
 
 ### Asserting expected resource log content
 
