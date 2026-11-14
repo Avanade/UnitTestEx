@@ -9,8 +9,8 @@ namespace UnitTestEx.Azure.Functions.Durable.Test;
 
 /// <summary>Shows how to test a real batch orchestration with controlled activity responses.</summary>
 /// <remarks>
-/// Executes the real ProcessBatch, NormalizeReference and TotalItems bodies. ProcessItem responses are mocked;
-/// FinalizeBatch is replaced with a pass-through child, so RecordWorkflow and PublishWorkflow are not invoked.
+/// Executes the real ProcessBatch, NormalizeReference and TotalItems bodies with mocked ProcessItem responses.
+/// The first two tests replace FinalizeBatch; the third discovers it and runs its journal activities.
 /// See the sample bodies in BatchOrchestration, ActivityTransforms and WorkflowActivities for the full workflow.
 /// </remarks>
 [TestFixture]
@@ -60,6 +60,82 @@ public sealed class DurableTaskShowcaseTest
         Assert.That(processItems.CompletionOrder.Select(item => item.Id), Is.EqualTo(new[] { "C", "B", "A" }));
 
         // Verify plan consumption separately from registered activity counts; retries count as extra invocations.
+        processItems.Verify();
+        test.Verify();
+    }
+
+    /// <summary>Discovers normalization and aggregation while explicitly replacing item processing and finalization.</summary>
+    [Test]
+    public async Task BatchFanOutFanInWithSelfDiscovery()
+    {
+        using var processItems = ActivityMock.ByMatch(
+        [
+            ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "A", item => new ItemResult(item.Id, item.Amount * 2m)).Pending(),
+            ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "B", item => new ItemResult(item.Id, item.Amount * 2m)).Pending(),
+            ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "C", item => new ItemResult(item.Id, item.Amount * 2m)).After(TimeSpan.FromMilliseconds(100))
+        ]);
+
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        var request = new BatchRequest(" batch-7 ", [new("A", 10m), new("B", 20m), new("C", 30m)]);
+
+        await using var test = await functions.DurableTask()
+            .WithSelfDiscovery()
+            .Orchestrator<BatchRequest, BatchResult>(nameof(BatchOrchestration.ProcessBatch), (context, _) => BatchOrchestration.ProcessBatch(context))
+            .Activity<WorkItem, ItemResult>(nameof(WorkflowActivities.ProcessItem), processItems.InvokeAsync, configure: options => options.Times(Times.Exactly(3)))
+            .SubOrchestrator<BatchResult, BatchResult>(nameof(BatchOrchestration.FinalizeBatch), (_, input) => Task.FromResult(input))
+            .StartAsync(request);
+
+        test.ExpectSuccess().ExpectLogContains("Finalizing batch BATCH-7.");
+        await processItems.WaitForAllInvocationsAsync();
+        await processItems[2].WaitForCompletionAsync(TimeSpan.FromSeconds(5));
+        await processItems[1].ReleaseAsync(TimeSpan.FromSeconds(5));
+        await processItems[0].ReleaseAsync(TimeSpan.FromSeconds(5));
+
+        var expected = new BatchResult("BATCH-7", 120m, [new("A", 20m), new("B", 40m), new("C", 60m)]);
+        await test.WaitForCompletionAsync(TimeSpan.FromSeconds(10), result => result.AssertCompleted().AssertOutput(expected));
+
+        Assert.That(processItems.CompletionOrder.Select(item => item.Id), Is.EqualTo(new[] { "C", "B", "A" }));
+        processItems.Verify();
+        test.Verify();
+    }
+
+    /// <summary>Discovers the real child orchestration and its journal activities while replacing item processing.</summary>
+    [Test]
+    public async Task BatchFanOutFanInWithDiscoveredSubOrchestrator()
+    {
+        using var processItems = ActivityMock.ByMatch(
+        [
+            ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "A", item => new ItemResult(item.Id, item.Amount * 2m)).Pending(),
+            ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "B", item => new ItemResult(item.Id, item.Amount * 2m)).Pending(),
+            ActivityResponse.Match<WorkItem, ItemResult>(item => item.Id == "C", item => new ItemResult(item.Id, item.Amount * 2m)).After(TimeSpan.FromMilliseconds(100))
+        ]);
+
+        var journal = new Mock<IWorkflowJournal>(MockBehavior.Strict);
+        journal.Setup(x => x.Record("BATCH-7"));
+        journal.Setup(x => x.PublishAsync(It.IsAny<BatchResult>())).Returns(Task.CompletedTask);
+
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        functions.ReplaceSingleton<IWorkflowJournal>(journal.Object);
+        var request = new BatchRequest(" batch-7 ", [new("A", 10m), new("B", 20m), new("C", 30m)]);
+
+        await using var test = await functions.DurableTask()
+            .WithSelfDiscovery()
+            .Orchestrator<BatchRequest, BatchResult>(nameof(BatchOrchestration.ProcessBatch), (context, _) => BatchOrchestration.ProcessBatch(context))
+            .Activity<WorkItem, ItemResult>(nameof(WorkflowActivities.ProcessItem), processItems.InvokeAsync, configure: options => options.Times(Times.Exactly(3)))
+            .StartAsync(request);
+
+        test.ExpectSuccess().ExpectLogContains("Finalizing batch BATCH-7.");
+        await processItems.WaitForAllInvocationsAsync();
+        await processItems[2].WaitForCompletionAsync(TimeSpan.FromSeconds(5));
+        await processItems[1].ReleaseAsync(TimeSpan.FromSeconds(5));
+        await processItems[0].ReleaseAsync(TimeSpan.FromSeconds(5));
+
+        var expected = new BatchResult("BATCH-7", 120m, [new("A", 20m), new("B", 40m), new("C", 60m)]);
+        await test.WaitForCompletionAsync(TimeSpan.FromSeconds(10), result => result.AssertCompleted().AssertOutput(expected));
+
+        Assert.That(processItems.CompletionOrder.Select(item => item.Id), Is.EqualTo(new[] { "C", "B", "A" }));
+        journal.Verify(x => x.Record("BATCH-7"), Times.Once());
+        journal.Verify(x => x.PublishAsync(It.Is<BatchResult>(result => result.Reference == "BATCH-7" && result.Total == 120m && result.Items.Select(item => item.Id).SequenceEqual(new[] { "A", "B", "C" }))), Times.Once());
         processItems.Verify();
         test.Verify();
     }

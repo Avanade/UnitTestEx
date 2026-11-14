@@ -17,6 +17,7 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     private static readonly TimeSpan StatusPollingInterval = TimeSpan.FromMilliseconds(20);
     private readonly TesterBase _owner;
     private readonly DurableTaskActivityVerifier _activityVerifier;
+    private readonly DurableTaskDiscoveryRun _discoveryRun;
     private DurableTaskTestHost? _host;
     private bool _completionObserved;
     private readonly Stopwatch _elapsed = Stopwatch.StartNew();
@@ -33,12 +34,14 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     /// <param name="host">The in-memory SDK host.</param>
     /// <param name="instanceId">The scheduled orchestration instance identifier.</param>
     /// <param name="activityVerifier">The per-run activity invocation verifier.</param>
-    internal DurableTaskTestRun(TesterBase owner, DurableTaskTestHost host, string instanceId, DurableTaskActivityVerifier activityVerifier)
+    /// <param name="discoveryRun">The per-run discovered orchestration lifetime.</param>
+    internal DurableTaskTestRun(TesterBase owner, DurableTaskTestHost host, string instanceId, DurableTaskActivityVerifier activityVerifier, DurableTaskDiscoveryRun discoveryRun)
     {
         _owner = owner ?? throw new ArgumentNullException(nameof(owner));
         _host = host;
         InstanceId = instanceId;
         _activityVerifier = activityVerifier ?? throw new ArgumentNullException(nameof(activityVerifier));
+        _discoveryRun = discoveryRun ?? throw new ArgumentNullException(nameof(discoveryRun));
         ExpectationsArranger = new ExpectationsArranger<DurableTaskTestRun<TOutput>>(_owner, this);
     }
 
@@ -264,6 +267,9 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     {
         DurableTaskTestHost? host = Interlocked.Exchange(ref _host, null);
         if (host is not null)
-            await host.DisposeAsync().ConfigureAwait(false);
+        {
+            try { await host.DisposeAsync().ConfigureAwait(false); }
+            finally { await _discoveryRun.DisposeAsync().ConfigureAwait(false); }
+        }
     }
 }

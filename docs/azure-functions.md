@@ -1,6 +1,6 @@
 # Azure Functions testing
 
-`FunctionTester` (package `UnitTestEx.Azure.Functions`) tests Azure Functions written for the **v4 isolated worker model** on .NET 8, 9, 10 and 11. The in-process (WebJobs) model is not supported; see [Migrating to v6](./migration-v6.md) for earlier Functions upgrades.
+`FunctionTester` (package `UnitTestEx.Azure.Functions`) tests Azure Functions written for the **v4 isolated worker model** on .NET 8, 9, 10 and 11. The in-process (WebJobs) model is not supported; see [Migrating from v5 to v6 to v7](./migration-v6.md).
 
 .NET 11 function apps require `Azure.Functions.Sdk` 1.0.1 or later as the project SDK, replacing `Microsoft.NET.Sdk` and the `Microsoft.Azure.Functions.Worker.Sdk` package reference. Keep an explicit `Microsoft.Azure.Functions.Worker` reference. The multi-targeted samples use `Azure.Functions.Sdk/1.0.2`; existing apps on older frameworks do not need to migrate just to use UnitTestEx. See [Microsoft's migration guidance](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide#migrate-to-azurefunctionssdk).
 

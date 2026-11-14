@@ -135,6 +135,22 @@ public sealed class FluentDurableTaskTest
         Assert.That(result.Metadata.ReadCustomStatusAs<string>(), Is.EqualTo("Declined"));
     }
 
+    /// <summary>Runs the same recovery workflow with its real activity discovered from the application assembly.</summary>
+    [Test]
+    public async Task ExecutesFunctionMethodWithSelfDiscoveryAndAssertsOutput()
+    {
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        await using var run = await functions.DurableTask()
+            .WithSelfDiscovery()
+            .WithSelfDiscovery<BatchRequest>()
+            .Orchestrator<string, string>(nameof(FailureOrchestration.RecoverWorkflow), (context, _) => FailureOrchestration.RecoverWorkflow(context))
+            .StartAsync("ORDER-FAIL");
+
+        var result = await run.WaitForCompletionAsync(TimeSpan.FromSeconds(5));
+        result.AssertCompleted().AssertOutput("Declined");
+        Assert.That(result.Metadata.ReadCustomStatusAs<string>(), Is.EqualTo("Declined"));
+    }
+
     /// <summary>Exposes SDK failure details through the fluent result assertor.</summary>
     [Test]
     public async Task ExposesFailureCauseThroughFluentAssertor()

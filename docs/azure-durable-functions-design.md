@@ -31,7 +31,7 @@ Libraries target .NET 8/9/10/11. Core suites target all four frameworks; Aspire 
 
 The sample uses ordinary top-level [startup](../tests/UnitTestEx.DurableFunction/Program.cs), registering `IWorkflowJournal` through application DI. Testing does not require a custom `Program` class, `BuildHost` method or test-only startup structure.
 
-`FunctionTester.Create<WorkflowActivities>()` identifies the application assembly. The SDK-host builder explicitly registers delegates; it does not discover `[Function]` methods or bind trigger arguments. Delegates can invoke static methods, resolve instances through application scopes, supply `TestFunctionContext`, or substitute behavior.
+`FunctionTester.Create<WorkflowActivities>()` identifies the application assembly. The SDK-host builder registers delegates explicitly by default. Opt-in `WithSelfDiscovery()` / `WithSelfDiscovery<T>()` registers supported activity and context-only orchestration methods from selected assemblies; explicit handlers take precedence. Discovered activities use invocation scopes, and discovered instance children retain an isolated application scope across replay until run disposal. This adapts method bodies; it does not run Functions worker bindings or middleware.
 
 Application scopes and contexts remain caller-owned. `.ConfigureHostServices(...)` configures the separate SDK host, not the captured application's service collection.
 
