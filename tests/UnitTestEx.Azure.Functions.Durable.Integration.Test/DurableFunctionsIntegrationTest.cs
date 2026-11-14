@@ -25,7 +25,7 @@ public sealed class DurableFunctionsIntegrationTest
     [Test]
     public async Task BatchExecutesRealActivitiesAndChild()
     {
-        await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_Durable_AppHost>();
+        await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_Durable_AppHost>().EnableHostDiagnostics();
         await tester.WaitForFunctionsAsync("durable-functions", ["ProcessBatch", "NormalizeReference", "ProcessItem", "TotalItems", "FinalizeBatch", "RecordWorkflow", "PublishWorkflow"]);
         using var client = (await tester.GetDistributedApplicationAsync()).CreateHttpClient("durable-functions");
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(90));
@@ -69,7 +69,7 @@ public sealed class DurableFunctionsIntegrationTest
     [Test]
     public async Task ActivityFailureIsRecoveredByRealOrchestration()
     {
-        await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_Durable_AppHost>().ErrorWhenLogContains(Microsoft.Extensions.Logging.LogLevel.None);
+        await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_Durable_AppHost>().EnableHostDiagnostics().ErrorWhenLogContains(Microsoft.Extensions.Logging.LogLevel.None);
         await tester.WaitForFunctionsAsync("durable-functions", ["RecoverWorkflow", "RejectWorkflow"]);
         using var client = (await tester.GetDistributedApplicationAsync()).CreateHttpClient("durable-functions");
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(90));
@@ -85,7 +85,7 @@ public sealed class DurableFunctionsIntegrationTest
     [Test]
     public async Task ApprovalEventWinsProductionLengthTimer()
     {
-        await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_Durable_AppHost>();
+        await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_Durable_AppHost>().EnableHostDiagnostics();
         await tester.WaitForFunctionsAsync("durable-functions", ["AwaitApproval"]);
         using var client = (await tester.GetDistributedApplicationAsync()).CreateHttpClient("durable-functions");
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(90));
@@ -105,7 +105,7 @@ public sealed class DurableFunctionsIntegrationTest
     [TestCase(false)]
     public async Task ContinuationControlsBufferedEventsInRealWorker(bool preserveEvents)
     {
-        await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_Durable_AppHost>();
+        await using var tester = AspireTester.Create<Projects.UnitTestEx_Aspire_Durable_AppHost>().EnableHostDiagnostics();
         await tester.WaitForFunctionsAsync("durable-functions", [nameof(ContinuationOrchestration.ContinueWithEvents)]);
         using var client = (await tester.GetDistributedApplicationAsync()).CreateHttpClient("durable-functions");
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(90));

@@ -1,7 +1,7 @@
 using Aspire.Hosting.ApplicationModel;
 
 var builder = DistributedApplication.CreateBuilder(args);
-var azurite = builder.AddContainer("durable-storage", "mcr.microsoft.com/azure-storage/azurite", "3.35.0")
+var azurite = builder.AddContainer("durable-storage", "mcr.microsoft.com/azure-storage/azurite", "3.37.0")
     .WithArgs("azurite", "-l", "/data", "--blobHost", "0.0.0.0", "--queueHost", "0.0.0.0", "--tableHost", "0.0.0.0")
     .WithEndpoint(port: 11000, targetPort: 10000, scheme: "http", name: "blob", isProxied: false)
     .WithEndpoint(port: 11001, targetPort: 10001, scheme: "http", name: "queue", isProxied: false)

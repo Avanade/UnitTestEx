@@ -97,7 +97,7 @@ The virtual context supports timer/event wait cancellation. The pinned SDK activ
 
 ## Real Functions worker/backend integration
 
-[`UnitTestEx.Aspire.Durable.AppHost`](../tests/UnitTestEx.Aspire.Durable.AppHost) hosts the unchanged sample through Core Tools and its .NET 10 isolated worker. A per-test nonpersistent Azurite container supplies blob, queue and table storage; a random task hub isolates Durable state.
+[`UnitTestEx.Aspire.Durable.AppHost`](../tests/UnitTestEx.Aspire.Durable.AppHost) hosts the unchanged sample through Core Tools and its .NET 10 isolated worker. A per-test nonpersistent Azurite 3.37.0 container supplies blob, queue and table storage with API-version validation enabled; a random task hub isolates Durable state.
 
 [`UnitTestEx.Azure.Functions.Durable.Integration.Test`](../tests/UnitTestEx.Azure.Functions.Durable.Integration.Test) exercises:
 
