@@ -22,7 +22,7 @@ await run.WaitForCompletionAsync(TimeSpan.FromSeconds(10),
 
 Use an ordinary class from your Functions application assembly in place of `WorkflowActivities`. This minimal delegate checks wiring; register delegates to real application orchestrations/activities to test their behavior. The [showcase](https://github.com/Avanade/UnitTestEx/blob/v7.0.0/tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskShowcaseTest.cs) runs a real batch body with controlled activity responses.
 
-To run application activities and child orchestrations without forwarding delegates, use `functions.DurableTask().WithSelfDiscovery()` before `.Orchestrator(...)`. It scans only the parent marker's assembly; `WithSelfDiscovery<T>()` adds another marker's assembly. Explicit `.Activity(...)` and `.SubOrchestrator(...)` handlers override discoveries. The root is explicitly selected. Real instance activities use owned invocation scopes; discovered instance children retain separate scopes across replay until run disposal. Duplicate names/unsupported signatures fail early. Real activities may have external side effects. The showcase compares explicit handlers, discovery with an explicit child override, and a real discovered `FinalizeBatch` child with discovered journal activities.
+To run application activities and orchestrations without forwarding delegates, use `functions.DurableTask().WithSelfDiscovery()`. It scans only the parent marker's assembly; `WithSelfDiscovery<T>()` adds another marker's assembly. Explicit registrations override discoveries. Direct orchestration runs select a root with `.Orchestrator(...)`; for a starter function, use `.StartHostAsync()`, pass `session.Client` explicitly, and observe its known instance ID with `session.Observe<TOutput>(id)`. See the [starter example](https://github.com/Avanade/UnitTestEx/blob/v7.0.0/docs/azure-durable-functions.md#test-a-starter-function). Dispose the run before the session and FunctionTester. Real instance activities use owned invocation scopes; discovered instance orchestrations retain separate scopes across replay until session/run disposal. Duplicate names/unsupported signatures fail early. Real activities may have external side effects.
 
 ## Boundaries
 
@@ -30,6 +30,7 @@ To run application activities and child orchestrations without forwarding delega
 - `VirtualTimeOrchestrationContext` is a separate method-level timer/event tool without engine history/replay or activity/child execution.
 - The pinned SDK host has a buffered-event preservation limitation across `ContinueAsNew`; use real-worker integration to test preservation.
 - SDK-host tests do not run the Functions worker or prove binding/serializer parity. Ordinary activity-method tests use `FunctionTester.Trigger<T>()` without this optional package.
+- Starter tests invoke the method directly with an SDK-host client; they do not exercise Service Bus delivery or `[DurableClient]` binding.
 
 ## AI assistance and documentation
 

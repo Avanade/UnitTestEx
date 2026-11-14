@@ -118,6 +118,39 @@ public sealed class SelfDiscoveryTest
         Assert.That(scopes.All(scope => scope.Disposed), Is.True);
     }
 
+    /// <summary>Retains discovered orchestration scopes across replay and disposes them with the starter session.</summary>
+    [Test]
+    public async Task StarterSessionOwnsDiscoveredOrchestrationScope()
+    {
+        var scopes = new ConcurrentBag<OrchestrationScope>();
+        var instances = new ConcurrentBag<ScopedOrchestration>();
+        using var functions = FunctionTester.Create<WorkflowActivities>();
+        functions.ConfigureServices(services => services.AddScoped(_ =>
+        {
+            var scope = new OrchestrationScope(instances);
+            scopes.Add(scope);
+            return scope;
+        }));
+        var session = await functions.DurableTask().WithSelfDiscovery<SelfDiscoveryTest>().WithSelfDiscovery().StartHostAsync();
+        try
+        {
+            var instanceId = await session.Client.ScheduleNewOrchestrationInstanceAsync("ScopedDiscoveryChild", " child ");
+            await using var run = session.Observe<string>(instanceId);
+            await run.WaitForCompletionAsync(TimeSpan.FromSeconds(10), result => result.AssertOutput("CHILD"));
+            Assert.That(instances, Has.Count.EqualTo(1));
+            Assert.That(instances.Single().ReplayCount, Is.GreaterThan(0));
+            Assert.That(instances.Single().Disposed, Is.False);
+            Assert.That(scopes.Single().Disposed, Is.False);
+        }
+        finally
+        {
+            await session.DisposeAsync();
+        }
+
+        Assert.That(instances.Single().Disposed, Is.True);
+        Assert.That(scopes.Single().Disposed, Is.True);
+    }
+
     /// <summary>Ensures an explicit root registration overrides a discovered function with the same name.</summary>
     [Test]
     public async Task ExplicitRootOverridesDiscovery()

@@ -94,6 +94,41 @@ public sealed class DurableTaskTestBuilder<TEntryPoint, TSelf> where TEntryPoint
         return new DurableTaskTestBuilder<TEntryPoint, TSelf>(_functionTester, _configureRegistry, Combine(_configureServices, configureServices), _discoveredActivities);
     }
 
+    /// <summary>Configures explicit SDK registry entries before discovered handlers are registered.</summary>
+    /// <param name="configureRegistry">The SDK registry configuration callback.</param>
+    /// <returns>A new builder with the additional registry configuration.</returns>
+    /// <remarks>Explicit registrations override discovered handlers with the same name.</remarks>
+    public DurableTaskTestBuilder<TEntryPoint, TSelf> ConfigureRegistry(Action<DurableTaskRegistry> configureRegistry)
+    {
+        ArgumentNullException.ThrowIfNull(configureRegistry);
+        return new DurableTaskTestBuilder<TEntryPoint, TSelf>(_functionTester, Append(_configureRegistry, configureRegistry), _configureServices, _discoveredActivities);
+    }
+
+    /// <summary>Starts the SDK host without scheduling an orchestration.</summary>
+    /// <returns>A disposable session exposing the client for a starter function and observation of its orchestrations.</returns>
+    /// <remarks>Register handlers explicitly or opt into self-discovery before starting. The caller must dispose the session before its FunctionTester.</remarks>
+    public async Task<DurableTaskTestSession> StartHostAsync()
+    {
+        var discoveryRun = new DurableTaskDiscoveryRun(_functionTester.Services);
+        DurableTaskTestHost? host = null;
+        try
+        {
+            host = await _functionTester.StartDurableTaskTestHostAsync(registry =>
+            {
+                _configureRegistry(registry);
+                discoveryRun.Register(registry, _discoveredActivities);
+            }, _configureServices).ConfigureAwait(false);
+            discoveryRun.SetHost(host);
+            return new DurableTaskTestSession(_functionTester, host, discoveryRun);
+        }
+        catch
+        {
+            try { if (host is not null) await host.DisposeAsync().ConfigureAwait(false); }
+            finally { await discoveryRun.DisposeAsync().ConfigureAwait(false); }
+            throw;
+        }
+    }
+
     /// <summary>
     /// Registers a function-based orchestration delegate for this test.
     /// </summary>

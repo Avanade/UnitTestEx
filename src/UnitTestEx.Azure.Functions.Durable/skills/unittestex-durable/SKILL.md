@@ -23,7 +23,7 @@ Do not swap models to make an unsupported scenario appear covered.
 
 ## SDK-host setup
 
-Preserve normal application startup. `FunctionTester.Create<T>()` uses an ordinary class in the Functions application assembly. Select the root orchestration explicitly. For activities and child orchestrations, either register delegates or opt in to `DurableTask().WithSelfDiscovery()` before `.Orchestrator(...)`. SDK-host types/extensions use `UnitTestEx.Azure.Functions.Durable.TestHost`; virtual-time context uses `UnitTestEx.Azure.Functions.Durable`.
+Preserve normal application startup. `FunctionTester.Create<T>()` uses an ordinary class in the Functions application assembly. For a direct orchestration test select the root explicitly with `.Orchestrator(...)`; opt into `DurableTask().WithSelfDiscovery()` before it to discover supported activities and children. For starter tests use the session recipe below. SDK-host types/extensions use `UnitTestEx.Azure.Functions.Durable.TestHost`; virtual-time context uses `UnitTestEx.Azure.Functions.Durable`.
 
 The minimal registration shape is:
 
@@ -47,9 +47,11 @@ Use `await using` for runs and `using` for the owning Functions tester and activ
 
 `WithSelfDiscovery()` scans only the parent FunctionTester's marker assembly; `WithSelfDiscovery<T>()` adds the specified marker's assembly. No referenced-assembly scanning occurs. Public `[Function]`/`[ActivityTrigger]` methods execute real bodies with per-invocation application DI scopes; explicit `.Activity(...)` handlers override discovered methods. Discovery supports one trigger input plus `FunctionContext`/`CancellationToken`, synchronous/void/Task/ValueTask results. Unsupported signatures and duplicate discovered names fail early. Discovered handlers have no implicit call-count expectations. Use explicit registration for verification or unsupported binding requirements.
 
-Public `[Function]` child methods with `[OrchestrationTrigger] TaskOrchestrationContext` and `Task`/`Task<T>` return are also discovered. Explicit `.SubOrchestrator(...)` overrides win. Discovered instance children use separate application DI scopes per orchestration instance, retained across replay/continuation until the test run is disposed. Context input is converted through the configured SDK worker converter; custom converters must support object-to-typed conversion. Replay still demands deterministic code and replay-safe logging.
+Public `[Function]` orchestration methods with `[OrchestrationTrigger] TaskOrchestrationContext` and `Task`/`Task<T>` return are also discovered. Explicit registrations override discovery. Discovered instance orchestrations use separate application DI scopes per instance, retained across replay/continuation until the owning run or session is disposed. Context input is converted through the configured SDK worker converter; custom converters must support object-to-typed conversion. Replay still demands deterministic code and replay-safe logging.
 
 Discovery is opt-in because real activities can have external side effects. It does not execute worker middleware or binding conversion. Supplied cancellation tokens are non-cancelable; parent termination is not activity cancellation. The compiled showcase compares explicit handlers, discovery with an explicit child override, and `BatchFanOutFanInWithDiscoveredSubOrchestrator`, which runs the real child and its journal activities while mocking item processing.
+
+For a starter method, use `await using var session = await functions.DurableTask().WithSelfDiscovery().StartHostAsync();`, pass `session.Client` to the method via the appropriate trigger tester, then `await using var run = session.Observe<TOutput>(instanceId);` and use `run.WaitForCompletionAsync(...)`. The ID must be known from the application's input, response or another application mechanism. The run borrows the session; dispose it before the session and FunctionTester. `.ConfigureRegistry(...)` supplies explicit SDK handler overrides before discovery, without fluent activity-count expectations. This tests direct starter invocation and SDK execution, not real Service Bus delivery or Functions `[DurableClient]` binding. A mocked client can independently verify scheduling arguments without executing the workflow. See `DurableStarterTest` for both paths.
 
 ## Activities and assertions
 

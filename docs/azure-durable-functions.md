@@ -202,7 +202,7 @@ Instances registered with these typed overloads are caller-owned and reused duri
 
 ### Opt-in activity and orchestration self-discovery
 
-Call `.WithSelfDiscovery()` on `DurableTaskTestBuilder` **before** `.Orchestrator(...)` to discover activity and orchestration methods only in `typeof(TEntryPoint).Assembly`, where `TEntryPoint` is the parent `FunctionTester<TEntryPoint>` marker. `.WithSelfDiscovery<T>()` adds methods from `typeof(T).Assembly`; `T` selects an assembly, not just that type. Referenced assemblies are never scanned automatically. Multiple calls compose and repeated discovery is idempotent.
+Call `.WithSelfDiscovery()` on `DurableTaskTestBuilder` **before** `.Orchestrator(...)` or `.StartHostAsync()` to discover activity and orchestration methods only in `typeof(TEntryPoint).Assembly`, where `TEntryPoint` is the parent `FunctionTester<TEntryPoint>` marker. `.WithSelfDiscovery<T>()` adds methods from `typeof(T).Assembly`; `T` selects an assembly, not just that type. Referenced assemblies are never scanned automatically. Multiple calls compose and repeated discovery is idempotent.
 
 For the same batch as the explicit showcase, omit forwarding delegates for normalization, total calculation and the child. The real child and its journal activities are discovered:
 
@@ -220,11 +220,34 @@ Discovery accepts public static/instance `[Function]` methods with exactly one `
 
 Every invocation creates and asynchronously disposes an application DI scope. Instance methods resolve their activity type from that scope if registered, otherwise construct it with `ActivatorUtilities` and dispose the constructed instance separately. Registered singleton lifetimes remain application-owned. Supplied `TestFunctionContext` exposes the invocation's scoped services; worker binding/trace/retry metadata is not synthesized. Supplied cancellation tokens are non-cancelable because the pinned SDK activity context has no cancellation token; orchestration termination does not cancel running activity code.
 
-For discovered child orchestrations, public static/instance `[Function]` methods must accept only an `[OrchestrationTrigger] TaskOrchestrationContext` and return `Task` or `Task<T>`; other signatures fail during discovery. The root is still selected explicitly through `.Orchestrator(...)`. The SDK host cannot infer the type used by `context.GetInput<T>()` from a context-only signature: discovered handlers receive SDK-deserialized `object` input, then the adapter converts it to the requested type with the SDK worker's configured data converter. JSON inputs retain their raw JSON; custom converters must support this object-to-typed conversion. This remains SDK-host serialization, not Functions worker binding.
+For discovered orchestrations, public static/instance `[Function]` methods must accept only an `[OrchestrationTrigger] TaskOrchestrationContext` and return `Task` or `Task<T>`; other signatures fail during discovery. `.Orchestrator(...)` explicitly selects the root for a directly started test; a starter session can instead schedule a discovered root by name. The SDK host cannot infer the type used by `context.GetInput<T>()` from a context-only signature: discovered handlers receive SDK-deserialized `object` input, then the adapter converts it to the requested type with the SDK worker's configured data converter. JSON inputs retain their raw JSON; custom converters must support this object-to-typed conversion. This remains SDK-host serialization, not Functions worker binding.
 
 An instance child is resolved or constructed lazily in an application DI scope per orchestration instance. Its instance and scope remain alive across replay and `ContinueAsNew` until the test run is disposed; separate children get separate scopes. The tester disposes adapter-created instances and scopes, but registered singletons remain application-owned. Avoid mutable instance state or nondeterministic service calls: replay re-executes orchestration code. Timer and continuation warnings are retained.
 
 Discovered activities do not add implicit call-count expectations; `.Activity(..., configure: options => options.Times(...))` retains explicit verification when needed. Discovery adapts method bodies to SDK execution: it does **not** run Functions middleware, binding conversion, output bindings, worker delivery or runtime function discovery.
+
+### Test a starter function
+
+Use `StartHostAsync()` when the application starter, rather than the test builder, schedules the orchestration. It starts no orchestration itself. Pass `session.Client` explicitly to the function, and observe an instance ID known to the test:
+
+```csharp
+using var functions = FunctionTester.Create<WorkflowActivities>();
+await using var session = await functions.DurableTask().WithSelfDiscovery().StartHostAsync();
+var message = functions.CreateServiceBusMessageFromValue(new BatchRequest("batch-7", [new("A", 10m)]));
+var actions = functions.CreateWorkerServiceBusMessageActions();
+
+(await functions.ServiceBusTrigger<BatchStarter>()
+    .RunAsync(starter => starter.StartBatch(message, actions, session.Client))).AssertSuccess();
+actions.AssertComplete();
+
+await using var run = session.Observe<BatchResult>("batch-7");
+await run.WaitForCompletionAsync(TimeSpan.FromSeconds(10),
+    result => result.AssertOutput(new BatchResult("BATCH-7", 20m, [new("A", 20m)])));
+```
+
+The [starter tests](../tests/UnitTestEx.Azure.Functions.Durable.Test/DurableStarterTest.cs) use the [sample starter](../tests/UnitTestEx.Azure.Functions.Durable.Test/BatchStarter.cs), which chooses the instance ID from the request. If the application generates an ID, obtain it from the starter's response or another application-provided mechanism; observation does not infer it. `Observe<T>()` neither schedules nor owns the host. Dispose the observed run, then its session, then the `FunctionTester`; disposing a run does not stop its session. Use `.ConfigureRegistry(...)` before `StartHostAsync()` to register SDK handlers that override discoveries. SDK registry handlers do not add fluent activity-count expectations.
+
+The same starter can instead receive a mock `DurableTaskClient` to verify its scheduling arguments without executing the workflow. Both approaches call the function method directly: neither performs Service Bus delivery nor the Functions `[DurableClient]` binding. The session's client is the SDK test-host client, not the production Functions-bound client.
 
 ## Timers and virtual time
 
@@ -280,7 +303,7 @@ This is local-emulator integration, not deployed Azure authentication, scale, re
 | Durable Functions type or capability | Test API and behavior | Limitations |
 |---|---|---|
 | **Activity functions - direct invocation** | `FunctionTester.Trigger<T>()` invokes static/instance activity methods with sync/async returns, typed inputs, application DI, supplied `FunctionContext`, captured logs and original exceptions. See [`DurableActivityTest`](../tests/UnitTestEx.NUnit.Test/DurableActivityTest.cs). | No Functions worker, binding conversion, runtime delivery or Durable activity-failure translation. |
-| **Function-based orchestration methods - SDK host** | Register the root explicitly and optionally discover context-only child methods with `WithSelfDiscovery()`. Explicit child registrations override discovery; per-child instance scopes remain alive across replay. | No Azure Functions worker/runtime, trigger pipeline or extension input converters. Discovery is opt-in and limited to selected assemblies; typed context input uses the SDK converter. |
+| **Function-based orchestration methods - SDK host** | Explicit root registration or opt-in discovery of context-only root/child methods. Explicit registrations override discovery; per-instance scopes remain alive across replay. | No Azure Functions worker/runtime, trigger pipeline or extension input converters. Discovery is opt-in and limited to selected assemblies; typed context input uses the SDK converter. |
 | **SDK class-based `TaskOrchestrator<TIn,TOut>` - SDK host** | `.Orchestrator(name, instance)` and `.SubOrchestrator(name, instance)` retain typed input/output, managed diagnostics and nested failures. SDK type/factory registration remains available through the low-level registry. See [`ClassBasedOrchestrationTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/ClassBasedOrchestrationTest.cs). | Caller owns the instance and dependencies; no automatic discovery or Functions class-based worker integration. |
 | **Activity calls from an orchestration - SDK host** | Explicit delegates invoke real activities or supply mocks. Opt-in `WithSelfDiscovery()` / `WithSelfDiscovery<T>()` registers selected-assembly worker activities with per-invocation application scopes and context; explicit handlers override discoveries. SDK retry policies apply to failed attempts. | No Functions worker, middleware or binding conversion. Explicit delegates own their contexts/scopes; discovered handlers own invocation scopes. Discovered activities have no implicit count expectations. Retry delays use wall-clock time. |
 | **Sub-orchestrations - SDK host** | `SubOrchestrator(...)` registers real or substitute child delegates; opt-in self-discovery runs supported child methods. SDK success/failure, retry and nested-failure handling applies. | Parent termination does not cancel child work. The virtual-time context rejects child calls. |
@@ -296,7 +319,7 @@ This is local-emulator integration, not deployed Azure authentication, scale, re
 | **`ContinueAsNew` - SDK host** | New generations with serialized input and discard semantics. Completion uses final-generation output/metadata; activity counts span generations. | Buffered-event preservation is unsupported by the pinned host and requests emit a warning. Return immediately after the call. No continuation/history-reset model in the virtual context or host virtual clock. |
 | **Custom retry handlers - SDK host** | Synchronous/asynchronous SDK handlers for activity and child calls, using failure details, attempt numbers and durable waits. | Handler code must be deterministic. Nested child failure details require explicit traversal; timer waits remain wall-clock. |
 | **Entities and durable HTTP** | Outside the Durable tester's higher-level supported surface; use Functions-runtime integration for extension behavior. | No built-in SDK-host entity-testing/HTTP implementation or method-level context support. |
-| **Client/start/status operations - SDK host** | `StartAsync`, bounded start/completion/custom-status waits, typed events, output/failure assertions and an SDK-client escape hatch are implemented. [`FluentDurableTaskTest`](../tests/UnitTestEx.Azure.Functions.Durable.Test/FluentDurableTaskTest.cs) checks managed completion/timeout diagnostics. | Not Functions starter triggers, production `DurableTaskClient` behavior or HTTP status endpoints. A completion timeout is not orchestration failure or termination. |
+| **Client/start/status operations - SDK host** | `StartAsync` schedules a root directly; `StartHostAsync` exposes an SDK client to a directly invoked starter and `Observe<T>` wraps its known instance ID. Bounded waits, typed events, output/failure assertions and SDK-client access are available. | Not worker trigger delivery/binding, production `DurableTaskClient` behavior or HTTP status endpoints. A completion timeout is not orchestration failure or termination. |
 | **Host lifecycle - SDK host** | Dispose the host/run with `await using`; terminate instances through the SDK client. | Not worker shutdown or Azure cleanup. Disposal does not wait for or cancel blocked delegates. |
 | **Functions worker, bindings and backend integration** | Separate [Core Tools/Azurite scenarios](#real-functions-workerbackend-integration) for real batch activities/child, failure recovery, approval-event delivery and continuation with buffered-event preservation/discard. | Requires Core Tools and a container runtime. Local emulator integration does not cover deployed Azure authentication, scale or reliability. |
 

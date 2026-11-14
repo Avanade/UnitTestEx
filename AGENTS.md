@@ -26,6 +26,8 @@ Keep test proof boundaries honest: invocation is not Functions runtime integrati
 
 Durable SDK-host self-discovery is opt-in and limited to selected assemblies; explicit root, activity and child registrations take precedence. Discovered instance activities own invocation scopes, while child orchestration scopes survive replay until run disposal. Real discovered activities can have side effects; preserve the explicit, discovery-with-override and discovered-child showcase variants.
 
+Starter sessions own their SDK host and discovery scopes; observed runs borrow the session and must not dispose its host. The SDK client is passed to the directly invoked starter, not supplied by Functions binding or Service Bus delivery.
+
 ## Build and focused validation
 
 The full solution requires the .NET 11 SDK. Libraries target .NET 8/9/10/11; repository AppHosts target .NET 10 and Aspire/Durable integration test suites target .NET 10/11. Do not reduce published target frameworks to work around missing local prerequisites.

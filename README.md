@@ -117,7 +117,7 @@ processItems.Verify();
 
 Fan-in retains A/B/C input order despite C/B/A handler completion. The activity delay is real time, not a virtual-clock advance. See the [complete showcase](./tests/UnitTestEx.Azure.Functions.Durable.Test/DurableTaskShowcaseTest.cs) for completion-order assertions and activity-count verification, or use the [real-worker integration tier](./docs/azure-durable-functions.md#real-functions-workerbackend-integration) to exercise the worker, extension and backend.
 
-For less registration, opt into `WithSelfDiscovery()` before `.Orchestrator(...)` to discover supported activities and child orchestrations in the marker's assembly. Explicit registrations override discovery; the root remains explicit. The showcase also runs the real discovered `FinalizeBatch` and its journal activities while still mocking item processing. Discovery can execute real activity side effects and does not start the Functions worker.
+For less registration, opt into `WithSelfDiscovery()` to discover supported activities and orchestrations in the marker's assembly. Explicit registrations override discovery. A direct run selects its root with `.Orchestrator(...)`; `StartHostAsync()` instead exposes an SDK client to a starter function, which can schedule a discovered root. See the [starter example](./docs/azure-durable-functions.md#test-a-starter-function). Discovery can execute real activity side effects and does not start the Functions worker.
 
 **Generic**: any service, with expectations declared up front.
 
@@ -205,7 +205,7 @@ The [Durable guide](./docs/azure-durable-functions.md) shows `FunctionTester.Dur
 Construct | Test path | Behavior | Limitations
 -|-|-|-
 Activity functions | Existing `FunctionTester.Trigger<T>()` | Real static/instance method invocation, DI, logs and original exceptions | No Functions trigger binding, runtime delivery or Durable failure translation.
-Static/instance `[Function]` orchestration methods | In-memory SDK host | Explicit root delegates and opt-in discovery of supported child methods execute real bodies with SDK serialization, replay and failure details | Root selection is explicit; no Functions worker or extension input conversion.
+Static/instance `[Function]` orchestration methods | In-memory SDK host | Explicit delegates or opt-in discovery of supported root/child methods execute real bodies with SDK serialization, replay and failure details | No Functions worker or extension input conversion.
 Typed SDK `TaskOrchestrator<TIn,TOut>` | Fluent SDK host or low-level registry | Explicit root/child instance registration with typed input/output, managed diagnostics and nested failures | Caller owns instances and dependencies; no automatic discovery or Functions class-based worker integration.
 Activity calls and fan-out/fan-in | SDK host and `ActivityMock` | Explicit or opt-in discovered activities, controlled responses, input-order fan-in and opt-in invocation verification | Mocked activity bodies are not tested; discovered real activities can have side effects; handler completion is not engine result-processing order.
 Sub-orchestrations | SDK host | Explicit delegates or opt-in discovery of supported Function child methods; selected success, failure and retry scenarios | Not general cancellation propagation or Functions child delivery.
@@ -213,7 +213,7 @@ Durable timers | SDK host or method-level virtual context | Host timers use real
 External events/custom status | SDK host | Selected buffered-event, event-before-timeout and in-flight status scenarios | No Functions delivery/serializer parity or established same-deadline arbitration.
 Replay | SDK host | SDK history replay and detection of divergent durable calls | Not a universal detector of invalid awaits or arbitrary I/O; virtual context never replays.
 Entities | Outside the Durable tester's supported surface | Existing generic trigger invocation remains unchanged | No entity execution/state API through the host facade.
-Client/start/status operations | SDK host/client | Schedule, bounded waits, typed events, metadata and output assertions | Not production `DurableTaskClient`, Functions starter triggers or HTTP status endpoints.
+Client/start/status operations | SDK host/client | Schedule directly or invoke a starter with the SDK-host client; bounded waits, typed events, metadata and output assertions | Not production `DurableTaskClient`, worker trigger delivery/binding or HTTP status endpoints.
 `ContinueAsNew` | SDK host | New generations with serialized input; final output and activity counts across generations | Buffered-event preservation is unsupported by the pinned host ([upstream issue](https://github.com/microsoft/durabletask-dotnet/issues/844)); no method-level virtual-context support or host virtual clock.
 Custom retry handlers | SDK host | SDK synchronous/asynchronous handlers for activities and children, including failure details and attempt limits | Handler code must be deterministic; timer waits remain wall-clock.
 Durable HTTP | Outside the Durable tester's supported surface | Use a Functions runtime integration for extension-specific HTTP behavior | No built-in SDK-host HTTP implementation or method-level context support.

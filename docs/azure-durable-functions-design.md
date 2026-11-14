@@ -116,10 +116,10 @@ This integration is separate from the container-free SDK-host/context suite and 
 
 The Durable tester does not provide a general scripted orchestration engine, deterministic pump or self-replay fake. Engine scheduling, history, continuation and retries remain Microsoft's responsibility. The method-level virtual context intentionally excludes these engine behaviors.
 
-Automatic function/class discovery, a higher-level entity-testing API and built-in SDK-host durable HTTP are outside the supported surface. Typed root/child registration is explicit and caller-owned; SDK type/factory registration remains accessible through the registry callback.
+Opt-in assembly discovery adapts supported Function activity and context-only orchestration methods; automatic SDK `TaskOrchestrator` class discovery, a higher-level entity-testing API and built-in SDK-host durable HTTP are outside the supported surface. Typed root/child registration is explicit and caller-owned; SDK type/factory registration remains accessible through the registry callback.
 
 Durable HTTP and entity execution belong to a Functions-runtime integration when extension behavior or state/locking semantics matter. A substituted activity response only tests the orchestration's branch against that response; it does not reproduce the extension's HTTP machinery or entity dispatcher.
 
-The in-memory host does not execute Functions middleware, binding converters, starter triggers or production HTTP status endpoints. Use the real Functions integration path for worker/backend interactions. Deployed Azure configuration, authentication and reliability require a separate deployment-level test.
+The in-memory host does not execute Functions middleware, binding converters, starter trigger delivery or production HTTP status endpoints. A starter method may be invoked directly with the SDK-host client via a discovery-configured session; this is not worker binding. Use the real Functions integration path for worker/backend interactions. Deployed Azure configuration, authentication and reliability require a separate deployment-level test.
 
 Preserve existing generic `Trigger<T>()` behavior, including caller-supplied orchestration mocks. Adding the optional Durable package does not change direct trigger invocation.
