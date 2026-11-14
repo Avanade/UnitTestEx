@@ -1,9 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0;net10.0;net11.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
-    <LangVersion>preview</LangVersion>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -47,6 +47,7 @@
     <ProjectReference Include="..\..\src\UnitTestEx.NUnit\UnitTestEx.NUnit.csproj" />
     <ProjectReference Include="..\..\src\UnitTestEx\UnitTestEx.csproj" />
     <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" />
+    <ProjectReference Include="..\UnitTestEx.DurableFunction\UnitTestEx.DurableFunction.csproj" />
     <ProjectReference Include="..\UnitTestEx.IsolatedFunction\UnitTestEx.IsolatedFunction.csproj" />
   </ItemGroup>
 

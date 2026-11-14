@@ -1,14 +1,36 @@
 name: CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      durable-integration:
+        description: Run real Functions worker/Azurite Durable integration (PRs always run it)
+        type: boolean
+        default: false
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  build:
+  core:
+    name: Core (${{ matrix.framework }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - framework: net8.0
+          sdk: 8.0.x
+        - framework: net9.0
+          sdk: 9.0.x
+        - framework: net10.0
+          sdk: 10.0.x
+        - framework: net11.0
+          sdk: 11.0.x
+    env:
+      TARGET_FRAMEWORK: ${{ matrix.framework }}
+      TARGET_FRAMEWORKS: ${{ matrix.framework }}
 
     steps:
     - uses: actions/checkout@v7
@@ -16,52 +38,198 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: |
-          8.0.x
-          9.0.x
-          10.0.x
+        dotnet-version: ${{ matrix.sdk }}
 
     - name: Setup Azure Functions Core Tools
       run: npm install --global azure-functions-core-tools@4 --unsafe-perm true
 
-    - name: Restore dependencies
-      run: dotnet restore
+    # Preserve all-framework library builds even where integration tests target fewer frameworks.
+    - name: Build Aspire library
+      if: ${{ !cancelled() }}
+      run: >-
+        dotnet build src/UnitTestEx.Aspire/UnitTestEx.Aspire.csproj
+        --framework "$TARGET_FRAMEWORK" --configuration Debug
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
+        --verbosity normal
 
-    - name: Build
-      run: dotnet build --no-restore
+    - name: Build Durable library
+      if: ${{ !cancelled() }}
+      run: >-
+        dotnet build src/UnitTestEx.Azure.Functions.Durable/UnitTestEx.Azure.Functions.Durable.csproj
+        --framework "$TARGET_FRAMEWORK" --configuration Debug
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
+        --verbosity normal
 
-    - name: MSTest (net8.0, net9.0, net10.0)
-      run: |
-        for framework in net8.0 net9.0 net10.0; do
-          dotnet test tests/UnitTestEx.MSTest.Test/UnitTestEx.MSTest.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
-        done
+    - name: MSTest
+      if: ${{ !cancelled() }}
+      run: >-
+        dotnet test tests/UnitTestEx.MSTest.Test/UnitTestEx.MSTest.Test.csproj
+        --framework "$TARGET_FRAMEWORK" --configuration Debug
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/mstest" --verbosity normal
 
-    - name: NUnit (net8.0, net9.0, net10.0)
-      run: |
-        for framework in net8.0 net9.0 net10.0; do
-          dotnet test tests/UnitTestEx.NUnit.Test/UnitTestEx.NUnit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
-        done
+    - name: NUnit
+      if: ${{ !cancelled() }}
+      run: >-
+        dotnet test tests/UnitTestEx.NUnit.Test/UnitTestEx.NUnit.Test.csproj
+        --framework "$TARGET_FRAMEWORK" --configuration Debug
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/nunit" --verbosity normal
 
-    - name: xUnit (net8.0, net9.0, net10.0)
-      run: |
-        for framework in net8.0 net9.0 net10.0; do
-          dotnet test tests/UnitTestEx.Xunit.Test/UnitTestEx.Xunit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
-        done
+    - name: xUnit
+      if: ${{ !cancelled() }}
+      run: >-
+        dotnet test tests/UnitTestEx.Xunit.Test/UnitTestEx.Xunit.Test.csproj
+        --framework "$TARGET_FRAMEWORK" --configuration Debug
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/xunit" --verbosity normal
 
-    - name: Aspire MSTest (net8.0, net9.0, net10.0)
-      run: |
-        for framework in net8.0 net9.0 net10.0; do
-          dotnet test tests/UnitTestEx.Aspire.MSTest.Test/UnitTestEx.Aspire.MSTest.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
-        done
+    - name: Upload test results
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: core-${{ matrix.framework }}-test-results
+        path: ${{ runner.temp }}/test-results
+        if-no-files-found: warn
 
-    - name: Aspire NUnit (net8.0, net9.0, net10.0)
-      run: |
-        for framework in net8.0 net9.0 net10.0; do
-          dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
-        done
+  aspire:
+    name: Aspire (${{ matrix.framework }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - framework: net10.0
+          sdk: 10.0.x
+          target-frameworks: net10.0
+        - framework: net11.0
+          sdk: |
+            10.0.x
+            11.0.x
+          # Keep net10 available for libraries referenced by the fixed-net10 AppHosts.
+          # The commands pass literal quotes to MSBuild to preserve framework-list separators.
+          target-frameworks: 'net10.0;net11.0'
+    env:
+      TARGET_FRAMEWORK: ${{ matrix.framework }}
+      TARGET_FRAMEWORKS: ${{ matrix.target-frameworks }}
 
-    - name: Aspire xUnit (net8.0, net9.0, net10.0)
-      run: |
-        for framework in net8.0 net9.0 net10.0; do
-          dotnet test tests/UnitTestEx.Aspire.Xunit.Test/UnitTestEx.Aspire.Xunit.Test.csproj --framework "$framework" --configuration Debug --no-build --no-restore --verbosity normal
-        done
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: ${{ matrix.sdk }}
+
+    - name: Setup Azure Functions Core Tools
+      run: npm install --global azure-functions-core-tools@4 --unsafe-perm true
+
+    - name: Aspire MSTest
+      if: ${{ !cancelled() }}
+      run: >-
+        dotnet test tests/UnitTestEx.Aspire.MSTest.Test/UnitTestEx.Aspire.MSTest.Test.csproj
+        --framework "$TARGET_FRAMEWORK" --configuration Debug
+        -p:TargetFrameworks="\"$TARGET_FRAMEWORKS\"" -p:GeneratePackageOnBuild=false
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/mstest" --verbosity normal
+
+    - name: Aspire NUnit
+      if: ${{ !cancelled() }}
+      run: >-
+        dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj
+        --framework "$TARGET_FRAMEWORK" --configuration Debug
+        -p:TargetFrameworks="\"$TARGET_FRAMEWORKS\"" -p:GeneratePackageOnBuild=false
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/nunit" --verbosity normal
+
+    - name: Aspire xUnit
+      if: ${{ !cancelled() }}
+      run: >-
+        dotnet test tests/UnitTestEx.Aspire.Xunit.Test/UnitTestEx.Aspire.Xunit.Test.csproj
+        --framework "$TARGET_FRAMEWORK" --configuration Debug
+        -p:TargetFrameworks="\"$TARGET_FRAMEWORKS\"" -p:GeneratePackageOnBuild=false
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/xunit" --verbosity normal
+
+    - name: Upload test results
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: aspire-${{ matrix.framework }}-test-results
+        path: ${{ runner.temp }}/test-results
+        if-no-files-found: warn
+
+  durable:
+    name: Durable (${{ matrix.framework }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - framework: net10.0
+          sdk: 10.0.x
+        - framework: net11.0
+          sdk: 11.0.x
+    env:
+      TARGET_FRAMEWORK: ${{ matrix.framework }}
+      TARGET_FRAMEWORKS: ${{ matrix.framework }}
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: ${{ matrix.sdk }}
+
+    - name: Durable NUnit
+      run: >-
+        dotnet test tests/UnitTestEx.Azure.Functions.Durable.Test/UnitTestEx.Azure.Functions.Durable.Test.csproj
+        --framework "$TARGET_FRAMEWORK" --configuration Debug
+        -p:TargetFrameworks="$TARGET_FRAMEWORKS" -p:GeneratePackageOnBuild=false
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/durable" --verbosity normal
+
+    - name: Upload test results
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: durable-${{ matrix.framework }}-test-results
+        path: ${{ runner.temp }}/test-results
+        if-no-files-found: warn
+
+  durable-integration:
+    name: Durable Functions integration (net10.0)
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.durable-integration) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Setup Azure Functions Core Tools
+      run: npm install --global azure-functions-core-tools@4 --unsafe-perm true
+
+    - name: Real Durable Functions integration
+      run: >-
+        dotnet test tests/UnitTestEx.Azure.Functions.Durable.Integration.Test/UnitTestEx.Azure.Functions.Durable.Integration.Test.csproj
+        --framework net10.0 --configuration Debug
+        -p:TargetFrameworks=net10.0 -p:GeneratePackageOnBuild=false
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/durable-integration" --verbosity normal
+
+    - name: Upload integration results
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: durable-integration-net10.0-test-results
+        path: ${{ runner.temp }}/test-results
+        if-no-files-found: warn

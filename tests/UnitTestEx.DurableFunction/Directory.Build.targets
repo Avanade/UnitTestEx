@@ -1,0 +1,8 @@
+<Project>
+  <!-- Remove this SDK-internal workaround when the upstream dependency is patched or the SDK offers a supported override. -->
+  <Target Name="_AddPatchedWebUtilitiesToFunctionsExtensions" BeforeTargets="WriteExtensionProject" Condition="'$(MSBuildProjectName)' == 'UnitTestEx.DurableFunction'">
+    <ItemGroup>
+      <_AzureFunctionPackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.3.14" TargetFramework="%(_AzureFunctionsTargetFramework.Identity)" />
+    </ItemGroup>
+  </Target>
+</Project>

@@ -7,10 +7,14 @@ The single-host testers (`ApiTester`, `FunctionTester`, `GenericTester`, etc.) h
 
 Sometimes, though, you genuinely need to prove that two or more **real**, separately-hosted services interact correctly over the network (inter-domain testing) - for example a [.NET Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) distributed application where a "shopping" API calls a "products" API. For this, the [`UnitTestEx.Aspire`](../src/UnitTestEx.Aspire) package provides `AspireTester`, which spins up the **entire AppHost** - every project, container and executable resource it declares - as separate, real OS processes wired together with Aspire's actual service discovery, exactly as they'd run in production. This is deliberately a second, opt-in tier rather than an extension of the first: pick the tier per test based on what you're actually trying to prove, don't force a hybrid.
 
+The repository's fixed AppHosts and integration-test resources target .NET 10. Its Aspire test suites target .NET 10 and 11 because the test project must target the same or a newer framework than the referenced AppHost assembly. The libraries target .NET 8/9/10/11.
+
 This isn't a UnitTestEx-specific compromise - it matches Aspire's own guidance verbatim:
 
 > "If your goal is to test a single project in isolation, run components in-memory, or mock external dependencies, consider using `WebApplicationFactory<T>` instead."
 > — [aspire.dev/testing/overview](https://aspire.dev/testing/overview/)
+
+For Durable workflows, the separate [real Functions worker/Azurite integration suite](./azure-durable-functions.md#real-functions-workerbackend-integration) hosts the unchanged sample on .NET 10. It includes batch, recovery, approval-event delivery and buffered-event preservation/discard across continuation, and is separate from the in-memory SDK-host suite. PR CI runs it automatically.
 
 ``` csharp
 await using var tester = AspireTester.Create<Projects.MyAppHost>();
@@ -162,6 +166,8 @@ This is **enabled by default** at `LogLevel.Error` for every `AspireTester` - th
 
 _Important:_ `include`/`exclude` only ever **narrow what counts as a violation** of the streaming check above - they are not a "was this text logged" positive assertion, and there is no aggregate, end-of-test tally of `include` patterns. If an `include` pattern never matches anything, the test simply never fails because of it; nothing confirms it was actually hit. For that - "assert this text *was* (or was *not*) logged, by any resource, at any point" - use `AssertLogContains`/`AssertLogNotContains` instead (below).
 
+`Http` waits for asynchronously forwarded logs even when the resource's first log buffer has not yet been created. `ResourceLogGracePeriod` bounds the initial wait, `ResourceLogQuietPeriod` detects a settled burst and `ResourceLogMaxWait` caps the total wait. A forced flush retains the most recent header's severity/category for delayed message lines; an entry split across flushes can appear as separate fragments without losing its error level. `ResetLogs()` discards buffered entries and unfinished header metadata without changing error-check configuration.
+
 ### Asserting expected resource log content
 
 Unlike `ErrorWhenLogContains` above (a continuous check applied only as entries are subsequently *drained*), `AssertLogContains`/`AssertLogNotContains` are immediate, one-shot checks against **every** resource log entry captured for the lifetime of the test so far - drained or not, across every resource by default (or scoped to one via the optional `resourceName`):
@@ -253,7 +259,7 @@ Timeout and caller cancellation bound the wait even when the asynchronous operat
 
 The Event Grid builder lives in `UnitTestEx.Azure.Functions`; the webhook sender and generic polling helper are separate. UnitTestEx.Aspire does not manage Azurite, upload blobs, or add Azure Storage SDK dependencies. Configure the emulator/resource in the AppHost, then use the application's storage client to arrange and assert storage state.
 
-The isolated AppHost for this proof starts Azurite and Azure Functions Core Tools without changing the existing container-free Aspire test host. Core Tools is restricted to `BlobTrigger` so unrelated Service Bus and Event Hubs triggers do not require broker connections. Run it with `dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --framework net8.0 --filter FullyQualifiedName~AzuriteBlobTriggerTest`; Podman and Azure Functions Core Tools v4 must be installed and available on `PATH`, and ports `7071` and `10000`-`10002` must be free.
+The isolated AppHost for this proof starts Azurite and Azure Functions Core Tools without changing the existing container-free Aspire test host. Core Tools is restricted to `BlobTrigger` so unrelated Service Bus and Event Hubs triggers do not require broker connections. Run it with `dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --framework net10.0 --filter FullyQualifiedName~AzuriteBlobTriggerTest`; Podman and Azure Functions Core Tools v4 must be installed and available on `PATH`, and ports `7071` and `10000`-`10002` must be free.
 
 ### Service Bus emulator integration
 
@@ -261,7 +267,7 @@ The [Service Bus emulator test](../tests/UnitTestEx.Aspire.NUnit.Test/Functions/
 
 The AppHost also starts the emulator's SQL Edge dependency and Azurite for Functions host storage, and mounts the emulator's entity configuration. The containers require a working Aspire-compatible container runtime (Podman locally; the GitHub-hosted CI runner provides Docker), and the first run downloads their images. Microsoft's emulator prerequisites list at least 2 GB RAM and 5 GB disk. The AppHost sets the emulator and SQL `ACCEPT_EULA` values because the repository's tests are accepting those terms for this test-only use. The emulator is for development/testing, not production, and is not a substitute for Azure smoke tests.
 
-The resources are declared directly in the dedicated Aspire AppHost rather than maintained in a second `compose.yml`; the same integration test starts them locally and in CI. Run only this test with `dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --framework net8.0 --filter FullyQualifiedName~ServiceBusEmulatorTest`. Ports `5672`, `5300`, `7072` and `10000`-`10002` must be free. Run these emulator fixtures and target frameworks sequentially because they use fixed ports.
+The resources are declared directly in the dedicated Aspire AppHost rather than maintained in a second `compose.yml`; the same integration test starts them locally and in CI. Run only this test with `dotnet test tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj --framework net10.0 --filter FullyQualifiedName~ServiceBusEmulatorTest`. Ports `5672`, `5300`, `7072` and `10000`-`10002` must be free. Run these emulator fixtures and target frameworks sequentially on a shared execution host because they use fixed ports; CI framework jobs can run in parallel because each has its own isolated runner.
 
 ### Automatic failure diagnostics
 

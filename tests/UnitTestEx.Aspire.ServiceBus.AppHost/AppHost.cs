@@ -29,7 +29,7 @@ var serviceBus = builder.AddContainer("servicebus-emulator", "mcr.microsoft.com/
 
 var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent?.Name
     ?? throw new InvalidOperationException("Could not determine the AppHost build configuration.");
-var functionDirectory = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "UnitTestEx.Aspire.ServiceBus.Function", "bin", configuration, "net8.0"));
+var functionDirectory = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "UnitTestEx.Aspire.ServiceBus.Function", "bin", configuration, "net10.0"));
 var functions = OperatingSystem.IsWindows()
     ? builder.AddExecutable("servicebus-functions", "cmd.exe", functionDirectory, "/c", "func", "start", "--dotnet-isolated", "--no-build", "--verbose", "--port", "7072")
     : builder.AddExecutable("servicebus-functions", "func", functionDirectory, "start", "--dotnet-isolated", "--no-build", "--verbose", "--port", "7072");

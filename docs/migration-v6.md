@@ -10,7 +10,7 @@ v6 is a **breaking** release. It drops end-of-life platforms and the Azure Funct
 
 v5 | v6
 -|-
-`net6.0`, `net7.0`, `net8.0`, `net9.0`, `net10.0` | `net8.0`, `net9.0`, `net10.0` only
+`net6.0`, `net7.0`, `net8.0`, `net9.0`, `net10.0` | `net8.0`, `net9.0`, `net10.0`, `net11.0` (from v6.2)
 
 net6.0 and net7.0 are out of support, and their target-specific code paths have been removed.
 

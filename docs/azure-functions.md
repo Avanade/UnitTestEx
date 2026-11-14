@@ -1,6 +1,8 @@
 # Azure Functions testing
 
-`FunctionTester` (package `UnitTestEx.Azure.Functions`) tests Azure Functions written for the **v4 isolated worker model** on .NET 8, 9 and 10. The in-process (WebJobs) model is not supported from v6 onwards; see [Migrating to v6](./migration-v6.md).
+`FunctionTester` (package `UnitTestEx.Azure.Functions`) tests Azure Functions written for the **v4 isolated worker model** on .NET 8, 9, 10 and (from v6.2) 11. The in-process (WebJobs) model is not supported from v6 onwards; see [Migrating to v6](./migration-v6.md).
+
+.NET 11 function apps require `Azure.Functions.Sdk` 1.0.1 or later as the project SDK, replacing `Microsoft.NET.Sdk` and the `Microsoft.Azure.Functions.Worker.Sdk` package reference. Keep an explicit `Microsoft.Azure.Functions.Worker` reference. The multi-targeted samples use `Azure.Functions.Sdk/1.0.2`; existing apps on older frameworks do not need to migrate just to use UnitTestEx. See [Microsoft's migration guidance](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide#migrate-to-azurefunctionssdk).
 
 [← Back to README](../README.md)
 
@@ -55,6 +57,37 @@ Method | Use for | Trigger validation
 All four support synchronous and asynchronous methods, instance and `static` methods, expectations (`Expect*`), log capture, and the standard assertors.
 
 Scopes created by `HttpTrigger`, `ServiceBusTrigger`, and `Trigger` belong to the owning `FunctionTester`. They remain usable for subsequent invocations, response reading and assertions until that tester is reset or disposed. Reset/disposal releases these scopes before the host, including async-only scoped dependencies; individual trigger testers do not need to be disposed. Do not retain a trigger tester across an owner reset. Cleanup attempts all scopes and the host and reports disposal failures rather than silently ignoring them.
+
+<br/>
+
+## Durable activity invocation
+
+`Trigger<TFunction>()` can invoke real `[ActivityTrigger]` methods using the existing Functions package. The [Durable sample](../tests/UnitTestEx.DurableFunction/Program.cs) uses normal application startup; [its activity tests](../tests/UnitTestEx.NUnit.Test/DurableActivityTest.cs) cover synchronous value/void, `Task`/`Task<T>`, DTO/collection inputs, DI, logging, and exceptions.
+
+```csharp
+using var test = FunctionTester.Create<WorkflowActivities>();
+test.Trigger<WorkflowActivities>()
+    .Run(_ => ActivityTransforms.NormalizeReference(" order-1 "))
+    .AssertSuccess()
+    .AssertValue("ORDER-1");
+
+var trigger = test.Trigger<WorkflowActivities>();
+var context = new TestFunctionContext(trigger.Services);
+trigger.ExpectLogContains("Processing item A.")
+    .Run(f => f.ProcessItem(new WorkItem("A", 3m), context))
+    .AssertSuccess()
+    .AssertValue(new ItemResult("A", 6m));
+```
+
+`ActivityTransforms` is a static class, so it cannot be a generic type argument. Use an ordinary application type as the marker and a static method call in the expression, as above; validation inspects the invoked method's trigger attribute. The sample types are in `UnitTestEx.DurableFunction`; `TestFunctionContext` is in `UnitTestEx.Azure.Functions`, and `ExpectLogContains` uses `UnitTestEx.Expectations`.
+
+Direct activity tests do not start the app host or connect to a Durable backend. Activity failures remain their original exceptions rather than Durable failure metadata. This is **activity-method testing**, not orchestration execution or a Functions binding pipeline. For orchestration scheduling, replay and failure handling, use the optional `UnitTestEx.Azure.Functions.Durable` preview package. For the real worker and Azure Storage provider, use the [separate Functions/Azurite integration suite](./azure-durable-functions.md#real-functions-workerbackend-integration). See the [Durable testing guide and showcase](./azure-durable-functions.md) and [support matrix](./azure-durable-functions.md#support-matrix).
+
+Run the baseline for each supported framework, for example:
+
+```powershell
+dotnet test tests\UnitTestEx.NUnit.Test\UnitTestEx.NUnit.Test.csproj --framework net8.0 --filter FullyQualifiedName~DurableActivityTest
+```
 
 <br/>
 
@@ -410,7 +443,7 @@ The complete [`AzuriteBlobTriggerTest`](../tests/UnitTestEx.Aspire.NUnit.Test/Fu
 From the repository root on Windows, with .NET SDKs for the repository's targets, an Aspire-compatible container runtime (Docker or Podman), and Azure Functions Core Tools v4 on `PATH`:
 
 ```powershell
-dotnet test tests\UnitTestEx.Aspire.NUnit.Test\UnitTestEx.Aspire.NUnit.Test.csproj --framework net8.0 --filter FullyQualifiedName~AzuriteBlobTriggerTest
+dotnet test tests\UnitTestEx.Aspire.NUnit.Test\UnitTestEx.Aspire.NUnit.Test.csproj --framework net10.0 --filter FullyQualifiedName~AzuriteBlobTriggerTest
 ```
 
 Keep ports `7071` and `10000`-`10002` free and run fixed-port emulator fixtures/frameworks sequentially. The AppHost starts and disposes its resources; the test does not require a separately running `func start`.

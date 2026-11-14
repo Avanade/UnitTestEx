@@ -6,7 +6,7 @@
 // AppHost is deliberately pinned to a single, fixed TFM (Aspire's AppHost SDK does not support a multi-targeted
 // AppHost project) - but that's fine: Aspire's whole premise is that the orchestrator/host doesn't need to
 // match the TFM of the resources (or callers) it manages. The UnitTestEx.Aspire.*.Test projects that actually
-// exercise UnitTestEx.Aspire's multi-targeted library code (net8.0/net9.0/net10.0) can all reference this one
+// exercise UnitTestEx.Aspire's multi-targeted library code (net10.0/net11.0) can all reference this one
 // fixed AppHost, since a higher-TFM project can reference a lower-TFM one.
 //
 // Aspire's DCP orchestrator cannot disambiguate a multi-targeted project resource on its own (see
@@ -14,7 +14,7 @@
 //
 // Endpoints are declared explicitly (launchProfileName: null + WithHttpsEndpoint) rather than relying on
 // AddProject's implicit launchSettings.json-derived endpoint detection: that detection proved unreliable for a
-// multi-targeted referenced project (UnitTestEx.Api targets net8.0/9.0/10.0) - it worked locally but failed on
+// multi-targeted referenced project (UnitTestEx.Api targets net8.0/9.0/10.0/11.0) - it worked locally but failed on
 // Linux CI with "no endpoint was found matching one of the specified names: https, http". A single explicit
 // https endpoint avoids that ambiguity entirely (UnitTestEx.Api unconditionally redirects http to https anyway).
 //
@@ -66,7 +66,7 @@ var mockhost = builder.AddMockHostProject<Projects.UnitTestEx_Aspire_MockHost>("
 
 builder.AddProject<Projects.UnitTestEx_Api>("api", launchProfileName: null)
     .WithHttpsEndpoint(name: "https")
-    .WithArgs("--framework", "net8.0")
+    .WithArgs("--framework", "net10.0")
     .WithHttpHealthCheck("/Person?firstName=health&lastName=check", endpointName: "https")
     // "mockhost" only exists in run mode (see the note above); WithMockHostEnvironment no-ops when it's null
     // rather than requiring an inline "if" guard at this (or any future) optional-resource call site.
