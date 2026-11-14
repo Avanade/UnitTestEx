@@ -87,6 +87,49 @@ jobs:
         --logger "trx;LogFileName=results.trx"
         --results-directory "$RUNNER_TEMP/test-results/xunit" --verbosity normal
 
+    - name: xUnit v3 smoke tests
+      if: ${{ matrix.framework == 'net8.0' && !cancelled() }}
+      run: >-
+        dotnet test tests/UnitTestEx.Xunit3.Test/UnitTestEx.Xunit3.Test.csproj
+        --framework net8.0
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/xunit3" --verbosity normal
+
+    - name: NUnit 5 smoke tests
+      if: ${{ matrix.framework == 'net8.0' && !cancelled() }}
+      run: >-
+        dotnet test tests/UnitTestEx.NUnit5.Test/UnitTestEx.NUnit5.Test.csproj
+        --framework net8.0
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/nunit5" --verbosity normal
+
+    - name: MSTest 4 smoke tests
+      if: ${{ matrix.framework == 'net8.0' && !cancelled() }}
+      run: >-
+        dotnet test tests/UnitTestEx.MSTest4.Test/UnitTestEx.MSTest4.Test.csproj
+        --framework net8.0
+        --logger "trx;LogFileName=results.trx"
+        --results-directory "$RUNNER_TEMP/test-results/mstest4" --verbosity normal
+
+    - name: Framework fallback checks
+      if: ${{ matrix.framework == 'net8.0' && !cancelled() }}
+      run: >-
+        dotnet run --project tests/UnitTestEx.FrameworkFallback.Test/UnitTestEx.FrameworkFallback.Test.csproj
+        --framework net8.0 --configuration Debug
+
+    - name: Verify framework output capture
+      if: ${{ matrix.framework == 'net8.0' && !cancelled() }}
+      run: |
+        grep -q "UNITTESTEX_XUNIT3_OUTPUT" "$RUNNER_TEMP/test-results/xunit3/results.trx"
+        grep -q "UNITTESTEX_NUNIT5_OUTPUT" "$RUNNER_TEMP/test-results/nunit5/results.trx"
+        grep -q "UNITTESTEX_MSTEST4_OUTPUT" "$RUNNER_TEMP/test-results/mstest4/results.trx"
+        grep -q "UNITTESTEX_XUNIT3_LOG" "$RUNNER_TEMP/test-results/xunit3/results.trx"
+        grep -q "UNITTESTEX_NUNIT5_LOG" "$RUNNER_TEMP/test-results/nunit5/results.trx"
+        grep -q "UNITTESTEX_MSTEST4_LOG" "$RUNNER_TEMP/test-results/mstest4/results.trx"
+        grep -q "SECOND_LINE" "$RUNNER_TEMP/test-results/xunit3/results.trx"
+        grep -q "SECOND_LINE" "$RUNNER_TEMP/test-results/nunit5/results.trx"
+        grep -q "SECOND_LINE" "$RUNNER_TEMP/test-results/mstest4/results.trx"
+
     - name: Upload test results
       if: ${{ always() }}
       uses: actions/upload-artifact@v7

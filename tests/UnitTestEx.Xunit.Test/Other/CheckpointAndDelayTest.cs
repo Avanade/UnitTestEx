@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using Xunit;

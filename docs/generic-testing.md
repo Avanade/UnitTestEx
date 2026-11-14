@@ -11,7 +11,11 @@
 ``` csharp
 using var test = GenericTester.Create();               // Empty host; only test configuration and logging.
 using var test = GenericTester.Create<EntryPoint>();   // Host configured by an entry point class.
+using var testWithOutput = GenericTester.Create<EntryPoint>(output: output); // Captures UnitTestEx output in the current test.
 ```
+
+Pass a per-test output sink such as xUnit's `ITestOutputHelper`, an `Action<string>`, or a `TextWriter` when runner output capture is needed.
+Pass `createFactory` to `GenericTester.Create`, `CreateFor`, or a direct tester constructor to provide a per-instance `TestFrameworkImplementor`; an explicit factory takes precedence over automatic framework detection and is responsible for handling its own output.
 
 The entry point is any class that has **one or more** of the following methods. Each can be static or an instance method, and they're found by name using reflection, so no interface is needed:
 
@@ -57,15 +61,15 @@ Example: [`ScopedType_RunsWithinServiceScope`](../tests/UnitTestEx.NUnit.Test/Ot
 
 ## Base classes
 
-To reuse one tester across a whole fixture, inherit from the base class for your framework. It creates the tester once and exposes it as `Test`:
+To reuse one tester across a test class, inherit from a framework-neutral base class. It creates the tester once and exposes it as `Test`:
 
-Framework | API | Generic
--|-|-
-NUnit | `WithApiTester<TEntryPoint>` | `WithGenericTester<TEntryPoint>`
-MSTest | `WithApiTester<TEntryPoint>` | `WithGenericTester<TEntryPoint>`
-xUnit | `WithApiTester<TEntryPoint>` (with `ApiTestFixture<TEntryPoint>`) | `UnitTestBase` + `GenericTester.Create<TEntryPoint>()`
+Base class | Purpose
+-|-
+`WithApiTester<TEntryPoint>` | Reuses an API tester and can consume an optional `ApiTestFixture<TEntryPoint>`.
+`WithGenericTester<TEntryPoint>` | Reuses a generic tester.
+`UnitTestBase` | Provides per-test output/framework context when composing your own fixture.
 
-Example: [`Run_Success_AssertJSON`](../tests/UnitTestEx.NUnit.Test/Other/WithGenericTesterTest.cs).
+`UnitTestBase` lives in `UnitTestEx.Abstractions`. The tester-owning bases call `OnConfiguration()` once, immediately before the first `Test` access, so overrides can configure the tester after the derived fixture has finished construction. Override `OnDispose()` for additional cleanup; the bases still dispose their owned tester if the hook throws. NUnit and MSTest can use these bases without extra constructor arguments. For xUnit, pass `ITestOutputHelper` as `output` so UnitTestEx output is captured by the test runner. Example: [`Run_Success_AssertJSON`](../tests/UnitTestEx.NUnit.Test/Other/WithGenericTesterTest.cs).
 
 See also: [Dependency injection and configuration](./dependency-injection-and-configuration.md), [Assertions and expectations](./assertions-and-expectations.md).
 

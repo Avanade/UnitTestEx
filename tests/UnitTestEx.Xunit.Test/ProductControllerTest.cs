@@ -12,7 +12,7 @@ namespace UnitTestEx.Xunit.Test
 {
     public class ProductControllerTest : WithApiTester<Startup>, IClassFixture<ProductApiTestFixture<Startup>>
     {
-        public ProductControllerTest(ProductApiTestFixture<Startup> fixture, ITestOutputHelper output) : base(fixture, output) { }
+        public ProductControllerTest(ProductApiTestFixture<Startup> fixture, ITestOutputHelper output) : base(output: output, fixture: fixture) { }
 
         [Fact]
         public void Notfound()

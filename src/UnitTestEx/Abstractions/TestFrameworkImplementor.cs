@@ -2,6 +2,7 @@
 
 using Microsoft.Extensions.Logging;
 using System;
+using System.IO;
 using System.Threading;
 using UnitTestEx.Logging;
 
@@ -14,6 +15,7 @@ namespace UnitTestEx.Abstractions
     {
         private static Func<TestFrameworkImplementor>? _createFactory;
         private static readonly AsyncLocal<Func<TestFrameworkImplementor>?> _localCreateFactory = new();
+        private static readonly AsyncLocal<TestFrameworkImplementor?> _localImplementor = new();
 
         /// <summary>
         /// Gets a <see cref="NullTestImplementor"/> instance that does nothing.
@@ -55,24 +57,68 @@ namespace UnitTestEx.Abstractions
         public static void ResetLocalCreateFactory() => _localCreateFactory.Value = null;
 
         /// <summary>
-        /// Creates a new instance of the <see cref="TestFrameworkImplementor"/> (see <see cref="SetGlobalCreateFactory"/> or <see cref="SetLocalCreateFactory"/>).
+        /// Sets the current asynchronous execution context's <see cref="TestFrameworkImplementor"/>.
+        /// </summary>
+        /// <param name="implementor">The <see cref="TestFrameworkImplementor"/>.</param>
+        internal static void SetLocalImplementor(TestFrameworkImplementor implementor) => _localImplementor.Value = implementor ?? throw new ArgumentNullException(nameof(implementor));
+
+        /// <summary>
+        /// Resets the current asynchronous execution context's <see cref="TestFrameworkImplementor"/>.
+        /// </summary>
+        internal static void ResetLocalImplementor() => _localImplementor.Value = null;
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="TestFrameworkImplementor"/> (see <see cref="SetGlobalCreateFactory"/> or <see cref="SetLocalCreateFactory"/>), using <paramref name="output"/> when framework detection creates the implementor.
         /// </summary>
         /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
+        /// <param name="output">The optional framework output helper, <see cref="TextWriter"/>, or <see cref="Action{T}"/> accepting a string.</param>
         /// <returns>The new instance of the <see cref="TestFrameworkImplementor"/>.</returns>
-        public static TestFrameworkImplementor Create(Func<TestFrameworkImplementor>? createFactory = null)
+        public static TestFrameworkImplementor Create(Func<TestFrameworkImplementor>? createFactory = null, object? output = null)
         {
             TestSetUp.Force();
 
             if (createFactory is not null)
                 return createFactory() ?? throw new InvalidOperationException($"The {nameof(createFactory)} has returned null.");
 
+            if (_localImplementor.Value is not null)
+                return _localImplementor.Value;
+
             if (_localCreateFactory.Value is not null)
                 return _localCreateFactory.Value.Invoke() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetLocalCreateFactory)} has returned null.");
 
-            if (_createFactory is null)
-                throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetGlobalCreateFactory)} must be set as a minimum.");
+            if (_createFactory is not null)
+                return _createFactory() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetGlobalCreateFactory)} has returned null.");
 
-            return _createFactory?.Invoke() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetGlobalCreateFactory)} has returned null.");
+            return RuntimeTestFrameworkImplementor.Create(output);
+        }
+
+        /// <summary>
+        /// Creates the automatically selected framework implementor using an optional per-test output object or callback.
+        /// </summary>
+        /// <param name="output">An optional framework output helper, <see cref="TextWriter"/>, or <see cref="Action{T}"/> accepting a string.</param>
+        /// <returns>The framework implementor.</returns>
+        public static TestFrameworkImplementor CreateForCurrentFramework(object? output = null)
+        {
+            TestSetUp.Force();
+            return RuntimeTestFrameworkImplementor.Create(output);
+        }
+
+        /// <summary>
+        /// Gets the active implementor for the current asynchronous context, falling back to framework detection.
+        /// </summary>
+        /// <returns>The active implementor.</returns>
+        internal static TestFrameworkImplementor GetCurrentOrDefault()
+        {
+            if (_localImplementor.Value is not null)
+                return _localImplementor.Value;
+
+            if (_localCreateFactory.Value is not null)
+                return _localCreateFactory.Value() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetLocalCreateFactory)} has returned null.");
+
+            if (_createFactory is not null)
+                return _createFactory() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetGlobalCreateFactory)} has returned null.");
+
+            return RuntimeTestFrameworkImplementor.Create();
         }
 
         /// <summary>

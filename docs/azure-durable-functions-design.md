@@ -23,7 +23,7 @@ The package references the existing `UnitTestEx.Azure.Functions` package in one 
 
 The project pins Microsoft's `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1** and `Microsoft.DurableTask.Abstractions` **1.28.0**. The integration remains preview because the upstream host is preview; breaking changes may occur between releases.
 
-Package versioning sets `PackageVersion` to `$(Version)-preview` after importing `Common.targets`. Numeric assembly versions and UnitTestEx dependency references retain the regular shared version. All packages release as a coordinated set: base `6.2.0` produces Durable `6.2.0-preview`, and base `6.2.1` produces `6.2.1-preview`.
+Package versioning sets `PackageVersion` to `$(Version)-preview` after importing `Common.targets`. Numeric assembly versions and UnitTestEx dependency references retain the regular shared version. All packages release as a coordinated set: base `7.0.0` produces Durable `7.0.0-preview`, and base `7.0.1` produces `7.0.1-preview`.
 
 Libraries target .NET 8/9/10/11. Core suites target all four frameworks; Aspire and dedicated Durable suites target .NET 10/11. Fixed AppHosts/resources and the real Durable Functions integration project target .NET 10.
 

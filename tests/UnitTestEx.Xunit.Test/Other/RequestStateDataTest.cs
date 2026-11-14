@@ -1,4 +1,5 @@
 using System.Net.Http;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Api;
 using Xunit;
 using Xunit.Abstractions;

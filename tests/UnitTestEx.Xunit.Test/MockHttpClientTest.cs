@@ -7,6 +7,7 @@ using System.Net.Http.Json;
 using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Xunit.Test.Model;
 using Xunit;
 using Xunit.Abstractions;

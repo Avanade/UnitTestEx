@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using UnitTestEx.Abstractions;
 using UnitTestEx.IsolatedFunction;
 using UnitTestEx.Json;
 using Xunit;

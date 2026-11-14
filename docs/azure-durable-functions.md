@@ -2,14 +2,14 @@
 
 **Preview disclaimer:** This package is intentionally marked as preview because it depends on Microsoft's preview `Microsoft.DurableTask.InProcessTestHost` package. Neither the dependency nor this integration should be treated as a stable API contract: **breaking changes may occur at any time**, including between preview releases.
 
-The optional **`UnitTestEx.Azure.Functions.Durable`** preview package includes the in-memory SDK-host facade, activity mocks and the separate method-level virtual-time context. Its package version is `$(Version)-preview`, using the shared `Common.targets` version: currently **`6.2.0-preview`**. Use regular **`6.2.0`** versions of the other UnitTestEx packages, including your test-framework package. All packages release as a coordinated set; a shared version bump to `6.2.1` produces Durable `6.2.1-preview`, not an independently numbered preview.
+The optional **`UnitTestEx.Azure.Functions.Durable`** preview package includes the in-memory SDK-host facade, activity mocks and the separate method-level virtual-time context. Its package version is `$(Version)-preview`, using the shared `Common.targets` version: **`7.0.0-preview`**. Use regular **`7.0.0`** versions of the other UnitTestEx packages. Test-framework integration is provided by core `UnitTestEx`. All packages release as a coordinated set; a shared version bump to `7.0.1` produces Durable `7.0.1-preview`, not an independently numbered preview.
 
 **Clock limitation:** The SDK host has no supported virtual-clock control; orchestration timers and retry delays use wall-clock time. Our upstream request is tracked in [microsoft/durabletask-dotnet#843](https://github.com/microsoft/durabletask-dotnet/issues/843). The separate method-level virtual-time context does not change the SDK host's clock; see [timers and virtual time](#timers-and-virtual-time).
 
-Add the package alongside your chosen UnitTestEx test-framework integration:
+Add the package to your test project:
 
 ```xml
-<PackageReference Include="UnitTestEx.Azure.Functions.Durable" Version="6.2.0-preview" />
+<PackageReference Include="UnitTestEx.Azure.Functions.Durable" Version="7.0.0-preview" />
 ```
 
 The host API uses the `UnitTestEx.Azure.Functions.Durable.TestHost` namespace; this is not a separate package. `VirtualTimeOrchestrationContext` is in `UnitTestEx.Azure.Functions.Durable`. Libraries target **.NET 8/9/10/11**; the dedicated orchestration/context suite targets **.NET 10/11**.

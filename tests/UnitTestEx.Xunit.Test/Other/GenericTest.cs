@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Expectations;
 using Xunit;
 using Xunit.Abstractions;

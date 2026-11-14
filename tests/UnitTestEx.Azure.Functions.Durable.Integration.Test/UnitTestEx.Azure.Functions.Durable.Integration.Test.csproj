@@ -12,7 +12,6 @@
     <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageReference Include="NUnit.Analyzers" Version="3.10.0" PrivateAssets="all" />
     <ProjectReference Include="..\..\src\UnitTestEx.Aspire\UnitTestEx.Aspire.csproj" />
-    <ProjectReference Include="..\..\src\UnitTestEx.NUnit\UnitTestEx.NUnit.csproj" />
     <ProjectReference Include="..\UnitTestEx.Aspire.Durable.AppHost\UnitTestEx.Aspire.Durable.AppHost.csproj" />
     <ProjectReference Include="..\UnitTestEx.DurableFunction\UnitTestEx.DurableFunction.csproj" SetTargetFramework="TargetFramework=net10.0" />
   </ItemGroup>

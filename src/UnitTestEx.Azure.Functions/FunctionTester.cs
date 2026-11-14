@@ -20,9 +20,10 @@ namespace UnitTestEx
         /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
         /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
         /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
+        /// <param name="output">The optional framework output helper, callback, or writer.</param>
         /// <returns>The <see cref="FunctionTester{TEntryPoint}"/>.</returns>
-        public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration = null, Func<TestFrameworkImplementor>? createFactory = null)
+        public static FunctionTester<TEntryPoint> Create<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration = null, Func<TestFrameworkImplementor>? createFactory = null, object? output = null)
             where TEntryPoint : class
-            => new(includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration, createFactory);
+            => new(includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration, createFactory, output);
     }
 }

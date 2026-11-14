@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Http;
+using UnitTestEx.Abstractions;
 using UnitTestEx.IsolatedFunction;
 using UnitTestEx.Xunit;
 using Xunit;

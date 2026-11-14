@@ -14,7 +14,8 @@ namespace UnitTestEx.Azure.Functions
     /// <param name="includeUserSecrets">Indicates whether to include user secrets.</param>
     /// <param name="additionalConfiguration">Additional configuration values to add/override.</param>
     /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
-    public class FunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration, bool? includeUserSecrets, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration, Func<TestFrameworkImplementor>? createFactory = null)
-        : FunctionTesterBase<TEntryPoint, FunctionTester<TEntryPoint>>(TestFrameworkImplementor.Create(createFactory), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) where TEntryPoint : class
+    /// <param name="output">The optional framework output helper, callback, or writer.</param>
+    public class FunctionTester<TEntryPoint>(bool? includeUnitTestConfiguration = null, bool? includeUserSecrets = null, IEnumerable<KeyValuePair<string, string?>>? additionalConfiguration = null, Func<TestFrameworkImplementor>? createFactory = null, object? output = null)
+        : FunctionTesterBase<TEntryPoint, FunctionTester<TEntryPoint>>(TestFrameworkImplementor.Create(createFactory, output), includeUnitTestConfiguration, includeUserSecrets, additionalConfiguration) where TEntryPoint : class
     { }
 }
