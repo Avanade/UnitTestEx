@@ -1,6 +1,6 @@
 # Azure Functions testing
 
-`FunctionTester` (package `UnitTestEx.Azure.Functions`) tests Azure Functions written for the **v4 isolated worker model** on .NET 8, 9, 10 and (from v6.2) 11. The in-process (WebJobs) model is not supported from v6 onwards; see [Migrating to v6](./migration-v6.md).
+`FunctionTester` (package `UnitTestEx.Azure.Functions`) tests Azure Functions written for the **v4 isolated worker model** on .NET 8, 9, 10 and 11. The in-process (WebJobs) model is not supported; see [Migrating from v5 to v6 to v7](./migration-v6.md).
 
 .NET 11 function apps require `Azure.Functions.Sdk` 1.0.1 or later as the project SDK, replacing `Microsoft.NET.Sdk` and the `Microsoft.Azure.Functions.Worker.Sdk` package reference. Keep an explicit `Microsoft.Azure.Functions.Worker` reference. The multi-targeted samples use `Azure.Functions.Sdk/1.0.2`; existing apps on older frameworks do not need to migrate just to use UnitTestEx. See [Microsoft's migration guidance](https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide#migrate-to-azurefunctionssdk).
 
@@ -36,6 +36,8 @@ The [runnable Blob integration example](#runnable-blob-integration-example) show
 ``` csharp
 using var test = FunctionTester.Create<ProductFunction>();
 ```
+
+For per-test output capture, use `FunctionTester.Create<ProductFunction>(output: output)`. The output sink accepts framework output helpers, `Action<string>`, or `TextWriter`; when an explicit `createFactory` is supplied, that factory is responsible for output handling.
 
 Example: [`Program_TestOverrides`](../tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`Program_ServicesUsed_WorkerNotStarted`](../tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs), [`Program_ConcurrentHostsAreIsolated`](../tests/UnitTestEx.NUnit.Test/IsolatedFunctionTest.cs). The sample function app is [`UnitTestEx.IsolatedFunction`](../tests/UnitTestEx.IsolatedFunction/Program.cs).
 
@@ -93,7 +95,7 @@ dotnet test tests\UnitTestEx.NUnit.Test\UnitTestEx.NUnit.Test.csproj --framework
 
 ## Fixture-level testing
 
-`WithFunctionTester<TEntryPoint>` (in the `UnitTestEx` namespace, package `UnitTestEx.Azure.Functions`) exposes a `Test` property and implements `IDisposable` to release the tester, its trigger scopes and its host. The host is built lazily, so configure `Test` before accessing its services or invoking a function. There are no application-start lifecycle hooks because the worker is never started.
+`WithFunctionTester<TEntryPoint>` (in the `UnitTestEx` namespace, package `UnitTestEx.Azure.Functions`) exposes a `Test` property and implements `IDisposable` to release the tester, its trigger scopes and its host. The host is built lazily, so configure `Test` before accessing its services or invoking a function. `OnConfiguration()` runs once immediately before the first `Test` access; override `OnDispose()` for additional fixture cleanup. There are no application-start lifecycle hooks because the worker is never started.
 
 For an NUnit fixture that shares one tester across its test methods:
 
@@ -111,13 +113,13 @@ public sealed class ProductFunctionTests : WithFunctionTester<ProductFunction>
 }
 ```
 
-The protected constructor accepts an optional `Func<TestFrameworkImplementor> createFactory`, like `WithAspireTester`. Passing `null` uses the normal framework resolution. An xUnit test class can pass its output helper explicitly:
+The protected constructors accept an output object first and an optional `Func<TestFrameworkImplementor> createFactory` second. A factory-only overload is also available. Passing no factory uses normal framework resolution. An xUnit test class can pass its output helper explicitly:
 
 ```csharp
 public sealed class ProductFunctionTests : WithFunctionTester<ProductFunction>
 {
     public ProductFunctionTests(ITestOutputHelper output)
-        : base(() => XunitTestImplementor.Create(output)) { }
+        : base(output: output) { }
 
     [Fact]
     public void GetProduct()
@@ -129,9 +131,9 @@ public sealed class ProductFunctionTests : WithFunctionTester<ProductFunction>
 }
 ```
 
-`XunitTestImplementor` is in `UnitTestEx.Xunit.Internal`; `ITestOutputHelper` is in `Xunit.Abstractions`. The explicit factory is also available through `FunctionTester.Create<TEntryPoint>(createFactory: ...)` and the concrete tester constructor; existing configuration arguments retain their order.
+The framework-neutral `WithFunctionTester<TEntryPoint>` accepts the xUnit output helper as an opaque object, so it does not require an xUnit-specific UnitTestEx package. An explicit `TestFrameworkImplementor` factory remains available through `FunctionTester.Create<TEntryPoint>(createFactory: ...)` and the concrete tester constructor.
 
-Sharing follows the framework's fixture lifetime. xUnit creates a test-class instance per test, so inheriting this base does **not** share the host across methods. Use an xUnit class or collection fixture for that lifetime; rebind its shared tester to the current test's output with `fixture.Test.ReplaceTestFrameworkImplementor(XunitTestImplementor.Create(output))` in the test-class constructor, rather than retaining one test's output helper. Ensure the owning fixture is disposed. Shared hosts and tester state can contaminate later tests; isolate mutable state, use `Test.ResetHost()` when needed, and do not use the shared tester concurrently.
+Sharing follows the framework's fixture lifetime. xUnit creates a test-class instance per test, so inheriting this base does **not** share the host across methods. Use an xUnit class or collection fixture for that lifetime; rebind its shared tester to the current test's output with `fixture.Test.ReplaceTestFrameworkImplementor(TestFrameworkImplementor.CreateForCurrentFramework(output))` in the test-class constructor, rather than retaining one test's output helper. Ensure the owning fixture is disposed. Shared hosts and tester state can contaminate later tests; isolate mutable state, use `Test.ResetHost()` when needed, and do not use the shared tester concurrently.
 
 Examples and lifecycle regressions: [`WithFunctionTesterTest` (NUnit)](../tests/UnitTestEx.NUnit.Test/WithFunctionTesterTest.cs), [`WithFunctionTesterTest` (xUnit)](../tests/UnitTestEx.Xunit.Test/WithFunctionTesterTest.cs).
 
@@ -417,7 +419,7 @@ Project | References and purpose
 -|-
 [`UnitTestEx.IsolatedFunction`](../tests/UnitTestEx.IsolatedFunction/UnitTestEx.IsolatedFunction.csproj) | Worker SDK, `Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs`; [`StorageTriggerFunctions`](../tests/UnitTestEx.IsolatedFunction/StorageTriggerFunctions.cs) reads `unittestex` with `Source = BlobTriggerSource.EventGrid` and writes `processed/result.txt`.
 [`UnitTestEx.Aspire.Functions.AppHost`](../tests/UnitTestEx.Aspire.Functions.AppHost/UnitTestEx.Aspire.Functions.AppHost.csproj) | `Aspire.Hosting.AppHost` and the function project; [`AppHost.cs`](../tests/UnitTestEx.Aspire.Functions.AppHost/AppHost.cs) provisions Azurite and starts Core Tools against the built function output, restricted to `BlobTrigger`.
-[`UnitTestEx.Aspire.NUnit.Test`](../tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj) | `UnitTestEx.Aspire`, **`UnitTestEx.Azure.Functions`**, `UnitTestEx.NUnit`, `Azure.Storage.Blobs` and the AppHost project.
+[`UnitTestEx.Aspire.NUnit.Test`](../tests/UnitTestEx.Aspire.NUnit.Test/UnitTestEx.Aspire.NUnit.Test.csproj) | `UnitTestEx.Aspire`, **`UnitTestEx.Azure.Functions`**, `NUnit`, `Azure.Storage.Blobs` and the AppHost project.
 
 Both helpers below use the **`UnitTestEx` namespace**, but they ship in different packages:
 

@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using UnitTestEx.Xunit.Internal;
+using UnitTestEx.Abstractions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -14,7 +14,7 @@ namespace UnitTestEx.Xunit.Test.Other
         [Fact]
         public void Test()
         {
-            var l = new XunitTestImplementor(Output).CreateLoggerProvider().CreateLogger("LoggerTest");
+            var l = TestFrameworkImplementor.Create().CreateLoggerProvider().CreateLogger("LoggerTest");
 
             var scope = l.BeginScope(new Dictionary<string, object>() { { "CorrelationId", "abc" }, { "AltCode", 1234 } });
             l.LogInformation("A single line of {Text}.", "text");

@@ -2,6 +2,7 @@ using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
 using Microsoft.DurableTask.Testing;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace UnitTestEx.Azure.Functions.Durable.TestHost;
 
@@ -47,7 +48,8 @@ public static class DurableTaskRegistryExtensions
     /// Forwards orchestration operations to the host context and reports future wall-clock timers.
     /// </summary>
     /// <param name="inner">The host-provided orchestration context.</param>
-    private sealed class WallClockTimerDiagnosticContext(TaskOrchestrationContext inner) : TaskOrchestrationContext
+    /// <param name="inputConverter">The worker converter for dynamically typed discovered orchestration input, or <c>null</c> for typed registrations.</param>
+    internal sealed class WallClockTimerDiagnosticContext(TaskOrchestrationContext inner, DataConverter? inputConverter = null) : TaskOrchestrationContext
     {
         private readonly TaskOrchestrationContext _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         private readonly ILogger _logger = inner.CreateReplaySafeLogger<WallClockTimerDiagnosticContext>();
@@ -82,7 +84,19 @@ public static class DurableTaskRegistryExtensions
         /// <summary>Gets the orchestration input.</summary>
         /// <typeparam name="T">The expected input type.</typeparam>
         /// <returns>The orchestration input.</returns>
-        public override T GetInput<T>() => _inner.GetInput<T>()!;
+        public override T GetInput<T>()
+        {
+            if (inputConverter is null)
+                return _inner.GetInput<T>()!;
+
+            object? input = _inner.GetInput<object>();
+            if (input is null)
+                return default!;
+            if (input is T value)
+                return value;
+            string? serialized = input is JsonElement json ? json.GetRawText() : inputConverter.Serialize(input);
+            return (T)inputConverter.Deserialize(serialized, typeof(T))!;
+        }
 
         /// <summary>Schedules an activity through the host context.</summary>
         /// <typeparam name="TResult">The activity result type.</typeparam>

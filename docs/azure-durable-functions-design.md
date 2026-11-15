@@ -23,7 +23,7 @@ The package references the existing `UnitTestEx.Azure.Functions` package in one 
 
 The project pins Microsoft's `Microsoft.DurableTask.InProcessTestHost` **0.2.3-preview.1** and `Microsoft.DurableTask.Abstractions` **1.28.0**. The integration remains preview because the upstream host is preview; breaking changes may occur between releases.
 
-Package versioning sets `PackageVersion` to `$(Version)-preview` after importing `Common.targets`. Numeric assembly versions and UnitTestEx dependency references retain the regular shared version. All packages release as a coordinated set: base `6.2.0` produces Durable `6.2.0-preview`, and base `6.2.1` produces `6.2.1-preview`.
+Package versioning sets `PackageVersion` to `$(Version)-preview` after importing `Common.targets`. Numeric assembly versions and UnitTestEx dependency references retain the regular shared version. All packages release as a coordinated set: base `7.0.0` produces Durable `7.0.0-preview`, and base `7.0.1` produces `7.0.1-preview`.
 
 Libraries target .NET 8/9/10/11. Core suites target all four frameworks; Aspire and dedicated Durable suites target .NET 10/11. Fixed AppHosts/resources and the real Durable Functions integration project target .NET 10.
 
@@ -31,7 +31,7 @@ Libraries target .NET 8/9/10/11. Core suites target all four frameworks; Aspire 
 
 The sample uses ordinary top-level [startup](../tests/UnitTestEx.DurableFunction/Program.cs), registering `IWorkflowJournal` through application DI. Testing does not require a custom `Program` class, `BuildHost` method or test-only startup structure.
 
-`FunctionTester.Create<WorkflowActivities>()` identifies the application assembly. The SDK-host builder explicitly registers delegates; it does not discover `[Function]` methods or bind trigger arguments. Delegates can invoke static methods, resolve instances through application scopes, supply `TestFunctionContext`, or substitute behavior.
+`FunctionTester.Create<WorkflowActivities>()` identifies the application assembly. The SDK-host builder registers delegates explicitly by default. Opt-in `WithSelfDiscovery()` / `WithSelfDiscovery<T>()` registers supported activity and context-only orchestration methods from selected assemblies; explicit handlers take precedence. Discovered activities use invocation scopes, and discovered instance children retain an isolated application scope across replay until run disposal. This adapts method bodies; it does not run Functions worker bindings or middleware.
 
 Application scopes and contexts remain caller-owned. `.ConfigureHostServices(...)` configures the separate SDK host, not the captured application's service collection.
 
@@ -116,10 +116,10 @@ This integration is separate from the container-free SDK-host/context suite and 
 
 The Durable tester does not provide a general scripted orchestration engine, deterministic pump or self-replay fake. Engine scheduling, history, continuation and retries remain Microsoft's responsibility. The method-level virtual context intentionally excludes these engine behaviors.
 
-Automatic function/class discovery, a higher-level entity-testing API and built-in SDK-host durable HTTP are outside the supported surface. Typed root/child registration is explicit and caller-owned; SDK type/factory registration remains accessible through the registry callback.
+Opt-in assembly discovery adapts supported Function activity and context-only orchestration methods; automatic SDK `TaskOrchestrator` class discovery, a higher-level entity-testing API and built-in SDK-host durable HTTP are outside the supported surface. Typed root/child registration is explicit and caller-owned; SDK type/factory registration remains accessible through the registry callback.
 
 Durable HTTP and entity execution belong to a Functions-runtime integration when extension behavior or state/locking semantics matter. A substituted activity response only tests the orchestration's branch against that response; it does not reproduce the extension's HTTP machinery or entity dispatcher.
 
-The in-memory host does not execute Functions middleware, binding converters, starter triggers or production HTTP status endpoints. Use the real Functions integration path for worker/backend interactions. Deployed Azure configuration, authentication and reliability require a separate deployment-level test.
+The in-memory host does not execute Functions middleware, binding converters, starter trigger delivery or production HTTP status endpoints. A starter method may be invoked directly with the SDK-host client via a discovery-configured session; this is not worker binding. Use the real Functions integration path for worker/backend interactions. Deployed Azure configuration, authentication and reliability require a separate deployment-level test.
 
 Preserve existing generic `Trigger<T>()` behavior, including caller-supplied orchestration mocks. Adding the optional Durable package does not change direct trigger invocation.

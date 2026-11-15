@@ -1,6 +1,6 @@
 ﻿<Project>
   <PropertyGroup>
-    <Version>6.2.0</Version>
+    <Version>7.0.0</Version>
     <LangVersion>latest</LangVersion>
     <Authors>Avanade</Authors>
     <Company>Avanade</Company>
@@ -28,9 +28,14 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <IsTestProject>false</IsTestProject>
+    <PackageReadmeFile Condition="Exists('$(MSBuildProjectDirectory)\README.md')">README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Explicit items also apply to the cross-targeting pack build, which has no default None items. -->
+    <None Remove="README.md;skills\**\*" />
+    <None Include="README.md" Condition="Exists('$(MSBuildProjectDirectory)\README.md')" Pack="true" PackagePath="\" />
+    <None Include="skills\**\*" Pack="true" PackagePath="%(Identity)" />
     <None Include="..\..\images\Logo256x256.png" Link="Logo256x256.png">
       <PackagePath>\</PackagePath>
       <Pack>true</Pack>

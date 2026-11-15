@@ -55,11 +55,11 @@ Example: [`TesterExtensions_ApiTester`](../tests/UnitTestEx.NUnit.Test/Other/One
 
 ## Test framework support
 
-Package | Base classes | Notes
--|-|-
-`UnitTestEx.NUnit` | `WithApiTester<T>`, `WithGenericTester<T>` | Writes output to `TestContext`.
-`UnitTestEx.MSTest` | `WithApiTester<T>`, `WithGenericTester<T>` | Writes output to `TestContext`.
-`UnitTestEx.Xunit` | `UnitTestBase`, `ApiTestFixture<T>`, `WithApiTester<T>` | Pass `ITestOutputHelper` to the constructor. Inside a `UnitTestBase`, create testers as usual, e.g. `GenericTester.Create<T>()`, so output is routed to xUnit.
+UnitTestEx infers xUnit v2/v3, NUnit v4/v5, and MSTest v3/v4 from the loaded test-framework assemblies. No framework-specific UnitTestEx package is needed. When automatic detection is missing or ambiguous, UnitTestEx uses framework-neutral assertions and Console output and emits a diagnostic. Other frameworks can provide assertion and output integration by implementing `TestFrameworkImplementor` and registering its factory with `SetGlobalCreateFactory` or `SetLocalCreateFactory`, or supplying it through a tester's `createFactory` parameter. Programmatic selection uses the `TestFramework` enum from `UnitTestEx.Abstractions`, for example `TestSetUp.TestFramework = TestFramework.Xunit3`; configuration remains a string at `UnitTestEx:TestFramework` (environment variable: `UnitTestEx__TestFramework`). A `null` programmatic selection uses configuration, then automatic detection.
+
+For xUnit, pass the per-test output helper to `UnitTestBase`, `WithApiTester<T>`, `WithGenericTester<T>`, or `WithFunctionTester<T>`; this preserves output capture by the runner. Direct `ApiTester`, `GenericTester`, `FunctionTester`, and `AspireTester` creation APIs also accept an `output` sink for per-test instances. NUnit and MSTest use their current test context automatically. Tester-owning fixture bases expose `OnConfiguration()`, called once on first `Test` access, and `OnDispose()` for fixture cleanup. `UnitTestBase` is in `UnitTestEx.Abstractions`; its `OnDispose()` hook runs as part of the standard `Dispose(bool)` pattern. Explicitly supplied `TestFrameworkImplementor` factories take precedence and must handle their own output.
+
+Registered local or global factories also apply to fixture bases. A direct tester's explicit output overrides an automatically detected ambient output, but not a factory-owned implementor. Nested fixtures restore the enclosing implementor when disposed, including when their disposal hook throws. Shared `ApiTestFixture<T>` instances have a parameterless constructor for xUnit; derived fixtures can pass a factory to the protected constructor.
 
 The test code is near-identical across frameworks. Compare [UnitTestEx.NUnit.Test](../tests/UnitTestEx.NUnit.Test), [UnitTestEx.MSTest.Test](../tests/UnitTestEx.MSTest.Test) and [UnitTestEx.Xunit.Test](../tests/UnitTestEx.Xunit.Test).
 

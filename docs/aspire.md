@@ -27,6 +27,8 @@ tester.Http("shopping")
     .AssertValue(new { id = "123", product = "Widget" });
 ```
 
+For per-test output capture, pass an output sink to `AspireTester.Create<Projects.MyAppHost>(output: output)`. Shared `WithAspireTester<TAppHost>` fixtures intentionally do not retain a test-specific output sink across test methods.
+
 For an NUnit fixture that deliberately shares one AppHost across its test methods, derive from `WithAspireTester<TAppHost>` and use its `Test` property. The base exposes `OnBeforeStartAsync` and `OnAfterStartAsync` hooks and asynchronously disposes the shared tester when the fixture is torn down:
 
 ```csharp

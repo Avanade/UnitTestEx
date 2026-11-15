@@ -18,5 +18,14 @@ namespace UnitTestEx
         /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
         /// <returns>The <see cref="AspireTester{TAppHost}"/>.</returns>
         public static AspireTester<TAppHost> Create<TAppHost>(Func<TestFrameworkImplementor>? createFactory = null) where TAppHost : class => new(createFactory);
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="AspireTester{TAppHost}"/> class using the specified test output.
+        /// </summary>
+        /// <typeparam name="TAppHost">The AppHost <see cref="Type"/>.</typeparam>
+        /// <param name="output">The optional framework output helper, callback, or writer.</param>
+        /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
+        /// <returns>The <see cref="AspireTester{TAppHost}"/>.</returns>
+        public static AspireTester<TAppHost> Create<TAppHost>(object? output, Func<TestFrameworkImplementor>? createFactory = null) where TAppHost : class => new(output, createFactory);
     }
 }

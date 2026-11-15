@@ -18,5 +18,14 @@ namespace UnitTestEx
         /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
         /// <returns>The <see cref="ApiTester{TEntryPoint}"/>.</returns>
         public static ApiTester<TEntryPoint> Create<TEntryPoint>(Func<TestFrameworkImplementor>? createFactory = null) where TEntryPoint : class => new(createFactory);
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="ApiTester{TEntryPoint}"/> class using the specified test output.
+        /// </summary>
+        /// <typeparam name="TEntryPoint">The API startup <see cref="Type"/>.</typeparam>
+        /// <param name="output">The optional framework output helper, callback, or writer.</param>
+        /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
+        /// <returns>The <see cref="ApiTester{TEntryPoint}"/>.</returns>
+        public static ApiTester<TEntryPoint> Create<TEntryPoint>(object? output, Func<TestFrameworkImplementor>? createFactory = null) where TEntryPoint : class => new(output, createFactory);
     }
 }

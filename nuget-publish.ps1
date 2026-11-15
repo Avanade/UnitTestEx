@@ -60,10 +60,7 @@ param(
         "src\UnitTestEx",
         "src\UnitTestEx.Aspire",
         "src\UnitTestEx.Azure.Functions",
-        "src\UnitTestEx.Azure.Functions.Durable",
-        "src\UnitTestEx.MSTest",
-        "src\UnitTestEx.Xunit",
-        "src\UnitTestEx.NUnit")
+        "src\UnitTestEx.Azure.Functions.Durable")
     )
 
 $hasApiKey = ![string]::IsNullOrWhiteSpace($ApiKey)

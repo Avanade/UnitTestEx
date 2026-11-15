@@ -84,6 +84,12 @@ namespace UnitTestEx
         public static string Environment { get; set; } = "Development";
 
         /// <summary>
+        /// Gets or sets the test framework to use instead of automatic detection.
+        /// </summary>
+        /// <remarks>A <see langword="null"/> value uses the <c>UnitTestEx:TestFramework</c> configuration value, then automatic detection.</remarks>
+        public static TestFramework? TestFramework { get; set; }
+
+        /// <summary>
         /// Gets or sets the <see cref="Task.Delay(int)"/> milliseconds to allow a host to finalize/dispose before expecting/asserting result.
         /// </summary>
         public static int TaskDelayMilliseconds { get; set; } = 1;

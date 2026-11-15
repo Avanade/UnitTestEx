@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using UnitTestEx.Aspire;
+using UnitTestEx.Abstractions;
 using Xunit;
 using Xunit.Abstractions;
 

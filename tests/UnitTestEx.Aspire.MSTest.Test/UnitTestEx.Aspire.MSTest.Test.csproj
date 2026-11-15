@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\UnitTestEx.Aspire\UnitTestEx.Aspire.csproj" />
-    <ProjectReference Include="..\..\src\UnitTestEx.MSTest\UnitTestEx.MSTest.csproj" />
     <ProjectReference Include="..\UnitTestEx.Api\UnitTestEx.Api.csproj" />
     <ProjectReference Include="..\UnitTestEx.Aspire.AppHost\UnitTestEx.Aspire.AppHost.csproj" />
   </ItemGroup>

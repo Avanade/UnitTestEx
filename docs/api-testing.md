@@ -10,7 +10,10 @@
 
 ``` csharp
 using var test = ApiTester.Create<Startup>(); // Or ApiTester.Create<Program>() for minimal hosting.
+using var testWithOutput = ApiTester.Create<Startup>(output: output); // Captures UnitTestEx output in the current test.
 ```
+
+The output object is a per-test sink for UnitTestEx diagnostics, such as xUnit's `ITestOutputHelper`, an `Action<string>`, or a `TextWriter`. If an explicit `createFactory` is supplied, it creates the implementor and is responsible for its own output handling.
 
 Where the API's `appsettings.json` isn't next to the test assembly, use `UseSolutionRelativeContentRoot("tests/My.Api")`. Example: [`Success2`](../tests/UnitTestEx.NUnit.Test/ProductControllerTest.cs).
 

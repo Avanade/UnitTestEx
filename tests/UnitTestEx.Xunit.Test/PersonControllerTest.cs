@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Api;
 using UnitTestEx.Api.Controllers;
 using UnitTestEx.Api.Models;

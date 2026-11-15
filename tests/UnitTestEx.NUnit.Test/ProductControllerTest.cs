@@ -25,7 +25,7 @@ namespace UnitTestEx.NUnit.Test
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
-            var uti = NUnit.Internal.NUnitTestImplementor.Create();
+            var uti = UnitTestEx.Abstractions.TestFrameworkImplementor.Create();
             uti.WriteLine("ONE-TIME-SETUP"); // This does not work; bug of test framework.
             System.Diagnostics.Debug.WriteLine("ONE-TIME-SETUP");
             TestSetUp.Default.SetUp();

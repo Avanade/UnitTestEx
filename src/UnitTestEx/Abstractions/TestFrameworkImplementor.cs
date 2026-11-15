@@ -2,6 +2,7 @@
 
 using Microsoft.Extensions.Logging;
 using System;
+using System.IO;
 using System.Threading;
 using UnitTestEx.Logging;
 
@@ -14,6 +15,7 @@ namespace UnitTestEx.Abstractions
     {
         private static Func<TestFrameworkImplementor>? _createFactory;
         private static readonly AsyncLocal<Func<TestFrameworkImplementor>?> _localCreateFactory = new();
+        private static readonly AsyncLocal<ImplementorContext?> _localImplementor = new();
 
         /// <summary>
         /// Gets a <see cref="NullTestImplementor"/> instance that does nothing.
@@ -55,24 +57,86 @@ namespace UnitTestEx.Abstractions
         public static void ResetLocalCreateFactory() => _localCreateFactory.Value = null;
 
         /// <summary>
-        /// Creates a new instance of the <see cref="TestFrameworkImplementor"/> (see <see cref="SetGlobalCreateFactory"/> or <see cref="SetLocalCreateFactory"/>).
+        /// Captures the current asynchronous execution context's implementor.
+        /// </summary>
+        internal static ImplementorContext? CaptureLocalContext() => _localImplementor.Value;
+
+        /// <summary>
+        /// Sets or restores the current asynchronous execution context's implementor.
+        /// </summary>
+        internal static void SetLocalContext(ImplementorContext? context) => _localImplementor.Value = context;
+
+        /// <summary>Creates a fresh per-test context without inheriting an enclosing test's output binding.</summary>
+        internal static ImplementorContext CreateLocalContext(Func<TestFrameworkImplementor>? createFactory, object? output)
+        {
+            TestSetUp.Force();
+            if (createFactory is not null)
+                return new(createFactory() ?? throw new InvalidOperationException($"The {nameof(createFactory)} has returned null."), true);
+
+            if (_localCreateFactory.Value is not null)
+                return new(_localCreateFactory.Value() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetLocalCreateFactory)} has returned null."), true);
+
+            if (_createFactory is not null)
+                return new(_createFactory() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetGlobalCreateFactory)} has returned null."), true);
+
+            return new(RuntimeTestFrameworkImplementor.Create(output), false);
+        }
+
+        /// <summary>Stores an ambient implementor and whether its output is controlled by a factory.</summary>
+        internal sealed record ImplementorContext(TestFrameworkImplementor Implementor, bool IsFactory);
+
+        /// <summary>
+        /// Creates a new instance of the <see cref="TestFrameworkImplementor"/> (see <see cref="SetGlobalCreateFactory"/> or <see cref="SetLocalCreateFactory"/>), using <paramref name="output"/> when framework detection creates the implementor.
         /// </summary>
         /// <param name="createFactory">The optional function to create the <see cref="TestFrameworkImplementor"/> instance.</param>
+        /// <param name="output">The optional framework output helper, <see cref="TextWriter"/>, or <see cref="Action{T}"/> accepting a string.</param>
         /// <returns>The new instance of the <see cref="TestFrameworkImplementor"/>.</returns>
-        public static TestFrameworkImplementor Create(Func<TestFrameworkImplementor>? createFactory = null)
+        public static TestFrameworkImplementor Create(Func<TestFrameworkImplementor>? createFactory = null, object? output = null)
         {
             TestSetUp.Force();
 
             if (createFactory is not null)
                 return createFactory() ?? throw new InvalidOperationException($"The {nameof(createFactory)} has returned null.");
 
+            if (_localImplementor.Value is { } current)
+                return output is not null && !current.IsFactory ? RuntimeTestFrameworkImplementor.Create(output) : current.Implementor;
+
             if (_localCreateFactory.Value is not null)
                 return _localCreateFactory.Value.Invoke() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetLocalCreateFactory)} has returned null.");
 
-            if (_createFactory is null)
-                throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetGlobalCreateFactory)} must be set as a minimum.");
+            if (_createFactory is not null)
+                return _createFactory() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetGlobalCreateFactory)} has returned null.");
 
-            return _createFactory?.Invoke() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetGlobalCreateFactory)} has returned null.");
+            return RuntimeTestFrameworkImplementor.Create(output);
+        }
+
+        /// <summary>
+        /// Creates the automatically selected framework implementor using an optional per-test output object or callback.
+        /// </summary>
+        /// <param name="output">An optional framework output helper, <see cref="TextWriter"/>, or <see cref="Action{T}"/> accepting a string.</param>
+        /// <returns>The framework implementor.</returns>
+        public static TestFrameworkImplementor CreateForCurrentFramework(object? output = null)
+        {
+            TestSetUp.Force();
+            return RuntimeTestFrameworkImplementor.Create(output);
+        }
+
+        /// <summary>
+        /// Gets the active implementor for the current asynchronous context, falling back to framework detection.
+        /// </summary>
+        /// <returns>The active implementor.</returns>
+        internal static TestFrameworkImplementor GetCurrentOrDefault()
+        {
+            if (_localImplementor.Value is { } current)
+                return current.Implementor;
+
+            if (_localCreateFactory.Value is not null)
+                return _localCreateFactory.Value() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetLocalCreateFactory)} has returned null.");
+
+            if (_createFactory is not null)
+                return _createFactory() ?? throw new InvalidOperationException($"The {nameof(TestFrameworkImplementor)}.{nameof(SetGlobalCreateFactory)} has returned null.");
+
+            return RuntimeTestFrameworkImplementor.Create();
         }
 
         /// <summary>

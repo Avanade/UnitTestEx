@@ -1,4 +1,5 @@
 ﻿using System;
+using UnitTestEx.Abstractions;
 using UnitTestEx.Xunit.Test.Model;
 using Xunit;
 using Xunit.Abstractions;

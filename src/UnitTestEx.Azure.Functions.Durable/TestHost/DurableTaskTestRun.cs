@@ -8,7 +8,7 @@ using UnitTestEx.Expectations;
 namespace UnitTestEx.Azure.Functions.Durable.TestHost;
 
 /// <summary>
-/// Owns a scheduled orchestration test run and its in-memory SDK host.
+/// Observes a scheduled orchestration test run and, when created by a builder, owns its SDK host.
 /// </summary>
 /// <typeparam name="TOutput">The orchestration output type.</typeparam>
 public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectations<DurableTaskTestRun<TOutput>>
@@ -17,7 +17,10 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     private static readonly TimeSpan StatusPollingInterval = TimeSpan.FromMilliseconds(20);
     private readonly TesterBase _owner;
     private readonly DurableTaskActivityVerifier _activityVerifier;
+    private readonly DurableTaskDiscoveryRun? _discoveryRun;
+    private readonly DurableTaskTestSession? _session;
     private DurableTaskTestHost? _host;
+    private int _disposed;
     private bool _completionObserved;
     private readonly Stopwatch _elapsed = Stopwatch.StartNew();
     private int _resultWritten;
@@ -33,12 +36,27 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     /// <param name="host">The in-memory SDK host.</param>
     /// <param name="instanceId">The scheduled orchestration instance identifier.</param>
     /// <param name="activityVerifier">The per-run activity invocation verifier.</param>
-    internal DurableTaskTestRun(TesterBase owner, DurableTaskTestHost host, string instanceId, DurableTaskActivityVerifier activityVerifier)
+    /// <param name="discoveryRun">The per-run discovered orchestration lifetime.</param>
+    internal DurableTaskTestRun(TesterBase owner, DurableTaskTestHost host, string instanceId, DurableTaskActivityVerifier activityVerifier, DurableTaskDiscoveryRun discoveryRun)
     {
         _owner = owner ?? throw new ArgumentNullException(nameof(owner));
         _host = host;
         InstanceId = instanceId;
         _activityVerifier = activityVerifier ?? throw new ArgumentNullException(nameof(activityVerifier));
+        _discoveryRun = discoveryRun ?? throw new ArgumentNullException(nameof(discoveryRun));
+        ExpectationsArranger = new ExpectationsArranger<DurableTaskTestRun<TOutput>>(_owner, this);
+    }
+
+    /// <summary>Initializes an observer without taking ownership of its session's host.</summary>
+    /// <param name="owner">The FunctionTester owning the assertion framework.</param>
+    /// <param name="session">The session that owns the SDK host.</param>
+    /// <param name="instanceId">The orchestration instance identifier.</param>
+    internal DurableTaskTestRun(TesterBase owner, DurableTaskTestSession session, string instanceId)
+    {
+        _owner = owner;
+        _session = session;
+        InstanceId = instanceId;
+        _activityVerifier = new DurableTaskActivityVerifier();
         ExpectationsArranger = new ExpectationsArranger<DurableTaskTestRun<TOutput>>(_owner, this);
     }
 
@@ -46,7 +64,8 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     /// Gets the SDK host for advanced access to its client and other SDK APIs.
     /// </summary>
     /// <exception cref="ObjectDisposedException">The test run has been disposed.</exception>
-    public DurableTaskTestHost Host => _host ?? throw new ObjectDisposedException(nameof(DurableTaskTestRun<>));
+    public DurableTaskTestHost Host => Volatile.Read(ref _disposed) != 0 ? throw new ObjectDisposedException(nameof(DurableTaskTestRun<>))
+        : _session is not null ? _session.Host : _host ?? throw new ObjectDisposedException(nameof(DurableTaskTestRun<>));
 
     /// <summary>
     /// Gets the scheduled orchestration instance identifier.
@@ -262,8 +281,14 @@ public sealed class DurableTaskTestRun<TOutput> : IAsyncDisposable, IExpectation
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
+
         DurableTaskTestHost? host = Interlocked.Exchange(ref _host, null);
         if (host is not null)
-            await host.DisposeAsync().ConfigureAwait(false);
+        {
+            try { await host.DisposeAsync().ConfigureAwait(false); }
+            finally { await _discoveryRun!.DisposeAsync().ConfigureAwait(false); }
+        }
     }
 }

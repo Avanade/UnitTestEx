@@ -1,5 +1,6 @@
 ﻿using System.Net.Http;
 using System.Threading.Tasks;
+using UnitTestEx.Abstractions;
 using UnitTestEx.IsolatedFunction;
 using Xunit;
 using Xunit.Abstractions;
